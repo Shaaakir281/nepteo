@@ -65,6 +65,7 @@ docs/           architecture, roadmap, décisions, maquettes HTML
 ## Conventions
 
 - UI et textes produit en **français** ; code, identifiants et commits en anglais.
+- **Fichiers courts** : un composant par fichier. UI partagée dans `components/ui/`, icônes dans `components/icons.tsx`, composants propres à une vue dans son dossier `_components/`. Pas de fichier > ~200 lignes sans bonne raison.
 - Métriques privilégiées : vente et revenu (pas les métriques de vanité).
 - Chaque action proposée porte : constat, raison, données utilisées, impact estimé, confiance, risque.
 - Toute mutation passe par le serveur (route handler / server action) et écrit au journal.
