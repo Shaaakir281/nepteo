@@ -19,5 +19,6 @@
 | 2026-07 | Non négociables : idempotence + journal avant envoi, garde-fous serveur, chiffrement tokens | Fiabilité dès le jour 1 |
 | 2026-07 | Hébergement : Docker → Azure Container Apps (région EU), CI/CD GitHub Actions, images dans ACR | Azure déjà connecté au GitHub de Fathi ; scale-to-zero économique |
 | 2026-07 | Couche IA multi-fournisseurs via Vercel AI SDK : Anthropic par défaut, OpenAI (et autres) pour tests comparatifs ; modèles choisis par env | Comparer qualité/coût sans réécrire le code agent |
+| 2026-07 | Modèles attribués **par tâche produit** (registre `LLM_TASKS` dans lib/llm.ts, override env `LLM_TASK_*`) ; observabilité et évals **Langfuse** prévues avant la Phase 2 (traces par tâche, tests A/B de modèles) | Le bon modèle au bon endroit ; coûts et qualité mesurables tâche par tâche |
 
 Ajouter chaque nouvelle décision ici (format ADR léger : contexte, décision, conséquences).

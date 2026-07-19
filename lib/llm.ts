@@ -59,6 +59,38 @@ export function getModel(tier: LlmTier = "standard"): LanguageModel {
   return PROVIDERS[provider](model);
 }
 
+/**
+ * Tâches produit → niveau par défaut.
+ * Chaque appel LLM du produit passe par une tâche nommée : c'est l'unité
+ * d'attribution des modèles, et demain l'unité de trace/éval dans Langfuse.
+ * Surcharge par env, ex. : LLM_TASK_DRAFT_EMAIL=openai:gpt-5.4
+ */
+export const LLM_TASKS = {
+  classify_intent: "light", // classer une demande, un statut, un segment
+  summarize_document: "light", // résumer un document ou une page importée
+  score_lead: "light", // prioriser un prospect
+  detect_anomaly: "standard", // repérer un problème dans les données
+  draft_email: "standard", // rédiger une relance, un email
+  draft_post: "standard", // rédiger un post ou une annonce
+  weekly_report: "standard", // préparer le rapport hebdomadaire
+  recommend_action: "premium", // recommandation avec raisonnement complet
+  campaign_brief: "premium", // brief de campagne bout en bout
+} as const satisfies Record<string, LlmTier>;
+
+export type LlmTask = keyof typeof LLM_TASKS;
+
+/** Spec effective d'une tâche : override env sinon niveau par défaut. */
+export function resolveTaskSpec(task: LlmTask): string {
+  const override = process.env[`LLM_TASK_${task.toUpperCase()}`];
+  return override || resolveSpec(LLM_TASKS[task]);
+}
+
+/** Modèle pour une tâche produit — à privilégier partout dans le code métier. */
+export function getModelForTask(task: LlmTask): LanguageModel {
+  const { provider, model } = parseSpec(resolveTaskSpec(task));
+  return PROVIDERS[provider](model);
+}
+
 /** Présence des clés API par fournisseur (jamais les valeurs). */
 export function providerKeyStatus(): Record<LlmProvider, boolean> {
   return {

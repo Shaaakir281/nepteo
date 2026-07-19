@@ -3,8 +3,12 @@ import { generateText } from "ai";
 import { createClient } from "@/lib/supabase/server";
 import {
   getModel,
+  getModelForTask,
+  LLM_TASKS,
   providerKeyStatus,
   resolveSpec,
+  resolveTaskSpec,
+  type LlmTask,
   type LlmTier,
 } from "@/lib/llm";
 
@@ -34,6 +38,9 @@ export async function GET() {
       standard: resolveSpec("standard"),
       premium: resolveSpec("premium"),
     },
+    tasks: Object.fromEntries(
+      (Object.keys(LLM_TASKS) as LlmTask[]).map((t) => [t, resolveTaskSpec(t)]),
+    ),
     keys: providerKeyStatus(),
   });
 }
@@ -48,25 +55,37 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Réservé au rôle admin" }, { status: 403 });
   }
 
-  let tier: LlmTier = "standard";
-  try {
-    const body = (await request.json().catch(() => ({}))) as { tier?: string };
-    if (body.tier === "light" || body.tier === "premium") tier = body.tier;
-  } catch {
-    // corps vide accepté
+  const body = (await request.json().catch(() => ({}))) as {
+    tier?: string;
+    task?: string;
+  };
+
+  let label: string;
+  let spec: string;
+  let model;
+  if (body.task && body.task in LLM_TASKS) {
+    const task = body.task as LlmTask;
+    label = `task:${task}`;
+    spec = resolveTaskSpec(task);
+    model = getModelForTask(task);
+  } else {
+    const tier: LlmTier =
+      body.tier === "light" || body.tier === "premium" ? body.tier : "standard";
+    label = `tier:${tier}`;
+    spec = resolveSpec(tier);
+    model = getModel(tier);
   }
 
-  const spec = resolveSpec(tier);
   const started = Date.now();
   try {
     const { text } = await generateText({
-      model: getModel(tier),
+      model,
       prompt: "Réponds uniquement : OK",
       maxOutputTokens: 8,
     });
     return NextResponse.json({
       ok: true,
-      tier,
+      target: label,
       model: spec,
       response: text.trim(),
       ms: Date.now() - started,
@@ -75,7 +94,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         ok: false,
-        tier,
+        target: label,
         model: spec,
         error: e instanceof Error ? e.message : "Erreur inconnue",
       },
