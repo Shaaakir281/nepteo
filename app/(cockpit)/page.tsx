@@ -1,5 +1,10 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import {
+  entryDetail,
+  entryTitle,
+  type JournalEntry,
+} from "@/lib/journal";
 
 const KPIS = [
   { label: "Dépenses", hint: "publicité & campagnes" },
@@ -8,19 +13,14 @@ const KPIS = [
   { label: "Revenu", hint: "attribué au marketing" },
 ];
 
-const EVENT_LABELS: Record<string, string> = {
-  organization_created: "Organisation créée",
-  memory_updated: "Mémoire entreprise mise à jour",
-  connector_requested: "Connecteur demandé",
-};
-
 export default async function TodayPage() {
   const supabase = await createClient();
-  const { data: journal } = await supabase
+  const { data } = await supabase
     .from("journal")
-    .select("id, event, actor, payload, created_at")
+    .select("id, event, actor, actor_id, payload, created_at")
     .order("created_at", { ascending: false })
     .limit(6);
+  const journal = (data ?? []) as JournalEntry[];
 
   const fmt = new Intl.DateTimeFormat("fr-FR", {
     day: "numeric",
@@ -90,25 +90,31 @@ export default async function TodayPage() {
         <div className="rounded-[18px] border border-line-soft bg-white shadow-card">
           <div className="flex items-center justify-between border-b border-line-soft px-[22px] py-4">
             <h3 className="font-display text-[15px] font-semibold">Journal</h3>
-            <span className="text-[12px] text-muted">Tout est tracé</span>
+            <Link
+              href="/journal"
+              className="text-[12px] font-semibold text-violet hover:underline"
+            >
+              Voir tout →
+            </Link>
           </div>
-          {journal && journal.length > 0 ? (
+          {journal.length > 0 ? (
             <ul>
               {journal.map((j) => (
                 <li
                   key={j.id}
                   className="flex items-start gap-3 border-t border-line-soft px-[22px] py-3 first:border-t-0"
                 >
-                  <span className="mt-1.5 h-1.5 w-1.5 flex-none rounded-full bg-violet" />
+                  <span
+                    className={`mt-1.5 h-1.5 w-1.5 flex-none rounded-full ${
+                      j.actor === "agent" ? "bg-faint" : "bg-violet"
+                    }`}
+                  />
                   <div className="min-w-0 flex-1">
                     <p className="text-[13px] font-medium text-ink">
-                      {EVENT_LABELS[j.event] ?? j.event}
-                      {j.payload?.section ? (
-                        <span className="text-muted"> · {j.payload.section}</span>
-                      ) : null}
-                      {j.payload?.name ? (
-                        <span className="text-muted"> · {j.payload.name}</span>
-                      ) : null}
+                      {entryTitle(j)}
+                      {entryDetail(j) && (
+                        <span className="text-muted"> · {entryDetail(j)}</span>
+                      )}
                     </p>
                     <p className="text-[11.5px] text-faint">
                       {fmt.format(new Date(j.created_at))} ·{" "}

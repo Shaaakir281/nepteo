@@ -12,6 +12,7 @@ const PILOTAGE: NavItem[] = [
 const SYSTEME: NavItem[] = [
   { label: "Entreprise", href: "/entreprise", icon: icons.house },
   { label: "Connecteurs", href: "/connecteurs", icon: icons.link },
+  { label: "Journal", href: "/journal", icon: icons.journal },
   { label: "Agent & garde-fous", soon: "Phase 3", icon: icons.shield },
 ];
 

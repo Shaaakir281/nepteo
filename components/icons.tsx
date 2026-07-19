@@ -38,6 +38,12 @@ export const icons = {
       <path d="M8 1.8l6 2.4v4.2c0 3.6-2.4 6.3-6 7.8-3.6-1.5-6-4.2-6-7.8V4.2l6-2.4z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
     </svg>
   ),
+  journal: (
+    <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+      <path d="M3 2.5h10a.5.5 0 01.5.5v10a.5.5 0 01-.5.5H3a.5.5 0 01-.5-.5V3a.5.5 0 01.5-.5z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+      <path d="M5.2 5.5h5.6M5.2 8h5.6M5.2 10.5h3.4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+    </svg>
+  ),
   logout: (
     <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
       <path d="M6 14H3.5a1 1 0 01-1-1V3a1 1 0 011-1H6M10.5 11l3-3-3-3M13.5 8H6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
