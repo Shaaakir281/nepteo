@@ -1,0 +1,48 @@
+name: Deploy (Azure Container Apps)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Auth OIDC (federated credentials) — pas de secret mot de passe.
+# Prérequis côté Azure : app registration + federated credential sur ce repo,
+# rôles AcrPush + Container Apps Contributor.
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  ACR_NAME: nepteoacr            # ← à adapter
+  IMAGE_NAME: nepteo
+  RESOURCE_GROUP: nepteo-rg      # ← à adapter (région EU : francecentral / westeurope)
+  CONTAINER_APP: nepteo
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Build & push image (ACR)
+        run: |
+          az acr build \
+            --registry "$ACR_NAME" \
+            --image "$IMAGE_NAME:${{ github.sha }}" \
+            --build-arg NEXT_PUBLIC_SUPABASE_URL="${{ vars.NEXT_PUBLIC_SUPABASE_URL }}" \
+            --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY="${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
+            .
+
+      - name: Deploy to Container Apps
+        run: |
+          az containerapp update \
+            --name "$CONTAINER_APP" \
+            --resource-group "$RESOURCE_GROUP" \
+            --image "$ACR_NAME.azurecr.io/$IMAGE_NAME:${{ github.sha }}"
