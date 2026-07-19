@@ -42,12 +42,19 @@ npm run typecheck  # tsc --noEmit
 ## Structure
 
 ```
-app/            pages et routes API (App Router) — (auth), onboarding, auth/confirm
-lib/            clients supabase (client, server, admin, proxy), claude, types domaine
+app/            (auth) login/signup · (cockpit) shell sidebar + pages / et /entreprise · onboarding · auth/confirm
+lib/            clients supabase (client, server, admin, proxy), claude, memory (sections + options), types
 proxy.ts        protection des routes + refresh session (Next 16 : remplace middleware.ts)
 supabase/       migrations SQL
 docs/           architecture, roadmap, décisions, maquettes HTML
 ```
+
+## Design
+
+- **Source de vérité UI : `docs/maquettes/`** (cockpit + onboarding validés). Toute nouvelle vue doit reprendre leurs patterns.
+- Tokens dans `app/globals.css` (violet #5a4fe0, ink #191731, tint, line…) exposés en classes Tailwind (`text-ink`, `bg-tint`, `border-line-soft`, `shadow-card`…).
+- Typo : Inter (corps) + Instrument Sans (titres, `font-display`). Rayons 18/13/10 px.
+- Textes produit : simples, français, sans jargon — expliquer les termes marketing (« Un prospect est… »).
 
 ## Auth (en place)
 

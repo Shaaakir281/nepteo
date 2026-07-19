@@ -27,6 +27,8 @@ export type ActionStatus =
 
 export type RiskLevel = "low" | "medium" | "high";
 
+export type { MemoryContent, MemorySection, Offer } from "./memory";
+
 export interface Organization {
   id: string;
   name: string;

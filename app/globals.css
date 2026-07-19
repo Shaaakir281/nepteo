@@ -1,19 +1,71 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;550;600;700&family=Instrument+Sans:wght@500;600;650;700&display=swap");
 @import "tailwindcss";
 
+/* Design tokens — source de vérité : docs/maquettes/nepteo-cockpit.html */
 :root {
-  --background: #fafaf9;
-  --foreground: #1c1917;
-  --accent: #1d4ed8;
+  --ink: #191731;
+  --body: #4c4a68;
+  --muted: #84819e;
+  --faint: #a8a5c0;
+  --violet: #5a4fe0;
+  --violet-deep: #4a3fd0;
+  --violet-ink: #3d34ad;
+  --tint: #efeefb;
+  --tint-soft: #f7f6fd;
+  --page: #f4f3fa;
+  --card: #ffffff;
+  --line: #e7e5f1;
+  --line-soft: #efedf7;
+  --green: #177a55;
+  --green-tint: #e9f6f0;
+  --amber: #9a6210;
+  --amber-tint: #fdf3e3;
+  --red: #b3384d;
+  --red-tint: #fdeef1;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-accent: var(--accent);
+  --color-ink: var(--ink);
+  --color-body: var(--body);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-violet: var(--violet);
+  --color-violet-deep: var(--violet-deep);
+  --color-violet-ink: var(--violet-ink);
+  --color-tint: var(--tint);
+  --color-tint-soft: var(--tint-soft);
+  --color-page: var(--page);
+  --color-card: var(--card);
+  --color-line: var(--line);
+  --color-line-soft: var(--line-soft);
+  --color-green: var(--green);
+  --color-green-tint: var(--green-tint);
+  --color-amber: var(--amber);
+  --color-amber-tint: var(--amber-tint);
+  --color-red: var(--red);
+  --color-red-tint: var(--red-tint);
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-display: "Instrument Sans", "Inter", system-ui, sans-serif;
+  --shadow-card: 0 1px 2px rgba(25, 23, 49, 0.05), 0 10px 30px rgba(25, 23, 49, 0.06);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  background: var(--page);
+  color: var(--body);
+  font-family: "Inter", system-ui, sans-serif;
+  font-size: 14.5px;
+  -webkit-font-smoothing: antialiased;
 }
+
+h1, h2, h3, h4 {
+  font-family: "Instrument Sans", "Inter", system-ui, sans-serif;
+  color: var(--ink);
+}
+
+button:focus-visible, a:focus-visible, summary:focus-visible {
+  outline: 2px solid var(--violet);
+  outline-offset: 2px;
+}
+
+summary { list-style: none; }
+summary::-webkit-details-marker { display: none; }
