@@ -26,7 +26,7 @@ Copilote marketing IA pour PME, solopreneurs et petites équipes. L'agent compre
 
 - Next.js 16 (App Router, TypeScript strict) + Tailwind 4
 - Supabase (Postgres + Auth + RLS, hébergement EU)
-- IA : Vercel AI SDK multi-fournisseurs (Anthropic par défaut, OpenAI et autres en test), modèles via env — couche à construire dans `lib/llm.ts`
+- IA : Vercel AI SDK multi-fournisseurs — `lib/llm.ts`, `getModel("light" | "standard" | "premium")`, modèles par env (`LLM_MODEL*`, format `provider:model`). Test : GET/POST `/api/llm/status`.
 - Zod pour la validation des entrées/sorties
 - File de jobs async : à trancher (voir docs/DECISIONS.md)
 
