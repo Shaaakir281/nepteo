@@ -24,7 +24,7 @@ export function CockpitNav({ items }: { items: NavItem[] }) {
             >
               <span className="flex-none opacity-70">{it.icon}</span>
               {it.label}
-              <span className="ml-auto rounded-full bg-tint-soft px-2 py-0.5 text-[10px] font-semibold">
+              <span className="ml-auto whitespace-nowrap rounded-full bg-tint-soft px-2 py-0.5 text-[10px] font-semibold">
                 {it.soon}
               </span>
             </span>

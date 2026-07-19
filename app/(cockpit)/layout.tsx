@@ -31,11 +31,12 @@ export default async function CockpitLayout({
     ? membership.organizations[0]
     : membership.organizations;
   const initial = (user.email ?? "?").charAt(0).toUpperCase();
-  const today = new Intl.DateTimeFormat("fr-FR", {
+  const raw = new Intl.DateTimeFormat("fr-FR", {
     weekday: "long",
     day: "numeric",
     month: "long",
   }).format(new Date());
+  const today = raw.charAt(0).toUpperCase() + raw.slice(1); // « Dimanche 19 juillet »
 
   return (
     <div className="grid min-h-screen grid-cols-[248px_1fr] max-lg:grid-cols-1">
@@ -56,7 +57,7 @@ export default async function CockpitLayout({
             Rechercher une campagne, un prospect…
           </span>
           <div className="flex items-center gap-3.5">
-            <span className="text-[12.5px] capitalize text-muted">{today}</span>
+            <span className="text-[12.5px] text-muted">{today}</span>
             <span className="grid h-8 w-8 place-items-center rounded-full bg-ink font-display text-[11.5px] font-semibold text-white">
               {initial}
             </span>

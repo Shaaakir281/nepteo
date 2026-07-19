@@ -11,6 +11,7 @@ const KPIS = [
 const EVENT_LABELS: Record<string, string> = {
   organization_created: "Organisation créée",
   memory_updated: "Mémoire entreprise mise à jour",
+  connector_requested: "Connecteur demandé",
 };
 
 export default async function TodayPage() {
@@ -104,6 +105,9 @@ export default async function TodayPage() {
                       {EVENT_LABELS[j.event] ?? j.event}
                       {j.payload?.section ? (
                         <span className="text-muted"> · {j.payload.section}</span>
+                      ) : null}
+                      {j.payload?.name ? (
+                        <span className="text-muted"> · {j.payload.name}</span>
                       ) : null}
                     </p>
                     <p className="text-[11.5px] text-faint">

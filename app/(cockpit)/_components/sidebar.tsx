@@ -11,7 +11,7 @@ const PILOTAGE: NavItem[] = [
 
 const SYSTEME: NavItem[] = [
   { label: "Entreprise", href: "/entreprise", icon: icons.house },
-  { label: "Connecteurs", soon: "Bientôt", icon: icons.link },
+  { label: "Connecteurs", href: "/connecteurs", icon: icons.link },
   { label: "Agent & garde-fous", soon: "Phase 3", icon: icons.shield },
 ];
 
@@ -27,7 +27,7 @@ export function Sidebar({
   initial: string;
 }) {
   return (
-    <aside className="sticky top-0 flex h-screen flex-col border-r border-line-soft bg-white max-lg:hidden">
+    <aside className="sticky top-0 flex h-screen flex-col overflow-y-auto border-r border-line-soft bg-white max-lg:hidden">
       <div className="flex items-center gap-2.5 px-5 pb-4 pt-5 font-display text-[17px] font-bold text-ink">
         <span className="grid h-7 w-7 flex-none place-items-center rounded-lg bg-gradient-to-br from-[#6a5cf0] to-[#4a3fd0] text-sm font-bold text-white shadow-[0_4px_10px_rgba(90,79,224,.28)]">
           N
@@ -47,9 +47,9 @@ export function Sidebar({
       </div>
       <CockpitNav items={SYSTEME} />
 
-      <div className="flex-1" />
+      <div className="min-h-4 flex-1" />
 
-      <div className="mx-3.5 rounded-[13px] border border-line bg-tint-soft p-3.5">
+      <div className="mx-3.5 flex-none rounded-[13px] border border-line bg-tint-soft p-3.5">
         <div className="flex items-center gap-2">
           <span className="h-2 w-2 flex-none rounded-full bg-amber" />
           <h4 className="font-display text-[13px] font-semibold">
@@ -62,7 +62,7 @@ export function Sidebar({
         </p>
       </div>
 
-      <div className="m-3.5 flex items-center gap-2.5 rounded-[10px] px-2 py-1.5">
+      <div className="m-3.5 flex flex-none items-center gap-2.5 rounded-[10px] px-2 py-1.5">
         <span className="grid h-8 w-8 flex-none place-items-center rounded-full bg-ink font-display text-[11.5px] font-semibold text-white">
           {initial}
         </span>
