@@ -70,6 +70,10 @@ docs/           architecture, roadmap, décisions, maquettes HTML
 - Chaque action proposée porte : constat, raison, données utilisées, impact estimé, confiance, risque.
 - Toute mutation passe par le serveur (route handler / server action) et écrit au journal.
 
+## Suivi inter-agents
+
+**Obligatoire : lire `docs/SUIVI.md` avant de coder, et y consigner ta session à la fin** (entrée datée : fait / décisions / reste à faire).
+
 ## Phase actuelle
 
 **Phase 1 — Fondations (lecture seule)** : auth, schéma DB, premier connecteur en lecture, journal. Voir docs/ROADMAP.md. Ne pas construire en avance des phases suivantes.
