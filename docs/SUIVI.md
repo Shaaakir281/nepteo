@@ -21,10 +21,17 @@ Environnement : Supabase projet `hrqnzorapjnosjphftur` (migration exécutée), r
 
 ## Prochaines étapes (dans l'ordre)
 
-1. **Décision client pilote avec Charly** → détermine le premier connecteur à construire (voir demandes dans la table `connectors`).
-2. Premier connecteur en lecture réelle + sync (choisir la file de jobs : pg-boss vs BullMQ, DECISIONS #3).
-3. Brancher Langfuse (OTel sur les tâches `LLM_TASKS`) avant les premières features IA.
-4. Porte Phase 1 → Phase 2 : données du pilote affichées juste, tous les jours.
+**Décidé (2026-07-19) : premiers connecteurs = Google Sheets + Notion, lecture seule.** Plan pour la prochaine session :
+
+1. **Migration `0002_prospects.sql`** : table `prospects` (organization_id, connector_id, external_id, name, email, company, stage, source, raw jsonb, synced_at) + `unique(connector_id, external_id)` (idempotence du sync) + RLS par organisation.
+2. **Chiffrement des tokens** : helper AES-256-GCM (`lib/crypto.ts`) avec `CONNECTOR_TOKEN_ENCRYPTION_KEY`, stockage dans `connectors.encrypted_credentials`. Jamais de token en clair.
+3. **OAuth Google** (`app/api/connectors/google_sheets/…`) : scopes `spreadsheets.readonly` + `drive.file` minimum ; l'utilisateur choisit ensuite le classeur + mapping colonnes simple (nom/email/entreprise/statut).
+4. **OAuth Notion** (integration publique) : l'utilisateur choisit sa base contacts ; mapping propriétés → champs prospects.
+5. **Sync** : route de sync manuelle d'abord (« Synchroniser maintenant », journalisée `connector_synced`), cron ensuite — trancher pg-boss vs BullMQ (DECISIONS #2) à ce moment-là.
+6. **UI** : cartes Google Sheets/Notion passent à « Connecté · synchronisé il y a X » (pattern maquette), vue Prospects (Phase 2) branchée dessus.
+7. Brancher **Langfuse** (OTel sur `LLM_TASKS`) avant les premières features IA.
+8. Porte Phase 1 → Phase 2 : données du pilote affichées juste, tous les jours.
+9. Client pilote : toujours à confirmer avec Charly (la décision connecteurs n'en dépend plus).
 
 ## Pièges connus
 
@@ -35,6 +42,14 @@ Environnement : Supabase projet `hrqnzorapjnosjphftur` (migration exécutée), r
 - Design : ne rien inventer, copier les patterns de `docs/maquettes/` (tokens dans `globals.css`).
 
 ## Historique des sessions
+
+### 2026-07-20 — Claude (Cowork) — connecteurs Google Sheets + Notion
+- Migration `0002_prospects.sql` (table prospects + RLS — **à exécuter dans Supabase**).
+- `lib/crypto.ts` (AES-256-GCM), `lib/connectors/{common,store,google-sheets,notion}.ts`.
+- Routes OAuth authorize/callback ×2 (state CSRF en cookie, jetons chiffrés, journal `connector_connected`).
+- Page `/connecteurs/[provider]` : config (URL classeur / choix base Notion), sync manuelle journalisée (`connector_synced`, upsert idempotent sur `connector_id+external_id`), aperçu 5 prospects, déconnexion (purge des jetons).
+- Cartes Sheets/Notion → vrai bouton Connecter (OAuth) / Gérer.
+- Reste : Fathi doit créer les apps OAuth (Google Cloud + Notion), remplir les env, exécuter la migration, générer `CONNECTOR_TOKEN_ENCRYPTION_KEY`. Puis : cron de sync (décision pg-boss/BullMQ), vue Prospects (Phase 2), Langfuse.
 
 ### 2026-07-19 — Claude (Cowork) — session fondation
 - Squelette Next 16 + Supabase + docs (CLAUDE.md, ARCHITECTURE, ROADMAP, DECISIONS).

@@ -1,4 +1,6 @@
+import Link from "next/link";
 import type { CatalogTool } from "@/lib/connectors";
+import { isOauthProvider } from "@/lib/connectors/common";
 import { requestConnector } from "../actions";
 
 const TYPE_LABELS: Record<string, string> = {
@@ -51,18 +53,37 @@ export function ConnectorCard({
       </p>
       <div className="mt-3.5">
         {status === "connected" && (
-          <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-green">
-            <i className="h-[7px] w-[7px] rounded-full bg-green" />
-            Connecté
+          <span className="inline-flex items-center gap-3">
+            <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-green">
+              <i className="h-[7px] w-[7px] rounded-full bg-green" />
+              Connecté
+            </span>
+            {isOauthProvider(tool.provider) && (
+              <Link
+                href={`/connecteurs/${tool.provider}`}
+                className="text-[12px] font-semibold text-violet hover:underline"
+              >
+                Gérer →
+              </Link>
+            )}
           </span>
         )}
-        {status === "requested" && (
+        {status !== "connected" && isOauthProvider(tool.provider) && canEdit && (
+          <a
+            href={`/api/connectors/${tool.provider}/authorize`}
+            className="inline-block rounded-[7px] bg-tint px-3.5 py-1.5 text-[12px] font-semibold text-violet transition hover:bg-violet hover:text-white"
+          >
+            Connecter
+          </a>
+        )}
+        {status === "requested" && !isOauthProvider(tool.provider) && (
           <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-amber">
             <i className="h-[7px] w-[7px] rounded-full bg-amber" />
             {justRequested ? "Demande enregistrée ✓" : "Demandé — bientôt disponible"}
           </span>
         )}
         {status === "available" &&
+          !isOauthProvider(tool.provider) &&
           (canEdit ? (
             <form action={requestConnector}>
               <input type="hidden" name="provider" value={tool.provider} />
