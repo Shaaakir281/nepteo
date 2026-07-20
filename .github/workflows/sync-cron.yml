@@ -1,0 +1,22 @@
+name: Sync connecteurs (cron)
+
+on:
+  schedule:
+    - cron: "0 5 * * *" # 05:00 UTC — ~7h Paris en été
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    # Ne tourne que lorsque l'app est déployée : configurer la variable APP_URL
+    # (repo Settings → Variables) et le secret CRON_SECRET.
+    if: vars.APP_URL != ''
+    steps:
+      - name: Appeler la route de synchronisation
+        env:
+          APP_URL: ${{ vars.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          curl -sf -X POST "$APP_URL/api/cron/sync" \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -H "Content-Type: application/json"

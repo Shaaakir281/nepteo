@@ -76,4 +76,4 @@ docs/           architecture, roadmap, décisions, maquettes HTML
 
 ## Phase actuelle
 
-**Phase 1 — Fondations (lecture seule)** : auth, schéma DB, premier connecteur en lecture, journal. Voir docs/ROADMAP.md. Ne pas construire en avance des phases suivantes.
+**Phase 2 — Recommandations** : l'agent détecte et propose, sans JAMAIS exécuter (l'exécution réelle = Phase 3, avec garde-fous). Fondations Phase 1 en place. Voir docs/ROADMAP.md et docs/SUIVI.md. Ne pas construire en avance des phases suivantes.

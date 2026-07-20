@@ -5,7 +5,7 @@ import { CockpitNav, type NavItem } from "./nav";
 const PILOTAGE: NavItem[] = [
   { label: "Aujourd'hui", href: "/", icon: icons.star },
   { label: "Campagnes", soon: "Phase 4", icon: icons.send },
-  { label: "Prospects", soon: "Phase 2", icon: icons.people },
+  { label: "Prospects", href: "/prospects", icon: icons.people },
   { label: "Contenu", soon: "Phase 4", icon: icons.pen },
 ];
 

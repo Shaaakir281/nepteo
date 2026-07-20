@@ -5,6 +5,11 @@ import {
   entryTitle,
   type JournalEntry,
 } from "@/lib/journal";
+import { EDIT_ROLES } from "@/lib/memory";
+import {
+  ValidationQueue,
+  type QueueAction,
+} from "./_components/validation-queue";
 
 const KPIS = [
   { label: "Dépenses", hint: "publicité & campagnes" },
@@ -21,6 +26,23 @@ export default async function TodayPage() {
     .order("created_at", { ascending: false })
     .limit(6);
   const journal = (data ?? []) as JournalEntry[];
+
+  const { data: membership } = await supabase
+    .from("memberships")
+    .select("role")
+    .limit(1)
+    .maybeSingle();
+  const canEdit = EDIT_ROLES.includes(membership?.role ?? "");
+
+  const { data: queueRows } = await supabase
+    .from("actions")
+    .select(
+      "id, title, finding, rationale, data_sources, expected_impact, confidence, risk",
+    )
+    .eq("status", "proposed")
+    .order("created_at", { ascending: false })
+    .limit(5);
+  const queue = (queueRows ?? []) as QueueAction[];
 
   const fmt = new Intl.DateTimeFormat("fr-FR", {
     day: "numeric",
@@ -75,15 +97,7 @@ export default async function TodayPage() {
               L&apos;agent propose, vous décidez
             </span>
           </div>
-          <div className="px-[22px] py-8 text-center">
-            <p className="text-[13.5px] font-medium text-ink">
-              Rien à valider pour l&apos;instant
-            </p>
-            <p className="mx-auto mt-1.5 max-w-xs text-[12.5px] leading-relaxed text-muted">
-              Les premières recommandations arriveront en Phase 2, quand
-              l&apos;agent lira vos données.
-            </p>
-          </div>
+          <ValidationQueue actions={queue} canEdit={canEdit} />
         </div>
 
         {/* Journal */}

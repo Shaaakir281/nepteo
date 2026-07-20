@@ -17,6 +17,12 @@ export const EVENT_LABELS: Record<string, string> = {
   connector_configured: "Connecteur configuré",
   connector_synced: "Synchronisation effectuée",
   connector_disconnected: "Connecteur déconnecté",
+  connector_sync_failed: "Synchronisation échouée",
+  analysis_run: "Analyse lancée",
+  action_proposed: "Action proposée",
+  action_approved: "Action validée",
+  action_rejected: "Action refusée",
+  action_postponed: "Action reportée",
 };
 
 const SECTION_LABELS: Record<string, string> = {
@@ -37,6 +43,7 @@ export function entryDetail(e: JournalEntry): string | null {
   if (typeof p.section === "string") {
     return `Section « ${SECTION_LABELS[p.section] ?? p.section} »`;
   }
+  if (typeof p.title === "string") return p.title;
   if (typeof p.name === "string") {
     return typeof p.count === "number"
       ? `${p.name} — ${p.count} prospect${p.count > 1 ? "s" : ""}`
