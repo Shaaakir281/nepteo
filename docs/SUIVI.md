@@ -14,7 +14,7 @@
 Fonctionnel (build vert en local par Fathi ; `tsc` + `npm test` verts dans le sandbox) :
 
 - **Socle Phase 1** (Auth, Cockpit shell, DB + RLS, couche LLM par tâche, Infra/CI) : inchangé, cf. sessions précédentes.
-- **Connecteurs (lecture seule)** : Google Sheets **testé** (24 prospects synchronisés) ; Notion **codé mais pas encore connecté par Fathi**. OAuth chiffré (AES-256-GCM), sync manuelle + **cron quotidien** (`/api/cron/sync`, acteur agent, `mode: auto`). Table `prospects` (migration 0002, idempotence `connector_id+external_id`).
+- **Connecteurs (lecture seule)** : Google Sheets **et Notion testés** (24 prospects lus chacun ; mapping Notion par type de propriété + mots-clés, **OK du premier coup, aucun correctif**). OAuth chiffré (AES-256-GCM), sync manuelle + **cron quotidien** (`/api/cron/sync`, acteur agent, `mode: auto`). Table `prospects` (migration 0002, idempotence `connector_id+external_id`). **Dédup à l'affichage** par email dans la vue Prospects (`lib/dedupe-prospects.ts`, lecture seule) — deux connecteurs sur la même base ne comptent plus double.
 - **Moteur d'analyse** (`lib/analysis-rules.ts` + `lib/analysis.ts`) : 6 règles sur données réelles (emails manquants, relance du plus gros statut, **relancer en priorité** = joignables + statut actif, sans-statut, doublons d'email, entreprise manquante ≥ 40 %), habillage LLM avec repli templates. Tests `node:test` (`npm test`, 13/13, **Node ≥ 22**).
 - **Cockpit Phase 2** : file de validation avec **tiroir de raisonnement** (Aujourd'hui), **Décisions récentes** (Reporter/Reprendre + historique validées/refusées), vue **Prospects funnel + kanban** avec **repère de priorité** par carte (statut + complétude, sans score inventé).
 - **Observabilité** : `telemetryForTask` (`functionId` par tâche) + hook Langfuse (`lib/observability.ts`, `instrumentation.ts`) — **inactif** tant que paquets + clés absents.
@@ -23,7 +23,7 @@ Environnement : Supabase `hrqnzorapjnosjphftur`, repo GitHub `Shaaakir281/nepteo
 
 ## Prochaines étapes (dans l'ordre)
 
-1. **Fathi (manuel)** : connecter Notion pour de vrai (TESTS.md §2), dérouler le parcours de test visuel (tiroir, kanban, Reporter/Reprendre, cron analyse), lancer `npm run build` (Windows) et `npm test` (après passage Node 22).
+1. **Fathi (manuel)** : ~~connecter Notion~~ **fait (2026-07-21)**. Reste : dérouler le parcours §3 dans l'app (3 propositions + badges de priorité + dédup), lancer `npm run build` (Windows) et `npm test` (Node 22). **Backlog** : écran de correspondance de colonnes configurable (cf. DECISIONS) pour les bases clientes aux intitulés exotiques.
 2. **Activer Langfuse** : `npm i @vercel/otel langfuse-vercel` + clés `LANGFUSE_*`, puis **vérifier que les spans arrivent bien avec `ai@7`** (API télémétrie v7 différente — voir session 2026-07-21).
 3. ~~Priorisation des prospects (Phase 2)~~ — **fait (2026-07-21)** : signal transparent (statut + complétude) dans le kanban + proposition « relancer en priorité », sans score inventé. Reste à Fathi : le voir dans le parcours §3 (désormais **3 propositions**) et confirmer les badges kanban.
 4. **Porte Phase 2** : ≥ 1 recommandation pertinente/semaine jugée utile par le pilote (ROADMAP). Client pilote toujours à confirmer avec Charly.
@@ -40,6 +40,13 @@ Environnement : Supabase `hrqnzorapjnosjphftur`, repo GitHub `Shaaakir281/nepteo
 - **Vérif tsc dans le sandbox Cowork** : le sandbox tue les process longs (~44 s) et laisse un log **vide** → « log vide » ≠ « vert ». Ne conclure au vert que sur un `tsc` **terminé** (exit 0 explicite) ; au besoin `pkill node` puis relancer sur sandbox non contendu. `next build` non exécutable (SWC win32 only) → build côté Fathi. `npm test` requiert **Node ≥ 22**.
 
 ## Historique des sessions
+
+### 2026-07-21 — Claude (Cowork) — Notion connecté + dédup affichage + décision mapping
+- **Notion réel connecté par Fathi** : 24 prospects lus, base « prospects-test.csv », noms/emails/entreprises corrects. Le connecteur (OAuth Basic auth, state cookie, mapping par type + regex FR/EN) a tenu **sans aucun correctif**. Guide pas-à-pas fourni (types de propriétés Email/Select, redirect URI `:3001`, partage de la base à l'OAuth).
+- **Dédup à l'affichage** (`lib/dedupe-prospects.ts`, pur, **lecture seule**) : regroupe par email normalisé (casse/espaces), complète les champs vides depuis les doublons, **garde les lignes sans email** (non dédupliquables), ne mute jamais l'entrée. Branché dans `prospects/page.tsx` **avant** le regroupement (funnel/kanban/priorité comptent des personnes uniques) + compteur « N doublons d'email masqués ». **Pourquoi** : deux connecteurs sur la même base = lignes en double (upsert `connector_id+external_id`). La **fusion réelle** reste une proposition de l'agent (`dedupe_emails`) → exécution Phase 3. Tests : +4 (**17/17**).
+- **Décision actée — correspondance de colonnes configurable** (`docs/DECISIONS.md`) : au-delà de la détection auto (mots-clés d'en-tête Sheets, type + mots-clés de propriété Notion), un écran de mapping laissera chaque client relier ses colonnes aux champs Nepteo. Rappel clarifié pour Fathi : le SQL `0002_prospects.sql` crée le schéma **interne** de Nepteo (une fois, jamais côté client) ; les clients gardent leurs propres intitulés, tout l'original est conservé dans `raw`. Backlog Phase 2/onboarding.
+- **Vérif** : `npm test` **17/17, exit 0** ; `tsc` ciblé (lib+app+components, hors `.next`) **exit 0**. `next build` + `tsc` complet côté Fathi (Windows).
+- **Reste** : Langfuse (objectif 2) ; parcours §3 dans l'app côté Fathi.
 
 ### 2026-07-21 — Claude (Cowork) — priorisation des prospects (Phase 2)
 - **Signal de priorité transparent** (`lib/analysis-rules.ts`) : `prospectPriority` + `isTerminalStage`, dérivés UNIQUEMENT du **statut + complétude** (email, entreprise). Trois tiers : `priority` (À relancer en priorité = joignable ET statut actif), `incomplete` (email ou statut manquant), `paused` (statut terminal : client/gagné/perdu/désabonné…, détecté sans accents ni casse). **Aucun score inventé** (ni activité ni engagement — indisponibles). Fonction définie dans analysis-rules.ts pour une **source unique** partagée avec le kanban.
