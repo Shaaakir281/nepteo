@@ -59,6 +59,18 @@ Jeu de données : `docs/tests/prospects-test.csv` (24 prospects, 5 sans email, s
 4. **Journal** : vérifier `connector_connected`, `connector_synced`, `action_proposed` (acteur agent), `action_approved/rejected` (acteur vous).
 5. Cron local : `Invoke-RestMethod -Method Post -Uri "http://localhost:3001/api/cron/sync" -Headers @{Authorization="Bearer TON_CRON_SECRET"}` → nouvelle entrée journal `mode: auto`.
 
+## 4. Langfuse (observabilité LLM) — optionnel
+
+Chaque appel LLM émet déjà une trace OTel nommée par tâche (`recommend_action`, etc.). Pour la voir dans Langfuse :
+
+1. `npm i @vercel/otel langfuse-vercel`
+2. `.env.local` : `LANGFUSE_PUBLIC_KEY=pk-...`, `LANGFUSE_SECRET_KEY=sk-...`, et pour l'hébergement EU `LANGFUSE_BASEURL=https://cloud.langfuse.com`.
+3. Redémarrer `npm run dev`, lancer une analyse (§3.2) → une trace par tâche apparaît dans Langfuse.
+
+Sans paquets ni clés : aucun impact, l'app tourne normalement (no-op silencieux).
+
+⚠️ **AI SDK v7** : l'API de télémétrie a évolué (traces regroupées par `functionId`, plus de `metadata`). Le hook `lib/observability.ts` enregistre l'exportateur OTel Langfuse ; au moment de l'activation, **vérifier dans Langfuse** qu'une trace par tâche apparaît bien. Si rien n'arrive, l'intégration à jour pour `ai@7` est à confirmer côté Langfuse (voie « intégration » plutôt qu'exportateur OTel classique).
+
 ## Et en production ?
 
 **Un seul projet Google / une seule intégration Notion pour TOUS les clients.** Les clients ne créent rien : ils cliquent « Connecter » et autorisent Nepteo sur leur propre compte. Avant la mise en prod, une fois :
