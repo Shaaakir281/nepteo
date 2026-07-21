@@ -52,10 +52,10 @@ Jeu de données : `docs/tests/prospects-test.csv` (24 prospects, 5 sans email, s
 
 ## 3. Parcours de validation Phase 2
 
-1. Vue **Prospects** : 24 lignes, chips de répartition par statut (dont « email manquant » sur 5).
-2. **Aujourd'hui** → « Analyser mes données maintenant » → 2 propositions attendues :
-   compléter 5 emails manquants + relancer le groupe « Nouveau » (9).
-3. Examiner une action (constat/raison/impact/confiance/risque/sources) → **Valider** une, **Refuser** l'autre.
+1. Vue **Prospects** : 24 lignes, funnel par statut + **repère de priorité** — résumé en tête (À relancer en priorité **15** · Fiche à compléter **5** · En veille **4**) et un badge par carte (survol = la raison). Le signal se calcule sur le **statut + la complétude** (email, entreprise), sans score inventé.
+2. **Aujourd'hui** → « Analyser mes données maintenant » → **3 propositions** attendues :
+   compléter 5 emails manquants + relancer le groupe « Nouveau » (9) + **relancer en priorité les 15 prospects prêts** (joignables ET à un statut actif — ni « Client » ni « Perdu »).
+3. Examiner une action (constat/raison/impact/confiance/risque/sources) → **Valider** une, **Refuser** une, **Reporter** la troisième, puis la **Reprendre** depuis « Décisions récentes ».
 4. **Journal** : vérifier `connector_connected`, `connector_synced`, `action_proposed` (acteur agent), `action_approved/rejected` (acteur vous).
 5. Cron local : `Invoke-RestMethod -Method Post -Uri "http://localhost:3001/api/cron/sync" -Headers @{Authorization="Bearer TON_CRON_SECRET"}` → nouvelle entrée journal `mode: auto`.
 
