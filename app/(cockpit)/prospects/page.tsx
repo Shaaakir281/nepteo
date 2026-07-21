@@ -43,9 +43,8 @@ export default async function ProspectsPage() {
       <div className="mb-5">
         <h1 className="text-[22px] font-semibold tracking-tight">Prospects</h1>
         <p className="mt-1.5 max-w-2xl text-[13.5px] leading-relaxed text-muted">
-          Le parcours de vos contacts, regroupés par statut. Un{" "}
-          <b className="text-ink">prospect</b> est une personne intéressée mais
-          pas encore cliente. Lecture seule : la source reste votre outil.
+          Vos contacts regroupés par statut, en lecture seule depuis vos outils
+          connectés.
         </p>
       </div>
 

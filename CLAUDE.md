@@ -54,7 +54,7 @@ docs/           architecture, roadmap, décisions, maquettes HTML
 - **Source de vérité UI : `docs/maquettes/`** (cockpit + onboarding validés). Toute nouvelle vue doit reprendre leurs patterns.
 - Tokens dans `app/globals.css` (violet #5a4fe0, ink #191731, tint, line…) exposés en classes Tailwind (`text-ink`, `bg-tint`, `border-line-soft`, `shadow-card`…).
 - Typo : Inter (corps) + Instrument Sans (titres, `font-display`). Rayons 18/13/10 px.
-- Textes produit : simples, français, sans jargon — expliquer les termes marketing (« Un prospect est… »).
+- Textes produit : simples, français, **concis**. On s'adresse à des entrepreneurs : **ne pas définir** le lexique marketing standard (prospect, lead, funnel, relance…). Ne gloser brièvement que le jargon d'initié réellement obscur (cf. « Règle vocabulaire »). Pas de sous-titres explicatifs à rallonge.
 
 ## Auth (en place)
 
