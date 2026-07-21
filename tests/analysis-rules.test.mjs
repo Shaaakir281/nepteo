@@ -7,7 +7,11 @@
  */
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildFindings } from "../lib/analysis-rules.ts";
+import {
+  buildFindings,
+  prospectPriority,
+  isTerminalStage,
+} from "../lib/analysis-rules.ts";
 
 /** Fabrique un prospect ; source fixée pour un data_sources déterministe. */
 const p = (name, email, company, stage) => ({
@@ -52,9 +56,13 @@ test("base vide → aucune proposition", () => {
   assert.deepEqual(buildFindings([]), []);
 });
 
-test("CSV de test (24 prospects) → exactement 2 propositions", () => {
+test("CSV de test (24 prospects) → exactement 3 propositions", () => {
   const f = buildFindings(CSV_FIXTURE);
-  assert.equal(f.length, 2, "attendu : emails manquants + relance du plus gros groupe");
+  assert.equal(
+    f.length,
+    3,
+    "attendu : emails manquants + relance du plus gros groupe + relance en priorité",
+  );
 
   const emails = find(f, "complete_missing_emails");
   assert.ok(emails, "règle emails manquants déclenchée");
@@ -65,6 +73,13 @@ test("CSV de test (24 prospects) → exactement 2 propositions", () => {
   assert.ok(relaunch, "règle relance du plus gros statut déclenchée");
   assert.equal(relaunch.payload.stage, "Nouveau");
   assert.equal(relaunch.payload.count, 9);
+
+  // Relancer en priorité = joignable (email présent) ET statut actif
+  // (ni « Client » ni « Perdu »). Sur le CSV : 15 des 24 prospects.
+  const priority = find(f, "relaunch_priority");
+  assert.ok(priority, "règle relancer en priorité déclenchée");
+  assert.equal(priority.payload.count, 15);
+  assert.equal(priority.payload.total, 24);
 
   // Les règles plus strictes ne doivent PAS se déclencher sur ce jeu propre.
   assert.equal(find(f, "classify_unlabeled"), undefined);
@@ -146,6 +161,54 @@ test("entreprise manquante : seuil 40 % et base ≥ 5", () => {
     p("E", "e@x.fr", "", "S5"),
   ]);
   assert.equal(find(below, "complete_missing_company"), undefined);
+});
+
+test("priorité : joignable + statut actif → à relancer en priorité", () => {
+  const pr = prospectPriority({ email: "a@x.fr", stage: "Nouveau", company: "AA" });
+  assert.equal(pr.tier, "priority");
+  assert.equal(pr.label, "À relancer en priorité");
+});
+
+test("priorité : email manquant → fiche à compléter (pas prioritaire)", () => {
+  assert.equal(
+    prospectPriority({ email: "", stage: "Nouveau", company: "AA" }).tier,
+    "incomplete",
+  );
+  assert.equal(
+    prospectPriority({ email: null, stage: "À relancer", company: "AA" }).tier,
+    "incomplete",
+  );
+});
+
+test("priorité : sans statut → fiche à compléter", () => {
+  assert.equal(
+    prospectPriority({ email: "a@x.fr", stage: "", company: "AA" }).tier,
+    "incomplete",
+  );
+  assert.equal(
+    prospectPriority({ email: "a@x.fr", stage: null, company: "AA" }).tier,
+    "incomplete",
+  );
+});
+
+test("priorité : statut terminal → en veille (pas de relance)", () => {
+  for (const stage of ["Client", "Perdu", "Gagné", "Désabonné"]) {
+    assert.equal(
+      prospectPriority({ email: "a@x.fr", stage, company: "AA" }).tier,
+      "paused",
+      `« ${stage} » attendu en veille`,
+    );
+  }
+});
+
+test("isTerminalStage : insensible aux accents et à la casse", () => {
+  assert.equal(isTerminalStage("Gagné"), true);
+  assert.equal(isTerminalStage("PERDU"), true);
+  assert.equal(isTerminalStage("Désabonné"), true);
+  assert.equal(isTerminalStage("Nouveau"), false);
+  assert.equal(isTerminalStage("À relancer"), false);
+  assert.equal(isTerminalStage(""), false);
+  assert.equal(isTerminalStage(null), false);
 });
 
 test("forme de chaque proposition : champs cohérents", () => {

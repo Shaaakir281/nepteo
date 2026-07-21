@@ -27,6 +27,79 @@ export interface Finding {
 
 const plural = (n: number) => (n > 1 ? "s" : "");
 
+/* ---------- Signal de priorité (Phase 2) ----------
+ * Transparent et explicable : dérivé UNIQUEMENT de faits réels — le statut et la
+ * complétude de la fiche (email, entreprise). Aucun score inventé, aucune donnée
+ * d'activité ou d'engagement (indisponible). Défini ici pour être partagé tel quel
+ * avec le kanban : une seule définition de « à relancer en priorité ».
+ */
+export type PriorityTier = "priority" | "incomplete" | "paused";
+
+export interface ProspectPriority {
+  tier: PriorityTier;
+  label: string;
+  reason: string;
+}
+
+/** Statuts terminaux (gagné / client / perdu / désabonné…), normalisés sans accents. */
+const TERMINAL_TOKENS = [
+  "client", "gagne", "signe", "conclu", "won", "perdu", "lost",
+  "desabonne", "unsubscribed", "refus", "clos", "closed", "annul", "inactif",
+];
+
+const normStage = (s: string) =>
+  s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+
+/** Un statut renseigné et non terminal = « actif » (encore dans le parcours de vente). */
+export function isTerminalStage(stage: string | null): boolean {
+  const s = normStage(stage ?? "");
+  return s !== "" && TERMINAL_TOKENS.some((t) => s.includes(t));
+}
+
+/**
+ * Priorité d'un prospect, à partir de deux faits visibles :
+ *  - joignable : une adresse email est présente (sinon aucune relance possible) ;
+ *  - statut actif : renseigné et non terminal.
+ * « À relancer en priorité » = joignable ET actif. Sinon la fiche est à compléter
+ * (email ou statut manquant) ou en veille (dossier clos).
+ */
+export function prospectPriority(p: {
+  email: string | null;
+  stage: string | null;
+  company: string | null;
+}): ProspectPriority {
+  const reachable = (p.email ?? "").trim() !== "";
+  const stage = (p.stage ?? "").trim();
+
+  if (!reachable)
+    return {
+      tier: "incomplete",
+      label: "Fiche à compléter",
+      reason: "Email manquant — injoignable pour une relance.",
+    };
+  if (stage === "")
+    return {
+      tier: "incomplete",
+      label: "Fiche à compléter",
+      reason: "Sans statut — à classer avant de relancer.",
+    };
+  if (isTerminalStage(stage))
+    return {
+      tier: "paused",
+      label: "En veille",
+      reason: `Statut « ${stage} » — dossier clos, pas de relance.`,
+    };
+
+  const complete = (p.company ?? "").trim() !== "";
+  return {
+    tier: "priority",
+    label: "À relancer en priorité",
+    reason: complete
+      ? `Joignable, statut actif « ${stage} », fiche complète.`
+      : `Joignable, statut actif « ${stage} » (entreprise à compléter).`,
+  };
+}
+
 /** Toutes les propositions déclenchées par l'état actuel de la base. */
 export function buildFindings(all: RuleProspect[]): Finding[] {
   const findings: Finding[] = [];
@@ -73,6 +146,25 @@ export function buildFindings(all: RuleProspect[]): Finding[] {
       confidence: 0.7,
       risk: "low",
       payload: { stage, count },
+    });
+  }
+
+  // Règle 2 bis — relancer en priorité : joignables ET statut actif. Même signal
+  // que le kanban (prospectPriority). Distincte de la règle 2 : pas le plus gros
+  // groupe, mais les contacts les plus prêts à recontacter, tous statuts confondus.
+  const ready = all.filter((p) => prospectPriority(p).tier === "priority").length;
+  if (ready >= 2) {
+    findings.push({
+      kind: "relaunch_priority",
+      title: `Relancer en priorité ${ready} prospect${plural(ready)} prêt${plural(ready)}`,
+      finding: `${ready} prospect${plural(ready)} sur ${total} ${ready > 1 ? "sont joignables" : "est joignable"} et à un statut encore actif — ${ready > 1 ? "les plus prêts" : "le plus prêt"} à être recontacté${plural(ready)}.`,
+      rationale:
+        "Ces contacts réunissent les deux conditions d'une relance utile : une adresse valide et un statut encore ouvert. Les traiter d'abord concentre l'effort là où il peut aboutir, sans attendre de compléter le reste de la base.",
+      data_sources: src,
+      expected_impact: `${ready} relance${plural(ready)} adressée${plural(ready)} d'abord aux contacts les plus actionnables`,
+      confidence: 0.75,
+      risk: "low",
+      payload: { count: ready, total },
     });
   }
 
