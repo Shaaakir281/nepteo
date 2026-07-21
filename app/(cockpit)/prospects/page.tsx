@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { dedupeByEmail } from "@/lib/dedupe-prospects";
 import {
   ProspectsBoard,
   type BoardProspect,
@@ -21,7 +22,11 @@ export default async function ProspectsPage() {
     .select("id, name, email, company, stage", { count: "exact" })
     .order("synced_at", { ascending: false })
     .limit(500);
-  const prospects = (data ?? []) as BoardProspect[];
+  // Dédup à l'affichage : une même personne lue par deux connecteurs (ex. Sheets
+  // + Notion) ne doit pas compter double. Lecture seule, rien n'est écrit en base.
+  const rawRows = (data ?? []) as BoardProspect[];
+  const prospects = dedupeByEmail(rawRows);
+  const maskedDupes = rawRows.length - prospects.length;
 
   // Regroupement par statut, colonnes ordonnées par effectif décroissant.
   const byStage = new Map<string, BoardProspect[]>();
@@ -68,9 +73,10 @@ export default async function ProspectsPage() {
         <>
           <ProspectsBoard groups={groups} total={prospects.length} />
           <p className="mt-3 text-[12px] text-faint">
-            {count ?? prospects.length} prospect
-            {(count ?? prospects.length) > 1 ? "s" : ""} au total
-            {(count ?? 0) > 500 && " · 500 affichés"}.
+            {prospects.length} prospect{prospects.length > 1 ? "s" : ""} au total
+            {maskedDupes > 0 &&
+              ` · ${maskedDupes} doublon${maskedDupes > 1 ? "s" : ""} d'email masqué${maskedDupes > 1 ? "s" : ""}`}
+            {(count ?? 0) > 500 && " · 500 lignes brutes affichées"}.
           </p>
         </>
       )}
