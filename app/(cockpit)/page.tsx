@@ -10,6 +10,10 @@ import {
   ValidationQueue,
   type QueueAction,
 } from "./_components/validation-queue";
+import {
+  DecisionsHistory,
+  type DecidedAction,
+} from "./_components/decisions-history";
 
 const KPIS = [
   { label: "Dépenses", hint: "publicité & campagnes" },
@@ -43,6 +47,14 @@ export default async function TodayPage() {
     .order("created_at", { ascending: false })
     .limit(5);
   const queue = (queueRows ?? []) as QueueAction[];
+
+  const { data: decidedRows } = await supabase
+    .from("actions")
+    .select("id, title, status, decided_at")
+    .in("status", ["approved", "rejected", "postponed"])
+    .order("decided_at", { ascending: false })
+    .limit(6);
+  const decided = (decidedRows ?? []) as DecidedAction[];
 
   const fmt = new Intl.DateTimeFormat("fr-FR", {
     day: "numeric",
@@ -144,6 +156,19 @@ export default async function TodayPage() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Décisions récentes — boucle de feedback visible */}
+      <div className="mt-4 rounded-[18px] border border-line-soft bg-white shadow-card">
+        <div className="flex items-center justify-between border-b border-line-soft px-[22px] py-4">
+          <h3 className="font-display text-[15px] font-semibold">
+            Décisions récentes
+          </h3>
+          <span className="text-[12px] text-muted">
+            Reportées, validées, refusées
+          </span>
+        </div>
+        <DecisionsHistory actions={decided} canEdit={canEdit} />
       </div>
     </>
   );

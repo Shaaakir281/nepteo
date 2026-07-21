@@ -23,6 +23,7 @@ export const EVENT_LABELS: Record<string, string> = {
   action_approved: "Action validée",
   action_rejected: "Action refusée",
   action_postponed: "Action reportée",
+  action_resumed: "Action remise dans la file",
 };
 
 const SECTION_LABELS: Record<string, string> = {

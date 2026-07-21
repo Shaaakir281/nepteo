@@ -51,6 +51,40 @@ export async function decideAction(formData: FormData) {
   redirect("/");
 }
 
+/** Remet une action reportée dans la file (statut → proposed). Aucune exécution. */
+export async function resumeAction(formData: FormData) {
+  const ctx = await getEditorContext();
+  if (!ctx) redirect("/login");
+  if (!ctx.canEdit) redirect("/");
+
+  const id = String(formData.get("id") ?? "");
+  if (!id) redirect("/");
+
+  const admin = createAdminClient();
+  const { data: action } = await admin
+    .from("actions")
+    .select("id, title, kind, status")
+    .eq("id", id)
+    .eq("organization_id", ctx.orgId)
+    .maybeSingle();
+  if (!action || action.status !== "postponed") redirect("/");
+
+  await admin
+    .from("actions")
+    .update({ status: "proposed", decided_by: null, decided_at: null })
+    .eq("id", action.id);
+
+  await admin.from("journal").insert({
+    organization_id: ctx.orgId,
+    event: "action_resumed",
+    actor: "user",
+    actor_id: ctx.userId,
+    payload: { kind: action.kind, title: action.title },
+  });
+
+  redirect("/");
+}
+
 /** Lance l'analyse à la demande (le cron s'en chargera aussi à terme). */
 export async function runAnalysisNow() {
   const ctx = await getEditorContext();
