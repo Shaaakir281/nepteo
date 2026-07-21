@@ -8,6 +8,7 @@ import {
   providerKeyStatus,
   resolveSpec,
   resolveTaskSpec,
+  telemetryForTask,
   type LlmTask,
   type LlmTier,
 } from "@/lib/llm";
@@ -63,11 +64,13 @@ export async function POST(request: Request) {
   let label: string;
   let spec: string;
   let model;
+  let telemetry;
   if (body.task && body.task in LLM_TASKS) {
     const task = body.task as LlmTask;
     label = `task:${task}`;
     spec = resolveTaskSpec(task);
     model = getModelForTask(task);
+    telemetry = telemetryForTask(task);
   } else {
     const tier: LlmTier =
       body.tier === "light" || body.tier === "premium" ? body.tier : "standard";
@@ -81,7 +84,10 @@ export async function POST(request: Request) {
     const { text } = await generateText({
       model,
       prompt: "Réponds uniquement : OK",
-      maxOutputTokens: 8,
+      // Marge pour les modèles à raisonnement : leurs reasoning tokens sont
+      // décomptés du budget, un budget trop bas renverrait un texte vide.
+      maxOutputTokens: 64,
+      experimental_telemetry: telemetry,
     });
     return NextResponse.json({
       ok: true,
