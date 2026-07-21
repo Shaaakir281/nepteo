@@ -1,24 +1,14 @@
 import { generateText } from "ai";
 import type { createAdminClient } from "@/lib/supabase/admin";
-import { getModelForTask } from "@/lib/llm";
+import { getModelForTask, telemetryForTask } from "@/lib/llm";
+import { buildFindings, type RuleProspect } from "@/lib/analysis-rules";
 
 type Admin = ReturnType<typeof createAdminClient>;
 
-interface Finding {
-  kind: string;
-  title: string;
-  finding: string; // constat
-  rationale: string; // raison (peut être réécrite par le LLM)
-  data_sources: string[];
-  expected_impact: string;
-  confidence: number;
-  risk: "low" | "medium" | "high";
-  payload: Record<string, unknown>;
-}
-
 /**
- * Moteur d'analyse v1 (Phase 2) — règles simples sur les prospects synchronisés.
- * Propose, n'exécute jamais. Habillage LLM optionnel (repli templates sans clé).
+ * Moteur d'analyse v1 (Phase 2) — applique les règles sur les prospects
+ * synchronisés, habille la raison via LLM (repli templates sans clé), puis
+ * insère les propositions. Propose, n'exécute jamais. Retourne le nombre créé.
  */
 export async function runAnalysis(
   admin: Admin,
@@ -27,55 +17,10 @@ export async function runAnalysis(
 ): Promise<number> {
   const { data: prospects } = await admin
     .from("prospects")
-    .select("email, stage, source")
+    .select("email, stage, source, company, name")
     .eq("organization_id", orgId);
-  const all = prospects ?? [];
 
-  const findings: Finding[] = [];
-  const sources = [...new Set(all.map((p) => p.source))].join(", ");
-
-  if (all.length > 0) {
-    // Règle 1 — emails manquants (qualité de données)
-    const noEmail = all.filter((p) => !p.email).length;
-    if (noEmail > 0) {
-      findings.push({
-        kind: "complete_missing_emails",
-        title: `Compléter ${noEmail} email${noEmail > 1 ? "s" : ""} manquant${noEmail > 1 ? "s" : ""}`,
-        finding: `${noEmail} prospect${noEmail > 1 ? "s" : ""} sur ${all.length} n'ont pas d'adresse email.`,
-        rationale:
-          "Sans email, aucune relance n'est possible — c'est la première fuite du funnel à colmater.",
-        data_sources: [`prospects (${sources})`],
-        expected_impact: `${noEmail} prospect${noEmail > 1 ? "s" : ""} de plus joignable${noEmail > 1 ? "s" : ""} pour les relances`,
-        confidence: 0.9,
-        risk: "low",
-        payload: { count: noEmail, total: all.length },
-      });
-    }
-
-    // Règle 2 — plus gros groupe par statut → relance ciblée
-    const byStage = new Map<string, number>();
-    for (const p of all) {
-      const s = (p.stage ?? "").trim();
-      if (s) byStage.set(s, (byStage.get(s) ?? 0) + 1);
-    }
-    const top = [...byStage.entries()].sort((a, b) => b[1] - a[1])[0];
-    if (top && top[1] >= 2) {
-      const [stage, count] = top;
-      findings.push({
-        kind: `relaunch_stage_${stage.toLowerCase().replace(/\W+/g, "_")}`,
-        title: `Préparer la relance des ${count} prospects « ${stage} »`,
-        finding: `${count} prospects sur ${all.length} sont au statut « ${stage} » — le groupe le plus important de votre base.`,
-        rationale:
-          "Concentrer l'effort sur le groupe le plus fourni maximise le retour d'une seule action de relance.",
-        data_sources: [`prospects (${sources})`],
-        expected_impact: `${count} prospects recontactés en une action`,
-        confidence: 0.7,
-        risk: "low",
-        payload: { stage, count },
-      });
-    }
-  }
-
+  const findings = buildFindings((prospects ?? []) as RuleProspect[]);
   if (findings.length === 0) return 0;
 
   // Dédupe : ne pas reproposer un kind déjà en file
@@ -101,16 +46,24 @@ export async function runAnalysis(
     for (const f of fresh) {
       const { text } = await generateText({
         model: getModelForTask("recommend_action"),
-        maxOutputTokens: 160,
+        // Marge suffisante : sur les modèles à raisonnement (gpt-5, o-series),
+        // les reasoning tokens sont décomptés du budget de sortie ; un budget
+        // trop bas renvoie un texte vide et fait retomber sur les templates.
+        maxOutputTokens: 500,
+        experimental_telemetry: telemetryForTask("recommend_action"),
         prompt: `Tu es l'agent marketing de cette entreprise: ${JSON.stringify(ctx)}. Constat: ${f.finding} Réécris en 1 à 2 phrases simples, en français, sans jargon, la raison pour laquelle cette action vaut la peine. Réponds uniquement par ce texte.`,
       });
       if (text.trim().length > 20) f.rationale = text.trim();
     }
-  } catch {
-    // pas de clé ou erreur API : les templates suffisent
+  } catch (e) {
+    // pas de clé ou erreur API : les templates suffisent (repli silencieux).
+    // Trace en dev pour distinguer « pas de clé » d'une vraie erreur API.
+    console.warn(
+      "[analysis] habillage LLM ignoré, repli sur templates:",
+      e instanceof Error ? e.message : e,
+    );
   }
 
-  const now = new Date().toISOString();
   const { error } = await admin.from("actions").insert(
     fresh.map((f) => ({
       organization_id: orgId,
