@@ -7,33 +7,27 @@
 
 > **Kit de test prêt** : `docs/TESTS.md` (procédure complète connecteurs + parcours Phase 2) et `docs/tests/prospects-test.csv` (fausse base). **Tests en cours (2026-07-20 soir)** : app OAuth Google « Nepteo (dev) » créée par Fathi (écran de consentement configuré, email testeur ajouté après un 403 access_denied, ID client + secret dans `.env.local`). Tests LLM avec **clé OpenAI** (`LLM_MODEL*=openai:gpt-5.4` en env — pas encore de clé Anthropic). Reste à dérouler : connexion Sheets → sync → analyse → décisions, puis Notion. En prod : 1 seule app Google/Notion pour tous les clients (validation Google à passer avant lancement — voir TESTS.md § production).
 
-## État actuel (2026-07-20)
+## État actuel (2026-07-21)
 
-**Phase 1 — Fondations : socle terminé.** Il reste le premier connecteur réel (bloqué par le choix du client pilote, voir DECISIONS.md).
+**Phase 2 — Recommandations : bien avancée.** L'agent lit les données réelles, détecte et propose ; il n'exécute **jamais** (exécution = Phase 3).
 
-Fonctionnel et vérifié (build vert, testé en local par Fathi) :
+Fonctionnel (build vert en local par Fathi ; `tsc` + `npm test` verts dans le sandbox) :
 
-- **Auth** : signup/login/confirmation email (`app/(auth)`, `app/auth/confirm`), sessions SSR rafraîchies dans `proxy.ts` (Next 16 — pas de middleware.ts), onboarding création d'organisation.
-- **Cockpit** : shell sidebar fidèle aux maquettes (`app/(cockpit)/_components/`), vues **Aujourd'hui** (KPIs en attente + journal réel), **Entreprise** (mémoire : activité, zone, canaux, ton, objectifs max 2, offres structurées), **Connecteurs** (catalogue complet, demandes journalisées), **Journal** (filtres, pagination, groupé par jour).
-- **DB** : `supabase/migrations/0001_init.sql` — organizations, memberships (5 rôles), company_memory, connectors, actions, journal (append-only par trigger), RLS par organisation. Écritures via `createAdminClient()` + entrée journal systématique.
-- **LLM** : `lib/llm.ts` — attribution **par tâche** (`LLM_TASKS`, `getModelForTask`), 3 niveaux light/standard/premium, 4 fournisseurs (anthropic/openai/google/mistral), overrides env `LLM_TASK_*`. Test : `/api/llm/status`.
-- **Infra** : Dockerfile standalone, CI GitHub Actions (lint+typecheck+build), deploy.yml → Azure Container Apps (infra Azure PAS encore créée — ACR/RG/App à provisionner, deploy échoue normalement).
+- **Socle Phase 1** (Auth, Cockpit shell, DB + RLS, couche LLM par tâche, Infra/CI) : inchangé, cf. sessions précédentes.
+- **Connecteurs (lecture seule)** : Google Sheets **testé** (24 prospects synchronisés) ; Notion **codé mais pas encore connecté par Fathi**. OAuth chiffré (AES-256-GCM), sync manuelle + **cron quotidien** (`/api/cron/sync`, acteur agent, `mode: auto`). Table `prospects` (migration 0002, idempotence `connector_id+external_id`).
+- **Moteur d'analyse** (`lib/analysis-rules.ts` + `lib/analysis.ts`) : 5 règles sur données réelles (emails manquants, relance du plus gros statut, sans-statut, doublons d'email, entreprise manquante ≥ 40 %), habillage LLM avec repli templates. Tests `node:test` (`npm test`, 8/8, **Node ≥ 22**).
+- **Cockpit Phase 2** : file de validation avec **tiroir de raisonnement** (Aujourd'hui), **Décisions récentes** (Reporter/Reprendre + historique validées/refusées), vue **Prospects funnel + kanban**.
+- **Observabilité** : `telemetryForTask` (`functionId` par tâche) + hook Langfuse (`lib/observability.ts`, `instrumentation.ts`) — **inactif** tant que paquets + clés absents.
 
-Environnement : Supabase projet `hrqnzorapjnosjphftur` (migration exécutée), repo GitHub `Shaaakir281/nepteo`, dev local port 3001 (3000 pris par Langfuse), Node 20 local (passer à 22 recommandé).
+Environnement : Supabase `hrqnzorapjnosjphftur`, repo GitHub `Shaaakir281/nepteo` (branche `main`), dev local port 3001, **Node 20 local (passer à 22 : requis pour `npm test`)**. Infra Azure toujours pas provisionnée.
 
 ## Prochaines étapes (dans l'ordre)
 
-**Décidé (2026-07-19) : premiers connecteurs = Google Sheets + Notion, lecture seule.** Plan pour la prochaine session :
-
-1. **Migration `0002_prospects.sql`** : table `prospects` (organization_id, connector_id, external_id, name, email, company, stage, source, raw jsonb, synced_at) + `unique(connector_id, external_id)` (idempotence du sync) + RLS par organisation.
-2. **Chiffrement des tokens** : helper AES-256-GCM (`lib/crypto.ts`) avec `CONNECTOR_TOKEN_ENCRYPTION_KEY`, stockage dans `connectors.encrypted_credentials`. Jamais de token en clair.
-3. **OAuth Google** (`app/api/connectors/google_sheets/…`) : scopes `spreadsheets.readonly` + `drive.file` minimum ; l'utilisateur choisit ensuite le classeur + mapping colonnes simple (nom/email/entreprise/statut).
-4. **OAuth Notion** (integration publique) : l'utilisateur choisit sa base contacts ; mapping propriétés → champs prospects.
-5. **Sync** : route de sync manuelle d'abord (« Synchroniser maintenant », journalisée `connector_synced`), cron ensuite — trancher pg-boss vs BullMQ (DECISIONS #2) à ce moment-là.
-6. **UI** : cartes Google Sheets/Notion passent à « Connecté · synchronisé il y a X » (pattern maquette), vue Prospects (Phase 2) branchée dessus.
-7. Brancher **Langfuse** (OTel sur `LLM_TASKS`) avant les premières features IA.
-8. Porte Phase 1 → Phase 2 : données du pilote affichées juste, tous les jours.
-9. Client pilote : toujours à confirmer avec Charly (la décision connecteurs n'en dépend plus).
+1. **Fathi (manuel)** : connecter Notion pour de vrai (TESTS.md §2), dérouler le parcours de test visuel (tiroir, kanban, Reporter/Reprendre, cron analyse), lancer `npm run build` (Windows) et `npm test` (après passage Node 22).
+2. **Activer Langfuse** : `npm i @vercel/otel langfuse-vercel` + clés `LANGFUSE_*`, puis **vérifier que les spans arrivent bien avec `ai@7`** (API télémétrie v7 différente — voir session 2026-07-21).
+3. **Priorisation des prospects (Phase 2)** : signal de priorité transparent et explicable (statut + complétude des données), affiché dans le kanban + proposition « relancer en priorité ». **Pas de score inventé** (données réelles limitées : ni activité ni engagement).
+4. **Porte Phase 2** : ≥ 1 recommandation pertinente/semaine jugée utile par le pilote (ROADMAP). Client pilote toujours à confirmer avec Charly.
+5. **Ne pas anticiper la Phase 3** (exécution réelle + garde-fous serveur).
 
 ## Pièges connus
 
@@ -42,6 +36,8 @@ Environnement : Supabase projet `hrqnzorapjnosjphftur` (migration exécutée), r
 - Lien de confirmation email Supabase arrive en `?code=` (PKCE) — géré dans `app/auth/confirm/route.ts`, ne pas « simplifier ».
 - La table `journal` refuse UPDATE/DELETE (trigger) — c'est voulu.
 - Design : ne rien inventer, copier les patterns de `docs/maquettes/` (tokens dans `globals.css`).
+- **Copie produit** : ne PAS définir le lexique marketing standard (prospect, lead, funnel…). CLAUDE.md corrigé en ce sens (retour de Fathi 2026-07-21).
+- **Vérif tsc dans le sandbox Cowork** : le sandbox tue les process longs (~44 s) et laisse un log **vide** → « log vide » ≠ « vert ». Ne conclure au vert que sur un `tsc` **terminé** (exit 0 explicite) ; au besoin `pkill node` puis relancer sur sandbox non contendu. `next build` non exécutable (SWC win32 only) → build côté Fathi. `npm test` requiert **Node ≥ 22**.
 
 ## Historique des sessions
 
@@ -57,6 +53,7 @@ Environnement : Supabase projet `hrqnzorapjnosjphftur` (migration exécutée), r
 - **Moteur d'analyse enrichi (Phase 2 — « anomalies, comparaisons » de la ROADMAP)** : règles extraites dans `lib/analysis-rules.ts` (`buildFindings`), `analysis.ts` réduit à l'orchestration (dédupe + habillage LLM + insert + journal). 3 règles ajoutées, toutes calculées sur des champs réels (aucune métrique inventée) : **classer les prospects sans statut**, **doublons d'email**, **entreprise manquante en volume (≥ 40 %)**. Règle « diversifier les sources » **écartée volontairement** : `source` = le connecteur (Sheets/Notion), pas le canal d'acquisition → serait un faux signal. Sur `prospects-test.csv` (statuts complets, pas de doublon, entreprises renseignées) ces 3 règles ne se déclenchent pas → le test §3 reste **2 propositions** (additif, non régressif).
 - **Boucle de feedback visible (Phase 2)** : « Reporter » ne perd plus l'action (avant : `postponed` = disparaît comme un refus). `resumeAction` (`app/(cockpit)/actions.ts`) remet une action reportée en `proposed` (journal `action_resumed`, acteur user), sans migration. Nouveau composant `_components/decisions-history.tsx` (« Décisions récentes » sur Aujourd'hui) : liste validées/refusées/**reportées** avec badge + date, bouton **Reprendre** sur les reportées. Requête `actions` status ∈ {approved,rejected,postponed} triée par `decided_at`. Sert la porte Phase 2 (visibilité de l'utilité des recommandations). Libellé `action_resumed` ajouté à `lib/journal.ts`.
 - **Vérif** : `tsc --noEmit` **vert et fiable** (exit 0, sandbox propre après `pkill node` — voir piège ci-dessous), **8/8 tests** verts. ⚠️ **Piège découvert** : mes premiers « verts » tsc de la session étaient des **faux positifs** — le sandbox tuait tsc à ~44 s et laissait un log 0 octet interprété à tort comme « aucune erreur ». Une vraie erreur `TS2305` (`TelemetrySettings`) est ainsi restée cachée jusqu'à un run tsc complet sur sandbox non contendu. **Leçon** : ne conclure au vert que sur un tsc qui s'est terminé (exit 0 explicite), jamais sur un log vide. `eslint` sur les fichiers touchés : diffs relus à la main (aucun import/variable inutilisé, patterns identiques à l'existant déjà lint-clean) ; run automatique non bouclé (sandbox instable). `next build` non exécutable ici (SWC win32) → **à lancer par Fathi sous Windows**.
+- **Copie / convention** : sous-titre Prospects allégé (suppression de la définition « un prospect est… ») suite retour Fathi. Ligne Design de **CLAUDE.md corrigée** : ne plus définir le lexique marketing standard (alignée sur la « Règle vocabulaire »).
 - **Reste** : Fathi — OAuth Notion réel (§2), tests §3/§3.5 dans l'app, `npm i` Langfuse + clés (+ valider l'émission des spans avec `ai@7`), `npm run build`. Ensuite : autres features IA (tracées), garde-fous Phase 3 (plus tard).
 
 ### 2026-07-20 — Claude (Cowork) — robustesse LLM OpenAI (tests §3)
