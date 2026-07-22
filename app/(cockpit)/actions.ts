@@ -148,11 +148,14 @@ export async function draftForAction(
   return { ok: true, draft };
 }
 
-/** Lance l'analyse à la demande (le cron s'en chargera aussi à terme). */
-export async function runAnalysisNow() {
+/**
+ * Lance l'analyse à la demande et **retourne** le nombre de propositions créées
+ * (le cron s'en chargera aussi à terme). Valeur de retour → appelée depuis le
+ * runner animé (autonomie visible), qui rafraîchit ensuite la vue.
+ */
+export async function analyzeNow(): Promise<{ ok: boolean; created: number }> {
   const ctx = await getEditorContext();
-  if (!ctx) redirect("/login");
-  if (!ctx.canEdit) redirect("/");
+  if (!ctx || !ctx.canEdit) return { ok: false, created: 0 };
 
   const admin = createAdminClient();
   await admin.from("journal").insert({
@@ -163,9 +166,10 @@ export async function runAnalysisNow() {
     payload: {},
   });
   try {
-    await runAnalysis(admin, ctx.orgId, ctx.userId);
+    const created = await runAnalysis(admin, ctx.orgId, ctx.userId);
+    return { ok: true, created };
   } catch {
     // l'échec reste visible : aucune nouvelle action en file
+    return { ok: false, created: 0 };
   }
-  redirect("/");
 }

@@ -42,6 +42,14 @@ Environnement : Supabase `hrqnzorapjnosjphftur`, repo GitHub `Shaaakir281/nepteo
 
 ## Historique des sessions
 
+### 2026-07-22 — Claude (Cowork) — waouh démo, lever 3 : autonomie visible (analyse animée)
+- **Objectif** : rendre le passage d'analyse **tangible** — l'agent travaille par étapes, il ne fait pas qu'afficher une liste (exigence CLAUDE.md « l'autonomie doit être visible »).
+- **`app/(cockpit)/actions.ts`** : `runAnalysisNow` (redirect) → **`analyzeNow()`** qui **retourne** `{ ok, created }` (plus de redirect) — appelable depuis le client.
+- **`_components/analysis-runner.tsx`** (client) : bouton qui déroule 3 étapes cadencées (« Lecture de vos données… », « Analyse des signaux du funnel… », « Rédaction des propositions… », ~800 ms chacune) **en parallèle** de l'analyse réelle (`Promise.all([analyzeNow(), minDelay])`), spinner, puis `router.refresh()` (propositions + briefing rechargés). Deux variantes : `primary` (état vide) et `link` (pied de file). Honnête : la cadence rend l'attente lisible, l'analyse est réelle.
+- **`_components/validation-queue.tsx`** : les 2 `<form action={runAnalysisNow}>` remplacés par `<AnalysisRunner>` ; import nettoyé.
+- **Vérif** : `tsc` ciblé **exit 0 (~22 s)** ; `npm test` **35/35** (pas de nouvelle logique pure — UI + action à retour).
+- **Bilan démo (3 leviers livrés)** : brouillons prêts à envoyer + briefing langage naturel + analyse animée. Tout **Phase 2** (l'agent prépare/résume/travaille, n'exécute rien). Côté Fathi : migration 0003, `git push`, `npm run build`, puis dérouler la démo (Analyser → étapes animées → briefing + propositions → ouvrir une relance → message rédigé, Copier/Régénérer).
+
 ### 2026-07-22 — Claude (Cowork) — waouh démo, lever 2 : briefing en langage naturel
 - **Objectif** : bandeau « Le point de l'agent » en tête d'« Aujourd'hui » — 2-3 phrases résumant l'état du funnel, **ancrées sur des chiffres réels** (aucune invention). Insight lecture seule, Phase 2.
 - **Migration `0003_briefings.sql`** : table `briefings` (une ligne par org, `content` texte + `stats` jsonb + `created_at`), RLS `select` via `is_member`, écriture service-role seulement. **À exécuter dans Supabase (Fathi).**

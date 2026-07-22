@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { decideAction, draftForAction, runAnalysisNow } from "../actions";
+import { decideAction, draftForAction } from "../actions";
+import { AnalysisRunner } from "./analysis-runner";
 
 export interface QueueAction {
   id: string;
@@ -77,14 +78,9 @@ export function ValidationQueue({
           proposera ses premières actions ici.
         </p>
         {canEdit && (
-          <form action={runAnalysisNow} className="mt-4">
-            <button
-              type="submit"
-              className="rounded-[10px] bg-tint px-4 py-2 text-[13px] font-semibold text-violet transition hover:bg-violet hover:text-white"
-            >
-              Analyser mes données maintenant
-            </button>
-          </form>
+          <div className="mt-4 flex justify-center">
+            <AnalysisRunner variant="primary" />
+          </div>
         )}
       </div>
     );
@@ -115,14 +111,7 @@ export function ValidationQueue({
 
       {canEdit && (
         <div className="border-t border-line-soft px-[22px] py-3">
-          <form action={runAnalysisNow}>
-            <button
-              type="submit"
-              className="text-[12px] font-semibold text-violet hover:underline"
-            >
-              Relancer l&apos;analyse
-            </button>
-          </form>
+          <AnalysisRunner variant="link" />
         </div>
       )}
 
