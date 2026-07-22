@@ -41,7 +41,7 @@ export default async function TodayPage() {
   const { data: queueRows } = await supabase
     .from("actions")
     .select(
-      "id, title, finding, rationale, data_sources, expected_impact, confidence, risk",
+      "id, kind, title, finding, rationale, data_sources, expected_impact, confidence, risk",
     )
     .eq("status", "proposed")
     .order("created_at", { ascending: false })

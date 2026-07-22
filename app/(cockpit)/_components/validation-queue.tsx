@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { decideAction, runAnalysisNow } from "../actions";
+import { useEffect, useState } from "react";
+import { decideAction, draftForAction, runAnalysisNow } from "../actions";
 
 export interface QueueAction {
   id: string;
+  kind: string;
   title: string;
   finding: string;
   rationale: string;
@@ -12,6 +13,16 @@ export interface QueueAction {
   expected_impact: string | null;
   confidence: number | null;
   risk: string;
+}
+
+interface Draft {
+  subject: string;
+  body: string;
+}
+
+/** Types d'action « relance » qui reçoivent un brouillon prêt à envoyer. */
+function isRelance(kind: string): boolean {
+  return kind === "relaunch_priority" || kind.startsWith("relaunch_stage_");
 }
 
 const RISK_LABELS: Record<string, string> = {
@@ -186,6 +197,10 @@ export function ValidationQueue({
                   Estimation calibrée sur vos propres données.
                 </p>
               </div>
+
+              {isRelance(active.kind) && (
+                <DraftSection id={active.id} canEdit={canEdit} />
+              )}
             </div>
 
             {canEdit && (
@@ -209,5 +224,95 @@ function Section({ label }: { label: string }) {
     <p className="mb-2 mt-[18px] text-[11px] font-semibold uppercase tracking-[.08em] text-faint">
       {label}
     </p>
+  );
+}
+
+/** « Message prêt à envoyer » — l'agent rédige à l'ouverture, rien n'est envoyé. */
+function DraftSection({ id, canEdit }: { id: string; canEdit: boolean }) {
+  const [draft, setDraft] = useState<Draft | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  async function load(regenerate: boolean) {
+    setLoading(true);
+    setFailed(false);
+    try {
+      const res = await draftForAction(id, regenerate);
+      if (res.ok) setDraft(res.draft);
+      else setFailed(true);
+    } catch {
+      setFailed(true);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Génère (ou récupère) le brouillon dès l'ouverture, pour chaque action.
+  useEffect(() => {
+    setDraft(null);
+    setCopied(false);
+    void load(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
+  async function copy() {
+    if (!draft) return;
+    try {
+      await navigator.clipboard.writeText(
+        `Objet : ${draft.subject}\n\n${draft.body}`,
+      );
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      /* presse-papiers indisponible : sans effet */
+    }
+  }
+
+  return (
+    <>
+      <Section label="Message prêt à envoyer" />
+      {loading && !draft ? (
+        <p className="text-[12.5px] italic text-muted">
+          L&apos;agent rédige le message…
+        </p>
+      ) : failed ? (
+        <p className="text-[12.5px] text-muted">
+          Brouillon indisponible pour l&apos;instant.
+        </p>
+      ) : draft ? (
+        <div className="rounded-[13px] border border-line-soft bg-tint-soft/60 p-4">
+          <p className="text-[12.5px] font-semibold text-ink">
+            Objet : {draft.subject}
+          </p>
+          <p className="mt-2 whitespace-pre-wrap text-[12.5px] leading-relaxed text-body">
+            {draft.body}
+          </p>
+          <div className="mt-3 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={copy}
+              className="rounded-[9px] bg-violet px-3 py-1.5 text-[12px] font-semibold text-white transition hover:bg-violet-deep"
+            >
+              {copied ? "Copié ✓" : "Copier"}
+            </button>
+            {canEdit && (
+              <button
+                type="button"
+                onClick={() => load(true)}
+                disabled={loading}
+                className="rounded-[9px] bg-tint px-3 py-1.5 text-[12px] font-semibold text-violet transition hover:bg-violet hover:text-white disabled:opacity-50"
+              >
+                {loading ? "…" : "Régénérer"}
+              </button>
+            )}
+          </div>
+          <p className="mt-2.5 text-[11px] text-faint">
+            Préparé par l&apos;agent — rien n&apos;est envoyé. À vous de le relire
+            et de l&apos;adresser.
+          </p>
+        </div>
+      ) : null}
+    </>
   );
 }

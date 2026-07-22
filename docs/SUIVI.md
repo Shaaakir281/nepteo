@@ -42,6 +42,17 @@ Environnement : Supabase `hrqnzorapjnosjphftur`, repo GitHub `Shaaakir281/nepteo
 
 ## Historique des sessions
 
+### 2026-07-22 — Claude (Cowork) — waouh démo, lever 1 : brouillons prêts à envoyer
+- **Objectif** (démo à l'associé) : sur les propositions de relance, l'agent joint le **message déjà rédigé** (objet + corps, placeholder `{prénom}`), personnalisé depuis la mémoire entreprise + le statut visé. **Reste Phase 2 : l'agent prépare, il n'envoie rien.** Frontière nette avec la Phase 3 (envoi réel).
+- **`lib/draft-template.ts`** (pur, **sans import `@/`**, testable node:test) : `isRelanceKind`, `memoText`, `templateRelance` (gabarit de repli déterministe), `parseDraft` (découpe « Objet: …\n\n corps »). ⚠️ **Piège reconfirmé** : un `.ts` importé par un test ne doit **pas** contenir d'import alias `@/…` (node ne résout pas l'alias → `ERR_MODULE_NOT_FOUND`). D'où la séparation pur/orchestration (même schéma que `analysis-rules.ts` vs `analysis.ts`).
+- **`lib/draft.ts`** (orchestration) : `draftRelance({ orgId, actorId, ctx, stage })` → tâche LLM `draft_email` (déjà dans `LLM_TASKS`), `withLlmTrace` (groupé par org), **repli silencieux** sur `templateRelance` sans clé/erreur/format inattendu. Réexporte `isRelanceKind`/`Draft`.
+- **`app/(cockpit)/actions.ts`** : `draftForAction(id, regenerate?)` → **valeur de retour** (`DraftResult`), appelée directement depuis le tiroir. Vérifie `canEdit` + kind relance, **idempotent** (réutilise `payload.draft` sauf `regenerate`), stocke dans `actions.payload.draft` (**jsonb existant, aucune migration**), journalise `draft_prepared` (acteur agent). Libellé ajouté à `lib/journal.ts`.
+- **UI** (`_components/validation-queue.tsx`) : section « Message prêt à envoyer » dans le tiroir, **auto-génération à l'ouverture** pour les kinds relance (`relaunch_priority`, `relaunch_stage_*`), boutons **Copier** / **Régénérer**, mention « préparé par l'agent — rien n'est envoyé ». `QueueAction` gagne `kind` (ajouté au `select` de `page.tsx`). Prédicat `isRelance` **inliné** côté client (éviter de bundler `ai`/`@/` via lib/draft).
+- **Décision** : brouillon généré **à l'ouverture du tiroir** (pas à l'analyse) — plus rapide en démo, moins coûteux, pas de brouillon périmé ; caché ensuite dans `payload.draft`.
+- **Tests** : `tests/draft.test.mjs` (3, parties pures : `isRelanceKind`, `templateRelance` avec/sans statut+activité). **31/31**.
+- **Vérif** : `tsc` ciblé **exit 0 en 19,6 s** ; `npm test` **31/31**. `next build` côté Fathi.
+- **Reste (démo)** : lever 2 = briefing en langage naturel (à venir) ; lever 3 = autonomie visible (animation). Côté Fathi : `git push` + `npm run build`, puis ouvrir une proposition de relance dans « Aujourd'hui » → voir le message se rédiger, Copier/Régénérer.
+
 ### 2026-07-22 — Claude (Cowork) — traces Langfuse enrichies par org (multi-tenant)
 - **Objectif** (optionnel §2 acté au tour précédent) : grouper les traces LLM par organisation dans Langfuse, pour préparer le multi-tenant.
 - **API réelle vérifiée** (pas devinée) : les paquets installés sont `@langfuse/core`, `@langfuse/otel`, `@langfuse/vercel-ai-sdk` (**pas** `@langfuse/tracing`). `@langfuse/core` exporte **`propagateAttributes(params, fn)`** avec `params: { userId?, sessionId?, metadata?: Record<string,string> }` — rattache des attributs de trace à tous les spans créés dans `fn`.

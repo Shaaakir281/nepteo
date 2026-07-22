@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getEditorContext } from "@/lib/connectors/common";
 import { runAnalysis } from "@/lib/analysis";
+import { draftRelance, isRelanceKind, type Draft } from "@/lib/draft";
 
 const DECISIONS = {
   approve: { status: "approved", event: "action_approved" },
@@ -83,6 +84,68 @@ export async function resumeAction(formData: FormData) {
   });
 
   redirect("/");
+}
+
+export type DraftResult =
+  | { ok: true; draft: Draft }
+  | { ok: false; reason: "forbidden" | "not_found" | "not_relance" };
+
+/**
+ * Prépare (ou renvoie) le brouillon de relance d'une action — Phase 2 :
+ * l'agent RÉDIGE, il n'envoie rien. Idempotent : réutilise `payload.draft`
+ * sauf `regenerate`. Appelée directement depuis le tiroir (valeur de retour).
+ */
+export async function draftForAction(
+  id: string,
+  regenerate = false,
+): Promise<DraftResult> {
+  const ctx = await getEditorContext();
+  if (!ctx || !ctx.canEdit) return { ok: false, reason: "forbidden" };
+
+  const admin = createAdminClient();
+  const { data: action } = await admin
+    .from("actions")
+    .select("id, kind, title, payload")
+    .eq("id", id)
+    .eq("organization_id", ctx.orgId)
+    .maybeSingle();
+  if (!action) return { ok: false, reason: "not_found" };
+  if (!isRelanceKind(action.kind)) return { ok: false, reason: "not_relance" };
+
+  const payload = (action.payload ?? {}) as Record<string, unknown>;
+  const cached = payload.draft as Draft | undefined;
+  if (cached && !regenerate) return { ok: true, draft: cached };
+
+  const { data: mem } = await admin
+    .from("company_memory")
+    .select("section, content")
+    .eq("organization_id", ctx.orgId)
+    .in("section", ["activite", "ton", "objectifs", "offres"]);
+  const memCtx = Object.fromEntries(
+    (mem ?? []).map((m) => [m.section, m.content]),
+  );
+
+  const draft = await draftRelance({
+    orgId: ctx.orgId,
+    actorId: ctx.userId,
+    ctx: memCtx,
+    stage: (payload.stage as string | undefined) ?? null,
+  });
+
+  await admin
+    .from("actions")
+    .update({ payload: { ...payload, draft } })
+    .eq("id", action.id);
+
+  await admin.from("journal").insert({
+    organization_id: ctx.orgId,
+    event: "draft_prepared",
+    actor: "agent",
+    actor_id: ctx.userId,
+    payload: { kind: action.kind, title: action.title },
+  });
+
+  return { ok: true, draft };
 }
 
 /** Lance l'analyse à la demande (le cron s'en chargera aussi à terme). */
