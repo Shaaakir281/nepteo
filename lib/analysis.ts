@@ -2,6 +2,7 @@ import { generateText } from "ai";
 import type { createAdminClient } from "@/lib/supabase/admin";
 import { getModelForTask, telemetryForTask } from "@/lib/llm";
 import { buildFindings, type RuleProspect } from "@/lib/analysis-rules";
+import { withLlmTrace } from "@/lib/observability";
 
 type Admin = ReturnType<typeof createAdminClient>;
 
@@ -43,18 +44,24 @@ export async function runAnalysis(
     const ctx = Object.fromEntries(
       (mem ?? []).map((m) => [m.section, m.content]),
     );
-    for (const f of fresh) {
-      const { text } = await generateText({
-        model: getModelForTask("recommend_action"),
-        // Marge suffisante : sur les modèles à raisonnement (gpt-5, o-series),
-        // les reasoning tokens sont décomptés du budget de sortie ; un budget
-        // trop bas renvoie un texte vide et fait retomber sur les templates.
-        maxOutputTokens: 500,
-        telemetry: telemetryForTask("recommend_action"),
-        prompt: `Tu es l'agent marketing de cette entreprise: ${JSON.stringify(ctx)}. Constat: ${f.finding} Réécris en 1 à 2 phrases simples, en français, sans jargon, la raison pour laquelle cette action vaut la peine. Réponds uniquement par ce texte.`,
-      });
-      if (text.trim().length > 20) f.rationale = text.trim();
-    }
+    // Traces groupées par organisation (sessionId = org) pour le multi-tenant.
+    await withLlmTrace(
+      { orgId, userId: actorId, task: "recommend_action" },
+      async () => {
+        for (const f of fresh) {
+          const { text } = await generateText({
+            model: getModelForTask("recommend_action"),
+            // Marge suffisante : sur les modèles à raisonnement (gpt-5, o-series),
+            // les reasoning tokens sont décomptés du budget de sortie ; un budget
+            // trop bas renvoie un texte vide et fait retomber sur les templates.
+            maxOutputTokens: 500,
+            telemetry: telemetryForTask("recommend_action"),
+            prompt: `Tu es l'agent marketing de cette entreprise: ${JSON.stringify(ctx)}. Constat: ${f.finding} Réécris en 1 à 2 phrases simples, en français, sans jargon, la raison pour laquelle cette action vaut la peine. Réponds uniquement par ce texte.`,
+          });
+          if (text.trim().length > 20) f.rationale = text.trim();
+        }
+      },
+    );
   } catch (e) {
     // pas de clé ou erreur API : les templates suffisent (repli silencieux).
     // Trace en dev pour distinguer « pas de clé » d'une vraie erreur API.

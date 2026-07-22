@@ -21,6 +21,54 @@ import { registerTelemetry } from "ai";
 
 let done = false;
 
+/** Signature de `propagateAttributes` (@langfuse/core) : rattache des attributs
+ *  de trace (org, utilisateur) à tous les spans créés dans `fn`. */
+type PropagateFn = <T>(
+  params: { userId?: string; sessionId?: string; metadata?: Record<string, string> },
+  fn: () => Promise<T>,
+) => Promise<T>;
+
+// undefined = pas encore chargé, null = indisponible (pas de clés/paquet)
+let propagateCache: PropagateFn | null | undefined;
+
+async function loadPropagate(): Promise<PropagateFn | null> {
+  if (propagateCache !== undefined) return propagateCache;
+  if (!process.env.LANGFUSE_PUBLIC_KEY || !process.env.LANGFUSE_SECRET_KEY) {
+    propagateCache = null;
+    return null;
+  }
+  try {
+    const coreName = "@langfuse/core"; // spécificateur en variable → import dynamique non résolu au build
+    const mod = (await import(coreName)) as { propagateAttributes?: PropagateFn };
+    propagateCache = mod.propagateAttributes ?? null;
+  } catch {
+    propagateCache = null;
+  }
+  return propagateCache;
+}
+
+/**
+ * Rattache l'organisation (et l'utilisateur, si connu) aux traces LLM émises
+ * pendant `fn`, pour le regroupement multi-tenant dans Langfuse :
+ *   - `sessionId = orgId` → toutes les traces d'un client sont groupées ;
+ *   - `userId` → analyse coût/perf par utilisateur quand disponible ;
+ *   - `metadata.org_id` / `metadata.task` → filtres additionnels.
+ * Sans Langfuse (clés ou paquet absents) : exécute simplement `fn`, aucun coût.
+ */
+export async function withLlmTrace<T>(
+  attrs: { orgId: string; userId?: string | null; task?: string },
+  fn: () => Promise<T>,
+): Promise<T> {
+  const propagate = await loadPropagate();
+  if (!propagate) return fn();
+  const metadata: Record<string, string> = { org_id: attrs.orgId };
+  if (attrs.task) metadata.task = attrs.task;
+  return propagate(
+    { sessionId: attrs.orgId, userId: attrs.userId ?? undefined, metadata },
+    fn,
+  );
+}
+
 export async function registerObservability(): Promise<void> {
   if (done) return;
   done = true;

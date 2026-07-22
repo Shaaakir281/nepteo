@@ -42,6 +42,15 @@ Environnement : Supabase `hrqnzorapjnosjphftur`, repo GitHub `Shaaakir281/nepteo
 
 ## Historique des sessions
 
+### 2026-07-22 — Claude (Cowork) — traces Langfuse enrichies par org (multi-tenant)
+- **Objectif** (optionnel §2 acté au tour précédent) : grouper les traces LLM par organisation dans Langfuse, pour préparer le multi-tenant.
+- **API réelle vérifiée** (pas devinée) : les paquets installés sont `@langfuse/core`, `@langfuse/otel`, `@langfuse/vercel-ai-sdk` (**pas** `@langfuse/tracing`). `@langfuse/core` exporte **`propagateAttributes(params, fn)`** avec `params: { userId?, sessionId?, metadata?: Record<string,string> }` — rattache des attributs de trace à tous les spans créés dans `fn`.
+- **`lib/observability.ts`** : nouveau helper **`withLlmTrace({ orgId, userId?, task? }, fn)`**. Charge `propagateAttributes` par **import dynamique** (spécificateur en variable → build vert sans le paquet), **no-op** si clés Langfuse ou paquet absents. Mappe `sessionId = orgId` (regroupement par client), `userId` (coût/perf par utilisateur), `metadata.org_id` + `metadata.task` (filtres).
+- **`lib/analysis.ts`** : la boucle d'habillage LLM (`recommend_action`) est enveloppée dans `withLlmTrace({ orgId, userId: actorId, task: "recommend_action" }, …)`. La lecture mémoire (DB) reste hors trace. `telemetry`/`functionId` inchangés.
+- **Décision** : voie `propagateAttributes` (sessionId=org) plutôt qu'un span racine manuel (`startActiveObservation`) — plus léger, suffit à porter les attributs de trace sur les spans de l'AI SDK. `userId` reste vide tant que `actorId` est null (cron auto) — normal.
+- **Vérif** : `tsc` ciblé **exit 0 en 22,7 s** (paquet présent ; import dynamique donc non résolu au build de toute façon). `npm test` **28/28**. `next build` côté Fathi.
+- **Reste à Fathi** : après activation des clés + une analyse, vérifier dans Langfuse que la trace `recommend_action` porte bien `sessionId` = l'org (et `userId` si déclenchée par un utilisateur). Confirmer en passant que le mojibake d'accents reste limité à l'export CSV (pas l'UI).
+
 ### 2026-07-22 — Claude (Cowork) — écran de correspondance de colonnes (backlog acté)
 - **Objectif** : lever la rigidité de la détection auto avant le multi-client (cf. DECISIONS 2026-07). Le client relie ses colonnes/propriétés aux 4 champs Nepteo (`name`, `email`, `company`, `stage`). **Lecture seule / Phase 2**, schéma `prospects` interne inchangé, `raw` conserve tout l'original.
 - **Backend** (`feat` 1er commit) :
