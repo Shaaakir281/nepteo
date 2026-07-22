@@ -149,6 +149,54 @@ export async function draftForAction(
 }
 
 /**
+ * Enregistre les retouches manuelles d'un brouillon (Phase 2) — l'utilisateur
+ * reprend la main sur le message de l'agent. Persiste dans `payload.draft`,
+ * journalise `draft_edited`. Aucune exécution, aucun envoi.
+ */
+export async function saveDraftEdit(
+  id: string,
+  subject: string,
+  body: string,
+): Promise<DraftResult> {
+  const ctx = await getEditorContext();
+  if (!ctx || !ctx.canEdit) return { ok: false, reason: "forbidden" };
+
+  const cleanSubject = subject.trim();
+  const cleanBody = body.trim();
+  if (!cleanSubject || cleanBody.length < 10) {
+    return { ok: false, reason: "not_found" };
+  }
+
+  const admin = createAdminClient();
+  const { data: action } = await admin
+    .from("actions")
+    .select("id, kind, title, payload")
+    .eq("id", id)
+    .eq("organization_id", ctx.orgId)
+    .maybeSingle();
+  if (!action) return { ok: false, reason: "not_found" };
+  if (!isRelanceKind(action.kind)) return { ok: false, reason: "not_relance" };
+
+  const payload = (action.payload ?? {}) as Record<string, unknown>;
+  const draft: Draft = { subject: cleanSubject, body: cleanBody };
+
+  await admin
+    .from("actions")
+    .update({ payload: { ...payload, draft } })
+    .eq("id", action.id);
+
+  await admin.from("journal").insert({
+    organization_id: ctx.orgId,
+    event: "draft_edited",
+    actor: "user",
+    actor_id: ctx.userId,
+    payload: { kind: action.kind, title: action.title },
+  });
+
+  return { ok: true, draft };
+}
+
+/**
  * Lance l'analyse à la demande et **retourne** le nombre de propositions créées
  * (le cron s'en chargera aussi à terme). Valeur de retour → appelée depuis le
  * runner animé (autonomie visible), qui rafraîchit ensuite la vue.

@@ -42,6 +42,13 @@ Environnement : Supabase `hrqnzorapjnosjphftur`, repo GitHub `Shaaakir281/nepteo
 
 ## Historique des sessions
 
+### 2026-07-22 — Claude (Cowork) — édition en ligne du brouillon
+- **Demande Fathi** : pouvoir retoucher directement le message de l'agent (au-delà de Copier/Régénérer). Reste Phase 2 (édite un brouillon, n'envoie rien).
+- **`app/(cockpit)/actions.ts`** : `saveDraftEdit(id, subject, body)` → valide (objet non vide, corps ≥ 10), vérifie `canEdit` + kind relance, persiste dans `payload.draft`, journalise `draft_edited` (acteur **user**). Libellé ajouté à `lib/journal.ts`.
+- **UI** (`_components/validation-queue.tsx`, `DraftSection`) : bouton **Modifier** → champs Objet (input) + Message (textarea) éditables, **Enregistrer** (désactivé si vide) / **Annuler**. Rappel de garder `{prénom}`. Reprise de la main humaine sur le message de l'agent.
+- **Vérif** : `tsc` ciblé **exit 0 (~12 s)** ; `npm test` **35/35** (UI + action, pas de nouvelle logique pure).
+- **Note future (échangé avec Fathi)** : (1) perso par notes prospect = déjà stockées dans `prospects.raw` → évolution = brouillon **par prospect** (injecter ses notes au prompt), pas encore fait ; (2) substitution `{prénom}` au vrai prénom = **Phase 3** (étape d'envoi du futur connecteur d'emailing, avec garde-fous + journal avant envoi). Le socle est posé (nom conservé par prospect, placeholder standardisé).
+
 ### 2026-07-22 — Claude (Cowork) — waouh démo, lever 3 : autonomie visible (analyse animée)
 - **Objectif** : rendre le passage d'analyse **tangible** — l'agent travaille par étapes, il ne fait pas qu'afficher une liste (exigence CLAUDE.md « l'autonomie doit être visible »).
 - **`app/(cockpit)/actions.ts`** : `runAnalysisNow` (redirect) → **`analyzeNow()`** qui **retourne** `{ ok, created }` (plus de redirect) — appelable depuis le client.
