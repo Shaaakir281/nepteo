@@ -3,6 +3,7 @@ import type { createAdminClient } from "@/lib/supabase/admin";
 import { getModelForTask, telemetryForTask } from "@/lib/llm";
 import { buildFindings, type RuleProspect } from "@/lib/analysis-rules";
 import { withLlmTrace } from "@/lib/observability";
+import { refreshBriefing } from "@/lib/briefing";
 
 type Admin = ReturnType<typeof createAdminClient>;
 
@@ -20,6 +21,10 @@ export async function runAnalysis(
     .from("prospects")
     .select("email, stage, source, company, name")
     .eq("organization_id", orgId);
+
+  // Briefing rafraîchi à chaque analyse (insight lecture seule), même si aucune
+  // proposition ne se déclenche ensuite.
+  await refreshBriefing(admin, orgId, actorId);
 
   const findings = buildFindings((prospects ?? []) as RuleProspect[]);
   if (findings.length === 0) return 0;

@@ -100,6 +100,49 @@ export function prospectPriority(p: {
   };
 }
 
+/* ---------- Statistiques de funnel (briefing, Phase 2) ----------
+ * Agrégats purs sur les prospects réels — partagés avec le briefing. Réutilise
+ * `prospectPriority` (source unique de « prêt à relancer »). Aucune invention.
+ */
+export interface BriefingProspect {
+  email: string | null;
+  stage: string | null;
+  company: string | null;
+}
+
+export interface FunnelStats {
+  total: number;
+  priority: number; // joignables + statut actif (prêts à relancer)
+  noEmail: number;
+  noStage: number;
+  topStage: { stage: string; count: number } | null;
+}
+
+export function computeFunnelStats(prospects: BriefingProspect[]): FunnelStats {
+  const total = prospects.length;
+  let priority = 0;
+  let noEmail = 0;
+  let noStage = 0;
+  const byStage = new Map<string, number>();
+
+  for (const p of prospects) {
+    if (prospectPriority(p).tier === "priority") priority++;
+    if (!(p.email ?? "").trim()) noEmail++;
+    const s = (p.stage ?? "").trim();
+    if (!s) noStage++;
+    else byStage.set(s, (byStage.get(s) ?? 0) + 1);
+  }
+
+  const top = [...byStage.entries()].sort((a, b) => b[1] - a[1])[0];
+  return {
+    total,
+    priority,
+    noEmail,
+    noStage,
+    topStage: top ? { stage: top[0], count: top[1] } : null,
+  };
+}
+
 /** Toutes les propositions déclenchées par l'état actuel de la base. */
 export function buildFindings(all: RuleProspect[]): Finding[] {
   const findings: Finding[] = [];

@@ -56,6 +56,12 @@ export default async function TodayPage() {
     .limit(6);
   const decided = (decidedRows ?? []) as DecidedAction[];
 
+  const { data: briefingRow } = await supabase
+    .from("briefings")
+    .select("content, created_at")
+    .maybeSingle();
+  const briefing = briefingRow as { content: string; created_at: string } | null;
+
   const fmt = new Intl.DateTimeFormat("fr-FR", {
     day: "numeric",
     month: "short",
@@ -75,6 +81,27 @@ export default async function TodayPage() {
           — vos données réelles apparaîtront ici dès le premier connecteur.
         </p>
       </div>
+
+      {/* Briefing de l'agent — résumé en langage naturel du funnel */}
+      {briefing && (
+        <div className="mb-5 rounded-[18px] border border-line-soft bg-gradient-to-br from-tint-soft to-white p-5 shadow-card">
+          <div className="mb-2 flex items-center gap-2">
+            <span className="grid h-6 w-6 place-items-center rounded-full bg-violet text-[12px] font-bold text-white">
+              N
+            </span>
+            <span className="text-[11px] font-semibold uppercase tracking-[.08em] text-violet-ink">
+              Le point de l&apos;agent
+            </span>
+          </div>
+          <p className="text-[14px] leading-relaxed text-ink">
+            {briefing.content}
+          </p>
+          <p className="mt-2 text-[11.5px] text-faint">
+            Mis à jour le {fmt.format(new Date(briefing.created_at))} · à partir
+            de vos données réelles.
+          </p>
+        </div>
+      )}
 
       {/* KPIs — en attente de données */}
       <div className="grid grid-cols-2 gap-3.5 xl:grid-cols-4">

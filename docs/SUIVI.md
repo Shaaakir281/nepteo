@@ -42,6 +42,17 @@ Environnement : Supabase `hrqnzorapjnosjphftur`, repo GitHub `Shaaakir281/nepteo
 
 ## Historique des sessions
 
+### 2026-07-22 — Claude (Cowork) — waouh démo, lever 2 : briefing en langage naturel
+- **Objectif** : bandeau « Le point de l'agent » en tête d'« Aujourd'hui » — 2-3 phrases résumant l'état du funnel, **ancrées sur des chiffres réels** (aucune invention). Insight lecture seule, Phase 2.
+- **Migration `0003_briefings.sql`** : table `briefings` (une ligne par org, `content` texte + `stats` jsonb + `created_at`), RLS `select` via `is_member`, écriture service-role seulement. **À exécuter dans Supabase (Fathi).**
+- **Stats pures** dans `lib/analysis-rules.ts` : `computeFunnelStats` + `FunnelStats`/`BriefingProspect` — réutilise `prospectPriority` (source unique « prêt à relancer »). ⚠️ **Piège node:test reconfirmé** : un **import de valeur** relatif entre `.ts` (`./analysis-rules`) casse le type-stripping (`ERR_MODULE_NOT_FOUND`), alors qu'un `import type` passe (effacé). D'où : stats mises **dans** analysis-rules (avec prospectPriority), et `templateBriefing` gardé dans `lib/briefing-stats.ts` avec un simple `import type { FunnelStats }`.
+- **`lib/briefing.ts`** (orchestration) : `refreshBriefing(admin, orgId, actorId)` lit prospects → `computeFunnelStats` → habillage LLM tâche `weekly_report` (`withLlmTrace`, repli `templateBriefing`) → **upsert** `briefings` (une par org). **Ne lève pas** (un briefing raté ne casse pas l'analyse).
+- **Hook** : `runAnalysis` appelle `refreshBriefing` **avant** le early-return findings → le briefing se rafraîchit à chaque analyse (manuelle ou cron), même sans proposition.
+- **UI** : bandeau dégradé tint→blanc sur `app/(cockpit)/page.tsx` (lecture `briefings` via client user/RLS), date de mise à jour, mention « à partir de vos données réelles ».
+- **Tests** : `tests/briefing-stats.test.mjs` (4 : stats prioritaires/sans-email/sans-statut/top statut + base vide + repli sans invention). **35/35**.
+- **Vérif** : `tsc` ciblé **exit 0 en 12,6 s** ; `npm test` **35/35**.
+- **Reste (démo)** : lever 3 = autonomie visible (animation d'analyse). Côté Fathi : **exécuter la migration 0003 dans Supabase**, `git push`, `npm run build`, puis lancer une analyse → voir le bandeau se remplir.
+
 ### 2026-07-22 — Claude (Cowork) — waouh démo, lever 1 : brouillons prêts à envoyer
 - **Objectif** (démo à l'associé) : sur les propositions de relance, l'agent joint le **message déjà rédigé** (objet + corps, placeholder `{prénom}`), personnalisé depuis la mémoire entreprise + le statut visé. **Reste Phase 2 : l'agent prépare, il n'envoie rien.** Frontière nette avec la Phase 3 (envoi réel).
 - **`lib/draft-template.ts`** (pur, **sans import `@/`**, testable node:test) : `isRelanceKind`, `memoText`, `templateRelance` (gabarit de repli déterministe), `parseDraft` (découpe « Objet: …\n\n corps »). ⚠️ **Piège reconfirmé** : un `.ts` importé par un test ne doit **pas** contenir d'import alias `@/…` (node ne résout pas l'alias → `ERR_MODULE_NOT_FOUND`). D'où la séparation pur/orchestration (même schéma que `analysis-rules.ts` vs `analysis.ts`).
