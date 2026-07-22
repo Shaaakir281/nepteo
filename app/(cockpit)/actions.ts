@@ -4,7 +4,13 @@ import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getEditorContext } from "@/lib/connectors/common";
 import { runAnalysis } from "@/lib/analysis";
-import { draftRelance, isRelanceKind, type Draft } from "@/lib/draft";
+import {
+  draftRelance,
+  draftRelanceForProspect,
+  isRelanceKind,
+  type Draft,
+} from "@/lib/draft";
+import { prospectPriority } from "@/lib/analysis-rules";
 
 const DECISIONS = {
   approve: { status: "approved", event: "action_approved" },
@@ -143,6 +149,160 @@ export async function draftForAction(
     actor: "agent",
     actor_id: ctx.userId,
     payload: { kind: action.kind, title: action.title },
+  });
+
+  return { ok: true, draft };
+}
+
+export interface TargetProspect {
+  id: string;
+  name: string | null;
+  email: string | null;
+  company: string | null;
+  stage: string | null;
+  hasNotes: boolean;
+  hasDraft: boolean;
+}
+
+type ProspectRow = {
+  id: string;
+  name: string | null;
+  email: string | null;
+  company: string | null;
+  stage: string | null;
+  notes: string | null;
+};
+
+/** Prospects ciblés par une action de relance (priorité, ou statut visé). */
+function matchesAction(
+  kind: string,
+  payload: Record<string, unknown>,
+  p: ProspectRow,
+): boolean {
+  if (kind === "relaunch_priority") {
+    return prospectPriority(p).tier === "priority";
+  }
+  if (kind.startsWith("relaunch_stage_")) {
+    const stage = (payload.stage as string | undefined) ?? "";
+    return (p.stage ?? "").trim() === stage.trim();
+  }
+  return false;
+}
+
+/**
+ * Liste les prospects concernés par une action de relance — pour la
+ * personnalisation par personne dans le tiroir. Lecture seule.
+ */
+export async function prospectsForAction(
+  id: string,
+): Promise<{ ok: boolean; prospects: TargetProspect[] }> {
+  const ctx = await getEditorContext();
+  if (!ctx || !ctx.canEdit) return { ok: false, prospects: [] };
+
+  const admin = createAdminClient();
+  const { data: action } = await admin
+    .from("actions")
+    .select("id, kind, payload")
+    .eq("id", id)
+    .eq("organization_id", ctx.orgId)
+    .maybeSingle();
+  if (!action || !isRelanceKind(action.kind)) return { ok: false, prospects: [] };
+
+  const { data: rows } = await admin
+    .from("prospects")
+    .select("id, name, email, company, stage, notes")
+    .eq("organization_id", ctx.orgId);
+
+  const payload = (action.payload ?? {}) as Record<string, unknown>;
+  const drafts = (payload.prospect_drafts ?? {}) as Record<string, unknown>;
+  const targeted = ((rows ?? []) as ProspectRow[])
+    .filter((p) => matchesAction(action.kind, payload, p))
+    .slice(0, 25)
+    .map((p) => ({
+      id: p.id,
+      name: p.name,
+      email: p.email,
+      company: p.company,
+      stage: p.stage,
+      hasNotes: (p.notes ?? "").trim() !== "",
+      hasDraft: Boolean(drafts[p.id]),
+    }));
+
+  return { ok: true, prospects: targeted };
+}
+
+/**
+ * Brouillon personnalisé pour UN prospect d'une action de relance — s'appuie sur
+ * ses notes et toutes ses colonnes. Idempotent (cache dans
+ * `payload.prospect_drafts[prospectId]`). Phase 2 : prépare, n'envoie rien.
+ */
+export async function draftForProspect(
+  actionId: string,
+  prospectId: string,
+  regenerate = false,
+): Promise<DraftResult> {
+  const ctx = await getEditorContext();
+  if (!ctx || !ctx.canEdit) return { ok: false, reason: "forbidden" };
+
+  const admin = createAdminClient();
+  const { data: action } = await admin
+    .from("actions")
+    .select("id, kind, title, payload")
+    .eq("id", actionId)
+    .eq("organization_id", ctx.orgId)
+    .maybeSingle();
+  if (!action) return { ok: false, reason: "not_found" };
+  if (!isRelanceKind(action.kind)) return { ok: false, reason: "not_relance" };
+
+  const payload = (action.payload ?? {}) as Record<string, unknown>;
+  const drafts = (payload.prospect_drafts ?? {}) as Record<string, Draft>;
+  if (drafts[prospectId] && !regenerate) {
+    return { ok: true, draft: drafts[prospectId] };
+  }
+
+  const { data: prospect } = await admin
+    .from("prospects")
+    .select("name, company, stage, notes, raw")
+    .eq("id", prospectId)
+    .eq("organization_id", ctx.orgId)
+    .maybeSingle();
+  if (!prospect) return { ok: false, reason: "not_found" };
+
+  const { data: mem } = await admin
+    .from("company_memory")
+    .select("section, content")
+    .eq("organization_id", ctx.orgId)
+    .in("section", ["activite", "ton", "objectifs", "offres"]);
+  const memCtx = Object.fromEntries(
+    (mem ?? []).map((m) => [m.section, m.content]),
+  );
+
+  const draft = await draftRelanceForProspect({
+    orgId: ctx.orgId,
+    actorId: ctx.userId,
+    ctx: memCtx,
+    prospect: {
+      name: prospect.name,
+      company: prospect.company,
+      stage: prospect.stage,
+      notes: prospect.notes,
+      raw: (prospect.raw ?? {}) as Record<string, unknown>,
+    },
+  });
+
+  await admin
+    .from("actions")
+    .update({
+      payload: { ...payload, prospect_drafts: { ...drafts, [prospectId]: draft } },
+    })
+    .eq("id", action.id);
+
+  await admin.from("journal").insert({
+    organization_id: ctx.orgId,
+    event: "draft_prepared",
+    actor: "agent",
+    actor_id: ctx.userId,
+    payload: { kind: action.kind, title: prospect.name ?? action.title },
   });
 
   return { ok: true, draft };

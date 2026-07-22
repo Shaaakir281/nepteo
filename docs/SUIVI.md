@@ -42,6 +42,13 @@ Environnement : Supabase `hrqnzorapjnosjphftur`, repo GitHub `Shaaakir281/nepteo
 
 ## Historique des sessions
 
+### 2026-07-22 — Claude (Cowork) — perso par prospect : UI (liste + brouillon individuel)
+- **Suite du backend perso** : brancher la personnalisation par personne dans le tiroir d'une relance. Phase 2 (prépare, n'envoie rien).
+- **Actions** (`app/(cockpit)/actions.ts`) : `prospectsForAction(id)` → liste les prospects ciblés (relance priorité = `prospectPriority.tier==='priority'` ; `relaunch_stage_*` = même statut que `payload.stage`), max 25, avec `hasNotes`/`hasDraft`. `draftForProspect(actionId, prospectId, regenerate?)` → brouillon individuel via `draftRelanceForProspect` (notes + toutes colonnes du prospect), **idempotent** (cache `payload.prospect_drafts[prospectId]`), journal `draft_prepared`.
+- **UI** : `_components/prospect-drafts.tsx` (client) — liste dépliable des contacts ciblés, badge « Notes » si le prospect en a, brouillon généré **à la première ouverture** de chaque ligne, Copier/Régénérer. Branché sous la section brouillon de groupe dans `validation-queue.tsx` (section « Personnaliser par prospect »).
+- **Vérif** : `npm test` **39/39** ; **`tsc` ciblé complet (lib+app+components) exit 0 en 27,7 s** (sandbox rétabli) — **confirme aussi rétroactivement le câblage `notes` du backend du tour précédent** (tout le graphe compile). `next build` côté Fathi.
+- **Reste** : Fathi — migrations **0003 + 0004** dans Supabase (sinon la lecture de `notes`/`briefings` échoue), `git push`, `npm run build`. Puis démo : ouvrir une relance → « Personnaliser par prospect » → déplier un contact avec des notes → message individualisé. Backlog : enrichissement internet (choix LLM/outil) ; contexte « toutes colonnes » pour Notion (raw typé).
+
 ### 2026-07-22 — Claude (Cowork) — perso par prospect : champ Notes + brouillon individuel (backend)
 - **Demande Fathi** : personnaliser le message par prospect à partir de **toutes ses colonnes** + un champ **Notes** dédié (notes perso sur le client). Enrichissement via internet (Perplexity…) = **backlog explicite, pas construit** (à trancher : quel LLM/outil). Session = **backend d'abord**.
 - **Champ Notes mappé (5e champ Nepteo)** : `PROSPECT_FIELDS` + `NormalizedProspect.notes` (`common.ts`) ; auto-détection (`notes|remarque|commentaire|comment`) + extraction dans `google-sheets.ts` et `notion.ts` ; **migration `0004_prospect_notes.sql`** (`alter table prospects add column if not exists notes text`) ; `FIELD_LABELS.notes = "Notes"` (l'écran de mapping l'affiche automatiquement, il itère `PROSPECT_FIELDS`). Le sync propage `notes` via le spread `...p` (aucune autre modif). **À exécuter dans Supabase (Fathi).**

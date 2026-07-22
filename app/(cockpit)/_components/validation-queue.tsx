@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { decideAction, draftForAction, saveDraftEdit } from "../actions";
 import { AnalysisRunner } from "./analysis-runner";
+import { ProspectDrafts } from "./prospect-drafts";
 
 export interface QueueAction {
   id: string;
@@ -188,7 +189,15 @@ export function ValidationQueue({
               </div>
 
               {isRelance(active.kind) && (
-                <DraftSection id={active.id} canEdit={canEdit} />
+                <>
+                  <DraftSection id={active.id} canEdit={canEdit} />
+                  <Section label="Personnaliser par prospect" />
+                  <p className="mb-1 text-[11.5px] leading-relaxed text-muted">
+                    Un message individuel, appuyé sur les notes et les infos de
+                    chaque contact.
+                  </p>
+                  <ProspectDrafts actionId={active.id} canEdit={canEdit} />
+                </>
               )}
             </div>
 
