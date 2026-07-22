@@ -104,6 +104,7 @@ export function autoDetectSheetMapping(headers: string[]): FieldMapping {
     email: matchHeader(headers, [/e-?mail/i, /courriel/i]),
     company: matchHeader(headers, [/entreprise/i, /soci[eé]t[eé]/i, /company/i, /organisation/i]),
     stage: matchHeader(headers, [/statut/i, /status/i, /stage/i, /[ée]tape/i]),
+    notes: matchHeader(headers, [/notes?/i, /remarque/i, /commentaire/i, /comment/i]),
   };
 }
 
@@ -161,6 +162,7 @@ export async function fetchSheetProspects(
   const iEmail = indexOf(map.email);
   const iCompany = indexOf(map.company);
   const iStage = indexOf(map.stage);
+  const iNotes = indexOf(map.notes);
 
   return rows.flatMap((r, idx) => {
     const cell = (i: number) => (i >= 0 ? (r[i] ?? "").trim() || null : null);
@@ -178,6 +180,7 @@ export async function fetchSheetProspects(
         email,
         company: cell(iCompany),
         stage: cell(iStage),
+        notes: cell(iNotes),
         raw,
       },
     ];

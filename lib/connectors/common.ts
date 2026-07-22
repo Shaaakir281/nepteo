@@ -34,6 +34,7 @@ export interface NormalizedProspect {
   email: string | null;
   company: string | null;
   stage: string | null;
+  notes: string | null;
   raw: Record<string, unknown>;
 }
 
@@ -41,7 +42,7 @@ export interface NormalizedProspect {
  *  (en-tête de colonne pour Sheets, clé de propriété pour Notion).
  *  `null` = « ce champ n'existe pas dans ma base » (choix explicite).
  *  L'absence de mapping = détection automatique (comportement par défaut). */
-export const PROSPECT_FIELDS = ["name", "email", "company", "stage"] as const;
+export const PROSPECT_FIELDS = ["name", "email", "company", "stage", "notes"] as const;
 export type ProspectField = (typeof PROSPECT_FIELDS)[number];
 export type FieldMapping = Partial<Record<ProspectField, string | null>>;
 

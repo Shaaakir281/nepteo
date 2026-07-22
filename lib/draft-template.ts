@@ -56,6 +56,56 @@ export function templateRelance(input: {
   return { subject, body };
 }
 
+/** Contexte d'un prospect pour la personnalisation d'un brouillon. */
+export interface ProspectContext {
+  name?: string | null;
+  company?: string | null;
+  stage?: string | null;
+  notes?: string | null;
+  raw?: Record<string, unknown>;
+}
+
+/** Colonnes brutes non vides (string/number), hors valeurs déjà citées, bornées. */
+function renderRaw(
+  raw: Record<string, unknown>,
+  used: Set<string>,
+  maxFields = 12,
+): string {
+  const parts: string[] = [];
+  for (const [k, v] of Object.entries(raw)) {
+    if (parts.length >= maxFields) break;
+    let val = "";
+    if (typeof v === "string") val = v.trim();
+    else if (typeof v === "number" && Number.isFinite(v)) val = String(v);
+    else continue;
+    if (!val || used.has(val)) continue;
+    if (val.length > 120) val = `${val.slice(0, 117)}…`;
+    parts.push(`${k} : ${val}`);
+  }
+  return parts.join(" ; ");
+}
+
+/**
+ * Résumé texte d'un prospect pour personnaliser un brouillon : champs connus +
+ * notes personnelles + toutes les autres colonnes brutes non vides. Pur et borné
+ * (évite d'injecter des payloads énormes dans le prompt).
+ */
+export function renderProspectContext(p: ProspectContext): string {
+  const lines: string[] = [];
+  const name = (p.name ?? "").trim();
+  const company = (p.company ?? "").trim();
+  const stage = (p.stage ?? "").trim();
+  const notes = (p.notes ?? "").trim();
+  if (name) lines.push(`Nom : ${name}`);
+  if (company) lines.push(`Entreprise : ${company}`);
+  if (stage) lines.push(`Statut : ${stage}`);
+  if (notes) lines.push(`Notes personnelles : ${notes}`);
+  const used = new Set([name, company, stage, notes].filter(Boolean));
+  const extra = renderRaw(p.raw ?? {}, used);
+  if (extra) lines.push(`Autres infos : ${extra}`);
+  return lines.join("\n");
+}
+
 /** Découpe une sortie LLM « Objet: …\n\n<corps> » en {subject, body}. */
 export function parseDraft(text: string): Draft | null {
   const t = text.trim();

@@ -146,6 +146,7 @@ export function autoDetectNotionMapping(props: NotionProperty[]): FieldMapping {
     stage:
       byType("status") ??
       byKey(/statut|status|stage|[ée]tape/i, ["select", "status"]),
+    notes: byKey(/notes?|remarque|commentaire|comment/i, ["rich_text", "select"]),
   };
 }
 
@@ -181,6 +182,7 @@ export async function fetchNotionProspects(
       email: val(map.email),
       company: val(map.company),
       stage: val(map.stage),
+      notes: val(map.notes),
       raw: props as Record<string, unknown>,
     };
   });

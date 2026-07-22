@@ -4,8 +4,10 @@ import { withLlmTrace } from "@/lib/observability";
 import {
   memoText,
   parseDraft,
+  renderProspectContext,
   templateRelance,
   type Draft,
+  type ProspectContext,
 } from "@/lib/draft-template";
 
 /**
@@ -47,6 +49,53 @@ export async function draftRelance(args: {
             `Activité : ${activite || "non précisée"}.\n` +
             `Ton souhaité : ${ton || "professionnel, chaleureux, direct"}.\n` +
             `Statut du prospect : ${(args.stage ?? "").trim() || "non précisé"}.\n\n` +
+            `Écris un email court (5 à 8 lignes), en français, sans jargon, qui invite à un échange. ` +
+            `Utilise exactement le placeholder {prénom} pour le prénom du destinataire. ` +
+            `Réponds STRICTEMENT dans ce format :\n` +
+            `Objet: <objet en une ligne>\n\n<corps de l'email>`,
+        });
+        return parseDraft(text);
+      },
+    );
+    return draft ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+/**
+ * Brouillon personnalisé pour UN prospect : s'appuie sur ses notes personnelles
+ * et toutes ses colonnes, en plus de la mémoire entreprise. Repli sur le gabarit
+ * si pas de clé/erreur. Reste Phase 2 : prépare, n'envoie pas. Le `{prénom}` est
+ * conservé (remplacé à l'envoi, Phase 3).
+ */
+export async function draftRelanceForProspect(args: {
+  orgId: string;
+  actorId: string | null;
+  ctx: Record<string, unknown>;
+  prospect: ProspectContext;
+}): Promise<Draft> {
+  const activite = memoText(args.ctx, "activite") || memoText(args.ctx, "offres");
+  const ton = memoText(args.ctx, "ton");
+  const stage = args.prospect.stage ?? null;
+  const fallback = templateRelance({ stage, activite });
+  const context = renderProspectContext(args.prospect);
+
+  try {
+    const draft = await withLlmTrace(
+      { orgId: args.orgId, userId: args.actorId, task: "draft_email" },
+      async () => {
+        const { text } = await generateText({
+          model: getModelForTask("draft_email"),
+          maxOutputTokens: 500,
+          telemetry: telemetryForTask("draft_email"),
+          prompt:
+            `Tu rédiges un email de relance commerciale personnalisé pour cette entreprise.\n` +
+            `Activité : ${activite || "non précisée"}.\n` +
+            `Ton souhaité : ${ton || "professionnel, chaleureux, direct"}.\n\n` +
+            `Informations sur ce prospect :\n${context || "aucune"}\n\n` +
+            `Appuie-toi sur ces informations (surtout les notes personnelles) pour ` +
+            `personnaliser le message, sans les recopier telles quelles. ` +
             `Écris un email court (5 à 8 lignes), en français, sans jargon, qui invite à un échange. ` +
             `Utilise exactement le placeholder {prénom} pour le prénom du destinataire. ` +
             `Réponds STRICTEMENT dans ce format :\n` +

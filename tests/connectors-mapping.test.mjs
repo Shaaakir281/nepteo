@@ -55,6 +55,15 @@ test("autoDetectSheetMapping — variantes FR/EN", () => {
   assert.equal(m.stage, "Étape");
 });
 
+test("autoDetectSheetMapping — détecte une colonne Notes", () => {
+  const m = autoDetectSheetMapping(["Nom", "Email", "Remarques"]);
+  assert.equal(m.notes, "Remarques");
+  const m2 = autoDetectSheetMapping(["Nom", "Email", "Commentaire"]);
+  assert.equal(m2.notes, "Commentaire");
+  const m3 = autoDetectSheetMapping(["Nom", "Email"]);
+  assert.equal(m3.notes, null);
+});
+
 test("autoDetectSheetMapping — en-têtes exotiques non reconnus → null", () => {
   const m = autoDetectSheetMapping(["Structure", "Pipeline", "Divers"]);
   assert.equal(m.name, null);
@@ -140,12 +149,14 @@ test("autoDetectNotionMapping — types + mots-clés", () => {
     { key: "Email", type: "email" },
     { key: "Entreprise", type: "rich_text" },
     { key: "Statut", type: "status" },
+    { key: "Notes", type: "rich_text" },
   ];
   const m = autoDetectNotionMapping(props);
   assert.equal(m.name, "Nom");
   assert.equal(m.email, "Email");
   assert.equal(m.company, "Entreprise");
   assert.equal(m.stage, "Statut");
+  assert.equal(m.notes, "Notes");
 });
 
 test("autoDetectNotionMapping — stage via select (clé reconnue) si pas de status natif", () => {
