@@ -1,23 +1,24 @@
 /**
- * Observabilité LLM — Langfuse via OpenTelemetry.
+ * Observabilité LLM — Langfuse pour l'AI SDK v7 (télémétrie par intégrations).
  *
- * Les appels LLM émettent déjà des spans OTel nommés par tâche
- * (voir `telemetryForTask` dans lib/llm.ts). Ce module branche l'exportateur
- * Langfuse qui les ingère.
+ * v7 a changé de mécanisme : la télémétrie passe désormais par des intégrations
+ * enregistrées via `registerTelemetry` (de `ai`) + un `LangfuseSpanProcessor`
+ * OpenTelemetry qui envoie les spans à Langfuse. L'ancienne voie
+ * (`@vercel/otel` + `LangfuseExporter` de `langfuse-vercel`) ne capte plus les
+ * spans de l'AI SDK 7 → on utilise l'intégration officielle `@langfuse/vercel-ai-sdk`.
  *
  * Activation (les deux conditions) :
- *   1. installer les paquets :  npm i @vercel/otel langfuse-vercel
- *   2. renseigner les clés env : LANGFUSE_PUBLIC_KEY, LANGFUSE_SECRET_KEY
- *      (et LANGFUSE_BASEURL pour l'hébergement EU : https://cloud.langfuse.com)
+ *   1. paquets :  npm i @langfuse/otel @langfuse/vercel-ai-sdk @opentelemetry/sdk-node
+ *   2. clés env : LANGFUSE_PUBLIC_KEY, LANGFUSE_SECRET_KEY
+ *      (et LANGFUSE_BASE_URL pour l'hébergement EU : https://cloud.langfuse.com)
  *
  * Sans clés ou sans paquets : no-op silencieux, aucune trace, build inchangé.
- * Les imports sont dynamiques à specifier variable : le bundler ne tente pas de
- * les résoudre, le repo compile même sans ces paquets.
- *
- * ⚠️ AI SDK v7 : l'API télémétrie a changé (regroupement par `functionId`, plus
- * de `metadata`). À l'activation, vérifier que les spans arrivent bien dans
- * Langfuse ; si besoin, utiliser l'intégration Langfuse à jour pour `ai@7`.
+ * Les imports Langfuse/OTel sont dynamiques (spécificateur en variable) : le
+ * bundler ne tente pas de les résoudre, le repo compile même sans ces paquets.
+ * `@langfuse/*` requiert Node ≥ 22.
  */
+import { registerTelemetry } from "ai";
+
 let done = false;
 
 export async function registerObservability(): Promise<void> {
@@ -29,22 +30,24 @@ export async function registerObservability(): Promise<void> {
   }
 
   try {
-    const otelName = "@vercel/otel";
-    const langfuseName = "langfuse-vercel";
-    const otel = (await import(otelName)) as {
-      registerOTel: (opts: {
-        serviceName: string;
-        traceExporter: unknown;
-      }) => void;
+    const sdkNodeName = "@opentelemetry/sdk-node";
+    const langfuseOtelName = "@langfuse/otel";
+    const langfuseAiName = "@langfuse/vercel-ai-sdk";
+
+    const { NodeSDK } = (await import(sdkNodeName)) as {
+      NodeSDK: new (opts: { spanProcessors: unknown[] }) => { start: () => void };
     };
-    const langfuse = (await import(langfuseName)) as {
-      LangfuseExporter: new () => unknown;
+    const { LangfuseSpanProcessor } = (await import(langfuseOtelName)) as {
+      LangfuseSpanProcessor: new () => unknown;
     };
-    otel.registerOTel({
-      serviceName: "nepteo",
-      traceExporter: new langfuse.LangfuseExporter(),
-    });
-    console.info("[observability] Langfuse activé — traces LLM par tâche.");
+    const { LangfuseVercelAiSdkIntegration } = (await import(langfuseAiName)) as {
+      LangfuseVercelAiSdkIntegration: new () => Parameters<typeof registerTelemetry>[0];
+    };
+
+    const sdk = new NodeSDK({ spanProcessors: [new LangfuseSpanProcessor()] });
+    sdk.start();
+    registerTelemetry(new LangfuseVercelAiSdkIntegration());
+    console.info("[observability] Langfuse activé (AI SDK v7) — traces LLM par tâche.");
   } catch (e) {
     console.warn(
       "[observability] Langfuse non activé (paquets manquants ?) :",

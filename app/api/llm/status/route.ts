@@ -87,7 +87,7 @@ export async function POST(request: Request) {
       // Marge pour les modèles à raisonnement : leurs reasoning tokens sont
       // décomptés du budget, un budget trop bas renverrait un texte vide.
       maxOutputTokens: 64,
-      experimental_telemetry: telemetry,
+      telemetry,
     });
     return NextResponse.json({
       ok: true,

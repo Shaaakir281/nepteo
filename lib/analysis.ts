@@ -50,7 +50,7 @@ export async function runAnalysis(
         // les reasoning tokens sont décomptés du budget de sortie ; un budget
         // trop bas renvoie un texte vide et fait retomber sur les templates.
         maxOutputTokens: 500,
-        experimental_telemetry: telemetryForTask("recommend_action"),
+        telemetry: telemetryForTask("recommend_action"),
         prompt: `Tu es l'agent marketing de cette entreprise: ${JSON.stringify(ctx)}. Constat: ${f.finding} Réécris en 1 à 2 phrases simples, en français, sans jargon, la raison pour laquelle cette action vaut la peine. Réponds uniquement par ce texte.`,
       });
       if (text.trim().length > 20) f.rationale = text.trim();

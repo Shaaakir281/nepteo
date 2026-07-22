@@ -94,10 +94,10 @@ export function getModelForTask(task: LlmTask): LanguageModel {
 /**
  * Réglages de télémétrie pour une tâche nommée (AI SDK v7).
  * `functionId` = nom de la tâche → trace regroupée par tâche (Langfuse).
- * À passer en `experimental_telemetry` à chaque appel `generateText`/`streamText`.
- * Sans intégration enregistrée (voir lib/observability.ts), c'est un no-op.
- * NB v7 : plus de champ `metadata` dans les options télémétrie (retiré depuis
- * les v3/v4) — le regroupement se fait par `functionId`.
+ * À passer dans le champ `telemetry` de `generateText`/`streamText` (le champ
+ * `experimental_telemetry` est déprécié en v7). Sans intégration enregistrée
+ * (voir lib/observability.ts), c'est un no-op. NB v7 : les options télémétrie
+ * n'ont plus de champ `metadata` — le regroupement se fait par `functionId`.
  */
 export function telemetryForTask(task: LlmTask) {
   return { isEnabled: true, functionId: task };
