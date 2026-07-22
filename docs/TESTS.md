@@ -61,15 +61,17 @@ Jeu de données : `docs/tests/prospects-test.csv` (24 prospects, 5 sans email, s
 
 ## 4. Langfuse (observabilité LLM) — optionnel
 
-Chaque appel LLM émet déjà une trace OTel nommée par tâche (`recommend_action`, etc.). Pour la voir dans Langfuse :
+Chaque appel LLM porte déjà un `functionId` par tâche (`recommend_action`, etc.) via le champ `telemetry`. Pour voir les traces dans Langfuse (**AI SDK 7**) :
 
-1. `npm i @vercel/otel langfuse-vercel`
-2. `.env.local` : `LANGFUSE_PUBLIC_KEY=pk-...`, `LANGFUSE_SECRET_KEY=sk-...`, et pour l'hébergement EU `LANGFUSE_BASEURL=https://cloud.langfuse.com`.
-3. Redémarrer `npm run dev`, lancer une analyse (§3.2) → une trace par tâche apparaît dans Langfuse.
+1. **Paquets** (Node ≥ 22) : `npm i @langfuse/otel @langfuse/vercel-ai-sdk @opentelemetry/sdk-node`
+2. **`.env.local`** : `LANGFUSE_PUBLIC_KEY=pk-lf-...`, `LANGFUSE_SECRET_KEY=sk-lf-...`, et pour l'hébergement **EU** `LANGFUSE_BASE_URL=https://cloud.langfuse.com` (⚠️ `LANGFUSE_BASE_URL` **avec underscore** dans le nouveau SDK, plus `LANGFUSE_BASEURL`).
+3. Redémarrer `npm run dev`, lancer une analyse (§3.2) → une trace `recommend_action` apparaît dans Langfuse.
 
-Sans paquets ni clés : aucun impact, l'app tourne normalement (no-op silencieux).
+Sans paquets ni clés : aucun impact, l'app tourne normalement (no-op silencieux, imports dynamiques).
 
-⚠️ **AI SDK v7** : l'API de télémétrie a évolué (traces regroupées par `functionId`, plus de `metadata`). Le hook `lib/observability.ts` enregistre l'exportateur OTel Langfuse ; au moment de l'activation, **vérifier dans Langfuse** qu'une trace par tâche apparaît bien. Si rien n'arrive, l'intégration à jour pour `ai@7` est à confirmer côté Langfuse (voie « intégration » plutôt qu'exportateur OTel classique).
+**Branchement (v7)** : `instrumentation.ts` appelle `registerObservability` (`lib/observability.ts`) qui, si les clés sont là, démarre un `NodeSDK` avec `LangfuseSpanProcessor` (`@langfuse/otel`) puis `registerTelemetry(new LangfuseVercelAiSdkIntegration())` (`@langfuse/vercel-ai-sdk`). ⚠️ L'ancienne voie `@vercel/otel` + `LangfuseExporter` (`langfuse-vercel`) **ne capte plus** les spans de l'AI SDK 7 — ne pas y revenir.
+
+**Si aucune trace n'arrive** : activer `LANGFUSE_LOG_LEVEL=DEBUG`. Des spans OTel dans les logs mais rien dans Langfuse → vérifier clés + `LANGFUSE_BASE_URL` (et, en serverless, un `forceFlush()` avant fin de fonction). Aucun span → l'instrumentation ne s'est pas chargée avant le code applicatif.
 
 ## Et en production ?
 

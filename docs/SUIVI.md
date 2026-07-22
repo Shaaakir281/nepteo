@@ -17,14 +17,14 @@ Fonctionnel (build vert en local par Fathi ; `tsc` + `npm test` verts dans le sa
 - **Connecteurs (lecture seule)** : Google Sheets **et Notion testés** (24 prospects lus chacun ; mapping Notion par type de propriété + mots-clés, **OK du premier coup, aucun correctif**). OAuth chiffré (AES-256-GCM), sync manuelle + **cron quotidien** (`/api/cron/sync`, acteur agent, `mode: auto`). Table `prospects` (migration 0002, idempotence `connector_id+external_id`). **Dédup à l'affichage** par email dans la vue Prospects (`lib/dedupe-prospects.ts`, lecture seule) — deux connecteurs sur la même base ne comptent plus double.
 - **Moteur d'analyse** (`lib/analysis-rules.ts` + `lib/analysis.ts`) : 6 règles sur données réelles (emails manquants, relance du plus gros statut, **relancer en priorité** = joignables + statut actif, sans-statut, doublons d'email, entreprise manquante ≥ 40 %), habillage LLM avec repli templates. Tests `node:test` (`npm test`, 13/13, **Node ≥ 22**).
 - **Cockpit Phase 2** : file de validation avec **tiroir de raisonnement** (Aujourd'hui), **Décisions récentes** (Reporter/Reprendre + historique validées/refusées), vue **Prospects funnel + kanban** avec **repère de priorité** par carte (statut + complétude, sans score inventé).
-- **Observabilité** : `telemetryForTask` (`functionId` par tâche) + hook Langfuse (`lib/observability.ts`, `instrumentation.ts`) — **inactif** tant que paquets + clés absents.
+- **Observabilité** : `telemetryForTask` (`functionId` par tâche, champ `telemetry` de l'AI SDK 7) + hook Langfuse **v7** (`lib/observability.ts` = `NodeSDK` + `LangfuseSpanProcessor` + `registerTelemetry(LangfuseVercelAiSdkIntegration)`) — **inactif** tant que paquets + clés absents.
 
 Environnement : Supabase `hrqnzorapjnosjphftur`, repo GitHub `Shaaakir281/nepteo` (branche `main`), dev local port 3001, **Node 20 local (passer à 22 : requis pour `npm test`)**. Infra Azure toujours pas provisionnée.
 
 ## Prochaines étapes (dans l'ordre)
 
 1. **Fathi (manuel)** : ~~connecter Notion~~ **fait (2026-07-21)**. Reste : dérouler le parcours §3 dans l'app (3 propositions + badges de priorité + dédup), lancer `npm run build` (Windows) et `npm test` (Node 22). **Backlog** : écran de correspondance de colonnes configurable (cf. DECISIONS) pour les bases clientes aux intitulés exotiques.
-2. **Activer Langfuse** : `npm i @vercel/otel langfuse-vercel` + clés `LANGFUSE_*`, puis **vérifier que les spans arrivent bien avec `ai@7`** (API télémétrie v7 différente — voir session 2026-07-21).
+2. **Activer Langfuse** (code v7 prêt) : `npm i @langfuse/otel @langfuse/vercel-ai-sdk @opentelemetry/sdk-node` (Node ≥ 22) + clés `LANGFUSE_PUBLIC_KEY`/`LANGFUSE_SECRET_KEY` (+ `LANGFUSE_BASE_URL` EU), puis **vérifier que la trace `recommend_action` arrive** (cf. TESTS §4).
 3. ~~Priorisation des prospects (Phase 2)~~ — **fait (2026-07-21)** : signal transparent (statut + complétude) dans le kanban + proposition « relancer en priorité », sans score inventé. Reste à Fathi : le voir dans le parcours §3 (désormais **3 propositions**) et confirmer les badges kanban.
 4. **Porte Phase 2** : ≥ 1 recommandation pertinente/semaine jugée utile par le pilote (ROADMAP). Client pilote toujours à confirmer avec Charly.
 5. **Ne pas anticiper la Phase 3** (exécution réelle + garde-fous serveur).
@@ -40,6 +40,15 @@ Environnement : Supabase `hrqnzorapjnosjphftur`, repo GitHub `Shaaakir281/nepteo
 - **Vérif tsc dans le sandbox Cowork** : le sandbox tue les process longs (~44 s) et laisse un log **vide** → « log vide » ≠ « vert ». Ne conclure au vert que sur un `tsc` **terminé** (exit 0 explicite) ; au besoin `pkill node` puis relancer sur sandbox non contendu. `next build` non exécutable (SWC win32 only) → build côté Fathi. `npm test` requiert **Node ≥ 22**.
 
 ## Historique des sessions
+
+### 2026-07-21 — Claude (Cowork) — Langfuse remis à jour pour l'AI SDK 7
+- **Vérifié dans la doc Langfuse + les types de `ai@7.0.31`** : v7 est passé à une télémétrie **par intégrations** (`registerTelemetry(...)`, exporté par `ai`), et `experimental_telemetry` est **`@deprecated` → utiliser `telemetry`** (même forme `{ isEnabled, functionId }`, `TelemetryOptions`). L'ancienne voie `@vercel/otel` + `LangfuseExporter` (`langfuse-vercel`) ne capte plus les spans v7 — soupçon du SUIVI confirmé.
+- **`lib/observability.ts` réécrit** : `new NodeSDK({ spanProcessors: [new LangfuseSpanProcessor()] }).start()` (`@langfuse/otel`) puis `registerTelemetry(new LangfuseVercelAiSdkIntegration())` (`@langfuse/vercel-ai-sdk`). Imports **dynamiques** (spécificateur en variable) → build vert **sans** les paquets ; no-op sans clés. `instrumentation.ts` inchangé (délègue à `registerObservability`).
+- **Appels migrés** `experimental_telemetry` → `telemetry` : `lib/analysis.ts` (`recommend_action`) et `app/api/llm/status/route.ts` (ping) ; doc de `telemetryForTask` mise à jour.
+- **Env** : dans le nouveau SDK la base URL est **`LANGFUSE_BASE_URL`** (underscore), pas `LANGFUSE_BASEURL`. `TESTS.md §4` corrigé (paquets, env, branchement, validation `LANGFUSE_LOG_LEVEL=DEBUG`).
+- **Activation par Fathi** : `npm i @langfuse/otel @langfuse/vercel-ai-sdk @opentelemetry/sdk-node` (Node ≥ 22) + clés `LANGFUSE_*` → une analyse (§3.2) doit produire une trace `recommend_action` dans Langfuse.
+- **Vérif** : `tsc` ciblé **exit 0 sans les paquets Langfuse installés** (imports dynamiques). `npm test` inchangé (**17/17**). `next build` côté Fathi (Windows).
+- **Reste** : Fathi — `npm i` Langfuse + clés + confirmer les spans ; parcours §3 dans l'app.
 
 ### 2026-07-21 — Claude (Cowork) — Notion connecté + dédup affichage + décision mapping
 - **Notion réel connecté par Fathi** : 24 prospects lus, base « prospects-test.csv », noms/emails/entreprises corrects. Le connecteur (OAuth Basic auth, state cookie, mapping par type + regex FR/EN) a tenu **sans aucun correctif**. Guide pas-à-pas fourni (types de propriétés Email/Select, redirect URI `:3001`, partage de la base à l'OAuth).
