@@ -4,12 +4,28 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { decryptJson } from "@/lib/crypto";
 import { findTool } from "@/lib/connectors";
-import { isOauthProvider } from "@/lib/connectors/common";
-import { notionListDatabases, type NotionCreds } from "@/lib/connectors/notion";
+import { isOauthProvider, type FieldMapping } from "@/lib/connectors/common";
+import {
+  autoDetectNotionMapping,
+  listNotionProperties,
+  notionListDatabases,
+  type NotionCreds,
+} from "@/lib/connectors/notion";
+import {
+  autoDetectSheetMapping,
+  googleFreshToken,
+  listSheetColumns,
+  type GoogleCreds,
+} from "@/lib/connectors/google-sheets";
 import { EDIT_ROLES } from "@/lib/memory";
 import { FIELD, SAVE_BTN } from "@/components/ui/styles";
 import {
+  ColumnMapping,
+  type SourceColumn,
+} from "./_components/column-mapping";
+import {
   disconnectConnector,
+  saveFieldMapping,
   saveNotionDatabase,
   saveSheetConfig,
   syncNow,
@@ -91,6 +107,43 @@ export default async function ConnectorDetailPage({
       }
     } catch {
       databases = [];
+    }
+  }
+
+  // Correspondance de colonnes : colonnes disponibles + mapping courant (ou auto)
+  let mappingColumns: SourceColumn[] = [];
+  let currentMapping: FieldMapping = {};
+  if (connected && configured && canEdit) {
+    try {
+      const admin = createAdminClient();
+      const { data: full } = await admin
+        .from("connectors")
+        .select("encrypted_credentials")
+        .eq("id", connector!.id)
+        .single();
+      if (full?.encrypted_credentials) {
+        const stored = config.field_mapping as FieldMapping | undefined;
+        if (provider === "google_sheets") {
+          const creds = decryptJson<GoogleCreds>(full.encrypted_credentials);
+          const { token } = await googleFreshToken(creds);
+          const cols = await listSheetColumns(token, config.spreadsheet_id as string);
+          mappingColumns = cols.map((h) => ({ value: h, label: h }));
+          currentMapping = stored ?? autoDetectSheetMapping(cols);
+        } else {
+          const creds = decryptJson<NotionCreds>(full.encrypted_credentials);
+          const props = await listNotionProperties(
+            creds.access_token,
+            config.database_id as string,
+          );
+          mappingColumns = props.map((p) => ({
+            value: p.key,
+            label: `${p.key} · ${p.type}`,
+          }));
+          currentMapping = stored ?? autoDetectNotionMapping(props);
+        }
+      }
+    } catch {
+      mappingColumns = [];
     }
   }
 
@@ -213,6 +266,26 @@ export default async function ConnectorDetailPage({
               )}
             </div>
           </div>
+
+          {/* Correspondance de colonnes */}
+          {configured && mappingColumns.length > 0 && (
+            <div className="rounded-[18px] border border-line-soft bg-white shadow-card">
+              <div className="border-b border-line-soft px-[22px] py-4">
+                <h3 className="font-display text-[15px] font-semibold">
+                  Correspondance des colonnes
+                </h3>
+              </div>
+              <div className="p-[22px]">
+                <ColumnMapping
+                  provider={provider}
+                  action={saveFieldMapping}
+                  columns={mappingColumns}
+                  mapping={currentMapping}
+                  canEdit={canEdit}
+                />
+              </div>
+            </div>
+          )}
 
           {/* Synchronisation */}
           <div className="rounded-[18px] border border-line-soft bg-white shadow-card">

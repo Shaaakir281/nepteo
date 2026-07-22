@@ -2,7 +2,12 @@
 
 import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getEditorContext, isOauthProvider } from "@/lib/connectors/common";
+import {
+  getEditorContext,
+  isOauthProvider,
+  PROSPECT_FIELDS,
+  type FieldMapping,
+} from "@/lib/connectors/common";
 import { parseSpreadsheetId } from "@/lib/connectors/google-sheets";
 import {
   CONNECTOR_SELECT,
@@ -73,6 +78,19 @@ export async function saveNotionDatabase(formData: FormData) {
   const database_title = String(formData.get("database_title") ?? "");
   if (!database_id) fail("notion", "Choisissez une base de données.");
   await saveConfig("notion", { database_id, database_title }, ctx.userId);
+}
+
+export async function saveFieldMapping(formData: FormData) {
+  const provider = String(formData.get("provider") ?? "");
+  if (!isOauthProvider(provider)) redirect("/connecteurs");
+  const ctx = await getEditorContext();
+  if (!ctx) redirect("/login");
+  const mapping: FieldMapping = {};
+  for (const field of PROSPECT_FIELDS) {
+    const v = String(formData.get(field) ?? "").trim();
+    mapping[field] = v || null; // « — (aucune) » → null (champ absent)
+  }
+  await saveConfig(provider, { field_mapping: mapping }, ctx.userId);
 }
 
 export async function syncNow(formData: FormData) {
