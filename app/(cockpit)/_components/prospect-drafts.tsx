@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import {
   draftForProspect,
   prospectsForAction,
+  saveProspectNote,
   type TargetProspect,
 } from "../actions";
 
@@ -81,6 +82,9 @@ function ProspectRow({
   const [loading, setLoading] = useState(false);
   const [failed, setFailed] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [note, setNote] = useState(prospect.note ?? "");
+  const [noteSaved, setNoteSaved] = useState(false);
+  const [savingNote, setSavingNote] = useState(false);
 
   async function load(regenerate: boolean) {
     setLoading(true);
@@ -115,6 +119,22 @@ function ProspectRow({
     }
   }
 
+  async function saveNote() {
+    setSavingNote(true);
+    setNoteSaved(false);
+    try {
+      const res = await saveProspectNote(prospect.id, note);
+      if (res.ok) {
+        setNoteSaved(true);
+        setTimeout(() => setNoteSaved(false), 1600);
+      }
+    } catch {
+      /* échec silencieux */
+    } finally {
+      setSavingNote(false);
+    }
+  }
+
   return (
     <div className="rounded-[10px] border border-line-soft">
       <button
@@ -140,6 +160,33 @@ function ProspectRow({
 
       {open && (
         <div className="border-t border-line-soft px-3 py-2.5">
+          {canEdit && (
+            <div className="mb-3">
+              <label className="mb-1 block text-[11px] font-semibold text-faint">
+                Ma note sur ce prospect
+              </label>
+              <textarea
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                rows={2}
+                placeholder="Ex. Rencontré au salon, intéressé par l'offre premium…"
+                className="w-full resize-y rounded-[8px] border border-line bg-white px-2.5 py-1.5 text-[12px] leading-relaxed text-body focus:border-violet focus:outline-none focus:ring-[3px] focus:ring-violet/15"
+              />
+              <div className="mt-1.5 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={saveNote}
+                  disabled={savingNote || note === (prospect.note ?? "")}
+                  className="rounded-[8px] bg-tint px-2.5 py-1 text-[11.5px] font-semibold text-violet transition hover:bg-violet hover:text-white disabled:opacity-40"
+                >
+                  {savingNote ? "…" : noteSaved ? "Enregistré ✓" : "Enregistrer la note"}
+                </button>
+                <span className="text-[10.5px] text-faint">
+                  Régénérez le message pour en tenir compte.
+                </span>
+              </div>
+            </div>
+          )}
           {loading && !draft ? (
             <p className="text-[12px] italic text-muted">
               L&apos;agent personnalise le message…

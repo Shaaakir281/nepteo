@@ -106,6 +106,25 @@ export function renderProspectContext(p: ProspectContext): string {
   return lines.join("\n");
 }
 
+/** Prénom = premier mot du nom (vide si nom absent). */
+export function firstName(name?: string | null): string {
+  const n = (name ?? "").trim();
+  if (!n) return "";
+  return n.split(/\s+/)[0];
+}
+
+/**
+ * Remplace le repère {prénom} par le vrai prénom quand on connaît le destinataire
+ * (brouillons par prospect). Si aucun nom, on garde {prénom} (remplacé à l'envoi).
+ * Accepte les variantes d'accent/casse (prénom, prenom, Prénom).
+ */
+export function applyFirstName(draft: Draft, name?: string | null): Draft {
+  const fn = firstName(name);
+  if (!fn) return draft;
+  const repl = (s: string) => s.replace(/\{pr[ée]nom\}/gi, fn);
+  return { subject: repl(draft.subject), body: repl(draft.body) };
+}
+
 /** Découpe une sortie LLM « Objet: …\n\n<corps> » en {subject, body}. */
 export function parseDraft(text: string): Draft | null {
   const t = text.trim();

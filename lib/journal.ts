@@ -26,6 +26,7 @@ export const EVENT_LABELS: Record<string, string> = {
   action_resumed: "Action remise dans la file",
   draft_prepared: "Brouillon de message préparé",
   draft_edited: "Brouillon de message modifié",
+  prospect_note_saved: "Note sur un prospect enregistrée",
 };
 
 const SECTION_LABELS: Record<string, string> = {

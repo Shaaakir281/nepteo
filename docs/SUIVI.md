@@ -42,6 +42,14 @@ Environnement : Supabase `hrqnzorapjnosjphftur`, repo GitHub `Shaaakir281/nepteo
 
 ## Historique des sessions
 
+### 2026-07-22 — Claude (Cowork) — prénom réel + notes éditables dans Nepteo
+- **Build Windows confirmé vert** par Fathi (Next 16.2.10, TypeScript 13,6 s, 18 routes) — valide toute la session côté prod.
+- **Prénom réel dans les brouillons par prospect** : `firstName` + `applyFirstName` (purs, `draft-template.ts`) remplacent `{prénom}` par le 1er mot du nom (variantes accent/casse, multi-occurrences). Appliqué dans `draftForProspect` **après** génération (on connaît le destinataire). Le message de **groupe** garde `{prénom}` (destinataire inconnu). Variante « Monsieur/Madame Nom » = **non faite** (demande une civilité/genre → à mapper plus tard comme les notes ; noté).
+- **Notes éditables DANS Nepteo** : **migration `0005_prospect_note_internal.sql`** (`note_internal text`) — colonne **jamais écrite par le sync** (l'upsert ne liste pas la colonne → conservée à chaque resync). Distincte de la colonne `notes` mappée depuis la source. Action `saveProspectNote(prospectId, note)` (journal `prospect_note_saved`). UI : zone « Ma note sur ce prospect » dans chaque ligne de `prospect-drafts.tsx` (Enregistrer, désactivé si inchangé). `draftForProspect` **réunit** notes source + note interne pour la personnalisation. `prospectsForAction` renvoie la note + `hasNotes` tient compte des deux.
+- **Bidirectionnel** (Nepteo → source) = **Phase 3** (écriture externe, garde-fous) — noté, pas construit.
+- **Vérif** : `npm test` **43/43** (firstName/applyFirstName ×4) ; `tsc` ciblé complet **exit 0 (32,7 s)**.
+- **Reste** : Fathi — migration **0005** (+ 0003/0004) dans Supabase, `git push`, `npm run build`. Backlog : civilité « M./Mme » (mapper une colonne), enrichissement internet, contexte « toutes colonnes » Notion.
+
 ### 2026-07-22 — Claude (Cowork) — perso par prospect : UI (liste + brouillon individuel)
 - **Suite du backend perso** : brancher la personnalisation par personne dans le tiroir d'une relance. Phase 2 (prépare, n'envoie rien).
 - **Actions** (`app/(cockpit)/actions.ts`) : `prospectsForAction(id)` → liste les prospects ciblés (relance priorité = `prospectPriority.tier==='priority'` ; `relaunch_stage_*` = même statut que `payload.stage`), max 25, avec `hasNotes`/`hasDraft`. `draftForProspect(actionId, prospectId, regenerate?)` → brouillon individuel via `draftRelanceForProspect` (notes + toutes colonnes du prospect), **idempotent** (cache `payload.prospect_drafts[prospectId]`), journal `draft_prepared`.

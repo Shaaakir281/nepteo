@@ -10,6 +10,7 @@ import {
   isRelanceKind,
   type Draft,
 } from "@/lib/draft";
+import { applyFirstName } from "@/lib/draft-template";
 import { prospectPriority } from "@/lib/analysis-rules";
 
 const DECISIONS = {
@@ -160,6 +161,7 @@ export interface TargetProspect {
   email: string | null;
   company: string | null;
   stage: string | null;
+  note: string | null; // note interne Nepteo (éditable)
   hasNotes: boolean;
   hasDraft: boolean;
 }
@@ -171,6 +173,7 @@ type ProspectRow = {
   company: string | null;
   stage: string | null;
   notes: string | null;
+  note_internal: string | null;
 };
 
 /** Prospects ciblés par une action de relance (priorité, ou statut visé). */
@@ -210,7 +213,7 @@ export async function prospectsForAction(
 
   const { data: rows } = await admin
     .from("prospects")
-    .select("id, name, email, company, stage, notes")
+    .select("id, name, email, company, stage, notes, note_internal")
     .eq("organization_id", ctx.orgId);
 
   const payload = (action.payload ?? {}) as Record<string, unknown>;
@@ -224,11 +227,39 @@ export async function prospectsForAction(
       email: p.email,
       company: p.company,
       stage: p.stage,
-      hasNotes: (p.notes ?? "").trim() !== "",
+      note: p.note_internal,
+      hasNotes:
+        (p.notes ?? "").trim() !== "" || (p.note_internal ?? "").trim() !== "",
       hasDraft: Boolean(drafts[p.id]),
     }));
 
   return { ok: true, prospects: targeted };
+}
+
+/** Enregistre une note interne Nepteo sur un prospect (jamais écrasée au sync). */
+export async function saveProspectNote(
+  prospectId: string,
+  note: string,
+): Promise<{ ok: boolean }> {
+  const ctx = await getEditorContext();
+  if (!ctx || !ctx.canEdit) return { ok: false };
+
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("prospects")
+    .update({ note_internal: note.trim() || null })
+    .eq("id", prospectId)
+    .eq("organization_id", ctx.orgId);
+  if (error) return { ok: false };
+
+  await admin.from("journal").insert({
+    organization_id: ctx.orgId,
+    event: "prospect_note_saved",
+    actor: "user",
+    actor_id: ctx.userId,
+    payload: {},
+  });
+  return { ok: true };
 }
 
 /**
@@ -262,7 +293,7 @@ export async function draftForProspect(
 
   const { data: prospect } = await admin
     .from("prospects")
-    .select("name, company, stage, notes, raw")
+    .select("name, company, stage, notes, note_internal, raw")
     .eq("id", prospectId)
     .eq("organization_id", ctx.orgId)
     .maybeSingle();
@@ -277,7 +308,13 @@ export async function draftForProspect(
     (mem ?? []).map((m) => [m.section, m.content]),
   );
 
-  const draft = await draftRelanceForProspect({
+  // Notes de la source + note interne Nepteo réunies pour la personnalisation.
+  const notes = [prospect.notes, prospect.note_internal]
+    .map((n) => (n ?? "").trim())
+    .filter(Boolean)
+    .join(" — ");
+
+  const generated = await draftRelanceForProspect({
     orgId: ctx.orgId,
     actorId: ctx.userId,
     ctx: memCtx,
@@ -285,10 +322,12 @@ export async function draftForProspect(
       name: prospect.name,
       company: prospect.company,
       stage: prospect.stage,
-      notes: prospect.notes,
+      notes: notes || null,
       raw: (prospect.raw ?? {}) as Record<string, unknown>,
     },
   });
+  // On connaît le destinataire → prénom réel à la place de {prénom}.
+  const draft = applyFirstName(generated, prospect.name);
 
   await admin
     .from("actions")

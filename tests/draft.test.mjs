@@ -10,6 +10,8 @@ import {
   templateRelance,
   isRelanceKind,
   renderProspectContext,
+  firstName,
+  applyFirstName,
 } from "../lib/draft-template.ts";
 
 test("isRelanceKind — cible les relances, pas les autres", () => {
@@ -57,6 +59,35 @@ test("renderProspectContext — champs vides → contexte vide, pas de undefined
   const ctx = renderProspectContext({ name: null, raw: {} });
   assert.equal(ctx, "");
   assert.ok(!ctx.includes("undefined"));
+});
+
+test("firstName — premier mot du nom, vide si absent", () => {
+  assert.equal(firstName("Marie Fontaine"), "Marie");
+  assert.equal(firstName("  Karim  Benali "), "Karim");
+  assert.equal(firstName(""), "");
+  assert.equal(firstName(null), "");
+});
+
+test("applyFirstName — remplace {prénom} par le vrai prénom", () => {
+  const d = applyFirstName(
+    { subject: "Bonjour", body: "Bonjour {prénom}, ça va ?" },
+    "Marie Fontaine",
+  );
+  assert.equal(d.body, "Bonjour Marie, ça va ?");
+});
+
+test("applyFirstName — variantes d'accent/casse, gère plusieurs occurrences", () => {
+  const d = applyFirstName(
+    { subject: "{Prenom}", body: "{prenom} et {prénom}" },
+    "Alex Martin",
+  );
+  assert.equal(d.subject, "Alex");
+  assert.equal(d.body, "Alex et Alex");
+});
+
+test("applyFirstName — sans nom, garde {prénom}", () => {
+  const d = applyFirstName({ subject: "x", body: "Bonjour {prénom}" }, null);
+  assert.equal(d.body, "Bonjour {prénom}");
 });
 
 test("renderProspectContext — ne duplique pas une valeur déjà citée", () => {
