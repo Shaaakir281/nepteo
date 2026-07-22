@@ -37,6 +37,14 @@ export interface NormalizedProspect {
   raw: Record<string, unknown>;
 }
 
+/** Champs cibles de Nepteo. Les valeurs sont les identifiants côté source
+ *  (en-tête de colonne pour Sheets, clé de propriété pour Notion).
+ *  `null` = « ce champ n'existe pas dans ma base » (choix explicite).
+ *  L'absence de mapping = détection automatique (comportement par défaut). */
+export const PROSPECT_FIELDS = ["name", "email", "company", "stage"] as const;
+export type ProspectField = (typeof PROSPECT_FIELDS)[number];
+export type FieldMapping = Partial<Record<ProspectField, string | null>>;
+
 export const OAUTH_PROVIDERS = ["google_sheets", "notion"] as const;
 export type OauthProvider = (typeof OAUTH_PROVIDERS)[number];
 

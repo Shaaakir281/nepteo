@@ -1,4 +1,4 @@
-import type { NormalizedProspect } from "./common";
+import type { FieldMapping, NormalizedProspect } from "./common";
 
 /** Google Sheets — OAuth + lecture seule (scope spreadsheets.readonly). */
 
@@ -86,18 +86,32 @@ export function parseSpreadsheetId(input: string): string | null {
   return null;
 }
 
-function findCol(headers: string[], patterns: RegExp[]): number {
+/** En-tête correspondant au premier motif trouvé (par nom, réutilisable par l'UI). */
+function matchHeader(headers: string[], patterns: RegExp[]): string | null {
   for (const re of patterns) {
-    const i = headers.findIndex((h) => re.test(h));
-    if (i !== -1) return i;
+    const h = headers.find((x) => x && re.test(x));
+    if (h) return h;
   }
-  return -1;
+  return null;
 }
 
-export async function fetchSheetProspects(
+/** Détection auto des colonnes → champs Nepteo. Sert de valeur par défaut
+ *  quand aucun mapping explicite n'est enregistré, et de valeur pré-remplie
+ *  dans l'écran de correspondance. */
+export function autoDetectSheetMapping(headers: string[]): FieldMapping {
+  return {
+    name: matchHeader(headers, [/^nom$|^name$/i, /nom/i, /name/i, /contact/i]),
+    email: matchHeader(headers, [/e-?mail/i, /courriel/i]),
+    company: matchHeader(headers, [/entreprise/i, /soci[eé]t[eé]/i, /company/i, /organisation/i]),
+    stage: matchHeader(headers, [/statut/i, /status/i, /stage/i, /[ée]tape/i]),
+  };
+}
+
+/** Lit méta + valeurs et renvoie en-têtes nettoyés + lignes de données. */
+async function readSheet(
   token: string,
   spreadsheetId: string,
-): Promise<NormalizedProspect[]> {
+): Promise<{ headers: string[]; rows: string[][] }> {
   const auth = { Authorization: `Bearer ${token}` };
   const metaRes = await fetch(
     `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?fields=sheets.properties.title`,
@@ -115,16 +129,40 @@ export async function fetchSheetProspects(
   );
   if (!valRes.ok) throw new Error(`Sheets values: ${valRes.status}`);
   const data = (await valRes.json()) as { values?: string[][] };
-  const rows = data.values ?? [];
-  if (rows.length < 2) return [];
+  const all = data.values ?? [];
+  if (all.length === 0) return { headers: [], rows: [] };
+  return {
+    headers: all[0].map((h) => (h ?? "").trim()),
+    rows: all.slice(1),
+  };
+}
 
-  const headers = rows[0].map((h) => (h ?? "").trim());
-  const iName = findCol(headers, [/^nom$|^name$/i, /nom/i, /name/i, /contact/i]);
-  const iEmail = findCol(headers, [/e-?mail/i, /courriel/i]);
-  const iCompany = findCol(headers, [/entreprise/i, /soci[eé]t[eé]/i, /company/i, /organisation/i]);
-  const iStage = findCol(headers, [/statut/i, /status/i, /stage/i, /[ée]tape/i]);
+/** En-têtes de colonnes du classeur — pour peupler l'écran de correspondance. */
+export async function listSheetColumns(
+  token: string,
+  spreadsheetId: string,
+): Promise<string[]> {
+  const { headers } = await readSheet(token, spreadsheetId);
+  return headers.filter((h) => h.length > 0);
+}
 
-  return rows.slice(1).flatMap((r, idx) => {
+export async function fetchSheetProspects(
+  token: string,
+  spreadsheetId: string,
+  mapping?: FieldMapping,
+): Promise<NormalizedProspect[]> {
+  const { headers, rows } = await readSheet(token, spreadsheetId);
+  if (rows.length === 0) return [];
+
+  const map = mapping ?? autoDetectSheetMapping(headers);
+  const indexOf = (header: string | null | undefined) =>
+    header ? headers.indexOf(header) : -1;
+  const iName = indexOf(map.name);
+  const iEmail = indexOf(map.email);
+  const iCompany = indexOf(map.company);
+  const iStage = indexOf(map.stage);
+
+  return rows.flatMap((r, idx) => {
     const cell = (i: number) => (i >= 0 ? (r[i] ?? "").trim() || null : null);
     const email = cell(iEmail);
     const name = cell(iName);

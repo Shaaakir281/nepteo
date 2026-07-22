@@ -7,6 +7,7 @@ import {
   type GoogleCreds,
 } from "./google-sheets";
 import { fetchNotionProspects, type NotionCreds } from "./notion";
+import type { FieldMapping } from "./common";
 
 type Admin = ReturnType<typeof createAdminClient>;
 
@@ -38,6 +39,7 @@ export async function syncConnectorRow(
   actorId: string | null,
 ): Promise<number> {
   const config = c.config ?? {};
+  const mapping = (config.field_mapping as FieldMapping | undefined) ?? undefined;
   let prospects;
 
   if (c.provider === "google_sheets") {
@@ -49,12 +51,17 @@ export async function syncConnectorRow(
         .update({ encrypted_credentials: encryptJson(updated) })
         .eq("id", c.id);
     }
-    prospects = await fetchSheetProspects(token, config.spreadsheet_id as string);
+    prospects = await fetchSheetProspects(
+      token,
+      config.spreadsheet_id as string,
+      mapping,
+    );
   } else if (c.provider === "notion") {
     const creds = decryptJson<NotionCreds>(c.encrypted_credentials!);
     prospects = await fetchNotionProspects(
       creds.access_token,
       config.database_id as string,
+      mapping,
     );
   } else {
     throw new Error(`Sync non supporté : ${c.provider}`);
