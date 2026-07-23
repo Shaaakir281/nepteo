@@ -14,21 +14,40 @@ export interface DedupProspect {
   stage: string | null;
 }
 
+const norm = (s: string | null) =>
+  (s ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+
 /**
- * Regroupe par email normalisé (minuscules, espaces retirés). La 1re ligne
+ * Clé de regroupement d'un prospect :
+ *  - email normalisé si présent (clé fiable, prioritaire) ;
+ *  - sinon, **secours** nom + entreprise normalisés (fiches sans email) ;
+ *  - sinon `null` (ni email ni nom → non dédupliquable, conservée telle quelle).
+ * Le secours nom+entreprise est un compromis d'affichage : il peut fusionner
+ * deux homonymes de la même société, mais évite les doublons visibles les plus
+ * évidents quand plusieurs connecteurs lisent la même base sans email.
+ */
+function dedupeKey(p: DedupProspect): string | null {
+  const email = norm(p.email);
+  if (email) return `e:${email}`;
+  const name = norm(p.name);
+  if (name) return `nc:${name}|${norm(p.company)}`;
+  return null;
+}
+
+/**
+ * Regroupe les prospects par clé (email, sinon nom+entreprise). La 1re ligne
  * rencontrée sert de base — la plus récente si l'entrée est triée par
  * `synced_at` décroissant — et ses champs vides sont complétés par les doublons
- * suivants (aucune donnée inventée). Les lignes SANS email ne sont pas
- * dédupliquables de façon fiable : elles sont conservées telles quelles.
- * L'entrée d'origine n'est jamais mutée.
+ * suivants (aucune donnée inventée). Les fiches sans email NI nom restent telles
+ * quelles. L'entrée d'origine n'est jamais mutée.
  */
 export function dedupeByEmail<T extends DedupProspect>(rows: T[]): T[] {
   const seen = new Map<string, T>();
   const out: T[] = [];
   for (const p of rows) {
-    const key = (p.email ?? "").trim().toLowerCase();
+    const key = dedupeKey(p);
     if (!key) {
-      out.push(p); // sans email : gardée telle quelle
+      out.push(p); // non dédupliquable : gardée telle quelle
       continue;
     }
     const existing = seen.get(key);

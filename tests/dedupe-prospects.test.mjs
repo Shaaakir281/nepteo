@@ -27,10 +27,21 @@ test("complète les champs vides depuis un doublon, sans écraser", () => {
   assert.equal(out[0].stage, "Nouveau"); // valeur de base conservée
 });
 
-test("garde les lignes sans email (non dédupliquables)", () => {
+test("secours nom+entreprise : fusionne deux fiches sans email identiques", () => {
   const out = dedupeByEmail([
-    p("1", "A", "", null, "Nouveau"),
-    p("2", "B", null, null, "Nouveau"),
+    p("1", "Zoé Blanc", null, "Studio Z", "Nouveau"),
+    p("2", " zoé  blanc ", "", "studio z", null), // même nom+société normalisés
+    p("3", "Zoé Blanc", null, "Autre SARL", "Nouveau"), // société ≠ → gardée
+  ]);
+  assert.equal(out.length, 2);
+  assert.equal(out[0].id, "1");
+  assert.equal(out[0].stage, "Nouveau"); // base conservée
+});
+
+test("garde les lignes sans email ni nom (non dédupliquables)", () => {
+  const out = dedupeByEmail([
+    p("1", null, "", null, "Nouveau"),
+    p("2", null, null, null, "Nouveau"),
   ]);
   assert.equal(out.length, 2);
 });

@@ -2,7 +2,11 @@ import type { createAdminClient } from "@/lib/supabase/admin";
 import { prospectPriority } from "@/lib/analysis-rules";
 import { draftRelance, isRelanceKind } from "@/lib/draft";
 import { applyFirstName, type Draft } from "@/lib/draft-template";
-import { guardExecution, planRecipients } from "@/lib/execution-rules";
+import {
+  dedupeByEmail,
+  guardExecution,
+  planRecipients,
+} from "@/lib/execution-rules";
 
 type Admin = ReturnType<typeof createAdminClient>;
 
@@ -131,8 +135,11 @@ export async function executeApprovedAction(
       .from("prospects")
       .select("id, name, email, company, stage")
       .eq("organization_id", orgId);
-    const targeted = ((rows ?? []) as ProspectRow[]).filter((p) =>
-      isRecipient(action.kind, payload, p),
+    // Dédup par email : deux connecteurs sur la même base ne doublent pas l'envoi.
+    const targeted = dedupeByEmail(
+      ((rows ?? []) as ProspectRow[]).filter((p) =>
+        isRecipient(action.kind, payload, p),
+      ),
     );
 
     const { count: sentToday } = await admin

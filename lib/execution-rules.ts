@@ -35,6 +35,55 @@ export interface Recipient {
 }
 
 /**
+ * Déduplique par email normalisé (casse/espaces) en gardant la 1re occurrence.
+ * Évite d'adresser deux fois la même personne quand plusieurs connecteurs lisent
+ * la même base (lignes en double dans `prospects`). Les lignes sans email sont
+ * conservées (elles seront filtrées ensuite par `planRecipients`).
+ */
+export function dedupeByEmail<T extends { email: string | null }>(
+  rows: T[],
+): T[] {
+  const seen = new Set<string>();
+  const out: T[] = [];
+  for (const r of rows) {
+    const key = (r.email ?? "").trim().toLowerCase();
+    if (key && seen.has(key)) continue;
+    if (key) seen.add(key);
+    out.push(r);
+  }
+  return out;
+}
+
+const normText = (s: string | null | undefined) =>
+  (s ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+
+/**
+ * Déduplique une liste de contacts : email si présent (clé fiable), **sinon**
+ * secours nom + entreprise (fiches sans email). Ni email ni nom → conservé.
+ * Le secours nom+entreprise est un compromis d'affichage (risque de fusionner
+ * deux homonymes de la même société), utile pour la liste par prospect.
+ */
+export function dedupeContacts<
+  T extends { email: string | null; name?: string | null; company?: string | null },
+>(rows: T[]): T[] {
+  const seen = new Set<string>();
+  const out: T[] = [];
+  for (const r of rows) {
+    const email = normText(r.email);
+    const name = normText(r.name);
+    const key = email
+      ? `e:${email}`
+      : name
+        ? `nc:${name}|${normText(r.company)}`
+        : "";
+    if (key && seen.has(key)) continue;
+    if (key) seen.add(key);
+    out.push(r);
+  }
+  return out;
+}
+
+/**
  * Sélectionne les destinataires réellement adressables et applique les plafonds.
  * Filtre les fiches sans email, borne au reste du budget quotidien et au plafond
  * par exécution. `capped` = vrai si des destinataires ont été écartés par un plafond.

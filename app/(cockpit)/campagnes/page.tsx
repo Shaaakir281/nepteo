@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { EDIT_ROLES } from "@/lib/memory";
@@ -21,7 +22,12 @@ const SEVERITY: Record<string, string> = {
   bad: "border-red/30 bg-red-tint",
 };
 
-export default async function CampagnesPage() {
+export default async function CampagnesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ proposed?: string }>;
+}) {
+  const { proposed } = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
@@ -83,6 +89,32 @@ export default async function CampagnesPage() {
           </div>
         )}
       </div>
+
+      {proposed !== undefined && (
+        proposed === "err" ? (
+          <div className="mb-4 rounded-[12px] bg-red-tint px-4 py-3 text-[13px] font-medium text-red">
+            L&apos;analyse n&apos;a pas abouti — réessayez.
+          </div>
+        ) : proposed === "0" ? (
+          <div className="mb-4 rounded-[12px] bg-tint-soft px-4 py-3 text-[13px] text-body">
+            Aucune nouvelle action à proposer (rien de nouveau à couper, ou
+            déjà dans votre file de validation).
+          </div>
+        ) : (
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-[12px] bg-green-tint px-4 py-3">
+            <span className="text-[13px] font-medium text-green">
+              {proposed} action{Number(proposed) > 1 ? "s" : ""} proposée
+              {Number(proposed) > 1 ? "s" : ""} à partir de vos campagnes.
+            </span>
+            <Link
+              href="/"
+              className="rounded-[9px] bg-violet px-3 py-1.5 text-[12px] font-semibold text-white transition hover:bg-violet-deep"
+            >
+              Valider sur Aujourd&apos;hui →
+            </Link>
+          </div>
+        )
+      )}
 
       {metrics.length === 0 ? (
         <div className="rounded-[18px] border border-line-soft bg-white p-8 text-center shadow-card">

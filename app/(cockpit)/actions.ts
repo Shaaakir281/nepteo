@@ -15,6 +15,7 @@ import {
 import { applyFirstName } from "@/lib/draft-template";
 import { prospectPriority } from "@/lib/analysis-rules";
 import { executeApprovedAction, type ExecutionResult } from "@/lib/execution";
+import { dedupeByEmail, dedupeContacts } from "@/lib/execution-rules";
 
 const DECISIONS = {
   approve: { status: "approved", event: "action_approved" },
@@ -221,8 +222,11 @@ export async function prospectsForAction(
 
   const payload = (action.payload ?? {}) as Record<string, unknown>;
   const drafts = (payload.prospect_drafts ?? {}) as Record<string, unknown>;
-  const targeted = ((rows ?? []) as ProspectRow[])
-    .filter((p) => matchesAction(action.kind, payload, p))
+  const targeted = dedupeContacts(
+    ((rows ?? []) as ProspectRow[]).filter((p) =>
+      matchesAction(action.kind, payload, p),
+    ),
+  )
     .slice(0, 25)
     .map((p) => ({
       id: p.id,

@@ -7,6 +7,8 @@ import assert from "node:assert/strict";
 import {
   guardExecution,
   planRecipients,
+  dedupeByEmail,
+  dedupeContacts,
   MAX_PER_RUN,
   MAX_PER_DAY,
 } from "../lib/execution-rules.ts";
@@ -77,4 +79,40 @@ test("planRecipients — sous les plafonds, tout passe", () => {
   const r = planRecipients(mk(3), { sentToday: 0 });
   assert.equal(r.recipients.length, 3);
   assert.equal(r.capped, false);
+});
+
+test("dedupeByEmail — une seule fois par email (casse/espaces ignorées)", () => {
+  const rows = [
+    { id: "1", email: "julie@x.fr", name: "Julie (Sheets)" },
+    { id: "2", email: " JULIE@x.fr ", name: "Julie (Notion)" },
+    { id: "3", email: "sarah@x.fr", name: "Sarah" },
+  ];
+  const out = dedupeByEmail(rows);
+  assert.equal(out.length, 2);
+  assert.equal(out[0].name, "Julie (Sheets)"); // 1re occurrence gardée
+});
+
+test("dedupeByEmail — garde les lignes sans email", () => {
+  const rows = [
+    { id: "1", email: null, name: "A" },
+    { id: "2", email: "", name: "B" },
+    { id: "3", email: "a@x.fr", name: "C" },
+    { id: "4", email: "a@x.fr", name: "D" },
+  ];
+  const out = dedupeByEmail(rows);
+  assert.equal(out.length, 3); // 2 sans email + 1 dédupliqué
+});
+
+test("dedupeContacts — secours nom+entreprise pour les fiches sans email", () => {
+  const rows = [
+    { id: "1", email: "a@x.fr", name: "Jean Martin", company: "ACME" },
+    { id: "2", email: "a@x.fr", name: "Jean Martin", company: "ACME" }, // même email
+    { id: "3", email: null, name: "Zoé Blanc", company: "Studio Z" },
+    { id: "4", email: "", name: " zoé  blanc ", company: "studio z" }, // même nom+société
+    { id: "5", email: null, name: "Zoé Blanc", company: "Autre SARL" }, // société différente
+    { id: "6", email: null, name: null, company: null }, // non dédupliquable
+  ];
+  const out = dedupeContacts(rows);
+  // 1 (email a@x.fr), 3 (Zoé/Studio Z ← 4 fusionné), 5 (Zoé/Autre), 6 (gardée)
+  assert.equal(out.length, 4);
 });

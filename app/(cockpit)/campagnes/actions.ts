@@ -17,9 +17,10 @@ export async function loadAdsDemo() {
   revalidatePath("/campagnes");
 }
 
-/** Variante form (bouton « Analyser mes campagnes »). */
+/** Variante form (bouton « Analyser mes campagnes ») — redirige avec le compte. */
 export async function analyzeAdsForm() {
-  await analyzeAdsNow();
+  const res = await analyzeAdsNow();
+  redirect(`/campagnes?proposed=${res.ok ? res.created : "err"}`);
 }
 
 /** Analyse les campagnes et propose des actions (couper les campagnes en perte). */
