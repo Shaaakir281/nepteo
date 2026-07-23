@@ -32,6 +32,7 @@ export const EVENT_LABELS: Record<string, string> = {
   execution_failed: "Exécution échouée",
   execution_blocked: "Exécution bloquée",
   execution_pause_changed: "Bouton d'arrêt basculé",
+  ads_demo_loaded: "Données de démo Meta Ads chargées",
 };
 
 const SECTION_LABELS: Record<string, string> = {

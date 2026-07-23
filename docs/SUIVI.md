@@ -42,6 +42,17 @@ Environnement : Supabase `hrqnzorapjnosjphftur`, repo GitHub `Shaaakir281/nepteo
 
 ## Historique des sessions
 
+### 2026-07-23 — Claude (Cowork) — connecteur ads (Meta Ads) en données fictives + vue Campagnes
+- **Décision Fathi** : attaquer un connecteur de **stats de campagnes payantes**. Choix (après recherche web sur les bacs à sable) : **Meta Ads** (Development Mode + comptes de test = meilleur sandbox, sans dépense ; GA4 démo **non** utilisable via API ; Google Ads test = zéro métrique + jeton à approuver). Approche : **données fictives d'abord**, l'API réelle branchée derrière la même interface ensuite. Lecture seule, métriques **vente/revenu** (ROAS/CAC/conversions), pas de vanité.
+- **Migration `0007_ad_metrics.sql`** : table `ad_metrics` (org+provider+campaign+date, impressions/clics/dépense/conversions/revenu), idempotence `unique(org,provider,campaign,date)`, RLS select `is_member`. **À exécuter dans Supabase (Fathi).**
+- **`lib/ads/metrics-rules.ts`** (pur, testable) : `deriveKpis` (ROAS, CAC, CTR, CVR, CPC — divisions sûres), `rollupByCampaign`, `aggregate`, `buildAdsFindings` (campagne en perte ROAS<1, meilleure campagne, CAC global).
+- **`lib/ads/mock-provider.ts`** (pur, déterministe) : `mockMetaCampaigns(7)` = 4 campagnes × 7 jours, profils calibrés (retargeting ROAS ~4,5 · prospection ~2,4 · lead ~1,6 · **notoriété en perte ~0,6**), jitter pseudo-aléatoire semé (reproductible).
+- **`lib/ads/seed.ts`** : `seedMetaAdsDemo` upsert idempotent + journal `ads_demo_loaded`. Action `loadAdsDemo` (`app/(cockpit)/campagnes/actions.ts`).
+- **Vue `/campagnes`** : KPIs globaux (dépense, revenu, ROAS coloré, CAC), constats de l'agent (perte/meilleure/CAC), tableau par campagne (ROAS vert/rouge, CAC, CTR), état vide avec bouton « Charger des données de démo (Meta Ads) ». **Nav « Campagnes » activée** (était Phase 4).
+- **Tests** : `tests/ads-metrics.test.mjs` (6 : KPI, rollup, aggregate, findings, mock déterministe/cohérent). **57/57**.
+- **Vérif** : `npm test` **57/57** ; `tsc` ciblé complet **exit 0 (28,5 s)**.
+- **Reste** : Fathi — migration **0007** dans Supabase, `git push`, `npm run build`, puis `/campagnes` → « Charger des données de démo » → KPIs + constats. **Étape suivante ads** : brancher l'**API Insights Meta réelle** derrière `ad_metrics` (app Meta en Development Mode, jetons chiffrés, `mockMetaCampaigns` → vrai fetch) ; plus tard, proposer des actions (couper une campagne en perte) via la file de validation + exécution Phase 3.
+
 ### 2026-07-23 — Claude (Cowork) — PHASE 3 étape A : colonne vertébrale d'exécution (mode sûr)
 - **Décision de Fathi** : passer à la Phase 3 (l'agent *agit*, pas seulement propose). Attaqué par la **colonne vertébrale sûre**, PAS l'envoi externe. `CLAUDE.md` « Phase actuelle » mis à jour (Phase 3 étape A, mode sûr ; étape B = SMTP, gardée).
 - **Non négociables respectés** : idempotence + journal **AVANT** exécution ; garde-fous **serveur** (plafonds) ; **bouton d'arrêt**.
