@@ -26,6 +26,34 @@ export default async function AgentPage() {
   const paused = Boolean(org?.execution_paused);
   const autonomy = (org?.autonomy_level as string) ?? "prepare";
 
+  const { count: preparedCount } = await supabase
+    .from("outbox_messages")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "prepared");
+  const { data: outboxRows } = await supabase
+    .from("outbox_messages")
+    .select("id, to_email, subject, status, created_at")
+    .order("created_at", { ascending: false })
+    .limit(15);
+  const outbox = (outboxRows ?? []) as {
+    id: string;
+    to_email: string;
+    subject: string;
+    status: string;
+    created_at: string;
+  }[];
+  const fmtDate = new Intl.DateTimeFormat("fr-FR", {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
+    prepared: { label: "Préparé", cls: "bg-tint text-violet" },
+    sent: { label: "Envoyé", cls: "bg-green-tint text-green" },
+    failed: { label: "Échec", cls: "bg-red-tint text-red" },
+  };
+
   return (
     <>
       <div className="mb-6">
@@ -82,17 +110,92 @@ export default async function AgentPage() {
           title="Mode d'exécution"
           hint="Ce que « Exécuter » fait réellement."
         >
-          <div className="flex items-start gap-3 rounded-[12px] border border-line-soft bg-tint-soft px-4 py-3">
-            <span className="mt-0.5 flex-none rounded-full bg-green-tint px-2.5 py-1 text-[11px] font-semibold text-green">
-              Mode sûr
-            </span>
-            <p className="text-[12.5px] leading-relaxed text-body">
-              L&apos;agent <b>prépare</b> les messages dans la boîte d&apos;envoi
-              (statut « prepared ») — <b>aucun envoi externe</b>. Le mode réel
-              (envoi SMTP) s&apos;activera à l&apos;étape B, derrière ces mêmes
-              garde-fous et une configuration explicite.
-            </p>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-[12px] border-2 border-violet bg-tint-soft px-4 py-3">
+              <div className="flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-green" />
+                <span className="text-[13px] font-semibold text-ink">
+                  Mode sûr
+                </span>
+                <span className="ml-auto rounded-full bg-green-tint px-2 py-0.5 text-[10px] font-semibold text-green">
+                  Actif
+                </span>
+              </div>
+              <p className="mt-1.5 text-[12px] leading-relaxed text-muted">
+                L&apos;agent prépare les messages (statut « préparé »). Aucun
+                envoi externe.
+              </p>
+            </div>
+            <div className="rounded-[12px] border border-line bg-white px-4 py-3 opacity-70">
+              <div className="flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-faint" />
+                <span className="text-[13px] font-semibold text-muted">
+                  Mode réel — envoi SMTP
+                </span>
+                <span className="ml-auto rounded-full bg-tint-soft px-2 py-0.5 text-[10px] font-semibold text-faint">
+                  Bientôt · étape B
+                </span>
+              </div>
+              <p className="mt-1.5 text-[12px] leading-relaxed text-muted">
+                Enverra réellement les messages préparés, derrière ces mêmes
+                garde-fous et une configuration SMTP explicite.
+              </p>
+            </div>
           </div>
+        </Section>
+
+        {/* Envois préparés (boîte d'envoi) */}
+        <Section
+          title="Envois préparés"
+          hint="Les messages que l'agent a préparés — en mode sûr, rien n'est parti."
+        >
+          {outbox.length === 0 ? (
+            <p className="text-[13px] text-muted">
+              Aucun message préparé pour l&apos;instant. Validez puis exécutez
+              une relance pour les voir apparaître ici.
+            </p>
+          ) : (
+            <>
+              <p className="mb-3 text-[12.5px] text-muted">
+                {preparedCount ?? 0} message
+                {(preparedCount ?? 0) > 1 ? "s" : ""} préparé
+                {(preparedCount ?? 0) > 1 ? "s" : ""} · {outbox.length} récent
+                {outbox.length > 1 ? "s" : ""} affiché
+                {outbox.length > 1 ? "s" : ""}
+              </p>
+              <ul className="space-y-1.5">
+                {outbox.map((m) => {
+                  const badge = STATUS_BADGE[m.status] ?? {
+                    label: m.status,
+                    cls: "bg-tint-soft text-body",
+                  };
+                  return (
+                    <li
+                      key={m.id}
+                      className="flex items-center gap-3 rounded-[10px] border border-line-soft px-3.5 py-2.5"
+                    >
+                      <span
+                        className={`flex-none rounded-full px-2 py-0.5 text-[10.5px] font-semibold ${badge.cls}`}
+                      >
+                        {badge.label}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[13px] font-medium text-ink">
+                          {m.subject}
+                        </p>
+                        <p className="truncate text-[11.5px] text-muted">
+                          {m.to_email}
+                        </p>
+                      </div>
+                      <span className="flex-none text-[11px] text-faint">
+                        {fmtDate.format(new Date(m.created_at))}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </>
+          )}
         </Section>
       </div>
     </>
