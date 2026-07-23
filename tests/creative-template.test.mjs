@@ -7,6 +7,7 @@ import assert from "node:assert/strict";
 import {
   templateCreativeBrief,
   CHANNEL_LABELS,
+  buildCreativeSuggestions,
 } from "../lib/creative-template.ts";
 
 const seed = (over = {}) => ({
@@ -32,6 +33,25 @@ test("templateCreativeBrief — brief complet, produit et objectif cités", () =
 test("templateCreativeBrief — mentionne le canal choisi", () => {
   const b = templateCreativeBrief(seed({ canal: "newsletter" }));
   assert.ok(b.includes(CHANNEL_LABELS.newsletter));
+});
+
+test("buildCreativeSuggestions — propose à partir des signaux connus", () => {
+  const s = buildCreativeSuggestions({
+    offre: "Pack Découverte",
+    priorityCount: 15,
+    losingCampaigns: ["Notoriété Reels"],
+  });
+  assert.ok(s.length >= 3 && s.length <= 4);
+  assert.ok(s.some((x) => /Notoriété Reels/.test(x.label) && x.canal === "pub"));
+  assert.ok(s.some((x) => /15 prospects/.test(x.label) && x.canal === "newsletter"));
+  assert.ok(s.some((x) => /Pack Découverte/.test(x.label)));
+});
+
+test("buildCreativeSuggestions — toujours au moins une idée, même sans données", () => {
+  const s = buildCreativeSuggestions({});
+  assert.ok(s.length >= 1);
+  // pas de suggestion « réactiver » si peu de prospects prioritaires
+  assert.ok(!s.some((x) => /prospects prêts/.test(x.label)));
 });
 
 test("templateCreativeBrief — reste correct avec des champs vides, sans undefined", () => {

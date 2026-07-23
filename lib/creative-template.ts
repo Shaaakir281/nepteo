@@ -27,6 +27,63 @@ export interface CreativeSeed {
 
 const clean = (s: string) => s.trim();
 
+export interface CreativeSuggestion {
+  label: string; // texte du bouton
+  objectif: string; // objectif pré-rempli
+  canal: CreativeChannel;
+}
+
+const short = (s: string, n = 40) =>
+  s.length > n ? `${s.slice(0, n - 1).trim()}…` : s;
+
+/**
+ * Idées de campagne proposées PAR l'agent, à partir de ce qu'il sait déjà :
+ * l'offre (mémoire), les prospects prêts à relancer, une campagne en perte.
+ * Le principe produit : proposer pour simplifier — l'utilisateur clique, il ne
+ * part pas d'une page blanche. Max 4, dédupliquées, toujours au moins une idée.
+ */
+export function buildCreativeSuggestions(input: {
+  offre?: string;
+  priorityCount?: number;
+  losingCampaigns?: string[];
+}): CreativeSuggestion[] {
+  const out: CreativeSuggestion[] = [];
+  const offre = clean(input.offre ?? "");
+  const priority = input.priorityCount ?? 0;
+  const losing = (input.losingCampaigns ?? []).map(clean).filter(Boolean);
+
+  if (losing[0]) {
+    out.push({
+      label: `Refaire le créatif de « ${short(losing[0], 28)} »`,
+      objectif: `refaire le créatif de la campagne « ${losing[0]} », qui coûte plus qu'elle ne rapporte`,
+      canal: "pub",
+    });
+  }
+  if (priority >= 3) {
+    out.push({
+      label: `Réactiver ${priority} prospects prêts`,
+      objectif: `réactiver les ${priority} prospects joignables et encore actifs`,
+      canal: "newsletter",
+    });
+  }
+  if (offre) {
+    out.push({
+      label: `Mettre en avant : ${short(offre, 28)}`,
+      objectif: `faire connaître ${offre} auprès de nouveaux clients`,
+      canal: "pub",
+    });
+  }
+  out.push({
+    label: "Annoncer une nouveauté",
+    objectif: "annoncer une nouveauté ou une offre spéciale du moment",
+    canal: "social",
+  });
+
+  // Dédup par label, max 4.
+  const seen = new Set<string>();
+  return out.filter((s) => !seen.has(s.label) && seen.add(s.label)).slice(0, 4);
+}
+
 /** Brief créatif de repli, déterministe. Structure claire, prête à transmettre. */
 export function templateCreativeBrief(seed: CreativeSeed): string {
   const objectif = clean(seed.objectif) || "faire connaître l'offre";

@@ -2,10 +2,20 @@
 
 import { useState } from "react";
 import { generateBriefAction } from "../actions";
-import { CHANNEL_LABELS, CREATIVE_CHANNELS } from "@/lib/creative-template";
+import {
+  CHANNEL_LABELS,
+  CREATIVE_CHANNELS,
+  type CreativeSuggestion,
+} from "@/lib/creative-template";
 
-/** Atelier de conseil créatif : objectif + canal → brief exploitable. */
-export function CreativeWorkspace({ canEdit }: { canEdit: boolean }) {
+/** Atelier de conseil créatif : l'agent propose des idées, ou objectif libre. */
+export function CreativeWorkspace({
+  canEdit,
+  suggestions,
+}: {
+  canEdit: boolean;
+  suggestions: CreativeSuggestion[];
+}) {
   const [objectif, setObjectif] = useState("");
   const [canal, setCanal] = useState<string>("indifferent");
   const [brief, setBrief] = useState<string | null>(null);
@@ -13,13 +23,13 @@ export function CreativeWorkspace({ canEdit }: { canEdit: boolean }) {
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function generate() {
-    if (loading || !objectif.trim()) return;
+  async function run(obj: string, chan: string) {
+    if (loading || !obj.trim()) return;
     setLoading(true);
     setError(null);
     setCopied(false);
     try {
-      const res = await generateBriefAction(objectif, canal);
+      const res = await generateBriefAction(obj, chan);
       if (res.ok) setBrief(res.brief);
       else setError(res.reason === "forbidden" ? "Rôle insuffisant." : "Précisez un objectif.");
     } catch {
@@ -28,6 +38,14 @@ export function CreativeWorkspace({ canEdit }: { canEdit: boolean }) {
       setLoading(false);
     }
   }
+
+  function pick(s: CreativeSuggestion) {
+    setObjectif(s.objectif);
+    setCanal(s.canal);
+    void run(s.objectif, s.canal);
+  }
+
+  const generate = () => run(objectif, canal);
 
   async function copy() {
     if (!brief) return;
@@ -42,9 +60,37 @@ export function CreativeWorkspace({ canEdit }: { canEdit: boolean }) {
 
   return (
     <div className="space-y-4">
+      {suggestions.length > 0 && (
+        <div className="rounded-[18px] border border-line-soft bg-gradient-to-br from-tint-soft to-white p-[22px] shadow-card">
+          <p className="mb-1 text-[11px] font-semibold uppercase tracking-[.08em] text-violet-ink">
+            Idées de l&apos;agent
+          </p>
+          <p className="mb-3 text-[12.5px] text-muted">
+            Cliquez une idée — l&apos;agent rédige le brief. Ou décrivez la vôtre
+            plus bas.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {suggestions.map((s) => (
+              <button
+                key={s.label}
+                type="button"
+                onClick={() => pick(s)}
+                disabled={!canEdit || loading}
+                className="rounded-full border border-line bg-white px-3.5 py-2 text-[12.5px] font-medium text-ink transition hover:border-violet hover:bg-tint-soft disabled:opacity-50"
+              >
+                {s.label}
+                <span className="ml-1.5 text-[11px] text-faint">
+                  · {CHANNEL_LABELS[s.canal]}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="rounded-[18px] border border-line-soft bg-white p-[22px] shadow-card">
         <label className="mb-1 block text-[12.5px] font-semibold text-ink">
-          Que voulez-vous mettre en avant ?
+          Ou décrivez ce que vous voulez mettre en avant
         </label>
         <input
           value={objectif}
