@@ -76,4 +76,4 @@ docs/           architecture, roadmap, décisions, maquettes HTML
 
 ## Phase actuelle
 
-**Phase 2 — Recommandations** : l'agent détecte et propose, sans JAMAIS exécuter (l'exécution réelle = Phase 3, avec garde-fous). Fondations Phase 1 en place. Voir docs/ROADMAP.md et docs/SUIVI.md. Ne pas construire en avance des phases suivantes.
+**Phase 3 — Première exécution réelle (étape A : mode sûr)** — décision de Fathi 2026-07-23. Les fondations Phase 2 sont en place (l'agent détecte, propose, prépare). On construit maintenant la **colonne vertébrale d'exécution** : idempotence + journal AVANT toute exécution, garde-fous **côté serveur** (plafonds run/jour), bouton d'arrêt (pause org). **Étape A = mode sûr** : une action validée prépare les messages dans `outbox_messages` (statut `prepared`), **AUCUN envoi externe**. **Étape B (à venir)** : brancher l'envoi réel **SMTP** derrière la même mécanique. Voir docs/ROADMAP.md et docs/SUIVI.md. Ne rien envoyer à l'extérieur tant que l'étape B + garde-fous ne sont pas explicitement validés.

@@ -14,6 +14,7 @@ import {
   DecisionsHistory,
   type DecidedAction,
 } from "./_components/decisions-history";
+import { ExecutionSwitch } from "./_components/execution-switch";
 
 const KPIS = [
   { label: "Dépenses", hint: "publicité & campagnes" },
@@ -50,11 +51,17 @@ export default async function TodayPage() {
 
   const { data: decidedRows } = await supabase
     .from("actions")
-    .select("id, title, status, decided_at")
-    .in("status", ["approved", "rejected", "postponed"])
+    .select("id, kind, title, status, decided_at")
+    .in("status", ["approved", "rejected", "postponed", "executed", "failed"])
     .order("decided_at", { ascending: false })
     .limit(6);
   const decided = (decidedRows ?? []) as DecidedAction[];
+
+  const { data: org } = await supabase
+    .from("organizations")
+    .select("execution_paused")
+    .maybeSingle();
+  const executionPaused = Boolean(org?.execution_paused);
 
   const { data: briefingRow } = await supabase
     .from("briefings")
@@ -191,9 +198,13 @@ export default async function TodayPage() {
           <h3 className="font-display text-[15px] font-semibold">
             Décisions récentes
           </h3>
-          <span className="text-[12px] text-muted">
-            Reportées, validées, refusées
-          </span>
+          {canEdit ? (
+            <ExecutionSwitch paused={executionPaused} />
+          ) : (
+            <span className="text-[12px] text-muted">
+              Reportées, validées, exécutées
+            </span>
+          )}
         </div>
         <DecisionsHistory actions={decided} canEdit={canEdit} />
       </div>

@@ -1,7 +1,8 @@
-import { resumeAction } from "../actions";
+import { executeActionForm, resumeAction } from "../actions";
 
 export interface DecidedAction {
   id: string;
+  kind: string;
   title: string;
   status: string;
   decided_at: string | null;
@@ -11,7 +12,12 @@ const DECISION_BADGE: Record<string, { label: string; cls: string }> = {
   approved: { label: "Validée", cls: "bg-green-tint text-green" },
   rejected: { label: "Refusée", cls: "bg-red-tint text-red" },
   postponed: { label: "Reportée", cls: "bg-amber-tint text-amber" },
+  executed: { label: "Exécutée", cls: "bg-violet/15 text-violet-ink" },
+  failed: { label: "Échec", cls: "bg-red-tint text-red" },
 };
+
+const isRelance = (kind: string) =>
+  kind === "relaunch_priority" || kind.startsWith("relaunch_stage_");
 
 const fmt = new Intl.DateTimeFormat("fr-FR", {
   day: "numeric",
@@ -71,6 +77,18 @@ export function DecisionsHistory({
                   className="rounded-[9px] bg-tint px-3 py-1.5 text-[12px] font-semibold text-violet transition hover:bg-violet hover:text-white"
                 >
                   Reprendre
+                </button>
+              </form>
+            )}
+            {canEdit && a.status === "approved" && isRelance(a.kind) && (
+              <form action={executeActionForm} className="flex-none">
+                <input type="hidden" name="id" value={a.id} />
+                <button
+                  type="submit"
+                  title="Prépare les messages dans la boîte d'envoi (aucun envoi externe)"
+                  className="rounded-[9px] bg-violet px-3 py-1.5 text-[12px] font-semibold text-white transition hover:bg-violet-deep"
+                >
+                  Exécuter
                 </button>
               </form>
             )}

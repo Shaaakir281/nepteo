@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getEditorContext } from "@/lib/connectors/common";
 import { runAnalysis } from "@/lib/analysis";
@@ -12,6 +13,7 @@ import {
 } from "@/lib/draft";
 import { applyFirstName } from "@/lib/draft-template";
 import { prospectPriority } from "@/lib/analysis-rules";
+import { executeApprovedAction, type ExecutionResult } from "@/lib/execution";
 
 const DECISIONS = {
   approve: { status: "approved", event: "action_approved" },
@@ -393,6 +395,46 @@ export async function saveDraftEdit(
   });
 
   return { ok: true, draft };
+}
+
+/**
+ * Exécute une action validée (Phase 3, mode sûr) : prépare les messages dans la
+ * boîte d'envoi, sans envoi externe. Toute la mécanique (idempotence, garde-fous,
+ * bouton d'arrêt, journal) vit dans `executeApprovedAction`.
+ */
+export async function executeAction(id: string): Promise<ExecutionResult> {
+  const ctx = await getEditorContext();
+  if (!ctx || !ctx.canEdit) return { ok: false, reason: "forbidden" };
+  const admin = createAdminClient();
+  const res = await executeApprovedAction(admin, ctx.orgId, ctx.userId, id);
+  revalidatePath("/");
+  return res;
+}
+
+/** Variante form (bouton « Exécuter » sur une action validée). */
+export async function executeActionForm(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+  await executeAction(id);
+}
+
+/** Bascule le bouton d'arrêt de l'organisation (bloque/débloque l'exécution). */
+export async function toggleExecutionPause(paused: boolean): Promise<void> {
+  const ctx = await getEditorContext();
+  if (!ctx || !ctx.canEdit) redirect("/login");
+  const admin = createAdminClient();
+  await admin
+    .from("organizations")
+    .update({ execution_paused: paused })
+    .eq("id", ctx.orgId);
+  await admin.from("journal").insert({
+    organization_id: ctx.orgId,
+    event: "execution_pause_changed",
+    actor: "user",
+    actor_id: ctx.userId,
+    payload: { paused },
+  });
+  revalidatePath("/");
 }
 
 /**
