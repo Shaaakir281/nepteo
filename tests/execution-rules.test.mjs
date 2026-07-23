@@ -39,6 +39,22 @@ test("guardExecution — idempotence : une action déjà exécutée est refusée
   assert.equal(r.reason, "already_executed");
 });
 
+test("guardExecution — autonomie 'suggest' bloque l'exécution (proposer seulement)", () => {
+  const r = guardExecution({ status: "approved", paused: false, autonomy: "suggest" });
+  assert.equal(r.ok, false);
+  assert.equal(r.reason, "blocked_autonomy");
+  // 'prepare' (défaut) laisse passer une action validée
+  assert.deepEqual(
+    guardExecution({ status: "approved", paused: false, autonomy: "prepare" }),
+    { ok: true },
+  );
+});
+
+test("guardExecution — la pause prime sur l'autonomie", () => {
+  const r = guardExecution({ status: "approved", paused: true, autonomy: "suggest" });
+  assert.equal(r.reason, "blocked_paused");
+});
+
 const mk = (n) =>
   Array.from({ length: n }, (_, i) => ({
     id: `p${i}`,

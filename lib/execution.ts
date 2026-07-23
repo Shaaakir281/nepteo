@@ -76,13 +76,14 @@ export async function executeApprovedAction(
 
   const { data: org } = await admin
     .from("organizations")
-    .select("execution_paused")
+    .select("execution_paused, autonomy_level")
     .eq("id", orgId)
     .maybeSingle();
 
   const guard = guardExecution({
     status: action.status,
     paused: Boolean(org?.execution_paused),
+    autonomy: (org?.autonomy_level as string | undefined) ?? "prepare",
   });
   if (!guard.ok) {
     await admin.from("journal").insert({

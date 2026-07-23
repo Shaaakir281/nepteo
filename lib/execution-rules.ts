@@ -11,18 +11,22 @@ export const MAX_PER_DAY = 200;
 
 export type GuardReason =
   | "blocked_paused"
+  | "blocked_autonomy"
   | "already_executed"
   | "not_approved";
 
 /**
  * Autorise (ou non) l'exécution d'une action. L'ordre compte : la pause prime
- * (bouton d'arrêt), puis l'idempotence (déjà exécutée), puis l'état validé.
+ * (bouton d'arrêt), puis le niveau d'autonomie ('suggest' = proposer seulement),
+ * puis l'idempotence (déjà exécutée), puis l'état validé.
  */
 export function guardExecution(input: {
   status: string;
   paused: boolean;
+  autonomy?: string;
 }): { ok: true } | { ok: false; reason: GuardReason } {
   if (input.paused) return { ok: false, reason: "blocked_paused" };
+  if (input.autonomy === "suggest") return { ok: false, reason: "blocked_autonomy" };
   if (input.status === "executed") return { ok: false, reason: "already_executed" };
   if (input.status !== "approved") return { ok: false, reason: "not_approved" };
   return { ok: true };

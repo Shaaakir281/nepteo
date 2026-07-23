@@ -13,7 +13,7 @@ const SYSTEME: NavItem[] = [
   { label: "Entreprise", href: "/entreprise", icon: icons.house },
   { label: "Connecteurs", href: "/connecteurs", icon: icons.link },
   { label: "Journal", href: "/journal", icon: icons.journal },
-  { label: "Agent & garde-fous", soon: "Phase 3", icon: icons.shield },
+  { label: "Agent & garde-fous", href: "/agent", icon: icons.shield },
 ];
 
 export function Sidebar({
@@ -52,14 +52,15 @@ export function Sidebar({
 
       <div className="mx-3.5 flex-none rounded-[13px] border border-line bg-tint-soft p-3.5">
         <div className="flex items-center gap-2">
-          <span className="h-2 w-2 flex-none rounded-full bg-amber" />
+          <span className="h-2 w-2 flex-none rounded-full bg-green" />
           <h4 className="font-display text-[13px] font-semibold">
-            Agent Nepteo — en préparation
+            Agent Nepteo — mode sûr
           </h4>
         </div>
         <p className="mt-1.5 text-[12px] leading-relaxed text-muted">
-          Phase 1 : l&apos;agent apprend votre entreprise. Aucune action
-          automatique — tout sera consigné au journal.
+          L&apos;agent prépare sous votre validation — aucun envoi externe. Réglez
+          l&apos;autonomie dans{" "}
+          <span className="font-semibold text-ink">Agent &amp; garde-fous</span>.
         </p>
       </div>
 
