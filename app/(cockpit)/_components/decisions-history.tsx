@@ -16,8 +16,10 @@ const DECISION_BADGE: Record<string, { label: string; cls: string }> = {
   failed: { label: "Échec", cls: "bg-red-tint text-red" },
 };
 
-const isRelance = (kind: string) =>
-  kind === "relaunch_priority" || kind.startsWith("relaunch_stage_");
+const isExecutable = (kind: string) =>
+  kind === "relaunch_priority" ||
+  kind.startsWith("relaunch_stage_") ||
+  kind.startsWith("ads_pause_");
 
 const fmt = new Intl.DateTimeFormat("fr-FR", {
   day: "numeric",
@@ -80,12 +82,12 @@ export function DecisionsHistory({
                 </button>
               </form>
             )}
-            {canEdit && a.status === "approved" && isRelance(a.kind) && (
+            {canEdit && a.status === "approved" && isExecutable(a.kind) && (
               <form action={executeActionForm} className="flex-none">
                 <input type="hidden" name="id" value={a.id} />
                 <button
                   type="submit"
-                  title="Prépare les messages dans la boîte d'envoi (aucun envoi externe)"
+                  title="Prépare l'action en mode sûr (aucun envoi ni changement externe)"
                   className="rounded-[9px] bg-violet px-3 py-1.5 text-[12px] font-semibold text-white transition hover:bg-violet-deep"
                 >
                   Exécuter

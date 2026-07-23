@@ -42,6 +42,17 @@ Environnement : Supabase `hrqnzorapjnosjphftur`, repo GitHub `Shaaakir281/nepteo
 
 ## Historique des sessions
 
+### 2026-07-23 — Claude (Cowork) — ads → propositions d'action + exécution mode sûr
+- **Boucle bouclée** : les constats de campagnes deviennent des **propositions d'action** dans la file de validation, exécutables via la colonne vertébrale Phase 3 (mode sûr).
+- **`buildAdsProposals`** (`lib/ads/metrics-rules.ts`, pur) : propose de **couper les campagnes en perte** (ROAS < 1 ET dépense ≥ 50 €). Action **réversible/faible risque**. `kind` unique par campagne `ads_pause_<campaign_id>` (dédup). Payload = campagne + ROAS + dépense.
+- **`lib/ads/analysis.ts`** (`runAdsAnalysis`) : lit `ad_metrics`, rollup+KPI, insère les propositions dans `actions` (dédup par kind, statut `proposed`, journal `action_proposed` acteur agent). Branché dans **`analyzeNow`** (le bouton animé « Analyser » couvre prospects + ads) **et** bouton dédié **« Analyser mes campagnes »** sur `/campagnes` (`analyzeAdsForm`/`analyzeAdsNow`).
+- **Exécution ads mode sûr** (`lib/execution.ts`) : `executeApprovedAction` accepte désormais les kinds `ads_pause_*` — mêmes garde-fous (pause org, idempotence, journal avant) puis **enregistre le changement voulu** (journal `execution_succeeded` payload `intended: pause_campaign`, note « mode sûr — préparé, non appliqué »), statut `executed`, **AUCUN appel externe**. L'API Meta réelle se branchera exactement ici.
+- **UI** : `decisions-history.tsx` — `isExecutable` couvre relance **et** `ads_pause_*` → bouton **Exécuter** sur une proposition ads validée.
+- **Tests** : `buildAdsProposals` (seuil dépense, perte only). **58/58**.
+- **Vérif** : `npm test` **58/58**. ⚠️ `tsc` sandbox **non bouclé ce tour** (environnement saturé, dépassements 43 s même sur `lib`) — pas des erreurs ; nouveaux fichiers ads purs exercés par les tests, fichiers à alias `@/` (analysis/seed/execution + câblage app) **relus à la main** (types cohérents, plus aucune réf `isRelance` cassée). **`next build` côté Fathi** = juge final (process habituel).
+- **Flux démo complet** : `/campagnes` → Charger démo → **Analyser mes campagnes** → une proposition « Mettre en pause Notoriété Reels » apparaît sur **Aujourd'hui** → Valider → **Exécuter** (mode sûr : changement enregistré, journalisé, rien d'appliqué) ; bouton d'arrêt bloque l'exécution.
+- **Reste** : Fathi — migrations 0003→0007 dans Supabase, `git push`, `npm run build`. **Étape suivante ads** : API Insights Meta réelle (remplace `mockMetaCampaigns`) ; puis appliquer réellement la pause via l'API (étape B, garde-fous).
+
 ### 2026-07-23 — Claude (Cowork) — connecteur ads (Meta Ads) en données fictives + vue Campagnes
 - **Décision Fathi** : attaquer un connecteur de **stats de campagnes payantes**. Choix (après recherche web sur les bacs à sable) : **Meta Ads** (Development Mode + comptes de test = meilleur sandbox, sans dépense ; GA4 démo **non** utilisable via API ; Google Ads test = zéro métrique + jeton à approuver). Approche : **données fictives d'abord**, l'API réelle branchée derrière la même interface ensuite. Lecture seule, métriques **vente/revenu** (ROAS/CAC/conversions), pas de vanité.
 - **Migration `0007_ad_metrics.sql`** : table `ad_metrics` (org+provider+campaign+date, impressions/clics/dépense/conversions/revenu), idempotence `unique(org,provider,campaign,date)`, RLS select `is_member`. **À exécuter dans Supabase (Fathi).**

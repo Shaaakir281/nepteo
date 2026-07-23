@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getEditorContext } from "@/lib/connectors/common";
 import { runAnalysis } from "@/lib/analysis";
+import { runAdsAnalysis } from "@/lib/ads/analysis";
 import {
   draftRelance,
   draftRelanceForProspect,
@@ -456,7 +457,13 @@ export async function analyzeNow(): Promise<{ ok: boolean; created: number }> {
   });
   try {
     const created = await runAnalysis(admin, ctx.orgId, ctx.userId);
-    return { ok: true, created };
+    let adsCreated = 0;
+    try {
+      adsCreated = await runAdsAnalysis(admin, ctx.orgId, ctx.userId);
+    } catch {
+      // l'analyse ads ne doit pas casser l'analyse prospects
+    }
+    return { ok: true, created: created + adsCreated };
   } catch {
     // l'échec reste visible : aucune nouvelle action en file
     return { ok: false, created: 0 };

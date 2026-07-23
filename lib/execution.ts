@@ -65,7 +65,10 @@ export async function executeApprovedAction(
     .eq("organization_id", orgId)
     .maybeSingle();
   if (!action) return { ok: false, reason: "not_found" };
-  if (!isRelanceKind(action.kind)) return { ok: false, reason: "not_executable" };
+  const adsPause = action.kind.startsWith("ads_pause_");
+  if (!isRelanceKind(action.kind) && !adsPause) {
+    return { ok: false, reason: "not_executable" };
+  }
 
   const { data: org } = await admin
     .from("organizations")
@@ -103,6 +106,26 @@ export async function executeApprovedAction(
 
   try {
     const payload = (action.payload ?? {}) as Record<string, unknown>;
+
+    // Action ads (couper une campagne) — mode sûr : on ENREGISTRE le changement
+    // voulu (journalisé), AUCUN appel externe. L'API Meta réelle viendra ici.
+    if (adsPause) {
+      await admin.from("actions").update({ status: "executed" }).eq("id", actionId);
+      await admin.from("journal").insert({
+        organization_id: orgId,
+        action_id: actionId,
+        event: "execution_succeeded",
+        actor: "user",
+        actor_id: actorId,
+        payload: {
+          intended: "pause_campaign",
+          campaign_name: payload.campaign_name ?? null,
+          provider: payload.provider ?? "meta_ads",
+          note: "mode sûr — changement préparé, non appliqué",
+        },
+      });
+      return { ok: true, prepared: 1, skippedNoEmail: 0, capped: false };
+    }
 
     const { data: rows } = await admin
       .from("prospects")

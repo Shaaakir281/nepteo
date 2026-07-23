@@ -9,6 +9,7 @@ import {
   rollupByCampaign,
   aggregate,
   buildAdsFindings,
+  buildAdsProposals,
 } from "../lib/ads/metrics-rules.ts";
 import { mockMetaCampaigns } from "../lib/ads/mock-provider.ts";
 
@@ -67,6 +68,21 @@ test("buildAdsFindings — repère une campagne en perte et la meilleure", () =>
   assert.ok(f.some((x) => x.kind === "ads_losing" && /Perdante/.test(x.title)));
   assert.ok(f.some((x) => x.kind === "ads_best" && /Gagnante/.test(x.title)));
   assert.ok(f.some((x) => x.kind === "ads_cac"));
+});
+
+test("buildAdsProposals — propose de couper les campagnes en perte (au-dessus du seuil)", () => {
+  const campaigns = [
+    deriveKpis(m({ campaign_id: "lose", campaign_name: "Perdante", spend: 200, revenue: 80, conversions: 2 })),
+    deriveKpis(m({ campaign_id: "win", campaign_name: "Gagnante", spend: 100, revenue: 400, conversions: 20 })),
+    deriveKpis(m({ campaign_id: "tiny", campaign_name: "Micro", spend: 10, revenue: 2, conversions: 0 })),
+  ];
+  const props = buildAdsProposals(campaigns);
+  // 'lose' proposée (perte + dépense ≥ 50), 'win' non (rentable), 'tiny' non (sous le seuil)
+  assert.equal(props.length, 1);
+  assert.equal(props[0].kind, "ads_pause_lose");
+  assert.equal(props[0].risk, "low");
+  assert.equal(props[0].payload.campaign_id, "lose");
+  assert.ok(/pause/i.test(props[0].title));
 });
 
 test("mockMetaCampaigns — lignes déterministes, une campagne en perte, une très rentable", () => {

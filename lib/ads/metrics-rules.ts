@@ -138,3 +138,45 @@ export function buildAdsFindings(campaigns: CampaignKpis[]): AdFinding[] {
 
   return findings;
 }
+
+export interface AdProposal {
+  kind: string;
+  title: string;
+  finding: string;
+  rationale: string;
+  data_sources: string[];
+  expected_impact: string;
+  confidence: number;
+  risk: "low" | "medium" | "high";
+  payload: Record<string, unknown>;
+}
+
+/**
+ * Propositions d'action à partir des KPI de campagnes — pour l'instant :
+ * mettre en pause les campagnes en perte (ROAS < 1) au-delà d'un seuil de
+ * dépense. Action **réversible et à faible risque** (réactivable), donc idéale
+ * comme première action ads exécutable. Un `kind` unique par campagne (dédup).
+ */
+export function buildAdsProposals(campaigns: CampaignKpis[]): AdProposal[] {
+  const losers = campaigns
+    .filter((c) => c.spend >= 50 && c.roas < 1)
+    .sort((a, b) => a.roas - b.roas);
+  return losers.map((c) => ({
+    kind: `ads_pause_${c.campaign_id}`,
+    title: `Mettre en pause « ${c.campaign_name} »`,
+    finding: `ROAS ${x(c.roas)} sur ${eur(c.spend)} dépensés — la campagne perd de l'argent (${eur(c.revenue)} de revenu).`,
+    rationale: `Chaque euro investi n'en rapporte que ${x(c.roas)}. La mettre en pause stoppe la perte immédiatement ; l'action est réversible, on peut la réactiver à tout moment.`,
+    data_sources: ["Meta Ads (démo)"],
+    expected_impact: `~${eur(c.spend)} de dépense évitée sur 7 jours`,
+    confidence: 0.8,
+    risk: "low",
+    payload: {
+      campaign_id: c.campaign_id,
+      campaign_name: c.campaign_name,
+      roas: Math.round(c.roas * 100) / 100,
+      spend: c.spend,
+      revenue: c.revenue,
+      provider: "meta_ads",
+    },
+  }));
+}
