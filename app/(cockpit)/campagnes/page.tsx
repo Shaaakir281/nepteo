@@ -10,6 +10,7 @@ import {
   type CampaignMetric,
 } from "@/lib/ads/metrics-rules";
 import { analyzeAdsForm, loadAdsDemo } from "./actions";
+import { NewCampaignModal } from "./_components/new-campaign-modal";
 
 const eur = (n: number) =>
   `${n.toLocaleString("fr-FR", { maximumFractionDigits: 0 })} €`;
@@ -67,25 +68,30 @@ export default async function CampagnesPage({
             coûte et rapporte réellement.
           </p>
         </div>
-        {canEdit && metrics.length > 0 && (
+        {canEdit && (
           <div className="flex flex-none items-center gap-2">
-            <form action={analyzeAdsForm}>
-              <button
-                type="submit"
-                title="Proposer des actions à partir des campagnes (file de validation)"
-                className="rounded-[10px] bg-violet px-3.5 py-2 text-[12.5px] font-semibold text-white transition hover:bg-violet-deep"
-              >
-                Analyser mes campagnes
-              </button>
-            </form>
-            <form action={loadAdsDemo}>
-              <button
-                type="submit"
-                className="rounded-[10px] bg-tint px-3.5 py-2 text-[12.5px] font-semibold text-violet transition hover:bg-violet hover:text-white"
-              >
-                Recharger la démo
-              </button>
-            </form>
+            <NewCampaignModal />
+            {metrics.length > 0 && (
+              <>
+                <form action={analyzeAdsForm}>
+                  <button
+                    type="submit"
+                    title="Proposer des actions à partir des campagnes (file de validation)"
+                    className="rounded-[10px] bg-tint px-3.5 py-2 text-[12.5px] font-semibold text-violet transition hover:bg-violet hover:text-white"
+                  >
+                    Analyser
+                  </button>
+                </form>
+                <form action={loadAdsDemo}>
+                  <button
+                    type="submit"
+                    className="rounded-[10px] bg-tint px-3.5 py-2 text-[12.5px] font-semibold text-violet transition hover:bg-violet hover:text-white"
+                  >
+                    Recharger la démo
+                  </button>
+                </form>
+              </>
+            )}
           </div>
         )}
       </div>
