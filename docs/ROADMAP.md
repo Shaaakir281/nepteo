@@ -45,3 +45,10 @@ Livrables : slider d'autonomie par client, connecteurs additionnels, onboarding 
 ## À ne pas faire au début
 
 Tous les canaux, attribution complexe, prédictions ambitieuses, campagnes totalement autonomes, multi-agents complexe, ML sans données. Prouver d'abord : « l'agent comprend les données, détecte une priorité et aide à agir. »
+
+## Chantiers à venir (cadrés, non commencés)
+
+Deux features cadrées avec Fathi (2026-07-23), chacune avec son document projet (vision + roadmap + suivi). **Cible commune : le solopreneur** — « outil magique, plus besoin de personne ». **Contrainte : rester très simple, garder les formulaires existants, ne rien perdre.**
+
+- **Onboarding enrichi par IA** — encart « philosophie » + ingestion page web (+ réseaux en backlog) → identité synthétisée + première expertise (meilleurs canaux/stratégie) dès l'onboarding. Voir `docs/projets/onboarding-ia.md`. (Rejoint la Phase 5 « onboarding self-service ».)
+- **Génération de contenu fini par l'IA** — l'agent génère le visuel (API OpenAI), pas seulement le brief ; vidéo en option plus tard. Le solopreneur n'a besoin de personne. Voir `docs/projets/generation-creative-ia.md`. (Rejoint la Phase 4 « Campagnes & contenu ».)

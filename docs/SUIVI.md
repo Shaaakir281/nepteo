@@ -42,6 +42,14 @@ Environnement : Supabase `hrqnzorapjnosjphftur`, repo GitHub `Shaaakir281/nepteo
 
 ## Historique des sessions
 
+### 2026-07-23 — Claude (Cowork) — 2 chantiers cadrés (docs projet) avant changement de sujet
+- **Discussion métier** (solopreneur, « outil magique, plus besoin de personne ») → deux features cadrées et **documentées pour reprise à froid** (conversation devenue longue).
+- **`docs/projets/onboarding-ia.md`** : onboarding enrichi par IA — encart « philosophie » (texte libre) + ingestion page web (+ réseaux en backlog) → identité synthétisée + **première expertise** (meilleurs canaux/stratégie) avant tout connecteur. Réutilise `company_memory` + moteur Plan. **Contrainte forte : rester simple, GARDER le formulaire existant, ne rien perdre.**
+- **`docs/projets/generation-creative-ia.md`** : génération de contenu **fini** par IA — l'agent génère le visuel (API OpenAI), pas que le brief ; vidéo en option plus tard. Réutilise creative/campaign. Validation humaine obligatoire.
+- **`docs/ROADMAP.md`** : section « Chantiers à venir » ajoutée, liant les deux docs (Onboarding → Phase 5, Génération créative → Phase 4).
+- **Rien codé** sur ces deux features (cadrage seulement). À reprendre à froid dans une nouvelle conversation.
+- **Rappel état code** : plusieurs lots récents (Plan du mois, boucle revenu, peaufinages campagne, etc.) **écrits sur le disque mais à commiter par Fathi** (mon sandbox bash est resté HS en fin de session). Migrations à passer : 0009 (revenue). `npm test` attendu ~82, `npm run build` à relancer (vider `.next` si l'erreur `dev/types` réapparaît).
+
 ### 2026-07-23 — Claude (Cowork) — boucle revenu (démo) + KPIs vivants sur l'accueil
 - **Suite stratégique** : faire raisonner Nepteo en **euros gagnés** (vente/revenu = la métrique qui compte, cf. CLAUDE.md), pas en vanité. Connecteur paiements (Stripe) en **données de démo d'abord**, même patron que Meta Ads.
 - **Migration `0009_revenue.sql`** : table `revenue_events` (org, source, external_id, label, amount, occurred_on), idempotence `unique(org,source,external_id)`, RLS select `is_member`. **À exécuter dans Supabase (Fathi).**
