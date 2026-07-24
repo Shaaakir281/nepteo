@@ -213,23 +213,31 @@ export function NewCampaignModal() {
                     <Metric l="Confiance" v={`${Math.round(plan.confiance * 100)} %`} />
                   </div>
                   <p className="mb-1.5 mt-4 text-[11px] font-semibold uppercase tracking-[.08em] text-faint">
-                    2 messages proposés — testés l&apos;un contre l&apos;autre
+                    2 messages proposés — modifiables, testés l&apos;un contre l&apos;autre
                   </p>
-                  <div className="space-y-2">
+                  <div className="space-y-2.5">
                     {variants.map((v, i) => (
-                      <div
-                        key={i}
-                        className="rounded-[10px] border border-line-soft bg-tint-soft/50 px-3.5 py-2.5 text-[13px] leading-relaxed text-body"
-                      >
-                        <b className="text-ink">{i === 0 ? "A · " : "B · "}</b>
-                        {v}
+                      <div key={i} className="flex items-start gap-2">
+                        <span className="mt-2 flex-none text-[12px] font-bold text-violet">
+                          {i === 0 ? "A" : "B"}
+                        </span>
+                        <textarea
+                          value={v}
+                          onChange={(e) =>
+                            setVariants((prev) =>
+                              prev.map((x, j) => (j === i ? e.target.value : x)),
+                            )
+                          }
+                          rows={2}
+                          className="w-full resize-y rounded-[10px] border border-line bg-white px-3 py-2 text-[13px] leading-relaxed text-body focus:border-violet focus:outline-none focus:ring-[3px] focus:ring-violet/15"
+                        />
                       </div>
                     ))}
                   </div>
                   <p className="mt-3 text-[12px] text-muted">
                     Résultat attendu : <b className="text-ink">{plan.contactsMin}–{plan.contactsMax} contacts</b>.
-                    Prévision prudente, calibrée sur vos données. Chaque message
-                    reste modifiable avant lancement.
+                    Prévision prudente, calibrée sur vos données. Retouchez les
+                    messages ici — ils partiront tels quels.
                   </p>
                 </>
               ) : step === 4 && plan ? (

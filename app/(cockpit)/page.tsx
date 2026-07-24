@@ -15,13 +15,8 @@ import {
   type DecidedAction,
 } from "./_components/decisions-history";
 import { ExecutionSwitch } from "./_components/execution-switch";
-
-const KPIS = [
-  { label: "Dépenses", hint: "publicité & campagnes" },
-  { label: "Prospects", hint: "nouveaux ce mois-ci" },
-  { label: "Ventes", hint: "opportunités gagnées" },
-  { label: "Revenu", hint: "attribué au marketing" },
-];
+import { revenueStats } from "@/lib/revenue/revenue-rules";
+import { loadRevenueDemo } from "./actions";
 
 export default async function TodayPage() {
   const supabase = await createClient();
@@ -42,7 +37,7 @@ export default async function TodayPage() {
   const { data: queueRows } = await supabase
     .from("actions")
     .select(
-      "id, kind, title, finding, rationale, data_sources, expected_impact, confidence, risk",
+      "id, kind, title, finding, rationale, data_sources, expected_impact, confidence, risk, payload",
     )
     .eq("status", "proposed")
     .order("created_at", { ascending: false })
@@ -75,6 +70,35 @@ export default async function TodayPage() {
     hour: "2-digit",
     minute: "2-digit",
   });
+
+  // KPIs vivants (30 derniers jours) : revenu, ventes, dépenses pub, prospects.
+  const since = new Date();
+  since.setUTCDate(since.getUTCDate() - 30);
+  const sinceISO = since.toISOString().slice(0, 10);
+  const { data: revRows } = await supabase
+    .from("revenue_events")
+    .select("amount, occurred_on")
+    .gte("occurred_on", sinceISO);
+  const rev = revenueStats(
+    (revRows ?? []).map((r) => ({ amount: Number(r.amount), occurred_on: r.occurred_on })),
+  );
+  const { data: adSpendRows } = await supabase
+    .from("ad_metrics")
+    .select("spend")
+    .eq("provider", "meta_ads");
+  const adSpend = (adSpendRows ?? []).reduce((s, r) => s + Number(r.spend), 0);
+  const { count: prospectCount } = await supabase
+    .from("prospects")
+    .select("id", { count: "exact", head: true });
+
+  const hasRevenue = rev.count > 0;
+  const eur = (n: number) => `${Math.round(n).toLocaleString("fr-FR")} €`;
+  const kpis = [
+    { label: "Dépenses", value: adSpend > 0 ? eur(adSpend) : "—", hint: "publicité (Meta)" },
+    { label: "Prospects", value: (prospectCount ?? 0) > 0 ? String(prospectCount) : "—", hint: "dans votre base" },
+    { label: "Ventes", value: hasRevenue ? String(rev.count) : "—", hint: "30 derniers jours" },
+    { label: "Revenu", value: hasRevenue ? eur(rev.total) : "—", hint: "30 derniers jours" },
+  ];
 
   return (
     <>
@@ -110,9 +134,9 @@ export default async function TodayPage() {
         </div>
       )}
 
-      {/* KPIs — en attente de données */}
+      {/* KPIs — données réelles (30 derniers jours) */}
       <div className="grid grid-cols-2 gap-3.5 xl:grid-cols-4">
-        {KPIS.map((k) => (
+        {kpis.map((k) => (
           <div
             key={k.label}
             className="rounded-[13px] border border-line-soft bg-white p-4 shadow-card"
@@ -120,17 +144,30 @@ export default async function TodayPage() {
             <p className="text-[10.5px] font-semibold uppercase tracking-[.08em] text-faint">
               {k.label}
             </p>
-            <p className="mt-1.5 font-display text-[22px] font-semibold text-faint">
-              —
+            <p
+              className={`mt-1.5 font-display text-[22px] font-semibold ${k.value === "—" ? "text-faint" : "text-ink"}`}
+            >
+              {k.value}
             </p>
             <p className="mt-0.5 text-[11.5px] text-muted">{k.hint}</p>
           </div>
         ))}
       </div>
-      <p className="mt-2.5 text-[12px] text-faint">
-        En attente d&apos;un premier connecteur — vos chiffres s&apos;afficheront
-        automatiquement.
-      </p>
+      {!hasRevenue &&
+        (canEdit ? (
+          <form action={loadRevenueDemo} className="mt-2.5">
+            <button
+              type="submit"
+              className="text-[12px] font-semibold text-violet hover:underline"
+            >
+              Charger le revenu de démo (Stripe) →
+            </button>
+          </form>
+        ) : (
+          <p className="mt-2.5 text-[12px] text-faint">
+            Connectez vos paiements pour voir ventes et revenu réels.
+          </p>
+        ))}
 
       <div className="mt-7 grid gap-4 lg:grid-cols-2">
         {/* File de validation */}

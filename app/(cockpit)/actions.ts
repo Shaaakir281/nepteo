@@ -6,6 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getEditorContext } from "@/lib/connectors/common";
 import { runAnalysis } from "@/lib/analysis";
 import { runAdsAnalysis } from "@/lib/ads/analysis";
+import { seedRevenueDemo } from "@/lib/revenue/seed";
 import {
   draftRelance,
   draftRelanceForProspect,
@@ -414,6 +415,16 @@ export async function executeAction(id: string): Promise<ExecutionResult> {
   const res = await executeApprovedAction(admin, ctx.orgId, ctx.userId, id);
   revalidatePath("/");
   return res;
+}
+
+/** Charge les ventes de démo (Stripe fictif) pour faire vivre les KPIs. */
+export async function loadRevenueDemo() {
+  const ctx = await getEditorContext();
+  if (!ctx) redirect("/login");
+  if (!ctx.canEdit) redirect("/");
+  const admin = createAdminClient();
+  await seedRevenueDemo(admin, ctx.orgId, ctx.userId);
+  revalidatePath("/");
 }
 
 /** Variante form (bouton « Exécuter » sur une action validée). */
