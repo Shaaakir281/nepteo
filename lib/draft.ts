@@ -1,6 +1,7 @@
 import { generateText } from "ai";
 import { getModelForTask, telemetryForTask } from "@/lib/llm";
 import { withLlmTrace } from "@/lib/observability";
+import { philosophyBlock } from "@/lib/memory";
 import {
   memoText,
   parseDraft,
@@ -34,6 +35,7 @@ export async function draftRelance(args: {
 }): Promise<Draft> {
   const activite = memoText(args.ctx, "activite") || memoText(args.ctx, "offres");
   const ton = memoText(args.ctx, "ton");
+  const philo = philosophyBlock(args.ctx);
   const fallback = templateRelance({ stage: args.stage, activite });
 
   try {
@@ -49,6 +51,7 @@ export async function draftRelance(args: {
             `Activité : ${activite || "non précisée"}.\n` +
             `Ton souhaité : ${ton || "professionnel, chaleureux, direct"}.\n` +
             `Statut du prospect : ${(args.stage ?? "").trim() || "non précisé"}.\n\n` +
+            philo +
             `Écris un email court (5 à 8 lignes), en français, sans jargon, qui invite à un échange. ` +
             `Utilise exactement le placeholder {prénom} pour le prénom du destinataire. ` +
             `Réponds STRICTEMENT dans ce format :\n` +
@@ -78,6 +81,7 @@ export async function draftRelanceForProspect(args: {
   const activite = memoText(args.ctx, "activite") || memoText(args.ctx, "offres");
   const ton = memoText(args.ctx, "ton");
   const stage = args.prospect.stage ?? null;
+  const philo = philosophyBlock(args.ctx);
   const fallback = templateRelance({ stage, activite });
   const context = renderProspectContext(args.prospect);
 
@@ -93,6 +97,7 @@ export async function draftRelanceForProspect(args: {
             `Tu rédiges un email de relance commerciale personnalisé pour cette entreprise.\n` +
             `Activité : ${activite || "non précisée"}.\n` +
             `Ton souhaité : ${ton || "professionnel, chaleureux, direct"}.\n\n` +
+            philo +
             `Informations sur ce prospect :\n${context || "aucune"}\n\n` +
             `Appuie-toi sur ces informations (surtout les notes personnelles) pour ` +
             `personnaliser le message, sans les recopier telles quelles. ` +

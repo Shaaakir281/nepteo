@@ -2,6 +2,7 @@ import type { createAdminClient } from "@/lib/supabase/admin";
 import { prospectPriority } from "@/lib/analysis-rules";
 import { draftRelance, isRelanceKind } from "@/lib/draft";
 import { applyFirstName, type Draft } from "@/lib/draft-template";
+import { LLM_MEMORY_SECTIONS } from "@/lib/memory";
 import {
   dedupeByEmail,
   guardExecution,
@@ -161,7 +162,7 @@ export async function executeApprovedAction(
         .from("company_memory")
         .select("section, content")
         .eq("organization_id", orgId)
-        .in("section", ["activite", "ton", "objectifs", "offres"]);
+        .in("section", [...LLM_MEMORY_SECTIONS]);
       const memCtx = Object.fromEntries(
         (mem ?? []).map((m) => [m.section, m.content]),
       );

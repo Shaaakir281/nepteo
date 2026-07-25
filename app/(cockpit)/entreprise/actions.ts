@@ -10,6 +10,7 @@ import {
   CHANNEL_OPTIONS,
   EDIT_ROLES,
   MAX_OBJECTIVES,
+  normalizePhilosophy,
   OBJECTIVE_OPTIONS,
   type MemorySection,
   type Offer,
@@ -137,6 +138,13 @@ export async function saveObjectifs(formData: FormData) {
     fail("Deux objectifs maximum — l'agent doit rester concentré.");
   }
   await persist(orgId, userId, "objectifs", { list });
+}
+
+/** Philosophie — texte libre, facultatif. Vider le champ efface la section. */
+export async function savePhilosophie(formData: FormData) {
+  const { userId, orgId } = await requireEditor();
+  const text = normalizePhilosophy(formData.get("text"));
+  await persist(orgId, userId, "philosophie", text ? { text } : {});
 }
 
 // ===== Offres =====

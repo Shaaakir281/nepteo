@@ -7,12 +7,14 @@ import {
   AUDIENCE_OPTIONS,
   CHANNEL_OPTIONS,
   OBJECTIVE_OPTIONS,
+  PHILOSOPHY_MAX,
   type MemoryContent,
 } from "@/lib/memory";
 import {
   saveActivite,
   saveCanaux,
   saveObjectifs,
+  savePhilosophie,
   saveTon,
   saveZone,
 } from "../actions";
@@ -159,6 +161,36 @@ export function IdentityCard({
             required
             defaultValue={mem.ton?.text ?? ""}
             placeholder="Ex. : professionnel, direct, sans jargon"
+            className={FIELD}
+          />
+          <div className="mt-3">
+            <button type="submit" className={SAVE_BTN}>
+              Enregistrer
+            </button>
+          </div>
+        </form>
+      </MemRow>
+
+      <MemRow
+        label="Philosophie"
+        canEdit={canEdit}
+        saved={saved === "philosophie"}
+        value={
+          mem.philosophie?.text ? (
+            <span className="line-clamp-2 whitespace-pre-line">
+              {mem.philosophie.text}
+            </span>
+          ) : undefined
+        }
+        sub="Votre façon de travailler, ce à quoi vous tenez — Nepteo s'en sert pour écrire comme vous"
+      >
+        <form action={savePhilosophie}>
+          <textarea
+            name="text"
+            rows={5}
+            maxLength={PHILOSOPHY_MAX}
+            defaultValue={mem.philosophie?.text ?? ""}
+            placeholder="Exemple : je travaille en direct, sans intermédiaire. Je préfère perdre une vente que promettre ce que je ne peux pas tenir."
             className={FIELD}
           />
           <div className="mt-3">

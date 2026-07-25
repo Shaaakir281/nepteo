@@ -15,6 +15,7 @@ import {
 } from "@/lib/draft";
 import { applyFirstName } from "@/lib/draft-template";
 import { prospectPriority } from "@/lib/analysis-rules";
+import { LLM_MEMORY_SECTIONS } from "@/lib/memory";
 import { executeApprovedAction, type ExecutionResult } from "@/lib/execution";
 import { dedupeByEmail, dedupeContacts } from "@/lib/execution-rules";
 
@@ -132,7 +133,7 @@ export async function draftForAction(
     .from("company_memory")
     .select("section, content")
     .eq("organization_id", ctx.orgId)
-    .in("section", ["activite", "ton", "objectifs", "offres"]);
+    .in("section", [...LLM_MEMORY_SECTIONS]);
   const memCtx = Object.fromEntries(
     (mem ?? []).map((m) => [m.section, m.content]),
   );
@@ -311,7 +312,7 @@ export async function draftForProspect(
     .from("company_memory")
     .select("section, content")
     .eq("organization_id", ctx.orgId)
-    .in("section", ["activite", "ton", "objectifs", "offres"]);
+    .in("section", [...LLM_MEMORY_SECTIONS]);
   const memCtx = Object.fromEntries(
     (mem ?? []).map((m) => [m.section, m.content]),
   );

@@ -8,6 +8,7 @@ import {
   CREATIVE_CHANNELS,
   type CreativeChannel,
 } from "@/lib/creative-template";
+import { LLM_MEMORY_SECTIONS } from "@/lib/memory";
 
 export type BriefResult =
   | { ok: true; brief: string }
@@ -38,7 +39,7 @@ export async function generateBriefAction(
     .from("company_memory")
     .select("section, content")
     .eq("organization_id", ctx.orgId)
-    .in("section", ["activite", "offres", "cibles", "ton", "objectifs"]);
+    .in("section", [...LLM_MEMORY_SECTIONS]);
   const memCtx = Object.fromEntries(
     (mem ?? []).map((m) => [m.section, m.content]),
   );

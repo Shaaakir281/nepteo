@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { normalizePhilosophy } from "@/lib/memory";
 
 const orgSchema = z.object({
   name: z.string().trim().min(2).max(80),
@@ -59,6 +60,31 @@ export async function createOrganization(formData: FormData) {
     actor_id: user.id,
     payload: { name: parsed.data.name },
   });
+
+  // Philosophie : champ facultatif du formulaire → section de mémoire.
+  // Vide = aucune écriture. Un échec ici ne doit pas bloquer la création du
+  // cockpit (l'utilisateur pourra toujours la saisir depuis /entreprise).
+  const philosophy = normalizePhilosophy(formData.get("philosophy"));
+  if (philosophy) {
+    const { error: memError } = await admin.from("company_memory").upsert(
+      {
+        organization_id: org.id,
+        section: "philosophie",
+        content: { text: philosophy },
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "organization_id,section" },
+    );
+    if (!memError) {
+      await admin.from("journal").insert({
+        organization_id: org.id,
+        event: "memory_updated",
+        actor: "user",
+        actor_id: user.id,
+        payload: { section: "philosophie", source: "onboarding" },
+      });
+    }
+  }
 
   redirect("/");
 }

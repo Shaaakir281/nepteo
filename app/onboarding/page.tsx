@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { PHILOSOPHY_MAX } from "@/lib/memory";
 import { createOrganization } from "./actions";
 
 const FIELD =
@@ -37,8 +38,8 @@ export default async function OnboardingPage({
         <div className="mt-5 rounded-[18px] border border-line-soft bg-white p-6 shadow-card">
           <h1 className="text-xl font-semibold">Votre entreprise</h1>
           <p className="mt-1 text-[13px] leading-relaxed text-muted">
-            Deux questions pour créer votre cockpit — vous compléterez le reste
-            depuis la vue Entreprise, à votre rythme.
+            Le nom suffit pour démarrer. Plus vous en dites, mieux Nepteo vous
+            comprend — et tout reste modifiable depuis la vue Entreprise.
           </p>
           <form action={createOrganization} className="mt-6 space-y-4">
             <div>
@@ -66,6 +67,27 @@ export default async function OnboardingPage({
                 rows={3}
                 maxLength={300}
                 placeholder="Décrivez simplement, comme vous le feriez à un client — pas besoin des bons termes marketing."
+                className={FIELD}
+              />
+            </div>
+            <div>
+              <label
+                htmlFor="philosophy"
+                className="block text-[13px] font-semibold text-ink"
+              >
+                Votre philosophie{" "}
+                <span className="font-normal text-faint">(facultatif)</span>
+              </label>
+              <p className="mt-0.5 text-[12px] leading-relaxed text-muted">
+                Votre façon de travailler, ce à quoi vous tenez, ce que vous ne
+                diriez jamais. Nepteo s&apos;en sert pour écrire comme vous.
+              </p>
+              <textarea
+                id="philosophy"
+                name="philosophy"
+                rows={4}
+                maxLength={PHILOSOPHY_MAX}
+                placeholder="Exemple : je travaille en direct, sans intermédiaire. Je préfère perdre une vente que promettre ce que je ne peux pas tenir."
                 className={FIELD}
               />
             </div>

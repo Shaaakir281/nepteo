@@ -2,6 +2,7 @@ import { generateText } from "ai";
 import { getModelForTask, telemetryForTask } from "@/lib/llm";
 import { withLlmTrace } from "@/lib/observability";
 import { memoText } from "@/lib/draft-template";
+import { philosophyBlock } from "@/lib/memory";
 import {
   templateCreativeBrief,
   CHANNEL_LABELS,
@@ -51,6 +52,7 @@ export async function generateCreativeBrief(args: {
             `Ton de marque : ${ton || "clair, chaleureux, direct"}.\n` +
             `Objectif de la campagne : ${args.objectif}.\n` +
             `Canal visé : ${CHANNEL_LABELS[args.canal]}.\n\n` +
+            philosophyBlock(args.ctx) +
             `Rédige un BRIEF CRÉATIF en français, agnostique du canal (utilisable ` +
             `pour une pub, une newsletter ou un post), structuré ainsi :\n` +
             `- Objectif et produit mis en avant\n` +
