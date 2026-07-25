@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { PHILOSOPHY_MAX } from "@/lib/memory";
+import { logout } from "@/app/(auth)/actions";
 import { createOrganization } from "./actions";
 
 const FIELD =
@@ -107,6 +108,16 @@ export default async function OnboardingPage({
         <p className="mt-4 text-center text-[11.5px] text-faint">
           Toutes vos réponses pourront être modifiées plus tard.
         </p>
+        {/* Issue de secours : sans ça, un compte sans organisation est piégé
+            ici (la page de connexion renvoie vers le cockpit, qui renvoie ici). */}
+        <form action={logout} className="mt-2 text-center">
+          <button
+            type="submit"
+            className="text-[11.5px] text-faint underline-offset-2 hover:text-muted hover:underline"
+          >
+            Se déconnecter
+          </button>
+        </form>
       </div>
     </main>
   );

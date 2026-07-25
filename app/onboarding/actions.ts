@@ -32,6 +32,17 @@ export async function createOrganization(formData: FormData) {
   // Écritures via service-role (RLS contournée) — toujours journalisées.
   const admin = createAdminClient();
 
+  // Idempotence : si une organisation existe déjà pour cet utilisateur (double
+  // soumission, retour arrière), on entre dans le cockpit au lieu d'en créer
+  // une seconde.
+  const { data: existing } = await admin
+    .from("memberships")
+    .select("organization_id")
+    .eq("user_id", user.id)
+    .limit(1)
+    .maybeSingle();
+  if (existing) redirect("/");
+
   const { data: org, error: orgError } = await admin
     .from("organizations")
     .insert({ name: parsed.data.name, activity: parsed.data.activity ?? null })
@@ -49,6 +60,10 @@ export async function createOrganization(formData: FormData) {
     role: "admin",
   });
   if (memberError) {
+    // Sans membership, l'organisation est orpheline et l'utilisateur resterait
+    // bloqué sur l'onboarding à chaque tentative. On nettoie pour que réessayer
+    // ait une chance d'aboutir.
+    await admin.from("organizations").delete().eq("id", org.id);
     redirect(
       `/onboarding?error=${encodeURIComponent("Création impossible. Réessaie dans un instant.")}`,
     );
