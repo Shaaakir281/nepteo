@@ -8,6 +8,7 @@ import {
   type FunnelStats,
 } from "@/lib/analysis-rules";
 import { templateBriefing } from "@/lib/briefing-stats";
+import { readMemory } from "@/lib/memory-store";
 
 type Admin = ReturnType<typeof createAdminClient>;
 
@@ -68,13 +69,10 @@ export async function refreshBriefing(
       .eq("organization_id", orgId);
     const stats = computeFunnelStats((prospects ?? []) as BriefingProspect[]);
 
-    const { data: mem } = await admin
-      .from("company_memory")
-      .select("section, content")
-      .eq("organization_id", orgId)
-      .in("section", ["activite", "ton", "objectifs"]);
-    const memCtx = Object.fromEntries(
-      (mem ?? []).map((m) => [m.section, m.content]),
+    const memCtx = await readMemory(
+      admin,
+      ["activite", "ton", "objectifs"],
+      orgId,
     );
 
     const content = await narrateBriefing(orgId, actorId, stats, memCtx);

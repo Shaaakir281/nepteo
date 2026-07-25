@@ -17,7 +17,6 @@ import {
   splitByPeriod,
   windowBounds,
 } from "../lib/ads/metrics-rules.ts";
-import { mockMetaCampaigns } from "../lib/ads/mock-provider.ts";
 
 const m = (over = {}) => ({
   campaign_id: "c1",
@@ -89,23 +88,6 @@ test("buildAdsProposals — propose de couper les campagnes en perte (au-dessus 
   assert.equal(props[0].risk, "low");
   assert.equal(props[0].payload.campaign_id, "lose");
   assert.ok(/pause/i.test(props[0].title));
-});
-
-test("mockMetaCampaigns — lignes déterministes, une campagne en perte, une très rentable", () => {
-  const rows = mockMetaCampaigns(7);
-  assert.equal(rows.length, 4 * 7);
-  // Reproductible
-  assert.deepEqual(mockMetaCampaigns(7)[0], rows[0]);
-  const camps = rollupByCampaign(rows).map(deriveKpis);
-  const noto = camps.find((c) => c.campaign_id === "cmp_notoriete");
-  const reta = camps.find((c) => c.campaign_id === "cmp_retargeting");
-  assert.ok(noto.roas < 1, `notoriété devrait être en perte, ROAS=${noto.roas}`);
-  assert.ok(reta.roas > 2, `retargeting devrait être rentable, ROAS=${reta.roas}`);
-  // Aucune valeur aberrante
-  for (const c of camps) {
-    assert.ok(Number.isFinite(c.roas) && Number.isFinite(c.cac));
-    assert.ok(c.impressions > 0 && c.spend > 0);
-  }
 });
 
 // ===== Fenêtre d'analyse, statut et comparaison =====

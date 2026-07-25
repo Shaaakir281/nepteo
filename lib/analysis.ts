@@ -3,6 +3,7 @@ import type { createAdminClient } from "@/lib/supabase/admin";
 import { getModelForTask, telemetryForTask } from "@/lib/llm";
 import { buildFindings, type RuleProspect } from "@/lib/analysis-rules";
 import { withLlmTrace } from "@/lib/observability";
+import { readMemory } from "@/lib/memory-store";
 import { refreshBriefing } from "@/lib/briefing";
 
 type Admin = ReturnType<typeof createAdminClient>;
@@ -41,13 +42,10 @@ export async function runAnalysis(
 
   // Habillage LLM (ton + objectifs de la mémoire) — repli silencieux sur les templates
   try {
-    const { data: mem } = await admin
-      .from("company_memory")
-      .select("section, content")
-      .eq("organization_id", orgId)
-      .in("section", ["activite", "ton", "objectifs"]);
-    const ctx = Object.fromEntries(
-      (mem ?? []).map((m) => [m.section, m.content]),
+    const ctx = await readMemory(
+      admin,
+      ["activite", "ton", "objectifs"],
+      orgId,
     );
     // Traces groupées par organisation (sessionId = org) pour le multi-tenant.
     await withLlmTrace(

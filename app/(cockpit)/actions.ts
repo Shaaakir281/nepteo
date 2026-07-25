@@ -6,7 +6,6 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getEditorContext } from "@/lib/connectors/common";
 import { runAnalysis } from "@/lib/analysis";
 import { runAdsAnalysis } from "@/lib/ads/analysis";
-import { seedRevenueDemo } from "@/lib/revenue/seed";
 import {
   draftRelance,
   draftRelanceForProspect,
@@ -16,6 +15,7 @@ import {
 import { applyFirstName } from "@/lib/draft-template";
 import { prospectPriority } from "@/lib/analysis-rules";
 import { LLM_MEMORY_SECTIONS } from "@/lib/memory";
+import { readMemory } from "@/lib/memory-store";
 import { researchProspectCompany } from "@/lib/research/prospect-company";
 import { executeApprovedAction, type ExecutionResult } from "@/lib/execution";
 import { dedupeByEmail, dedupeContacts } from "@/lib/execution-rules";
@@ -130,14 +130,7 @@ export async function draftForAction(
   const cached = payload.draft as Draft | undefined;
   if (cached && !regenerate) return { ok: true, draft: cached };
 
-  const { data: mem } = await admin
-    .from("company_memory")
-    .select("section, content")
-    .eq("organization_id", ctx.orgId)
-    .in("section", [...LLM_MEMORY_SECTIONS]);
-  const memCtx = Object.fromEntries(
-    (mem ?? []).map((m) => [m.section, m.content]),
-  );
+  const memCtx = await readMemory(admin, LLM_MEMORY_SECTIONS, ctx.orgId);
 
   const draft = await draftRelance({
     orgId: ctx.orgId,
@@ -315,14 +308,7 @@ export async function draftForProspect(
     .maybeSingle();
   if (!prospect) return { ok: false, reason: "not_found" };
 
-  const { data: mem } = await admin
-    .from("company_memory")
-    .select("section, content")
-    .eq("organization_id", ctx.orgId)
-    .in("section", [...LLM_MEMORY_SECTIONS]);
-  const memCtx = Object.fromEntries(
-    (mem ?? []).map((m) => [m.section, m.content]),
-  );
+  const memCtx = await readMemory(admin, LLM_MEMORY_SECTIONS, ctx.orgId);
 
   // Notes de la source + note interne Nepteo réunies pour la personnalisation.
   const notes = [prospect.notes, prospect.note_internal]
@@ -435,16 +421,6 @@ export async function executeAction(id: string): Promise<ExecutionResult> {
   const res = await executeApprovedAction(admin, ctx.orgId, ctx.userId, id);
   revalidatePath("/");
   return res;
-}
-
-/** Charge les ventes de démo (Stripe fictif) pour faire vivre les KPIs. */
-export async function loadRevenueDemo() {
-  const ctx = await getEditorContext();
-  if (!ctx) redirect("/login");
-  if (!ctx.canEdit) redirect("/");
-  const admin = createAdminClient();
-  await seedRevenueDemo(admin, ctx.orgId, ctx.userId);
-  revalidatePath("/");
 }
 
 /** Variante form (bouton « Exécuter » sur une action validée). */

@@ -15,6 +15,7 @@ import {
 import { buildMarketingPlan, type PlanMove } from "@/lib/plan";
 import { buildStarterDiagnostic } from "@/lib/diagnostic";
 import type { MemoryContent } from "@/lib/memory";
+import { readMemory } from "@/lib/memory-store";
 import { CoachBubble } from "@/components/ui/coach-bubble";
 
 const CHANNEL_CLS: Record<string, string> = {
@@ -31,10 +32,7 @@ export default async function PlanPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: mem } = await supabase
-    .from("company_memory")
-    .select("section, content");
-  const memCtx = Object.fromEntries((mem ?? []).map((m) => [m.section, m.content]));
+  const memCtx = await readMemory(supabase);
   const offre = memoText(memCtx, "offres") || memoText(memCtx, "activite");
   const identity = memCtx as Partial<MemoryContent>;
 

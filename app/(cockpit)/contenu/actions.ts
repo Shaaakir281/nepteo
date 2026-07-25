@@ -9,6 +9,7 @@ import {
   type CreativeChannel,
 } from "@/lib/creative-template";
 import { LLM_MEMORY_SECTIONS } from "@/lib/memory";
+import { readMemory } from "@/lib/memory-store";
 
 export type BriefResult =
   | { ok: true; brief: string }
@@ -35,14 +36,7 @@ export async function generateBriefAction(
     : "indifferent";
 
   const admin = createAdminClient();
-  const { data: mem } = await admin
-    .from("company_memory")
-    .select("section, content")
-    .eq("organization_id", ctx.orgId)
-    .in("section", [...LLM_MEMORY_SECTIONS]);
-  const memCtx = Object.fromEntries(
-    (mem ?? []).map((m) => [m.section, m.content]),
-  );
+  const memCtx = await readMemory(admin, LLM_MEMORY_SECTIONS, ctx.orgId);
 
   const brief = await generateCreativeBrief({
     orgId: ctx.orgId,

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { EDIT_ROLES } from "@/lib/memory";
+import { readMemory } from "@/lib/memory-store";
 import { memoText } from "@/lib/draft-template";
 import {
   computeFunnelStats,
@@ -32,13 +33,7 @@ export default async function ContenuPage() {
   const canEdit = EDIT_ROLES.includes(membership.role);
 
   // Idées proposées par l'agent, à partir de ce qu'il sait déjà.
-  const { data: mem } = await supabase
-    .from("company_memory")
-    .select("section, content")
-    .in("section", ["offres", "activite"]);
-  const memCtx = Object.fromEntries(
-    (mem ?? []).map((m) => [m.section, m.content]),
-  );
+  const memCtx = await readMemory(supabase, ["offres", "activite"]);
   const offre = memoText(memCtx, "offres") || memoText(memCtx, "activite");
 
   const { data: prospectRows } = await supabase

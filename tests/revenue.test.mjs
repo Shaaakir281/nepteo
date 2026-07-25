@@ -5,7 +5,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { revenueStats, overallRoas } from "../lib/revenue/revenue-rules.ts";
-import { mockRevenueEvents } from "../lib/revenue/mock-provider.ts";
 
 test("revenueStats — total, nombre et panier moyen", () => {
   const s = revenueStats([
@@ -28,17 +27,4 @@ test("revenueStats — base vide → zéros, pas de NaN", () => {
 test("overallRoas — revenu / dépense, 0 si pas de dépense", () => {
   assert.equal(overallRoas(400, 100), 4);
   assert.equal(overallRoas(400, 0), 0);
-});
-
-test("mockRevenueEvents — ventes déterministes et cohérentes", () => {
-  const a = mockRevenueEvents();
-  const b = mockRevenueEvents();
-  assert.deepEqual(a, b); // reproductible
-  assert.ok(a.length > 0);
-  const s = revenueStats(a);
-  assert.ok(s.total > 0 && s.avg > 0);
-  for (const e of a) {
-    assert.ok(e.amount > 0 && /^\d{4}-\d{2}-\d{2}$/.test(e.occurred_on));
-    assert.equal(e.source, "stripe");
-  }
 });

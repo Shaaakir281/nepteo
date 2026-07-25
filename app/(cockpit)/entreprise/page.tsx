@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { icons } from "@/components/icons";
 import { EDIT_ROLES, type MemoryContent } from "@/lib/memory";
+import { readMemory } from "@/lib/memory-store";
 import { IdentityCard } from "./_components/identity-card";
 import { OffersCard } from "./_components/offers-card";
 import { DocumentsCard, LearningsCard } from "./_components/side-cards";
@@ -28,12 +29,10 @@ export default async function EntreprisePage({
   if (!membership) redirect("/onboarding");
   const canEdit = EDIT_ROLES.includes(membership.role);
 
-  const { data: rows } = await supabase
-    .from("company_memory")
-    .select("section, content");
+  const memCtx = await readMemory(supabase);
   const mem: Partial<MemoryContent> = {};
-  for (const r of rows ?? []) {
-    (mem as Record<string, unknown>)[r.section] = r.content ?? {};
+  for (const [section, content] of Object.entries(memCtx)) {
+    (mem as Record<string, unknown>)[section] = content ?? {};
   }
 
   return (

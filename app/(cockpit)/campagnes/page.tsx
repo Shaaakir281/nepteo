@@ -15,7 +15,7 @@ import {
   windowBounds,
   type DatedMetric,
 } from "@/lib/ads/metrics-rules";
-import { analyzeAdsForm, loadAdsDemo } from "./actions";
+import { analyzeAdsForm } from "./actions";
 import { NewCampaignModal } from "./_components/new-campaign-modal";
 import { CoachBubble } from "@/components/ui/coach-bubble";
 
@@ -102,25 +102,15 @@ export default async function CampagnesPage({
           <div className="flex flex-none items-center gap-2">
             <NewCampaignModal />
             {metrics.length > 0 && (
-              <>
-                <form action={analyzeAdsForm}>
-                  <button
-                    type="submit"
-                    title="Proposer des actions à partir des campagnes (file de validation)"
-                    className="rounded-[10px] bg-tint px-3.5 py-2 text-[12.5px] font-semibold text-violet transition hover:bg-violet hover:text-white"
-                  >
-                    Analyser
-                  </button>
-                </form>
-                <form action={loadAdsDemo}>
-                  <button
-                    type="submit"
-                    className="rounded-[10px] bg-tint px-3.5 py-2 text-[12.5px] font-semibold text-violet transition hover:bg-violet hover:text-white"
-                  >
-                    Recharger la démo
-                  </button>
-                </form>
-              </>
+              <form action={analyzeAdsForm}>
+                <button
+                  type="submit"
+                  title="Proposer des actions à partir des campagnes (file de validation)"
+                  className="rounded-[10px] bg-tint px-3.5 py-2 text-[12.5px] font-semibold text-violet transition hover:bg-violet hover:text-white"
+                >
+                  Analyser
+                </button>
+              </form>
             )}
           </div>
         )}
@@ -158,19 +148,17 @@ export default async function CampagnesPage({
             Aucune donnée de campagne pour l&apos;instant
           </p>
           <p className="mx-auto mt-1.5 max-w-md text-[13px] leading-relaxed text-muted">
-            Meta Ads sera bientôt connectable en direct. En attendant, chargez un
-            jeu de données de démonstration pour voir l&apos;analyse à l&apos;œuvre
-            (ROAS, coût d&apos;acquisition, campagne à couper).
+            Meta Ads sera bientôt connectable en direct. En attendant, chargez
+            une entreprise fictive pour voir l&apos;analyse à l&apos;œuvre (ROAS,
+            coût d&apos;acquisition, campagne à couper).
           </p>
           {canEdit && (
-            <form action={loadAdsDemo} className="mt-4">
-              <button
-                type="submit"
-                className="rounded-[10px] bg-violet px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-violet-deep"
-              >
-                Charger des données de démo (Meta Ads)
-              </button>
-            </form>
+            <Link
+              href="/agent"
+              className="mt-4 inline-block rounded-[10px] bg-violet px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-violet-deep"
+            >
+              Essayer avec une entreprise fictive →
+            </Link>
           )}
         </div>
       ) : (

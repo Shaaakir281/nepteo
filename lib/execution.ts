@@ -3,6 +3,7 @@ import { prospectPriority } from "@/lib/analysis-rules";
 import { draftRelance, isRelanceKind } from "@/lib/draft";
 import { applyFirstName, type Draft } from "@/lib/draft-template";
 import { LLM_MEMORY_SECTIONS } from "@/lib/memory";
+import { readMemory } from "@/lib/memory-store";
 import {
   dedupeByEmail,
   guardExecution,
@@ -158,14 +159,7 @@ export async function executeApprovedAction(
     const drafts = (payload.prospect_drafts ?? {}) as Record<string, Draft>;
     let base = payload.draft as Draft | undefined;
     if (!base) {
-      const { data: mem } = await admin
-        .from("company_memory")
-        .select("section, content")
-        .eq("organization_id", orgId)
-        .in("section", [...LLM_MEMORY_SECTIONS]);
-      const memCtx = Object.fromEntries(
-        (mem ?? []).map((m) => [m.section, m.content]),
-      );
+      const memCtx = await readMemory(admin, LLM_MEMORY_SECTIONS, orgId);
       base = await draftRelance({
         orgId,
         actorId,

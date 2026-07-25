@@ -1,6 +1,13 @@
 /** Catalogue des connecteurs — textes issus des maquettes validées. */
 
-import type { ConnectorType } from "./types";
+/** Familles d'outils branchables — alignées sur `supabase/migrations/0001_init.sql`. */
+export type ConnectorType =
+  | "crm"
+  | "analytics"
+  | "ads"
+  | "email"
+  | "payments"
+  | "files";
 
 export interface CatalogTool {
   provider: string; // slug stocké en DB

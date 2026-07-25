@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getEditorContext } from "@/lib/connectors/common";
-import { seedMetaAdsDemo } from "@/lib/ads/seed";
+import { readMemory } from "@/lib/memory-store";
 import { runAdsAnalysis } from "@/lib/ads/analysis";
 import {
   aggregate,
@@ -19,16 +19,6 @@ import {
   type CampaignPlan,
 } from "@/lib/campaign-plan";
 import { generateCampaignVariants } from "@/lib/campaign";
-
-/** Charge les données de démo Meta Ads (fictives) pour l'organisation. */
-export async function loadAdsDemo() {
-  const ctx = await getEditorContext();
-  if (!ctx) redirect("/login");
-  if (!ctx.canEdit) redirect("/campagnes");
-  const admin = createAdminClient();
-  await seedMetaAdsDemo(admin, ctx.orgId, ctx.userId);
-  revalidatePath("/campagnes");
-}
 
 export type CampaignBuild = { plan: CampaignPlan; variants: string[] };
 
@@ -63,12 +53,11 @@ export async function buildCampaignAction(
   const avg = await avgCostPerContact(admin, ctx.orgId);
   const plan = buildCampaignPlan(brief, { avgCostPerContact: avg });
 
-  const { data: mem } = await admin
-    .from("company_memory")
-    .select("section, content")
-    .eq("organization_id", ctx.orgId)
-    .in("section", ["activite", "offres", "ton"]);
-  const memCtx = Object.fromEntries((mem ?? []).map((m) => [m.section, m.content]));
+  const memCtx = await readMemory(
+    admin,
+    ["activite", "offres", "ton"],
+    ctx.orgId,
+  );
   const variants = await generateCampaignVariants({
     orgId: ctx.orgId,
     actorId: ctx.userId,

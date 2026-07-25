@@ -41,9 +41,50 @@ Environnement : Supabase `hrqnzorapjnosjphftur`, repo GitHub `Shaaakir281/nepteo
 - **Recherche web (Perplexity)** : appel **facturé à la requête**. Toujours passer par `runResearch` (garde-fous + journal + cache) — ne jamais appeler `askPerplexity` directement depuis une action. Les échecs sont mis en cache **volontairement** (une clé invalide ne doit pas boucler).
 - **Fichiers purs testés par node:test** : aucun import, même relatif, y compris vers `lib/memory.ts`. Quand une logique pure a besoin de constantes d'ailleurs (options de mémoire), on les **injecte en paramètre** (cf. `profile-rules.ts`).
 - **`headCacheNode in null` après une déconnexion** : le cache du routeur client gardait l'arbre du cockpit ; la requête RSC suivante était redirigée vers `/login` par `proxy.ts` et l'arbre devenait nul. Corrigé par `revalidatePath("/", "layout")` **avant** le `redirect` dans `login` et `logout` (`app/(auth)/actions.ts`). Toute action qui change de session doit purger le cache.
-- **Vérif tsc dans le sandbox Cowork** : le sandbox tue les process longs (~44 s) et laisse un log **vide** → « log vide » ≠ « vert ». Ne conclure au vert que sur un `tsc` **terminé** (exit 0 explicite) ; au besoin `pkill node` puis relancer sur sandbox non contendu. `next build` non exécutable (SWC win32 only) → build côté Fathi. `npm test` requiert **Node ≥ 22**.
+- **Vérif tsc dans le sandbox Cowork** : le sandbox tue les process longs (~44 s) et laisse un log **vide** → « log vide » ≠ « vert ». Ne conclure au vert que sur un `tsc` **terminé** (exit 0 explicite) ; au besoin `pkill node` puis relancer sur sandbox non contendu. `next build` non exécutable (SWC win32 only) → build côté Fathi. `npm test` requiert **Node ≥ 22**. Mesure du 25/07 (C1) : `tsc --noEmit` complet passe en **~42 s** → lancer avec `timeout 43`, pas 40 ; `eslint` et `git status`, eux, **ne bouclent pas** sur le montage Windows.
+- **Libellés de journal d'événements disparus** (`lib/journal.ts`) : quand un geste est retiré du produit, **garder son libellé**. La table `journal` refuse UPDATE/DELETE (trigger volontaire) — les entrées passées existent toujours et doivent rester lisibles. Cas vécu : `ads_demo_loaded` / `revenue_demo_loaded` conservés après C1.
+- **Fichiers purs vs I/O** : `lib/memory.ts` est pur (zéro import) ; la lecture Supabase de la mémoire vit à côté, dans **`lib/memory-store.ts`** (`readMemory(client, sections?, orgId?)`). Ne pas les refusionner.
 
 ## Historique des sessions
+
+### 2026-07-25 (6) — Claude (Cowork) — **C1 « Nettoyage invisible »** (roadmap-beta, phase A)
+
+Chantier **C1** exécuté seul, périmètre strict. **Aucun changement visible** hors les deux boutons de démo retirés. Aucune migration, aucune dépendance, aucune variable d'env.
+
+**1. Un seul chemin de données fictives.** `lib/demo/*` (scénarios) devient la seule voie. Supprimés : `lib/ads/mock-provider.ts`, `lib/ads/seed.ts`, `lib/revenue/mock-provider.ts`, `lib/revenue/seed.ts`, l'action `loadRevenueDemo` (`app/(cockpit)/actions.ts`) et l'action `loadAdsDemo` (`campagnes/actions.ts`).
+- **Accueil** : le bouton « Charger le revenu de démo (Stripe) » devient un lien sobre `→ /agent` (« Essayer avec une entreprise fictive »), comme prévu par la roadmap.
+- **`/campagnes`** : le bouton « Recharger la démo » disparaît ; l'**état vide** (qui promettait « chargez un jeu de données de démonstration ») pointe désormais lui aussi vers `/agent`. La roadmap ne mentionnait que l'accueil — l'état vide serait resté un cul-de-sac, d'où le même traitement. *Signalé plutôt que fait en silence (règle 2).*
+- **`lib/journal.ts` conservé tel quel** : les libellés `ads_demo_loaded` / `revenue_demo_loaded` restent. La table `journal` refuse UPDATE/DELETE (invariant volontaire) — les entrées passées doivent rester lisibles. Ne pas les « nettoyer ».
+
+**2. `lib/memory-store.ts` — `readMemory` (une seule lecture de la mémoire).** Neuf duplications du `select("section, content")` + `Object.fromEntries` remplacées : `app/(cockpit)/actions.ts` (×2), `campagnes/actions.ts`, `contenu/actions.ts`, `contenu/page.tsx`, `plan/page.tsx`, `entreprise/page.tsx`, `lib/analysis.ts`, `lib/briefing.ts`, `lib/execution.ts`.
+- **Signature retenue** : `readMemory(client, sections?, orgId?)`. La roadmap disait `(supabase, sections?)`, mais les appels service-role filtrent sur `organization_id` (le client serveur classique s'appuie sur la RLS) — d'où le 3e paramètre optionnel. Comportement identique appel par appel : les sous-ensembles historiques (`["activite","ton","objectifs"]`, `["offres","activite"]`, `["activite","offres","ton"]`) sont **préservés tels quels**, pas alignés sur `LLM_MEMORY_SECTIONS`.
+- **`readMemory` ne va PAS dans `lib/memory.ts`** (fichier pur, zéro import, testé par `node:test`) — c'est le point du fichier séparé, et le commentaire d'en-tête le dit.
+- `entreprise/page.tsx` conserve son `?? {}` par section (un `content` nul restait un objet vide).
+
+**3. `lib/types.ts` supprimé, `ConnectorType` relogé** dans `lib/connectors.ts` (seul consommateur). Grep de contrôle avant suppression : **aucun autre import** de `@/lib/types` dans le code. Constat : le fichier était intégralement mort à ce type près — `Role`, `Organization`, `Connector`, `AgentAction`, `JournalEntry`, `ActionStatus`, `RiskLevel` n'étaient importés nulle part (`JournalEntry` vit dans `lib/journal.ts`).
+
+**Tests** : 2 cas retirés — ceux qui couvraient le code supprimé (`mockRevenueEvents` dans `tests/revenue.test.mjs`, `mockMetaCampaigns` dans `tests/ads-metrics.test.mjs`). Les cas `revenue-rules` et `metrics-rules` sont intacts. **Total : 130 → 128.**
+
+**Vérif** : `npm test` **128/128, exit 0** ; `npx tsc --noEmit` **complet, exit 0 explicite** (Node 22.22.3). ⚠️ `npx eslint` **n'a pas pu aboutir** dans le sandbox (démarrage > 43 s sur le montage, y compris sur une poignée de fichiers — *lenteur, pas d'erreur*). Les imports devenus inutiles ont été vérifiés à la main fichier par fichier ; `npm run build` côté Fathi fait foi.
+
+**Constats hors périmètre (notés, PAS corrigés)** :
+- Le montage Windows rend le sandbox lent : `git status` et `eslint` dépassent le plafond de 43 s. `tsc --noEmit` complet passe en ~42 s — il faut viser `timeout 43`, pas 40.
+- `docs/projets/simplification.md` décrit encore l'ancien ordre des lots ; `roadmap-beta.md` le remplace (déjà dit en tête de ce dernier). Rien touché.
+
+**Reste (Fathi)** :
+1. **`git push`** — cinq sessions de travail sont locales (le sandbox n'a pas d'identifiants GitHub).
+2. **Migration `0010_research.sql`** dans Supabase — toujours la seule en attente (jalon 0).
+3. `npm run build` (SWC Windows).
+4. Contrôle rapide : accueil sans vente → le lien « Essayer avec une entreprise fictive → » mène à `/agent` ; `/campagnes` sans donnée → même lien ; `/agent` → charger un scénario → les analyses, brouillons, brief et fiche entreprise se comportent comme avant (c'est `readMemory` qui les alimente maintenant).
+
+**Suite** : **C2 — Le premier écran dit la vérité** (dépend de `readMemory`, livré ici).
+
+### 2026-07-25 (5) — Claude (Cowork) — audit contradictoire + roadmap d'exécution bêta
+
+- **Audit contradictoire** du plan `docs/projets/simplification.md` (à la demande de Fathi) + évaluation valeur du produit — en conversation, **rien codé**. Verdicts clés : lot 1 validé (2 amendements), lot 2 après la démo, **lots 3+4 = une seule décision de structure** (le « 9 → 5 » du lot 3 est impossible sans le lot 4), lot 5 réduit à CVR/CTR (ROAS/CAC sont du lexique standard d'après CLAUDE.md), lot 6 validé.
+- **Constats factuels à retenir** : `lib/types.ts` n'est PAS un pur réexport (`ConnectorType` importé par `lib/connectors.ts` — reloger avant suppression) ; `prospects` n'a **aucune date de dernier contact** (trou n°1 du moteur de relance) ; la copie d'onboarding sous « Bonjour » sur `/` est permanente ; le diagnostic de départ n'est visible que sur `/plan`.
+- **`docs/projets/roadmap-beta.md` créé** : 12 chantiers (C1–C12) en 3 phases autour de la démo Charly (A : avant démo ; B : structure ; C : valeur — envoi réel, temps dans la relance, compteur de valeur, brief du lundi, diagnostic public). Chaque chantier : ordre de mission, fichiers, interdits, pièges, critères d'acceptation, **modèle conseillé** (Opus 5 pour C4/C7/C8/C12, Sonnet 5 sinon). §2 = règles anti-erreurs IA communes ; §3 = jalon 0 (checklist démo : **migration 0010**, push, décision clé Perplexity). Ce fichier remplace l'ordre du plan simplification.
+- **Reste (Fathi)** : dérouler le jalon 0 (§3 de roadmap-beta), `git push` (ce doc inclus), puis lancer C1 avec le prompt du §0.
 
 ### 2026-07-25 (4) — Claude (Cowork) — enchaînement rapide des cas + étape 3 (diagnostic de départ)
 

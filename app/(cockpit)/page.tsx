@@ -16,7 +16,6 @@ import {
 } from "./_components/decisions-history";
 import { ExecutionSwitch } from "./_components/execution-switch";
 import { revenueStats } from "@/lib/revenue/revenue-rules";
-import { loadRevenueDemo } from "./actions";
 import { CoachBubble } from "@/components/ui/coach-bubble";
 
 export default async function TodayPage() {
@@ -160,14 +159,12 @@ export default async function TodayPage() {
       </div>
       {!hasRevenue &&
         (canEdit ? (
-          <form action={loadRevenueDemo} className="mt-2.5">
-            <button
-              type="submit"
-              className="text-[12px] font-semibold text-violet hover:underline"
-            >
-              Charger le revenu de démo (Stripe) →
-            </button>
-          </form>
+          <Link
+            href="/agent"
+            className="mt-2.5 inline-block text-[12px] font-semibold text-violet hover:underline"
+          >
+            Essayer avec une entreprise fictive →
+          </Link>
         ) : (
           <p className="mt-2.5 text-[12px] text-faint">
             Connectez vos paiements pour voir ventes et revenu réels.
