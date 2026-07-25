@@ -66,16 +66,25 @@ Environnement : Supabase `hrqnzorapjnosjphftur`, repo GitHub `Shaaakir281/nepteo
 - `lib/research/prospect-company.ts` : enrichissement **de la société** d'un prospect. `ProspectContext.research` ajouté (rendu par `renderProspectContext`, **additif** : absent ⇒ prompt inchangé) et `draftForProspect(..., enrich = false)` — la recherche reste **explicite, jamais automatique** (appel facturé).
 - **3 décisions consignées dans `docs/DECISIONS.md`** : recherche hors couche LLM ; **enrichissement société uniquement, jamais la personne (RGPD)** ; une recherche = une exécution (garde-fous + journal avant + cache, échecs compris).
 
-**Vérif** : `npm test` **105/105** ; `tsc --noEmit` sur **tout le projet exit 0** (~35 s, sandbox sain ce tour) ; `npx eslint lib app` **propre**. `npm run build` côté Fathi fait foi.
+**UI de l'étape 2 — 2e écran d'onboarding, FACULTATIF** (placement tranché avec Fathi) :
+- `createOrganization` redirige désormais vers **`/onboarding/identite`** au lieu de `/`.
+- `app/onboarding/identite/` : page serveur + `_components/identity-wizard.tsx` (client). Deux temps — (1) coller l'adresse du site → recherche avec **étapes cadencées** (autonomie visible, même patron que `AnalysisRunner`) ; (2) la proposition s'affiche **corrigeable** (chips activité/clientèle/canaux, textareas description/zone/ton), avec les **offres repérées**, les **« gaps »** (ce que l'agent n'a pas trouvé) et les **sources cliquables**. Bouton **« Passer cette étape »** à chaque instant.
+- `actions.ts` : `proposeIdentity` (retour direct), **`applyIdentity`** (écrit section par section, une section vide n'écrase jamais l'existant → la philosophie saisie à l'écran 1 reste intacte, journal par section avec `source: onboarding_web`), `skipIdentity`.
+- Les messages d'erreur sont **traduits par raison** (`no_key`, `daily_cap`, `paused`…) : l'utilisateur comprend pourquoi ça n'a pas marché.
+- `proposeIdentityForOrg` factorisé dans `lib/research/company-profile.ts` → une seule implémentation pour l'onboarding **et** la vue Entreprise.
+
+**Vérif** : `npm test` **105/105** ; `tsc --noEmit` sur **tout le projet exit 0** ; `npx eslint lib app` **propre**. `npm run build` côté Fathi fait foi.
+
+**Sur les modèles (échange avec Fathi)** : la nouvelle tâche `identity_synthesis` est en niveau `standard` → elle hérite automatiquement de l'override `LLM_MODEL=openai:gpt-5.4`. **Perplexity cherche, OpenAI rédige** (sur le crédit test de Fathi). L'Agent API permettrait aussi de choisir le modèle de raisonnement, mais il serait alors **facturé par Perplexity** — d'où la séparation actuelle, la moins chère. Épinglage possible : `LLM_TASK_IDENTITY_SYNTHESIS=openai:gpt-5.4`.
 
 **Reste (Fathi)** :
 1. **Migration `0010_research.sql`** dans Supabase.
 2. `PERPLEXITY_API_KEY` dans `.env.local` (compte à créer ; sans clé la recherche est désactivée proprement, rien ne casse). Vérif : `GET /api/llm/status` → `research.perplexity: true`.
 3. **`git push`** — le sandbox n'a pas d'identifiants GitHub, les commits sont locaux.
 4. `npm run build` (vider `.next` si l'erreur `dev/types` réapparaît).
-5. Tester : onboarding avec le champ philosophie → `/entreprise` → la ligne « Philosophie » ; ouvrir une relance → le message doit respecter le ton annoncé.
+5. Tester le parcours complet : créer un compte → champ philosophie → **2e écran, coller l'adresse d'un site** → proposition → corriger → enregistrer → `/entreprise` doit être pré-remplie (et la philosophie intacte). Puis ouvrir une relance : le message doit respecter le ton annoncé.
 
-**Suites** : UI de l'étape 2 (coller une URL → proposition → pré-remplissage des formulaires, avec les sources et les « gaps » affichés), puis **étape 3 = diagnostic d'expert** (meilleurs canaux + stratégie de départ, sur le moteur de `lib/plan.ts`, nourri par l'identité au lieu des connecteurs). Bouton « enrichir ce prospect » branché sur `draftForProspect(..., enrich = true)`.
+**Suites** : **étape 3 = diagnostic d'expert** (meilleurs canaux + stratégie de départ, sur le moteur de `lib/plan.ts`, nourri par l'identité au lieu des connecteurs) — c'est le premier « waouh » avant tout connecteur. Puis : bouton « enrichir ce prospect » branché sur `draftForProspect(..., enrich = true)` (le backend est prêt, il ne manque que le déclencheur UI), et relance de la recherche depuis `/entreprise` (`proposeIdentityFromWeb` existe déjà).
 
 ### 2026-07-23 — Claude (Cowork) — 2 chantiers cadrés (docs projet) avant changement de sujet
 - **Discussion métier** (solopreneur, « outil magique, plus besoin de personne ») → deux features cadrées et **documentées pour reprise à froid** (conversation devenue longue).
