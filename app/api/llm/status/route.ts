@@ -12,6 +12,7 @@ import {
   type LlmTask,
   type LlmTier,
 } from "@/lib/llm";
+import { researchConfigured } from "@/lib/research/perplexity";
 
 async function requireMember() {
   const supabase = await createClient();
@@ -43,6 +44,7 @@ export async function GET() {
       (Object.keys(LLM_TASKS) as LlmTask[]).map((t) => [t, resolveTaskSpec(t)]),
     ),
     keys: providerKeyStatus(),
+    research: { perplexity: researchConfigured() },
   });
 }
 

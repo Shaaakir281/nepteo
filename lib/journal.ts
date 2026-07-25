@@ -36,6 +36,11 @@ export const EVENT_LABELS: Record<string, string> = {
   autonomy_changed: "Niveau d'autonomie modifié",
   creative_brief_generated: "Brief créatif généré",
   revenue_demo_loaded: "Revenu de démo chargé",
+  research_started: "Recherche web lancée",
+  research_succeeded: "Recherche web aboutie",
+  research_failed: "Recherche web échouée",
+  research_blocked: "Recherche web bloquée",
+  identity_proposed: "Identité proposée par l'agent",
 };
 
 const SECTION_LABELS: Record<string, string> = {
@@ -45,6 +50,7 @@ const SECTION_LABELS: Record<string, string> = {
   ton: "Ton",
   objectifs: "Objectifs",
   offres: "Offres",
+  philosophie: "Philosophie",
 };
 
 export function entryTitle(e: JournalEntry): string {

@@ -14,6 +14,19 @@ import {
   applyFirstName,
 } from "../lib/draft-template.ts";
 
+test("renderProspectContext — le contexte société est additif (absent = inchangé)", () => {
+  const base = { name: "Julie Martin", company: "Bâti Nord", stage: "Devis" };
+  const sans = renderProspectContext(base);
+  assert.ok(!sans.includes("Contexte public"));
+
+  const avec = renderProspectContext({ ...base, research: "PME de 40 personnes." });
+  assert.equal(avec, `${sans}\nContexte public sur sa société (recherche web) : PME de 40 personnes.`);
+
+  // Une recherche vide ne pollue pas le prompt.
+  assert.equal(renderProspectContext({ ...base, research: "   " }), sans);
+  assert.equal(renderProspectContext({ ...base, research: null }), sans);
+});
+
 test("isRelanceKind — cible les relances, pas les autres", () => {
   assert.equal(isRelanceKind("relaunch_priority"), true);
   assert.equal(isRelanceKind("relaunch_stage_nouveau"), true);

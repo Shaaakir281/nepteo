@@ -86,5 +86,6 @@ export async function createOrganization(formData: FormData) {
     }
   }
 
-  redirect("/");
+  // 2e écran, facultatif : l'agent propose une identité à partir du site.
+  redirect("/onboarding/identite");
 }

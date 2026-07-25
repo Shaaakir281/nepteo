@@ -15,6 +15,9 @@ import {
   type MemorySection,
   type Offer,
 } from "@/lib/memory";
+import { proposeIdentityForOrg } from "@/lib/research/company-profile";
+import type { IdentityProposal } from "@/lib/research/profile-rules";
+import type { ResearchSource } from "@/lib/research/research-rules";
 
 function fail(message: string): never {
   redirect(`/entreprise?error=${encodeURIComponent(message)}`);
@@ -145,6 +148,44 @@ export async function savePhilosophie(formData: FormData) {
   const { userId, orgId } = await requireEditor();
   const text = normalizePhilosophy(formData.get("text"));
   await persist(orgId, userId, "philosophie", text ? { text } : {});
+}
+
+// ===== Identité proposée depuis le web (onboarding enrichi) =====
+
+export type IdentityProposalResult =
+  | {
+      ok: true;
+      proposal: IdentityProposal;
+      sources: ResearchSource[];
+      cached: boolean;
+    }
+  | { ok: false; reason: string };
+
+/**
+ * L'agent lit le site de l'entreprise et PROPOSE une identité.
+ * Rien n'est enregistré : la proposition sert à pré-remplir les formulaires
+ * existants, que l'utilisateur valide ou corrige section par section.
+ * Retour direct (pas de redirect) pour être appelable depuis le client.
+ */
+export async function proposeIdentityFromWeb(
+  website: string,
+  force = false,
+): Promise<IdentityProposalResult> {
+  const { userId, orgId } = await requireEditor();
+  const result = await proposeIdentityForOrg(createAdminClient(), {
+    orgId,
+    actorId: userId,
+    website,
+    force,
+  });
+  if (!result.ok) return { ok: false, reason: result.reason };
+
+  return {
+    ok: true,
+    proposal: result.proposal,
+    sources: result.sources,
+    cached: result.cached,
+  };
 }
 
 // ===== Offres =====

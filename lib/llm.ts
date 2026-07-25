@@ -73,6 +73,7 @@ export const LLM_TASKS = {
   draft_email: "standard", // rédiger une relance, un email
   draft_post: "standard", // rédiger un post ou une annonce
   weekly_report: "standard", // préparer le rapport hebdomadaire
+  identity_synthesis: "standard", // structurer une recherche web en identité d'entreprise
   recommend_action: "premium", // recommandation avec raisonnement complet
   campaign_brief: "premium", // brief de campagne bout en bout
 } as const satisfies Record<string, LlmTier>;

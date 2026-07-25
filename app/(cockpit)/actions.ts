@@ -16,6 +16,7 @@ import {
 import { applyFirstName } from "@/lib/draft-template";
 import { prospectPriority } from "@/lib/analysis-rules";
 import { LLM_MEMORY_SECTIONS } from "@/lib/memory";
+import { researchProspectCompany } from "@/lib/research/prospect-company";
 import { executeApprovedAction, type ExecutionResult } from "@/lib/execution";
 import { dedupeByEmail, dedupeContacts } from "@/lib/execution-rules";
 
@@ -275,11 +276,17 @@ export async function saveProspectNote(
  * Brouillon personnalisé pour UN prospect d'une action de relance — s'appuie sur
  * ses notes et toutes ses colonnes. Idempotent (cache dans
  * `payload.prospect_drafts[prospectId]`). Phase 2 : prépare, n'envoie rien.
+ *
+ * `enrich` déclenche en plus une recherche web sur la SOCIÉTÉ du prospect
+ * (jamais sur la personne — cf. docs/DECISIONS.md). C'est un appel payant :
+ * il reste explicite, jamais automatique. Un échec de recherche est silencieux,
+ * le brouillon est simplement produit sans ce contexte.
  */
 export async function draftForProspect(
   actionId: string,
   prospectId: string,
   regenerate = false,
+  enrich = false,
 ): Promise<DraftResult> {
   const ctx = await getEditorContext();
   if (!ctx || !ctx.canEdit) return { ok: false, reason: "forbidden" };
@@ -323,6 +330,17 @@ export async function draftForProspect(
     .filter(Boolean)
     .join(" — ");
 
+  // Contexte société : uniquement sur demande explicite (appel facturé).
+  let research: string | null = null;
+  if (enrich && prospect.company) {
+    const found = await researchProspectCompany(admin, {
+      orgId: ctx.orgId,
+      actorId: ctx.userId,
+      company: prospect.company,
+    });
+    if (found.ok) research = found.summary;
+  }
+
   const generated = await draftRelanceForProspect({
     orgId: ctx.orgId,
     actorId: ctx.userId,
@@ -333,6 +351,7 @@ export async function draftForProspect(
       stage: prospect.stage,
       notes: notes || null,
       raw: (prospect.raw ?? {}) as Record<string, unknown>,
+      research,
     },
   });
   // On connaît le destinataire → prénom réel à la place de {prénom}.

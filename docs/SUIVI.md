@@ -38,9 +38,44 @@ Environnement : Supabase `hrqnzorapjnosjphftur`, repo GitHub `Shaaakir281/nepteo
 - La table `journal` refuse UPDATE/DELETE (trigger) — c'est voulu.
 - Design : ne rien inventer, copier les patterns de `docs/maquettes/` (tokens dans `globals.css`).
 - **Copie produit** : ne PAS définir le lexique marketing standard (prospect, lead, funnel…). CLAUDE.md corrigé en ce sens (retour de Fathi 2026-07-21).
+- **Recherche web (Perplexity)** : appel **facturé à la requête**. Toujours passer par `runResearch` (garde-fous + journal + cache) — ne jamais appeler `askPerplexity` directement depuis une action. Les échecs sont mis en cache **volontairement** (une clé invalide ne doit pas boucler).
+- **Fichiers purs testés par node:test** : aucun import, même relatif, y compris vers `lib/memory.ts`. Quand une logique pure a besoin de constantes d'ailleurs (options de mémoire), on les **injecte en paramètre** (cf. `profile-rules.ts`).
 - **Vérif tsc dans le sandbox Cowork** : le sandbox tue les process longs (~44 s) et laisse un log **vide** → « log vide » ≠ « vert ». Ne conclure au vert que sur un `tsc` **terminé** (exit 0 explicite) ; au besoin `pkill node` puis relancer sur sandbox non contendu. `next build` non exécutable (SWC win32 only) → build côté Fathi. `npm test` requiert **Node ≥ 22**.
 
 ## Historique des sessions
+
+### 2026-07-25 — Claude (Cowork) — onboarding enrichi : philosophie (étape 1) + socle de recherche web Perplexity (backend)
+
+**État repo au départ (vérifié)** : arbre **propre**, `main` synchro avec `origin/main` sur `b8f4cf6`. Les lots signalés « écrits mais à commiter » par l'entrée du 2026-07-23 **étaient déjà commités et poussés** — la note était périmée. `npm test` **82/82** (Node 22.22.3), migration **0009 confirmée passée par Fathi**.
+
+**Étape 1 — encart « philosophie »** (chantier `docs/projets/onboarding-ia.md`, périmètre confirmé avec Fathi avant de coder) :
+- `lib/memory.ts` (pur, sans import) : section **`philosophie`** ajoutée à `MEMORY_SECTIONS`, `MemoryContent.philosophie`, `PHILOSOPHY_MAX = 2000`, `normalizePhilosophy` (trim, retours à la ligne réduits, bornage), `philosophyText`/**`philosophyBlock`**, et **`LLM_MEMORY_SECTIONS`** = liste unique des sections lues pour les prompts (remplace les `.in([...])` dupliqués).
+- **Aucune migration** : `company_memory.section` est un `text` sans contrainte de check — ajouter une section ne touche pas la base.
+- **Captation** : 3e champ *facultatif* dans `app/onboarding/page.tsx` (les 2 champs existants sont intacts) ; `createOrganization` upsert la section + journal `memory_updated` (vide ⇒ aucune écriture ; un échec ici ne bloque pas la création du cockpit).
+- **Édition** : `savePhilosophie` + `MemRow` « Philosophie » dans « Identité & activité » (aperçu `line-clamp-2`).
+- **Branchement** : `philosophyBlock` injecté dans `lib/draft.ts` (relance groupe + par prospect) et `lib/creative.ts` (brief). **Contrat anti-régression testé** : pas de philosophie ⇒ bloc = `""` ⇒ prompts identiques à avant.
+
+**Perplexity — socle de recherche (backend seul, aucune UI)** :
+- **Décision d'architecture** : la recherche vit **hors de `lib/llm.ts`**. Perplexity **collecte** des faits sourcés, la couche LLM existante les **met en forme**. `POST https://api.perplexity.ai/v1/agent` en `fetch` natif ⇒ **aucune dépendance npm ajoutée**. (Doc vérifiée le 25/07 : Perplexity recommande l'**Agent API** — `{preset, input}` → `output[]` — plutôt que Sonar Chat Completions ; presets `fast|low|medium|high|xhigh`.)
+- `lib/research/research-rules.ts` (**pur, aucun import**) : `subjectKey` (clé de cache — `https://www.Acme.fr/` et `acme.fr` convergent), `cleanWebsite`, `buildCompanyQuery`, `buildProspectCompanyQuery`, `guardResearch`, `isFresh`, `parseResearchResponse` (Agent API **et** repli forme Sonar), `renderResearch`, presets/plafonds.
+- `lib/research/perplexity.ts` : client HTTP, timeout 45 s, **ne lève jamais**, ne renvoie jamais le corps d'erreur ; `researchConfigured()` exposé dans `GET /api/llm/status`.
+- `lib/research/research.ts` : cache → garde-fous → **journal AVANT l'appel** → appel → upsert + journal. Même discipline que l'exécution.
+- **Migration `0010_research.sql`** : table `research_runs` (unique `(org, kind, subject_key)`, RLS select `is_member`, index de comptage quotidien). **À exécuter dans Supabase (Fathi).**
+- `lib/research/profile-rules.ts` (**pur**) : `parseIdentityProposal` recale la sortie LLM sur les **options réelles** de la mémoire (les listes sont **injectées en paramètre**, pas importées — le piège type-stripping reste évité) ; tout champ hors options est **omis, jamais forcé**.
+- `lib/research/company-profile.ts` : recherche + nouvelle tâche LLM **`identity_synthesis`** → **proposition** d'identité + sources. **Rien n'est écrit dans `company_memory`** : la proposition pré-remplira les formulaires existants, que l'utilisateur valide section par section (⇒ on ne perd aucune information). Action serveur `proposeIdentityFromWeb` (retour direct, pas de redirect).
+- `lib/research/prospect-company.ts` : enrichissement **de la société** d'un prospect. `ProspectContext.research` ajouté (rendu par `renderProspectContext`, **additif** : absent ⇒ prompt inchangé) et `draftForProspect(..., enrich = false)` — la recherche reste **explicite, jamais automatique** (appel facturé).
+- **3 décisions consignées dans `docs/DECISIONS.md`** : recherche hors couche LLM ; **enrichissement société uniquement, jamais la personne (RGPD)** ; une recherche = une exécution (garde-fous + journal avant + cache, échecs compris).
+
+**Vérif** : `npm test` **105/105** ; `tsc --noEmit` sur **tout le projet exit 0** (~35 s, sandbox sain ce tour) ; `npx eslint lib app` **propre**. `npm run build` côté Fathi fait foi.
+
+**Reste (Fathi)** :
+1. **Migration `0010_research.sql`** dans Supabase.
+2. `PERPLEXITY_API_KEY` dans `.env.local` (compte à créer ; sans clé la recherche est désactivée proprement, rien ne casse). Vérif : `GET /api/llm/status` → `research.perplexity: true`.
+3. **`git push`** — le sandbox n'a pas d'identifiants GitHub, les commits sont locaux.
+4. `npm run build` (vider `.next` si l'erreur `dev/types` réapparaît).
+5. Tester : onboarding avec le champ philosophie → `/entreprise` → la ligne « Philosophie » ; ouvrir une relance → le message doit respecter le ton annoncé.
+
+**Suites** : UI de l'étape 2 (coller une URL → proposition → pré-remplissage des formulaires, avec les sources et les « gaps » affichés), puis **étape 3 = diagnostic d'expert** (meilleurs canaux + stratégie de départ, sur le moteur de `lib/plan.ts`, nourri par l'identité au lieu des connecteurs). Bouton « enrichir ce prospect » branché sur `draftForProspect(..., enrich = true)`.
 
 ### 2026-07-23 — Claude (Cowork) — 2 chantiers cadrés (docs projet) avant changement de sujet
 - **Discussion métier** (solopreneur, « outil magique, plus besoin de personne ») → deux features cadrées et **documentées pour reprise à froid** (conversation devenue longue).

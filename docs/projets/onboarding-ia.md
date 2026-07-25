@@ -51,4 +51,9 @@ Un solopreneur qui finit l'onboarding a : une **identité synthétisée** qu'il 
 
 ## Suivi (journal des sessions)
 
+- **2026-07-25** — **Étape 1 faite** (encart philosophie) + **socle de recherche web (Perplexity) construit**, backend uniquement.
+  - *Étape 1* : section `philosophie` de `company_memory` (aucune migration — `section` est un `text` libre), champ facultatif ajouté au formulaire d'onboarding existant (rien retiré), ligne éditable dans « Identité & activité », et injection dans les prompts de relance et de brief créatif via `philosophyBlock` (chaîne vide si non renseignée ⇒ prompts strictement inchangés).
+  - *Étape 2 (backend)* : `lib/research/*` — Agent API Perplexity en `fetch`, garde-fous serveur, cache 30 j, journal avant appel ; `researchCompanyProfile` rend une **proposition** d'identité calée sur les options de la mémoire (jamais écrite sans validation) ; `researchProspectCompany` enrichit la **société** d'un prospect (pas la personne).
+  - *Questions ouvertes tranchées* : l'encart philosophie est un **3e champ visible facultatif** de l'onboarding (formulaire toujours en une page) ; l'édition se fait dans la carte « Identité & activité » existante.
+  - *Reste* : l'UI de l'étape 2 (coller une URL → voir la proposition → pré-remplir les formulaires), puis l'étape 3 (diagnostic d'expert).
 - **2026-07-23** — Idée cadrée avec Fathi, document créé. Rien codé. À reprendre à froid.

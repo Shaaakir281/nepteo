@@ -63,6 +63,11 @@ export interface ProspectContext {
   stage?: string | null;
   notes?: string | null;
   raw?: Record<string, unknown>;
+  /**
+   * Résumé public de la SOCIÉTÉ du prospect (recherche web, jamais la personne —
+   * cf. décision RGPD dans docs/DECISIONS.md). Absent = prompt inchangé.
+   */
+  research?: string | null;
 }
 
 /** Colonnes brutes non vides (string/number), hors valeurs déjà citées, bornées. */
@@ -103,6 +108,10 @@ export function renderProspectContext(p: ProspectContext): string {
   const used = new Set([name, company, stage, notes].filter(Boolean));
   const extra = renderRaw(p.raw ?? {}, used);
   if (extra) lines.push(`Autres infos : ${extra}`);
+  const research = (p.research ?? "").trim();
+  if (research) {
+    lines.push(`Contexte public sur sa société (recherche web) : ${research}`);
+  }
   return lines.join("\n");
 }
 
