@@ -44,6 +44,29 @@ Environnement : Supabase `hrqnzorapjnosjphftur`, repo GitHub `Shaaakir281/nepteo
 
 ## Historique des sessions
 
+### 2026-07-25 (3) — Claude (Cowork) — historique de campagnes + fenêtre d'analyse + communication publique
+
+**Déclencheur (Fathi)** : « il faudrait aussi les données fictives des campagnes précédentes pour une étude de cas plus pertinente ». Question juste — et elle a mis au jour un **vrai défaut** : **aucune lecture de `ad_metrics` ne filtrait par date**. Avec 14 jours de démo ça ne se voyait pas ; avec 6 mois d'historique, trois choses cassaient (ROAS moyenné sur 6 mois, campagne arrêtée toujours proposée « à couper », KPI « Dépenses (30 j) » affichant tout l'historique). L'historique n'était donc pas qu'un ajout de données.
+
+**Fenêtre d'analyse** (`lib/ads/metrics-rules.ts`, pur) :
+- `ANALYSIS_WINDOW_DAYS = 30`, `windowBounds` (période courante + précédente de même durée), `splitByPeriod`.
+- **`rollupWithStatus`** : distingue `active` de `ended` (aucune ligne dans la fenêtre courante) et **change volontairement de périmètre** — une campagne en cours est jugée sur 30 jours (ce sur quoi on peut encore agir), une campagne terminée sur toute sa vie (sinon rien à montrer). Chaque ligne porte `firstDate`/`lastDate`/`daysSinceLast`.
+- `comparePeriods` → `null` s'il n'y a rien avant (on n'invente pas de tendance) ; `buildTrendFinding` ; `buildHistoryFindings` (« ça avait marché » / « inutile de retenter à l'identique »).
+- **`buildAdsProposals` ignore les campagnes terminées** — le comportement est inchangé pour les appelants qui ne passent pas de statut.
+
+**Lectures branchées** : `/campagnes` (KPI sur 30 j + comparaison, tableau « Campagnes en cours », section **« Déjà tenté »**), `lib/ads/analysis.ts` (lit les dates, ne propose que de l'actif), `/plan` et `/contenu` (filtre de date), et **correction du KPI « Dépenses » de l'accueil** qui agrégeait tout l'historique sous une étiquette « 30 jours ».
+
+**Historique dans les scénarios** : `DemoCampaignProfile` gagne `startDaysAgo`, `endDaysAgo`, `trend` (dérive graduelle de performance). Chaque scénario a désormais **3-4 campagnes en cours** (dont une qui s'essouffle et une qui progresse) et **2 campagnes arrêtées** — un succès saisonnier et un test raté. Couverture jusqu'à 180 jours, dont ≥ 60 jours pour permettre la comparaison de périodes.
+
+**Communication publique** (2e demande de Fathi : « extraire les offres et les campagnes publiques ») :
+- `buildCompanyQuery` demande désormais explicitement la **communication publique observable** : publicités visibles (bibliothèque publicitaire Meta, annonces Google), promotions en cours, réseaux actifs et rythme, blog, newsletter, salons — et de **distinguer le vérifié du supposé**.
+- Nouvelle section mémoire **`presence`** (aucune migration), proposée dans l'assistant d'identité sous forme de **cases à décocher** (l'utilisateur retire ce qui est faux), éditable ensuite dans « Identité & activité » (une observation par ligne). Ajoutée à `LLM_MEMORY_SECTIONS` → elle entre dans les prompts de relance et de brief.
+- Pourquoi ça compte : l'agent doit savoir **ce que l'entreprise fait déjà** avant de proposer quoi que ce soit. Les trois scénarios de démo portent aussi leur `presence`.
+
+**Vérif** : `npm test` **123/123** ; **`tsc --noEmit` complet exit 0** (sandbox rétabli). `npm run build` côté Fathi fait foi.
+
+**Reste** : inchangé (push, migration 0010, build). Rien de nouveau à migrer.
+
 ### 2026-07-25 (2) — Claude (Cowork) — kit de démonstration pour le test de Charly
 
 **Demande de Fathi** : se rapprocher d'une version présentable — des données fictives (plusieurs, servant d'études de cas), un prompt pour que Charly génère les siennes, et un guide (fichier + bulles au bon moment). Arbitrages pris avec lui : **3 profils contrastés**, **tout chargé en un clic**, **bulles + fiche**, **choix depuis « Agent & garde-fous »**.

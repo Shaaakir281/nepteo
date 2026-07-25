@@ -45,6 +45,7 @@ const PROMPT_SCHEMA = `{
   "ton": "ton de communication observé, une ligne (ex: professionnel, direct, sans jargon)",
   "canaux": ["valeurs EXACTES parmi: __CHANNELS__"],
   "offres": [{ "name": "...", "price": "...", "target": "...", "promise": "..." }],
+  "presence": ["communication publique CONSTATÉE, une phrase courte par constat (ex: 'publicités Meta actives sur le coffret découverte', 'promotion -15% en cours sur le site', 'Instagram actif, ~3 publications par semaine', 'newsletter mensuelle')"],
   "gaps": ["ce que la recherche n'a PAS permis d'établir"]
 }`;
 

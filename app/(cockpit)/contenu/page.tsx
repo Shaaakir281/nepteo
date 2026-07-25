@@ -10,6 +10,7 @@ import {
 import {
   deriveKpis,
   rollupByCampaign,
+  windowBounds,
   type CampaignMetric,
 } from "@/lib/ads/metrics-rules";
 import { buildCreativeSuggestions } from "@/lib/creative-template";
@@ -48,7 +49,8 @@ export default async function ContenuPage() {
   const { data: adRows } = await supabase
     .from("ad_metrics")
     .select("campaign_id, campaign_name, impressions, clicks, spend, conversions, revenue")
-    .eq("provider", "meta_ads");
+    .eq("provider", "meta_ads")
+    .gte("date", windowBounds().currentFrom);
   const losingCampaigns = rollupByCampaign(
     (adRows ?? []).map((r) => ({
       ...r,

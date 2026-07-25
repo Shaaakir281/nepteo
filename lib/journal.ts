@@ -53,6 +53,7 @@ const SECTION_LABELS: Record<string, string> = {
   objectifs: "Objectifs",
   offres: "Offres",
   philosophie: "Philosophie",
+  presence: "Communication actuelle",
 };
 
 export function entryTitle(e: JournalEntry): string {

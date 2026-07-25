@@ -112,6 +112,13 @@ export async function applyIdentity(formData: FormData) {
     .map(String)
     .filter((c) => (CHANNEL_OPTIONS as readonly string[]).includes(c));
   const offres = readOffers(formData.get("offres"));
+  // Constats de communication publique gardés par l'utilisateur (il décoche
+  // ce qui est faux) — bornés, texte libre venu de la recherche.
+  const presence = formData
+    .getAll("presence")
+    .map((v) => String(v).trim().slice(0, 200))
+    .filter(Boolean)
+    .slice(0, 6);
 
   const sections: { section: MemorySection; content: Record<string, unknown> }[] = [];
 
@@ -130,6 +137,7 @@ export async function applyIdentity(formData: FormData) {
   if (ton) sections.push({ section: "ton", content: { text: ton } });
   if (canaux.length > 0) sections.push({ section: "canaux", content: { list: canaux } });
   if (offres.length > 0) sections.push({ section: "offres", content: { items: offres } });
+  if (presence.length > 0) sections.push({ section: "presence", content: { list: presence } });
 
   for (const { section, content } of sections) {
     const { error } = await admin.from("company_memory").upsert(

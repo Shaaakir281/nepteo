@@ -28,6 +28,8 @@ Trois questions à garder en tête pendant le test :
 Le chargement remplit **l'identité, les prospects, les campagnes et les ventes**, cohérents entre eux. Changer de scénario remplace le précédent.
 
 > Chaque base contient volontairement des **défauts** : emails manquants, statuts vides, un doublon, une campagne en perte. C'est ce que l'agent doit repérer — une base parfaite ne prouverait rien.
+>
+> Chaque scénario porte aussi **six mois d'historique publicitaire** : des campagnes encore en cours, et des campagnes arrêtées (une saison qui avait bien marché, un test qui n'avait rien donné). Les chiffres affichés portent sur les **30 derniers jours**, comparés aux 30 précédents.
 
 ## Le parcours
 
@@ -51,6 +53,11 @@ Le funnel et le kanban. Le **repère de priorité** combine le statut et la comp
 ### 3. Campagnes — l'argent
 
 Cliquez sur **« Analyser mes campagnes »**. L'agent repère la campagne dont le ROAS est inférieur à 1 et propose de la couper. Un bandeau vous renvoie vers « Aujourd'hui » pour valider.
+
+Deux choses à regarder au passage :
+
+- la **comparaison à la période précédente** sur les KPI — « est-ce que ça va mieux que le mois dernier ? » ;
+- la section **« Déjà tenté »**, qui liste les campagnes arrêtées et ce qu'elles avaient donné. C'est la mémoire qui manque à la plupart des outils : sans elle, un agent repropose indéfiniment ce qui a déjà échoué. Une campagne terminée n'est jamais proposée « à couper ».
 
 Testez aussi **« + Nouvelle campagne »** : brief → construction → proposition → garde-fous. **Rien n'est lancé** — la campagne rejoint la file de validation. Le lancement réel (donc la dépense) est une étape séparée, volontairement pas encore branchée.
 

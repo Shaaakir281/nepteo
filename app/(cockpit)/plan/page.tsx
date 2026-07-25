@@ -9,6 +9,7 @@ import {
 import {
   deriveKpis,
   rollupByCampaign,
+  windowBounds,
   type CampaignMetric,
 } from "@/lib/ads/metrics-rules";
 import { buildMarketingPlan, type PlanMove } from "@/lib/plan";
@@ -43,7 +44,8 @@ export default async function PlanPage() {
   const { data: adRows } = await supabase
     .from("ad_metrics")
     .select("campaign_id, campaign_name, impressions, clicks, spend, conversions, revenue")
-    .eq("provider", "meta_ads");
+    .eq("provider", "meta_ads")
+    .gte("date", windowBounds().currentFrom);
   const campaigns = rollupByCampaign(
     (adRows ?? []).map((r) => ({
       ...r,

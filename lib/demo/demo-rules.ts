@@ -24,6 +24,16 @@ export interface DemoCampaignProfile {
   cpc: number;
   cvr: number;
   aov: number;
+  /** Premier jour de diffusion, en jours avant aujourd'hui. Défaut : 30. */
+  startDaysAgo?: number;
+  /** Dernier jour de diffusion. Défaut : 1 (la campagne tourne encore). */
+  endDaysAgo?: number;
+  /**
+   * Dérive de performance sur la durée de vie : 1 = stable, 0,5 = la campagne
+   * a perdu la moitié de son efficacité entre son début et sa fin, 1,6 = elle
+   * s'est améliorée. Rend l'historique lisible plutôt que plat.
+   */
+  trend?: number;
 }
 
 export interface DemoCampaignRow {
@@ -140,22 +150,37 @@ export function buildDemoProspects(
   return out;
 }
 
-/** Lignes quotidiennes de campagnes, sur `days` jours jusqu'à hier. */
+/**
+ * Lignes quotidiennes de campagnes, chacune sur SA propre période de diffusion.
+ * Certaines campagnes sont terminées depuis des mois : c'est ce qui donne à
+ * l'agent une mémoire de ce qui a déjà été tenté, au lieu d'une photo à 14 jours.
+ */
 export function buildDemoCampaigns(
   profiles: readonly DemoCampaignProfile[],
-  days = 14,
+  defaultDays = 30,
 ): DemoCampaignRow[] {
   const rows: DemoCampaignRow[] = [];
 
   profiles.forEach((p, pi) => {
-    for (let d = days; d >= 1; d--) {
+    const start = p.startDaysAgo ?? defaultDays;
+    const end = Math.min(p.endDaysAgo ?? 1, start);
+    const span = Math.max(1, start - end);
+    const trend = p.trend ?? 1;
+
+    for (let d = start; d >= end; d--) {
+      // Progression de 0 (premier jour) à 1 (dernier jour) : la dérive s'applique
+      // graduellement, sans marche d'escalier.
+      const progress = (start - d) / span;
+      const drift = 1 + (trend - 1) * progress;
       const seed = pi * 1000 + d;
       const wobble = 0.8 + rand(seed) * 0.4; // ±20 %, reproductible
+
       const impressions = Math.round(p.dailyImpressions * wobble);
       const clicks = Math.round(impressions * p.ctr);
       const spend = Math.round(clicks * p.cpc * 100) / 100;
-      const conversions = Math.round(clicks * p.cvr);
+      const conversions = Math.round(clicks * p.cvr * drift);
       const revenue = Math.round(conversions * p.aov * 100) / 100;
+
       rows.push({
         campaign_id: p.id,
         campaign_name: p.name,

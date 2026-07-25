@@ -17,6 +17,10 @@ import {
   DEMO_SCENARIO_IDS,
   findScenario,
 } from "../lib/demo/scenarios.ts";
+import {
+  rollupWithStatus,
+  windowBounds,
+} from "../lib/ads/metrics-rules.ts";
 
 test("scénarios — trois profils distincts et complets", () => {
   assert.equal(DEMO_SCENARIOS.length, 3);
@@ -28,6 +32,7 @@ test("scénarios — trois profils distincts et complets", () => {
     assert.ok(s.memory.description.length > 80, `${s.id} : description étoffée`);
     assert.ok(s.memory.philosophie.length > 40, `${s.id} : philosophie renseignée`);
     assert.ok(s.memory.offres.length >= 3, `${s.id} : au moins trois offres`);
+    assert.ok(s.memory.presence.length >= 3, `${s.id} : communication actuelle décrite`);
     assert.ok(s.memory.objectifs.length <= 2, `${s.id} : deux objectifs maximum`);
     assert.ok(s.campaigns.length >= 3, `${s.id} : plusieurs campagnes`);
     assert.ok(s.products.length >= 3, `${s.id} : plusieurs produits`);
@@ -98,11 +103,18 @@ test("prospects — un scénario B2C n'invente pas d'entreprise", () => {
   assert.ok(list.every((p) => p.company === null));
 });
 
-test("campagnes — une ligne par campagne et par jour, chiffres cohérents", () => {
+test("campagnes — chaque campagne a sa propre période de diffusion", () => {
   const s = DEMO_SCENARIOS[2];
-  const rows = buildDemoCampaigns(s.campaigns, 14);
-  assert.equal(rows.length, s.campaigns.length * 14);
-  assert.deepEqual(rows, buildDemoCampaigns(s.campaigns, 14), "déterministe");
+  const rows = buildDemoCampaigns(s.campaigns);
+  assert.deepEqual(rows, buildDemoCampaigns(s.campaigns), "déterministe");
+
+  // Le nombre de lignes suit le cycle de vie déclaré, pas une durée fixe.
+  const expected = s.campaigns.reduce((n, c) => {
+    const start = c.startDaysAgo ?? 30;
+    const end = Math.min(c.endDaysAgo ?? 1, start);
+    return n + (start - end + 1);
+  }, 0);
+  assert.equal(rows.length, expected);
 
   for (const r of rows) {
     assert.ok(r.clicks <= r.impressions, "moins de clics que d'impressions");
@@ -129,5 +141,38 @@ test("ventes — déterministes, datées dans le passé, montants plausibles", (
       s.products.some((p) => p.label === sale.label),
       "le libellé correspond à une offre du scénario",
     );
+  }
+});
+
+test("campagnes — chaque scénario a un passé : des campagnes terminées", () => {
+  for (const s of DEMO_SCENARIOS) {
+    const ended = s.campaigns.filter((c) => (c.endDaysAgo ?? 1) > 45);
+    assert.ok(
+      ended.length >= 2,
+      `${s.id} : au moins deux campagnes arrêtées, sinon l'agent n'a aucune mémoire`,
+    );
+    const running = s.campaigns.filter((c) => (c.endDaysAgo ?? 1) <= 1);
+    assert.ok(running.length >= 3, `${s.id} : plusieurs campagnes en cours`);
+    // Assez d'antériorité pour comparer à la période précédente (30 j + 30 j).
+    assert.ok(
+      running.some((c) => (c.startDaysAgo ?? 30) >= 60),
+      `${s.id} : au moins une campagne couvre les deux périodes comparées`,
+    );
+  }
+});
+
+test("campagnes — le moteur voit bien de l'actif ET du terminé", () => {
+  for (const s of DEMO_SCENARIOS) {
+    const rows = buildDemoCampaigns(s.campaigns);
+    const out = rollupWithStatus(rows, windowBounds());
+    const active = out.filter((c) => c.status === "active");
+    const ended = out.filter((c) => c.status === "ended");
+    assert.ok(active.length >= 3, `${s.id} : campagnes en cours détectées`);
+    assert.ok(ended.length >= 2, `${s.id} : campagnes terminées détectées`);
+    // Une campagne terminée qui avait marché, une qui n'avait pas marché.
+    assert.ok(ended.some((c) => c.roas >= 1), `${s.id} : un succès passé`);
+    assert.ok(ended.some((c) => c.roas < 1), `${s.id} : un échec passé`);
+    // Aucune campagne terminée ne doit rester sans dépense (sinon invisible).
+    for (const c of ended) assert.ok(c.spend > 0);
   }
 });

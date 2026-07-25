@@ -74,6 +74,12 @@ test("parseIdentityProposal — nettoie, recale et borne", () => {
         { name: "", price: "ignorée" },
         { promise: "sans nom donc ignorée" },
       ],
+      presence: [
+        "Publicités Meta actives sur la pose de fenêtres",
+        "Publicités Meta actives sur la pose de fenêtres",
+        "  Newsletter mensuelle  ",
+        "",
+      ],
       gaps: ["Chiffre d'affaires introuvable"],
     }),
     OPTIONS,
@@ -90,6 +96,27 @@ test("parseIdentityProposal — nettoie, recale et borne", () => {
   assert.equal(p.offres[0].name, "Pose");
   assert.equal(p.offres[0].promise, undefined);
   assert.deepEqual(p.gaps, ["Chiffre d'affaires introuvable"]);
+  // Communication publique : dédupliquée, nettoyée, les vides écartés.
+  assert.deepEqual(p.presence, [
+    "Publicités Meta actives sur la pose de fenêtres",
+    "Newsletter mensuelle",
+  ]);
+});
+
+test("isProposalUseful — la seule communication publique suffit à montrer la fiche", () => {
+  assert.equal(
+    isProposalUseful({ canaux: [], offres: [], presence: [], gaps: [] }),
+    false,
+  );
+  assert.equal(
+    isProposalUseful({
+      canaux: [],
+      offres: [],
+      presence: ["Publicités Meta actives"],
+      gaps: [],
+    }),
+    true,
+  );
 });
 
 test("parseIdentityProposal — champs absents omis, jamais devinés", () => {
@@ -110,7 +137,8 @@ test("parseIdentityProposal — sortie inexploitable = null (repli sur la saisie
 
 test("isProposalUseful — une proposition vide n'est pas montrée", () => {
   assert.equal(isProposalUseful(null), false);
-  assert.equal(isProposalUseful({ canaux: [], offres: [], gaps: ["rien trouvé"] }), false);
-  assert.equal(isProposalUseful({ canaux: ["Google"], offres: [], gaps: [] }), true);
-  assert.equal(isProposalUseful({ canaux: [], offres: [], gaps: [], zone: "Paris" }), true);
+  const empty = { canaux: [], offres: [], presence: [], gaps: [] };
+  assert.equal(isProposalUseful({ ...empty, gaps: ["rien trouvé"] }), false);
+  assert.equal(isProposalUseful({ ...empty, canaux: ["Google"] }), true);
+  assert.equal(isProposalUseful({ ...empty, zone: "Paris" }), true);
 });

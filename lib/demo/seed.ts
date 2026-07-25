@@ -72,6 +72,7 @@ async function seedMemory(
     { section: "objectifs", content: { list: m.objectifs } },
     { section: "offres", content: { items: m.offres } },
     { section: "philosophie", content: { text: m.philosophie } },
+    { section: "presence", content: { list: m.presence } },
   ];
 
   const now = new Date().toISOString();

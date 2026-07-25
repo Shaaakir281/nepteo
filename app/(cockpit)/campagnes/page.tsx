@@ -4,10 +4,16 @@ import { redirect } from "next/navigation";
 import { EDIT_ROLES } from "@/lib/memory";
 import {
   aggregate,
+  ANALYSIS_WINDOW_DAYS,
   buildAdsFindings,
+  buildHistoryFindings,
+  buildTrendFinding,
+  comparePeriods,
   deriveKpis,
-  rollupByCampaign,
-  type CampaignMetric,
+  rollupWithStatus,
+  splitByPeriod,
+  windowBounds,
+  type DatedMetric,
 } from "@/lib/ads/metrics-rules";
 import { analyzeAdsForm, loadAdsDemo } from "./actions";
 import { NewCampaignModal } from "./_components/new-campaign-modal";
@@ -17,6 +23,9 @@ const eur = (n: number) =>
   `${n.toLocaleString("fr-FR", { maximumFractionDigits: 0 })} €`;
 const pct = (n: number) => `${(n * 100).toFixed(1)} %`;
 const mult = (n: number) => `${n.toFixed(1)}×`;
+/** Variation relative signée, ex. « +12 % » / « −30 % ». */
+const signed = (n: number) =>
+  `${n >= 0 ? "+" : "−"}${Math.abs(Math.round(n * 100))} %`;
 
 const SEVERITY: Record<string, string> = {
   good: "border-green/30 bg-green-tint",
@@ -45,19 +54,38 @@ export default async function CampagnesPage({
 
   const { data: rows } = await supabase
     .from("ad_metrics")
-    .select("campaign_id, campaign_name, impressions, clicks, spend, conversions, revenue")
+    .select("campaign_id, campaign_name, date, impressions, clicks, spend, conversions, revenue")
     .eq("provider", "meta_ads");
   const metrics = (rows ?? []).map((r) => ({
     ...r,
     spend: Number(r.spend),
     revenue: Number(r.revenue),
-  })) as CampaignMetric[];
+  })) as DatedMetric[];
 
-  const campaigns = rollupByCampaign(metrics)
-    .map(deriveKpis)
+  // Les KPI portent sur les 30 derniers jours ; l'historique complet sert à
+  // savoir ce qui tourne encore et ce qui a déjà été tenté.
+  const bounds = windowBounds();
+  const { current, previous } = splitByPeriod(metrics, bounds);
+  const withStatus = rollupWithStatus(metrics, bounds);
+  const campaigns = withStatus
+    .filter((c) => c.status === "active")
     .sort((a, b) => b.spend - a.spend);
-  const total = deriveKpis(aggregate(metrics));
-  const findings = buildAdsFindings(campaigns);
+  const ended = withStatus
+    .filter((c) => c.status === "ended" && c.spend > 0)
+    .sort((a, b) => a.daysSinceLast - b.daysSinceLast);
+
+  const total = deriveKpis(aggregate(current));
+  const comparison = comparePeriods(current, previous);
+  const findings = [
+    ...buildAdsFindings(campaigns),
+    ...(buildTrendFinding(comparison) ? [buildTrendFinding(comparison)!] : []),
+    ...buildHistoryFindings(withStatus),
+  ];
+  const fmtDay = new Intl.DateTimeFormat("fr-FR", {
+    day: "numeric",
+    month: "short",
+    year: "2-digit",
+  });
 
   return (
     <>
@@ -149,8 +177,24 @@ export default async function CampagnesPage({
         <div className="space-y-4">
           {/* KPIs globaux */}
           <div className="grid grid-cols-2 gap-3.5 xl:grid-cols-4">
-            <Kpi label="Dépense" value={eur(total.spend)} hint="7 derniers jours" />
-            <Kpi label="Revenu attribué" value={eur(total.revenue)} hint="conversions × panier" />
+            <Kpi
+              label="Dépense"
+              value={eur(total.spend)}
+              hint={
+                comparison
+                  ? `${ANALYSIS_WINDOW_DAYS} j · ${signed(comparison.spendChange)} vs période précédente`
+                  : `${ANALYSIS_WINDOW_DAYS} derniers jours`
+              }
+            />
+            <Kpi
+              label="Revenu attribué"
+              value={eur(total.revenue)}
+              hint={
+                comparison
+                  ? `${signed(comparison.revenueChange)} vs période précédente`
+                  : "conversions × panier"
+              }
+            />
             <Kpi
               label="ROAS global"
               value={mult(total.roas)}
@@ -181,8 +225,12 @@ export default async function CampagnesPage({
           <div className="overflow-hidden rounded-[18px] border border-line-soft bg-white shadow-card">
             <div className="border-b border-line-soft px-[22px] py-4">
               <h3 className="font-display text-[15px] font-semibold">
-                Par campagne
+                Campagnes en cours
               </h3>
+              <p className="mt-0.5 text-[12px] text-muted">
+                Sur les {ANALYSIS_WINDOW_DAYS} derniers jours — la période sur
+                laquelle vous pouvez encore agir.
+              </p>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-[12.5px]">
@@ -217,6 +265,49 @@ export default async function CampagnesPage({
               </table>
             </div>
           </div>
+
+          {/* Campagnes terminées — ce qui a déjà été tenté */}
+          {ended.length > 0 && (
+            <div className="overflow-hidden rounded-[18px] border border-line-soft bg-white shadow-card">
+              <div className="border-b border-line-soft px-[22px] py-4">
+                <h3 className="font-display text-[15px] font-semibold">
+                  Déjà tenté
+                </h3>
+                <p className="mt-0.5 text-[12px] text-muted">
+                  Campagnes arrêtées, jugées sur toute leur durée. L&apos;agent
+                  s&apos;en sert pour ne pas vous reproposer ce qui a échoué.
+                </p>
+              </div>
+              <ul>
+                {ended.map((c) => (
+                  <li
+                    key={c.campaign_id}
+                    className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-line-soft px-[22px] py-3 last:border-b-0"
+                  >
+                    <span className="flex-1 text-[13px] font-medium text-ink">
+                      {c.campaign_name}
+                    </span>
+                    <span className="text-[12px] text-faint">
+                      {fmtDay.format(new Date(c.firstDate))} →{" "}
+                      {fmtDay.format(new Date(c.lastDate))}
+                    </span>
+                    <span className="text-[12px] tabular-nums text-body">
+                      {eur(c.spend)} dépensés
+                    </span>
+                    <span
+                      className={`rounded-full px-2.5 py-0.5 text-[11.5px] font-semibold tabular-nums ${
+                        c.roas >= 1
+                          ? "bg-green-tint text-green"
+                          : "bg-red-tint text-red"
+                      }`}
+                    >
+                      ROAS {mult(c.roas)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           <p className="text-[11.5px] text-faint">
             Données de démonstration (fictives). Le connecteur Meta Ads réel

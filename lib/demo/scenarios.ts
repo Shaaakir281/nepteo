@@ -31,6 +31,8 @@ export interface DemoMemory {
   ton: string;
   objectifs: string[];
   philosophie: string;
+  /** Ce que l'entreprise fait déjà publiquement — l'agent doit le savoir. */
+  presence: string[];
   offres: DemoOffer[];
 }
 
@@ -73,6 +75,12 @@ const ARTISAN: DemoScenario = {
     objectifs: ["Trouver plus de clients", "Relancer mes prospects"],
     philosophie:
       "Je préfère perdre un chantier que promettre un délai que je ne tiendrai pas. Le devis est gratuit et sans relance insistante : si le client hésite, c'est souvent qu'il a raison d'attendre.",
+    presence: [
+      "Fiche Google Business à jour, 34 avis (4,8/5)",
+      "Publicités Google actives sur « fenêtres sur mesure »",
+      "Page Facebook avec des photos de chantiers, ~2 publications par mois",
+      "Aucune newsletter",
+    ],
     offres: [
       { name: "Fenêtres sur mesure", price: "à partir de 850 € posé", target: "Propriétaires en rénovation", promise: "Pose en une journée, sans dégâts" },
       { name: "Escalier bois", price: "à partir de 3 200 €", target: "Maisons individuelles", promise: "Dessiné avec vous, fabriqué à l'atelier" },
@@ -93,11 +101,15 @@ const ARTISAN: DemoScenario = {
     ],
   },
   campaigns: [
-    { id: "art_local", name: "Google — Fenêtres sur mesure Chartres", dailyImpressions: 3200, ctr: 0.041, cpc: 0.95, cvr: 0.038, aov: 890 },
+    // --- En cours ---
+    { id: "art_local", name: "Google — Fenêtres sur mesure Chartres", dailyImpressions: 3200, ctr: 0.041, cpc: 0.95, cvr: 0.038, aov: 890, startDaysAgo: 90, trend: 1.15 },
+    { id: "art_retarget", name: "Retargeting — Demande de devis", dailyImpressions: 2100, ctr: 0.034, cpc: 0.61, cvr: 0.031, aov: 1150, startDaysAgo: 70, trend: 0.7 },
     // En perte assumée : beaucoup de vues, zéro devis. C'est LE constat que
     // l'agent doit remonter en premier (≈ 30 €/jour qui ne rapportent rien).
-    { id: "art_notoriete", name: "Facebook — Nos réalisations en vidéo", dailyImpressions: 14000, ctr: 0.008, cpc: 0.28, cvr: 0.0002, aov: 300 },
-    { id: "art_retarget", name: "Retargeting — Demande de devis", dailyImpressions: 2100, ctr: 0.034, cpc: 0.61, cvr: 0.031, aov: 1150 },
+    { id: "art_notoriete", name: "Facebook — Nos réalisations en vidéo", dailyImpressions: 14000, ctr: 0.008, cpc: 0.28, cvr: 0.0002, aov: 300, startDaysAgo: 45 },
+    // --- Terminées (mémoire de ce qui a déjà été tenté) ---
+    { id: "art_hiver", name: "Google — Isolation avant l'hiver", dailyImpressions: 2600, ctr: 0.035, cpc: 1.1, cvr: 0.011, aov: 480, startDaysAgo: 175, endDaysAgo: 130 },
+    { id: "art_tiktok", name: "TikTok — Test format court", dailyImpressions: 18000, ctr: 0.012, cpc: 0.22, cvr: 0.0004, aov: 300, startDaysAgo: 105, endDaysAgo: 88 },
   ],
   products: [
     { label: "Pose fenêtres — maison Chartres", price: 4200 },
@@ -125,6 +137,12 @@ const AGENCE: DemoScenario = {
     objectifs: ["Obtenir plus de rendez-vous", "Relancer mes prospects"],
     philosophie:
       "On refuse les missions où l'on n'apporte rien. Un client qui repart avec un diagnostic honnête et sans devis vaut mieux qu'un contrat qu'on n'assumera pas. Pas de forfait au rabais : le prix reflète le temps réel.",
+    presence: [
+      "Publicités LinkedIn actives sur le diagnostic positionnement",
+      "Études de cas publiées sur le site, 1 nouvelle par trimestre",
+      "Présence au salon Global Industrie",
+      "Aucune newsletter, aucun compte Instagram",
+    ],
     offres: [
       { name: "Diagnostic positionnement", price: "2 400 €", target: "PME de 10 à 200 personnes", promise: "Un cap clair en trois semaines" },
       { name: "Refonte identité + site", price: "12 000 à 25 000 €", target: "Industriels en croissance", promise: "Livré en quatre mois, formation incluse" },
@@ -148,10 +166,14 @@ const AGENCE: DemoScenario = {
     ],
   },
   campaigns: [
-    { id: "agc_linkedin", name: "LinkedIn — Diagnostic positionnement", dailyImpressions: 5200, ctr: 0.014, cpc: 3.4, cvr: 0.045, aov: 2400 },
-    { id: "agc_search", name: "Google — Agence communication industrie", dailyImpressions: 1800, ctr: 0.052, cpc: 2.1, cvr: 0.021, aov: 2400 },
+    // --- En cours ---
+    { id: "agc_linkedin", name: "LinkedIn — Diagnostic positionnement", dailyImpressions: 5200, ctr: 0.014, cpc: 3.4, cvr: 0.045, aov: 2400, startDaysAgo: 90, trend: 1.1 },
+    { id: "agc_search", name: "Google — Agence communication industrie", dailyImpressions: 1800, ctr: 0.052, cpc: 2.1, cvr: 0.021, aov: 2400, startDaysAgo: 90, trend: 0.85 },
     // En perte assumée : de la visibilité, aucun rendez-vous.
-    { id: "agc_display", name: "Display — Notoriété régionale", dailyImpressions: 42000, ctr: 0.004, cpc: 0.22, cvr: 0.00008, aov: 1200 },
+    { id: "agc_display", name: "Display — Notoriété régionale", dailyImpressions: 42000, ctr: 0.004, cpc: 0.22, cvr: 0.00008, aov: 1200, startDaysAgo: 40 },
+    // --- Terminées ---
+    { id: "agc_salon", name: "LinkedIn — Salon Global Industrie", dailyImpressions: 7000, ctr: 0.016, cpc: 3.6, cvr: 0.013, aov: 2400, startDaysAgo: 170, endDaysAgo: 140 },
+    { id: "agc_webinar", name: "Webinaire — Inscriptions", dailyImpressions: 5000, ctr: 0.009, cpc: 1.9, cvr: 0.0009, aov: 2400, startDaysAgo: 120, endDaysAgo: 100 },
   ],
   products: [
     { label: "Diagnostic positionnement", price: 2400 },
@@ -179,6 +201,12 @@ const ECOMMERCE: DemoScenario = {
     objectifs: ["Vendre davantage", "Fidéliser mes clients"],
     philosophie:
       "On dit d'où vient chaque lot et ce qu'on paie au producteur, même quand ce n'est pas flatteur. Pas de fausse rareté ni de compte à rebours : si une origine est épuisée, on l'écrit.",
+    presence: [
+      "Publicités Meta actives sur le coffret découverte",
+      "Instagram très actif, ~4 publications par semaine",
+      "Newsletter hebdomadaire à environ 6 000 abonnés",
+      "Code promo -10 % pour la première commande affiché sur le site",
+    ],
     offres: [
       { name: "Abonnement mensuel", price: "24 €/mois", target: "Amateurs réguliers", promise: "Une origine différente chaque mois, sans engagement" },
       { name: "Coffret découverte", price: "32 €", target: "Cadeaux et premiers achats", promise: "Trois origines, livré en 48 h" },
@@ -199,10 +227,15 @@ const ECOMMERCE: DemoScenario = {
     ],
   },
   campaigns: [
-    { id: "eco_prospect", name: "Meta — Coffret découverte", dailyImpressions: 26000, ctr: 0.019, cpc: 0.38, cvr: 0.016, aov: 32 },
-    { id: "eco_retarget", name: "Retargeting — Panier abandonné", dailyImpressions: 6400, ctr: 0.033, cpc: 0.44, cvr: 0.048, aov: 41 },
-    { id: "eco_reels", name: "Reels — Notoriété torréfaction", dailyImpressions: 61000, ctr: 0.007, cpc: 0.26, cvr: 0.002, aov: 24 },
-    { id: "eco_search", name: "Google Shopping — Café de spécialité", dailyImpressions: 9200, ctr: 0.026, cpc: 0.51, cvr: 0.022, aov: 29 },
+    // --- En cours ---
+    { id: "eco_prospect", name: "Meta — Coffret découverte", dailyImpressions: 26000, ctr: 0.019, cpc: 0.38, cvr: 0.016, aov: 32, startDaysAgo: 90, trend: 0.8 },
+    { id: "eco_retarget", name: "Retargeting — Panier abandonné", dailyImpressions: 6400, ctr: 0.033, cpc: 0.44, cvr: 0.048, aov: 41, startDaysAgo: 90, trend: 1.1 },
+    { id: "eco_search", name: "Google Shopping — Café de spécialité", dailyImpressions: 9200, ctr: 0.026, cpc: 0.51, cvr: 0.022, aov: 29, startDaysAgo: 75 },
+    // En perte assumée : énormément de vues, presque aucune vente.
+    { id: "eco_reels", name: "Reels — Notoriété torréfaction", dailyImpressions: 61000, ctr: 0.007, cpc: 0.26, cvr: 0.002, aov: 24, startDaysAgo: 50 },
+    // --- Terminées ---
+    { id: "eco_noel", name: "Meta — Coffrets de fin d'année", dailyImpressions: 34000, ctr: 0.024, cpc: 0.41, cvr: 0.035, aov: 38, startDaysAgo: 180, endDaysAgo: 150 },
+    { id: "eco_influence", name: "Partenariat créateurs — Test", dailyImpressions: 22000, ctr: 0.006, cpc: 0.6, cvr: 0.002, aov: 24, startDaysAgo: 130, endDaysAgo: 115 },
   ],
   products: [
     { label: "Abonnement mensuel", price: 24 },

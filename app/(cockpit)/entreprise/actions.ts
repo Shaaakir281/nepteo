@@ -143,6 +143,24 @@ export async function saveObjectifs(formData: FormData) {
   await persist(orgId, userId, "objectifs", { list });
 }
 
+/**
+ * Communication actuelle — une observation par ligne. Ce que l'entreprise fait
+ * déjà publiquement : l'agent doit le savoir avant de proposer quoi que ce soit.
+ */
+export async function savePresence(formData: FormData) {
+  const { userId, orgId } = await requireEditor();
+  const raw = formData.get("text");
+  const list =
+    typeof raw === "string"
+      ? raw
+          .split("\n")
+          .map((l) => l.trim().slice(0, 200))
+          .filter(Boolean)
+          .slice(0, 8)
+      : [];
+  await persist(orgId, userId, "presence", list.length > 0 ? { list } : {});
+}
+
 /** Philosophie — texte libre, facultatif. Vider le champ efface la section. */
 export async function savePhilosophie(formData: FormData) {
   const { userId, orgId } = await requireEditor();

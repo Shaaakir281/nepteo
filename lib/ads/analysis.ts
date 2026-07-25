@@ -1,10 +1,9 @@
 import type { createAdminClient } from "@/lib/supabase/admin";
 import {
-  aggregate,
   buildAdsProposals,
-  deriveKpis,
-  rollupByCampaign,
-  type CampaignMetric,
+  rollupWithStatus,
+  windowBounds,
+  type DatedMetric,
 } from "@/lib/ads/metrics-rules";
 
 type Admin = ReturnType<typeof createAdminClient>;
@@ -19,9 +18,11 @@ export async function runAdsAnalysis(
   orgId: string,
   actorId: string | null,
 ): Promise<number> {
+  // Historique complet : on a besoin des dates pour distinguer une campagne
+  // en cours d'une campagne arrêtée (qu'il serait absurde de proposer à couper).
   const { data: rows } = await admin
     .from("ad_metrics")
-    .select("campaign_id, campaign_name, impressions, clicks, spend, conversions, revenue")
+    .select("campaign_id, campaign_name, date, impressions, clicks, spend, conversions, revenue")
     .eq("organization_id", orgId)
     .eq("provider", "meta_ads");
   if (!rows || rows.length === 0) return 0;
@@ -30,8 +31,8 @@ export async function runAdsAnalysis(
     ...r,
     spend: Number(r.spend),
     revenue: Number(r.revenue),
-  })) as CampaignMetric[];
-  const campaigns = rollupByCampaign(metrics).map(deriveKpis);
+  })) as DatedMetric[];
+  const campaigns = rollupWithStatus(metrics, windowBounds());
   const proposals = buildAdsProposals(campaigns);
   if (proposals.length === 0) return 0;
 

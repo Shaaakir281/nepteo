@@ -8,6 +8,7 @@ export const MEMORY_SECTIONS = [
   "objectifs",
   "offres",
   "philosophie",
+  "presence",
 ] as const;
 export type MemorySection = (typeof MEMORY_SECTIONS)[number];
 
@@ -22,6 +23,7 @@ export const LLM_MEMORY_SECTIONS: readonly MemorySection[] = [
   "ton",
   "objectifs",
   "philosophie",
+  "presence",
 ];
 
 export const ACTIVITY_OPTIONS = [
@@ -80,6 +82,8 @@ export interface MemoryContent {
   objectifs: { list?: string[] };
   offres: { items?: Offer[] };
   philosophie: { text?: string };
+  /** Ce que l'entreprise fait déjà publiquement (pubs, promos, publications). */
+  presence: { list?: string[] };
 }
 
 /** Texte libre : plus généreux que le ton (500) ou la description (1000). */

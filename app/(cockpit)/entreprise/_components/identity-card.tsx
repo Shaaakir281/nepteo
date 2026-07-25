@@ -15,6 +15,7 @@ import {
   saveCanaux,
   saveObjectifs,
   savePhilosophie,
+  savePresence,
   saveTon,
   saveZone,
 } from "../actions";
@@ -161,6 +162,37 @@ export function IdentityCard({
             required
             defaultValue={mem.ton?.text ?? ""}
             placeholder="Ex. : professionnel, direct, sans jargon"
+            className={FIELD}
+          />
+          <div className="mt-3">
+            <button type="submit" className={SAVE_BTN}>
+              Enregistrer
+            </button>
+          </div>
+        </form>
+      </MemRow>
+
+      <MemRow
+        label="Communication"
+        canEdit={canEdit}
+        saved={saved === "presence"}
+        value={
+          (mem.presence?.list ?? []).length > 0 ? (
+            <TagList items={mem.presence!.list!} />
+          ) : undefined
+        }
+        sub="Ce que vous faites déjà publiquement — pour ne pas vous le reproposer"
+      >
+        <form action={savePresence}>
+          <p className="mb-2 text-[12px] text-muted">
+            Une observation par ligne (publicités en cours, promotion,
+            newsletter, rythme de publication…).
+          </p>
+          <textarea
+            name="text"
+            rows={4}
+            defaultValue={(mem.presence?.list ?? []).join("\n")}
+            placeholder={"Publicités Meta actives sur le coffret découverte\nNewsletter mensuelle\nInstagram, 3 publications par semaine"}
             className={FIELD}
           />
           <div className="mt-3">

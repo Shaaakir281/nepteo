@@ -274,6 +274,35 @@ export function IdentityWizard({
           </div>
         )}
 
+        {proposal.presence.length > 0 && (
+          <div>
+            <p className="mb-1 text-[12px] font-semibold text-ink">
+              Ce que vous faites déjà, vu de l&apos;extérieur
+            </p>
+            <p className="mb-2 text-[11.5px] leading-relaxed text-muted">
+              Décochez ce qui est faux. L&apos;agent en tiendra compte pour ne
+              pas vous proposer ce que vous faites déjà.
+            </p>
+            <div className="space-y-1.5">
+              {proposal.presence.map((p) => (
+                <label
+                  key={p}
+                  className="flex cursor-pointer items-start gap-2.5 rounded-[10px] border border-line-soft bg-tint-soft/50 px-3.5 py-2 text-[12.5px] leading-relaxed text-ink has-[:checked]:border-violet has-[:checked]:bg-tint-soft"
+                >
+                  <input
+                    type="checkbox"
+                    name="presence"
+                    value={p}
+                    defaultChecked
+                    className="mt-[3px] flex-none accent-violet"
+                  />
+                  <span>{p}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
+
         {proposal.gaps.length > 0 && (
           <div className="rounded-[10px] border border-line-soft bg-tint-soft px-3.5 py-3">
             <p className="text-[12px] font-semibold text-ink">

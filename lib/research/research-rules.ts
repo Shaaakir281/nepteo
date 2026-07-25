@@ -104,11 +104,17 @@ export function buildCompanyQuery(input: {
     `Fiche d'identité de l'entreprise « ${name} »` +
     (site ? ` (site officiel : ${site})` : "") +
     (activity ? `, activité déclarée par son dirigeant : ${activity}` : "") +
-    `. En français, à partir de son site et de sources publiques, indique : ` +
-    `ce qu'elle vend exactement, à quels clients, sa zone géographique, le ton ` +
-    `de sa communication, ses offres ou gammes identifiables, et ses preuves de ` +
-    `sérieux (avis, références, certifications). ` +
-    `N'invente rien : si une information est introuvable, écris-le explicitement.`
+    `. En français, à partir de son site et de sources publiques, indique :\n` +
+    `1. Ce qu'elle vend exactement, à quels clients, et sur quelle zone.\n` +
+    `2. Ses OFFRES ou gammes identifiables, avec les prix affichés quand il y en a.\n` +
+    `3. Le ton de sa communication et ses preuves de sérieux (avis, références, ` +
+    `certifications).\n` +
+    `4. Sa COMMUNICATION PUBLIQUE observable aujourd'hui : publicités visibles ` +
+    `(bibliothèque publicitaire Meta, annonces Google), promotions ou offres en ` +
+    `cours sur le site, réseaux sociaux actifs et rythme de publication, blog, ` +
+    `newsletter, participation à des salons.\n` +
+    `N'invente rien : si une information est introuvable, écris-le explicitement. ` +
+    `Distingue bien ce que tu as vérifié de ce que tu supposes.`
   );
 }
 

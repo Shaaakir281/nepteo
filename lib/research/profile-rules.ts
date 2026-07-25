@@ -26,6 +26,12 @@ export interface IdentityProposal {
   ton?: string;
   canaux: string[];
   offres: ProposedOffer[];
+  /**
+   * Communication publique observée : publicités visibles, promotions en cours,
+   * rythme de publication, newsletter… Ce que l'entreprise fait DÉJÀ, et que
+   * l'agent doit connaître avant de proposer quoi que ce soit.
+   */
+  presence: string[];
   /** Ce que la recherche n'a pas permis d'établir — affiché tel quel, sans bluff. */
   gaps: string[];
 }
@@ -43,6 +49,7 @@ const MAX_OFFERS = 6;
 const MAX_OFFER_NAME = 80;
 const MAX_OFFER_FIELD = 200;
 const MAX_GAPS = 5;
+const MAX_PRESENCE = 6;
 
 function fold(value: string): string {
   return value
@@ -96,6 +103,18 @@ export function extractJson(raw: unknown): Record<string, unknown> | null {
   }
 }
 
+/** Liste de phrases courtes, nettoyée et bornée (présence, manques…). */
+function parseList(raw: unknown, max: number): string[] {
+  if (!Array.isArray(raw)) return [];
+  const out: string[] = [];
+  for (const item of raw) {
+    if (out.length >= max) break;
+    const text = str(item, MAX_OFFER_FIELD);
+    if (text && !out.includes(text)) out.push(text);
+  }
+  return out;
+}
+
 function parseOffers(raw: unknown): ProposedOffer[] {
   if (!Array.isArray(raw)) return [];
   const out: ProposedOffer[] = [];
@@ -136,16 +155,12 @@ export function parseIdentityProposal(
     if (snapped && !canaux.includes(snapped)) canaux.push(snapped);
   }
 
-  const gaps: string[] = [];
-  if (Array.isArray(json.gaps)) {
-    for (const g of json.gaps) {
-      if (gaps.length >= MAX_GAPS) break;
-      const text = str(g, MAX_OFFER_FIELD);
-      if (text) gaps.push(text);
-    }
-  }
-
-  const proposal: IdentityProposal = { canaux, offres: parseOffers(json.offres), gaps };
+  const proposal: IdentityProposal = {
+    canaux,
+    offres: parseOffers(json.offres),
+    presence: parseList(json.presence, MAX_PRESENCE),
+    gaps: parseList(json.gaps, MAX_GAPS),
+  };
 
   const activityType = snapToOption(json.activity_type, options.activityOptions);
   const audience = snapToOption(json.audience, options.audienceOptions);
@@ -171,6 +186,7 @@ export function isProposalUseful(p: IdentityProposal | null): boolean {
       p.zone ||
       p.ton ||
       p.canaux.length > 0 ||
-      p.offres.length > 0,
+      p.offres.length > 0 ||
+      p.presence.length > 0,
   );
 }

@@ -79,6 +79,166 @@ export function aggregate(rows: CampaignMetric[]): CampaignMetric {
   );
 }
 
+// ===== Fenêtre d'analyse et historique =====
+
+/**
+ * Toutes les vues raisonnent sur les 30 derniers jours. Sans fenêtre, une
+ * campagne mauvaise il y a six mois puis redressée paraîtrait tiède, et une
+ * campagne arrêtée depuis longtemps continuerait d'être proposée « à couper ».
+ */
+export const ANALYSIS_WINDOW_DAYS = 30;
+
+export interface DatedMetric extends CampaignMetric {
+  date: string; // YYYY-MM-DD
+}
+
+export interface PeriodBounds {
+  /** Début de la période courante (incluse). */
+  currentFrom: string;
+  /** Début de la période précédente, de même durée (incluse). */
+  previousFrom: string;
+}
+
+function isoDaysAgo(now: Date, days: number): string {
+  const d = new Date(now);
+  d.setUTCHours(0, 0, 0, 0);
+  d.setUTCDate(d.getUTCDate() - days);
+  return d.toISOString().slice(0, 10);
+}
+
+/** Bornes des deux périodes comparées (courante et précédente, même durée). */
+export function windowBounds(
+  now: Date = new Date(),
+  days: number = ANALYSIS_WINDOW_DAYS,
+): PeriodBounds {
+  return {
+    currentFrom: isoDaysAgo(now, days),
+    previousFrom: isoDaysAgo(now, days * 2),
+  };
+}
+
+export interface PeriodSplit {
+  current: DatedMetric[];
+  previous: DatedMetric[];
+  /** Plus ancien que les deux périodes — sert l'historique, pas les KPI. */
+  older: DatedMetric[];
+}
+
+export function splitByPeriod(
+  rows: DatedMetric[],
+  bounds: PeriodBounds,
+): PeriodSplit {
+  const split: PeriodSplit = { current: [], previous: [], older: [] };
+  for (const r of rows) {
+    if (r.date >= bounds.currentFrom) split.current.push(r);
+    else if (r.date >= bounds.previousFrom) split.previous.push(r);
+    else split.older.push(r);
+  }
+  return split;
+}
+
+export type CampaignStatus = "active" | "ended";
+
+export interface CampaignHistory extends CampaignKpis {
+  status: CampaignStatus;
+  firstDate: string;
+  lastDate: string;
+  /** Jours écoulés depuis la dernière ligne (0 si la campagne tourne encore). */
+  daysSinceLast: number;
+}
+
+function daysBetween(fromIso: string, toIso: string): number {
+  const a = Date.parse(`${fromIso}T00:00:00Z`);
+  const b = Date.parse(`${toIso}T00:00:00Z`);
+  if (Number.isNaN(a) || Number.isNaN(b)) return 0;
+  return Math.max(0, Math.round((b - a) / 86_400_000));
+}
+
+/**
+ * Agrège par campagne en distinguant les campagnes **en cours** des campagnes
+ * **terminées** (aucune ligne dans la fenêtre courante).
+ *
+ * Le périmètre de calcul diffère volontairement : une campagne en cours est
+ * jugée sur la fenêtre courante (c'est ce sur quoi on peut encore agir), une
+ * campagne terminée sur toute sa durée de vie (sinon il n'y aurait rien à
+ * montrer). Chaque ligne porte ses dates, donc rien n'est ambigu à l'affichage.
+ */
+export function rollupWithStatus(
+  rows: DatedMetric[],
+  bounds: PeriodBounds,
+  today: string = new Date().toISOString().slice(0, 10),
+): CampaignHistory[] {
+  const byCampaign = new Map<string, DatedMetric[]>();
+  for (const r of rows) {
+    const list = byCampaign.get(r.campaign_id);
+    if (list) list.push(r);
+    else byCampaign.set(r.campaign_id, [r]);
+  }
+
+  const out: CampaignHistory[] = [];
+  for (const list of byCampaign.values()) {
+    const dates = list.map((r) => r.date).sort();
+    const firstDate = dates[0];
+    const lastDate = dates[dates.length - 1];
+    const status: CampaignStatus =
+      lastDate >= bounds.currentFrom ? "active" : "ended";
+    const scope = status === "active"
+      ? list.filter((r) => r.date >= bounds.currentFrom)
+      : list;
+    out.push({
+      ...deriveKpis(rollupByCampaign(scope)[0]),
+      status,
+      firstDate,
+      lastDate,
+      daysSinceLast: status === "active" ? 0 : daysBetween(lastDate, today),
+    });
+  }
+  return out;
+}
+
+export interface PeriodComparison {
+  spend: number;
+  previousSpend: number;
+  revenue: number;
+  previousRevenue: number;
+  conversions: number;
+  previousConversions: number;
+  roas: number;
+  previousRoas: number;
+  /** Variations relatives (0,12 = +12 %). 0 quand la base précédente est nulle. */
+  spendChange: number;
+  revenueChange: number;
+}
+
+const change = (now: number, before: number) =>
+  before > 0 ? (now - before) / before : 0;
+
+/**
+ * Compare la période courante à la précédente. Renvoie `null` s'il n'y a rien
+ * avant : mieux vaut ne rien dire que d'inventer une tendance.
+ */
+export function comparePeriods(
+  current: CampaignMetric[],
+  previous: CampaignMetric[],
+): PeriodComparison | null {
+  if (previous.length === 0) return null;
+  const now = deriveKpis(aggregate(current));
+  const before = deriveKpis(aggregate(previous));
+  if (before.spend <= 0) return null;
+  return {
+    spend: now.spend,
+    previousSpend: before.spend,
+    revenue: now.revenue,
+    previousRevenue: before.revenue,
+    conversions: now.conversions,
+    previousConversions: before.conversions,
+    roas: now.roas,
+    previousRoas: before.roas,
+    spendChange: change(now.spend, before.spend),
+    revenueChange: change(now.revenue, before.revenue),
+  };
+}
+
 export interface AdFinding {
   kind: string;
   title: string;
@@ -139,6 +299,59 @@ export function buildAdsFindings(campaigns: CampaignKpis[]): AdFinding[] {
   return findings;
 }
 
+const pct = (n: number) =>
+  `${n >= 0 ? "+" : "−"}${Math.abs(Math.round(n * 100))} %`;
+
+/**
+ * Constat de tendance : la question que se pose vraiment un dirigeant, « est-ce
+ * que ça va mieux ou moins bien que le mois dernier ? ». `null` sans période de
+ * comparaison — on ne commente pas une tendance qu'on ne peut pas établir.
+ */
+export function buildTrendFinding(cmp: PeriodComparison | null): AdFinding | null {
+  if (!cmp) return null;
+  const better = cmp.roas >= cmp.previousRoas;
+  return {
+    kind: "ads_trend",
+    title: better
+      ? `Vos campagnes rapportent mieux que la période précédente`
+      : `Vos campagnes rapportent moins que la période précédente`,
+    detail:
+      `Dépense ${eur(cmp.spend)} (${pct(cmp.spendChange)}) pour ${eur(cmp.revenue)} ` +
+      `de revenu (${pct(cmp.revenueChange)}). ROAS ${x(cmp.roas)} contre ` +
+      `${x(cmp.previousRoas)} sur les 30 jours d'avant.`,
+    severity: better ? "good" : "warn",
+  };
+}
+
+/**
+ * Bilan d'une campagne terminée — ce qui a déjà été tenté et ce que ça a donné.
+ * C'est la mémoire qui manque à la plupart des outils : sans elle, on repropose
+ * indéfiniment ce qui a déjà échoué.
+ */
+export function buildHistoryFindings(campaigns: CampaignHistory[]): AdFinding[] {
+  const ended = campaigns
+    .filter((c) => c.status === "ended" && c.spend > 0)
+    .sort((a, b) => a.daysSinceLast - b.daysSinceLast)
+    .slice(0, 3);
+
+  return ended.map((c) => {
+    const worked = c.roas >= 1;
+    return {
+      kind: `ads_past_${c.campaign_id}`,
+      title: worked
+        ? `« ${c.campaign_name} » avait bien marché`
+        : `« ${c.campaign_name} » n'avait pas marché`,
+      detail:
+        `Arrêtée il y a ${c.daysSinceLast} jours. Sur toute sa durée : ` +
+        `${eur(c.spend)} dépensés, ${eur(c.revenue)} de revenu, ROAS ${x(c.roas)}. ` +
+        (worked
+          ? `À reconduire si les conditions sont comparables.`
+          : `Inutile de retenter à l'identique.`),
+      severity: worked ? "good" : "warn",
+    };
+  });
+}
+
 export interface AdProposal {
   kind: string;
   title: string;
@@ -157,9 +370,12 @@ export interface AdProposal {
  * dépense. Action **réversible et à faible risque** (réactivable), donc idéale
  * comme première action ads exécutable. Un `kind` unique par campagne (dédup).
  */
-export function buildAdsProposals(campaigns: CampaignKpis[]): AdProposal[] {
+export function buildAdsProposals(
+  campaigns: (CampaignKpis & { status?: CampaignStatus })[],
+): AdProposal[] {
   const losers = campaigns
-    .filter((c) => c.spend >= 50 && c.roas < 1)
+    // Une campagne déjà terminée n'a rien à couper : la proposer serait faux.
+    .filter((c) => c.status !== "ended" && c.spend >= 50 && c.roas < 1)
     .sort((a, b) => a.roas - b.roas);
   return losers.map((c) => ({
     kind: `ads_pause_${c.campaign_id}`,

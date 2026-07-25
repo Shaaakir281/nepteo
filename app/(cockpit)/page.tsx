@@ -83,10 +83,13 @@ export default async function TodayPage() {
   const rev = revenueStats(
     (revRows ?? []).map((r) => ({ amount: Number(r.amount), occurred_on: r.occurred_on })),
   );
+  // Même fenêtre que le revenu : sans le filtre de date, ce KPI additionnait
+  // TOUT l'historique et l'étiquette « 30 jours » était fausse.
   const { data: adSpendRows } = await supabase
     .from("ad_metrics")
     .select("spend")
-    .eq("provider", "meta_ads");
+    .eq("provider", "meta_ads")
+    .gte("date", sinceISO);
   const adSpend = (adSpendRows ?? []).reduce((s, r) => s + Number(r.spend), 0);
   const { count: prospectCount } = await supabase
     .from("prospects")
