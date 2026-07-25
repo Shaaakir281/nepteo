@@ -40,6 +40,7 @@ Environnement : Supabase `hrqnzorapjnosjphftur`, repo GitHub `Shaaakir281/nepteo
 - **Copie produit** : ne PAS définir le lexique marketing standard (prospect, lead, funnel…). CLAUDE.md corrigé en ce sens (retour de Fathi 2026-07-21).
 - **Recherche web (Perplexity)** : appel **facturé à la requête**. Toujours passer par `runResearch` (garde-fous + journal + cache) — ne jamais appeler `askPerplexity` directement depuis une action. Les échecs sont mis en cache **volontairement** (une clé invalide ne doit pas boucler).
 - **Fichiers purs testés par node:test** : aucun import, même relatif, y compris vers `lib/memory.ts`. Quand une logique pure a besoin de constantes d'ailleurs (options de mémoire), on les **injecte en paramètre** (cf. `profile-rules.ts`).
+- **`headCacheNode in null` après une déconnexion** : le cache du routeur client gardait l'arbre du cockpit ; la requête RSC suivante était redirigée vers `/login` par `proxy.ts` et l'arbre devenait nul. Corrigé par `revalidatePath("/", "layout")` **avant** le `redirect` dans `login` et `logout` (`app/(auth)/actions.ts`). Toute action qui change de session doit purger le cache.
 - **Vérif tsc dans le sandbox Cowork** : le sandbox tue les process longs (~44 s) et laisse un log **vide** → « log vide » ≠ « vert ». Ne conclure au vert que sur un `tsc` **terminé** (exit 0 explicite) ; au besoin `pkill node` puis relancer sur sandbox non contendu. `next build` non exécutable (SWC win32 only) → build côté Fathi. `npm test` requiert **Node ≥ 22**.
 
 ## Historique des sessions

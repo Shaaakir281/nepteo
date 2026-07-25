@@ -2,8 +2,21 @@
 
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+
+/**
+ * Purge le cache du routeur client sur toute l'application.
+ *
+ * Indispensable au changement de session : sans ça, l'arbre du cockpit reste en
+ * cache après une déconnexion, la requête RSC suivante se fait rediriger vers
+ * /login par `proxy.ts`, et le routeur se retrouve avec un arbre nul
+ * (« Cannot use 'in' operator to search for 'headCacheNode' in null »).
+ */
+function clearRouterCache(): void {
+  revalidatePath("/", "layout");
+}
 
 const credentialsSchema = z.object({
   email: z.email(),
@@ -33,6 +46,9 @@ export async function login(formData: FormData) {
         : "Identifiants incorrects.",
     );
   }
+  // Nouvelle session : on ne veut hériter d'aucune page mise en cache pour le
+  // compte précédent (et l'organisation précédente).
+  clearRouterCache();
   redirect("/");
 }
 
@@ -67,5 +83,6 @@ export async function signup(formData: FormData) {
 export async function logout() {
   const supabase = await createClient();
   await supabase.auth.signOut();
+  clearRouterCache();
   redirect("/login");
 }
