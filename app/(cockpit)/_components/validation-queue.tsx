@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { decideAction, draftForAction, saveDraftEdit } from "../actions";
 import { AnalysisRunner } from "./analysis-runner";
 import { ProspectDrafts } from "./prospect-drafts";
@@ -75,14 +76,27 @@ export function ValidationQueue({
         <p className="text-[13.5px] font-medium text-ink">
           Rien à valider pour l&apos;instant
         </p>
-        <p className="mx-auto mt-1.5 max-w-xs text-[12.5px] leading-relaxed text-muted">
+        <p className="mx-auto mt-1.5 max-w-sm text-[12.5px] leading-relaxed text-muted">
           Synchronisez un connecteur puis lancez l&apos;analyse — l&apos;agent
           proposera ses premières actions ici.
         </p>
         {canEdit && (
-          <div className="mt-4 flex justify-center">
-            <AnalysisRunner variant="primary" />
-          </div>
+          <>
+            <div className="mt-4 flex justify-center">
+              <AnalysisRunner variant="primary" />
+            </div>
+            <p className="mx-auto mt-3 max-w-sm text-[12px] leading-relaxed text-faint">
+              Pas encore d&apos;outil à brancher ?{" "}
+              <Link
+                href="/agent"
+                className="font-semibold text-violet hover:underline"
+              >
+                Chargez une entreprise de démonstration
+              </Link>{" "}
+              — identité, prospects, campagnes et ventes en un clic. Attention :
+              cela remplace l&apos;identité que vous venez de saisir.
+            </p>
+          </>
         )}
       </div>
     );
