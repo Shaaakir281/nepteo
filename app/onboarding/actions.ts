@@ -5,6 +5,7 @@ import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { normalizePhilosophy } from "@/lib/memory";
+import { researchConfigured } from "@/lib/research/perplexity";
 
 const orgSchema = z.object({
   name: z.string().trim().min(2).max(80),
@@ -87,5 +88,7 @@ export async function createOrganization(formData: FormData) {
   }
 
   // 2e écran, facultatif : l'agent propose une identité à partir du site.
-  redirect("/onboarding/identite");
+  // Sans recherche web configurée, il n'aurait rien à proposer — on l'évite
+  // plutôt que de montrer un écran qui ne peut pas aboutir.
+  redirect(researchConfigured() ? "/onboarding/identite" : "/");
 }

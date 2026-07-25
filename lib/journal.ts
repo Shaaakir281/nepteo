@@ -41,6 +41,8 @@ export const EVENT_LABELS: Record<string, string> = {
   research_failed: "Recherche web échouée",
   research_blocked: "Recherche web bloquée",
   identity_proposed: "Identité proposée par l'agent",
+  demo_scenario_loaded: "Scénario de démonstration chargé",
+  demo_scenario_cleared: "Données de démonstration retirées",
 };
 
 const SECTION_LABELS: Record<string, string> = {

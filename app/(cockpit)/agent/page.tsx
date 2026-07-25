@@ -2,8 +2,11 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { EDIT_ROLES } from "@/lib/memory";
 import { MAX_PER_RUN, MAX_PER_DAY } from "@/lib/execution-rules";
+import { DEMO_SCENARIOS } from "@/lib/demo/scenarios";
 import { ExecutionSwitch } from "../_components/execution-switch";
 import { AutonomySelector } from "./_components/autonomy-selector";
+import { DemoPanel } from "./_components/demo-panel";
+import { CoachBubble } from "@/components/ui/coach-bubble";
 
 export default async function AgentPage() {
   const supabase = await createClient();
@@ -56,6 +59,7 @@ export default async function AgentPage() {
 
   return (
     <>
+      <CoachBubble id="agent" />
       <div className="mb-6">
         <h1 className="text-[22px] font-semibold tracking-tight">
           Agent &amp; garde-fous
@@ -67,6 +71,21 @@ export default async function AgentPage() {
       </div>
 
       <div className="space-y-4">
+        {/* Mode démonstration */}
+        <Section
+          title="Mode démonstration"
+          hint="Une entreprise fictive complète en un clic — pour tester sans brancher le moindre outil."
+        >
+          <DemoPanel
+            canEdit={canEdit}
+            scenarios={DEMO_SCENARIOS.map((s) => ({
+              id: s.id,
+              label: s.label,
+              pitch: s.pitch,
+            }))}
+          />
+        </Section>
+
         {/* Bouton d'arrêt */}
         <Section
           title="Bouton d'arrêt"

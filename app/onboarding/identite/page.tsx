@@ -5,6 +5,7 @@ import {
   AUDIENCE_OPTIONS,
   CHANNEL_OPTIONS,
 } from "@/lib/memory";
+import { researchConfigured } from "@/lib/research/perplexity";
 import { IdentityWizard } from "./_components/identity-wizard";
 
 /**
@@ -25,6 +26,8 @@ export default async function IdentitePage() {
     .limit(1)
     .maybeSingle();
   if (!membership) redirect("/onboarding");
+  // Sans clé de recherche, cet écran n'aurait rien à proposer.
+  if (!researchConfigured()) redirect("/");
 
   return (
     <main className="flex min-h-screen items-center justify-center px-6 py-10">

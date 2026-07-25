@@ -5,6 +5,7 @@ import { EDIT_ROLES, type MemoryContent } from "@/lib/memory";
 import { IdentityCard } from "./_components/identity-card";
 import { OffersCard } from "./_components/offers-card";
 import { DocumentsCard, LearningsCard } from "./_components/side-cards";
+import { CoachBubble } from "@/components/ui/coach-bubble";
 
 export default async function EntreprisePage({
   searchParams,
@@ -37,6 +38,7 @@ export default async function EntreprisePage({
 
   return (
     <>
+      <CoachBubble id="entreprise" />
       <div className="mb-5">
         <h1 className="text-[22px] font-semibold tracking-tight">
           Votre entreprise

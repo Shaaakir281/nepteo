@@ -12,6 +12,7 @@ import {
   type CampaignMetric,
 } from "@/lib/ads/metrics-rules";
 import { buildMarketingPlan, type PlanMove } from "@/lib/plan";
+import { CoachBubble } from "@/components/ui/coach-bubble";
 
 const CHANNEL_CLS: Record<string, string> = {
   Publicité: "bg-violet/15 text-violet-ink",
@@ -72,6 +73,7 @@ export default async function PlanPage() {
 
   return (
     <>
+      <CoachBubble id="plan" />
       <div className="mb-6">
         <h1 className="text-[22px] font-semibold tracking-tight">
           Plan du mois

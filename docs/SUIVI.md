@@ -44,6 +44,26 @@ Environnement : Supabase `hrqnzorapjnosjphftur`, repo GitHub `Shaaakir281/nepteo
 
 ## Historique des sessions
 
+### 2026-07-25 (2) — Claude (Cowork) — kit de démonstration pour le test de Charly
+
+**Demande de Fathi** : se rapprocher d'une version présentable — des données fictives (plusieurs, servant d'études de cas), un prompt pour que Charly génère les siennes, et un guide (fichier + bulles au bon moment). Arbitrages pris avec lui : **3 profils contrastés**, **tout chargé en un clic**, **bulles + fiche**, **choix depuis « Agent & garde-fous »**.
+
+- **`lib/demo/demo-rules.ts`** (pur, aucun import) : générateurs **déterministes** — `buildDemoProspects`, `buildDemoCampaigns`, `buildDemoRevenue`. Une démo se rejoue à l'identique, et le seed reste idempotent.
+- **`lib/demo/scenarios.ts`** (pur) : trois entreprises fictives cohérentes de bout en bout — **Menuiserie Dubreuil** (artisan B2C local), **Atelier Northwind** (agence B2B, cycle long), **Racines & Co** (e-commerce, gros volume). Chacune : identité complète (dont **philosophie**), offres, vivier de contacts, profils de campagnes, produits.
+- **Les bases sont volontairement IMPARFAITES** : emails manquants, statuts vides, un doublon, et **une campagne en perte par scénario** (ROAS < 1 avec une dépense significative). Une base parfaite ne démontrerait rien — c'est testé (`tests/demo.test.mjs`, 8 tests dont l'existence d'une campagne à couper et d'une campagne nettement rentable).
+- **`lib/demo/seed.ts`** : `loadDemoScenario` écrit mémoire + prospects + `ad_metrics` + `revenue_events`, **idempotent**. Les prospects passent par un **connecteur `demo`** créé à la volée (la table exige un `connector_id`) — donc **aucune donnée d'un vrai connecteur n'est touchée**, et changer de scénario remplace proprement le précédent. `clearDemoData` remet le cockpit à vide. **Aucune migration.**
+- **`/agent` → section « Mode démonstration »** : trois cartes, chargement animé (étapes visibles), lien « Retirer les données de démonstration ». Actions `loadDemoScenarioAction` / `clearDemoAction` (garde `canEdit`, journal `demo_scenario_loaded` / `demo_scenario_cleared`).
+- **Bulles de guidage** (`components/ui/coach-bubble.tsx`) : une bulle par écran (Aujourd'hui, Prospects, Campagnes, Contenu, Plan, Agent, Entreprise) avec **ce qu'il faut faire** *et* **ce qu'il faut observer**. Refermable, mémorisée dans le navigateur (`localStorage`), rendue seulement après montage (pas de désaccord serveur/navigateur).
+- **`docs/demo/GUIDE-TEST.md`** : parcours pas à pas, tableau des trois scénarios, ce qu'il faut juger, et une section **« ce qui n'est pas encore là »** (aucun envoi réel, lancement de campagne non branché, recherche web optionnelle) — mieux vaut le dire avant que Charly le cherche.
+- **`docs/demo/PROMPT-DONNEES-FICTIVES.md`** : prompt prêt à coller pour produire un CSV au bon format, avec les défauts volontaires demandés explicitement, puis la marche à suivre pour l'importer via Sheets.
+- **Dégradation sans Perplexity** : `createOrganization` ne redirige vers `/onboarding/identite` que si `researchConfigured()`, et la page elle-même redirige vers `/` sinon. Plus d'écran sans issue en démonstration.
+
+**Vérif** : `npm test` **113/113**. ⚠️ **`tsc` complet non bouclé ce tour** : le sandbox s'est dégradé en fin de session (dépassements du plafond 43 s, y compris sur `lib` seul — **pas des erreurs**). Ce qui est acquis : le `tsc --noEmit` **complet était vert plus tôt dans la session** (il couvre tout jusqu'à l'assistant d'identité inclus) ; les fichiers purs `lib/demo/*` type-checkent **en isolé (exit 0)** ; le reste (panneau démo, bulles, insertions dans 7 pages) a été **relu à la main**. **`npm run build` côté Fathi fait foi.**
+
+**Piège rencontré, à retenir** : insérer un import par script en visant « la dernière ligne commençant par `import` » casse les **imports multi-lignes** (l'import a atterri au milieu d'un bloc dans `prospects/page.tsx`). Corrigé ; à l'avenir, viser la fin de la déclaration (`} from …`).
+
+**Reste (Fathi)** : `git push` ; migration **0010** ; `npm run build` ; puis `/agent` → charger « Menuiserie Dubreuil » → `/` → « Analyser ». Envoyer `docs/demo/GUIDE-TEST.md` et `docs/demo/PROMPT-DONNEES-FICTIVES.md` à Charly.
+
 ### 2026-07-25 — Claude (Cowork) — onboarding enrichi : philosophie (étape 1) + socle de recherche web Perplexity (backend)
 
 **État repo au départ (vérifié)** : arbre **propre**, `main` synchro avec `origin/main` sur `b8f4cf6`. Les lots signalés « écrits mais à commiter » par l'entrée du 2026-07-23 **étaient déjà commités et poussés** — la note était périmée. `npm test` **82/82** (Node 22.22.3), migration **0009 confirmée passée par Fathi**.

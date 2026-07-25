@@ -17,6 +17,7 @@ import {
 import { ExecutionSwitch } from "./_components/execution-switch";
 import { revenueStats } from "@/lib/revenue/revenue-rules";
 import { loadRevenueDemo } from "./actions";
+import { CoachBubble } from "@/components/ui/coach-bubble";
 
 export default async function TodayPage() {
   const supabase = await createClient();
@@ -102,6 +103,7 @@ export default async function TodayPage() {
 
   return (
     <>
+      <CoachBubble id="today" />
       <div className="mb-6">
         <h1 className="text-[22px] font-semibold tracking-tight">Bonjour</h1>
         <p className="mt-1.5 max-w-2xl text-[13.5px] leading-relaxed text-muted">
