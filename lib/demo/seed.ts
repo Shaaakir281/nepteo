@@ -25,6 +25,20 @@ export interface DemoLoadResult {
 
 const DEMO_PROVIDER = "demo";
 
+/**
+ * Remet le cockpit à zéro entre deux scénarios : propositions, briefing et
+ * messages préparés.
+ *
+ * Indispensable pour enchaîner les cas — sans ça, on garderait les propositions
+ * de la menuiserie en regardant l'e-commerce, ce qui n'a aucun sens et donne
+ * l'impression que l'agent délire.
+ */
+async function resetCockpitState(admin: Admin, orgId: string): Promise<void> {
+  await admin.from("outbox_messages").delete().eq("organization_id", orgId);
+  await admin.from("actions").delete().eq("organization_id", orgId);
+  await admin.from("briefings").delete().eq("organization_id", orgId);
+}
+
 /** Connecteur porteur des prospects de démo (les prospects exigent un connecteur). */
 async function ensureDemoConnector(admin: Admin, orgId: string): Promise<string> {
   const { data: existing } = await admin
@@ -108,6 +122,9 @@ export async function loadDemoScenario(
   if (!scenario) throw new Error("Scénario inconnu.");
   const { orgId, actorId } = args;
 
+  // On repart d'un cockpit propre : les propositions du scénario précédent
+  // parleraient de campagnes et de prospects qui n'existent plus.
+  await resetCockpitState(admin, orgId);
   await seedMemory(admin, orgId, actorId, scenario);
 
   // --- Prospects (sous le connecteur de démo) ---
@@ -230,7 +247,7 @@ export async function clearDemoData(
     .delete()
     .eq("organization_id", args.orgId)
     .eq("source", "stripe");
-  await admin.from("actions").delete().eq("organization_id", args.orgId).eq("status", "proposed");
+  await resetCockpitState(admin, args.orgId);
 
   await admin.from("journal").insert({
     organization_id: args.orgId,

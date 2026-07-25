@@ -18,9 +18,11 @@ export interface ScenarioChoice {
 }
 
 const STEPS = [
+  "Remise à zéro du cockpit…",
   "Installation de l'identité…",
   "Import de la base de prospects…",
   "Chargement des campagnes et des ventes…",
+  "Analyse et rédaction des propositions…",
 ];
 const STEP_MS = 700;
 
@@ -37,7 +39,10 @@ export function DemoPanel({
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  async function run(id: string, task: () => Promise<{ ok: boolean }>) {
+  async function run(
+    id: string,
+    task: () => Promise<{ ok: boolean; created?: number }>,
+  ) {
     if (busy) return;
     setBusy(id);
     setMessage(null);
@@ -56,10 +61,13 @@ export function DemoPanel({
         new Promise((r) => setTimeout(r, STEPS.length * STEP_MS)),
       ]);
       if (result.ok) {
+        const created = result.created ?? 0;
         setMessage(
           id === "clear"
             ? "Données de démonstration retirées."
-            : "Scénario chargé. Ouvrez « Aujourd'hui » et lancez une analyse.",
+            : created > 0
+              ? `Scénario chargé et analysé — ${created} proposition${created > 1 ? "s" : ""} en attente sur « Aujourd'hui ».`
+              : "Scénario chargé. L'analyse n'a rien trouvé à proposer cette fois.",
         );
       } else {
         setError("Le chargement n'a pas abouti. Réessayez.");
@@ -101,7 +109,7 @@ export function DemoPanel({
               onClick={() => run(s.id, () => loadDemoScenarioAction(s.id))}
               className="mt-3 rounded-[10px] bg-violet px-3 py-2 text-[12.5px] font-semibold text-white transition hover:bg-violet-deep disabled:cursor-not-allowed disabled:opacity-40"
             >
-              {busy === s.id ? "Chargement…" : "Charger ce scénario"}
+              {busy === s.id ? "Chargement…" : "Charger et analyser"}
             </button>
           </div>
         ))}
@@ -125,10 +133,11 @@ export function DemoPanel({
       )}
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-line-soft pt-3">
-        <p className="text-[11.5px] leading-relaxed text-faint">
-          Entreprises fictives. Charger un scénario remplace le précédent et
-          écrase l&apos;identité — vos données issues de vrais connecteurs ne
-          sont pas touchées.
+        <p className="max-w-xl text-[11.5px] leading-relaxed text-faint">
+          Entreprises fictives. Charger un scénario <b>remet le cockpit à zéro</b>{" "}
+          (identité, propositions, briefing, messages préparés) puis lance
+          l&apos;analyse — de quoi enchaîner les cas sans mélange. Vos prospects
+          issus de vrais connecteurs ne sont pas touchés.
         </p>
         <button
           type="button"

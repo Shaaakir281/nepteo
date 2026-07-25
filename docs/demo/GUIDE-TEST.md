@@ -25,7 +25,9 @@ Trois questions à garder en tête pendant le test :
 | **Atelier Northwind** | Agence de services, vend à des entreprises | Cycle long, relances indispensables, gros paniers |
 | **Racines & Co** | E-commerce | Gros volumes, panier moyen faible, la publicité pilote tout |
 
-Le chargement remplit **l'identité, les prospects, les campagnes et les ventes**, cohérents entre eux. Changer de scénario remplace le précédent.
+**« Charger et analyser »** remplit l'identité, les prospects, les campagnes et les ventes, **remet le cockpit à zéro** (propositions, briefing, messages préparés) puis lance l'analyse. Vous pouvez donc enchaîner les trois cas sans jamais mélanger deux entreprises.
+
+> **Avant de charger un scénario**, faites un détour par **« Plan du mois »** : sans aucune donnée branchée, l'agent affiche un **diagnostic de départ** — deux ou trois canaux conseillés à partir de votre seule fiche entreprise, avec le premier geste, ce qu'il vaut mieux éviter, et trois actions pour la semaine. C'est le moment où l'agent doit déjà paraître compétent, avant tout connecteur.
 
 > Chaque base contient volontairement des **défauts** : emails manquants, statuts vides, un doublon, une campagne en perte. C'est ce que l'agent doit repérer — une base parfaite ne prouverait rien.
 >
@@ -67,7 +69,7 @@ L'agent propose des idées tirées de ce qu'il sait déjà de vous. Cliquez sur 
 
 ### 5. Plan du mois — le geste de directeur marketing
 
-Quelques mouvements priorisés par levier : couper les pertes d'abord, réactiver les contacts chauds ensuite, alimenter le haut du funnel enfin. Chaque mouvement renvoie vers l'écran où agir.
+Une fois des données chargées, l'écran passe du diagnostic de départ au **plan du mois** : quelques mouvements priorisés par levier : couper les pertes d'abord, réactiver les contacts chauds ensuite, alimenter le haut du funnel enfin. Chaque mouvement renvoie vers l'écran où agir.
 
 > **À juger** : est-ce l'ordre que vous auriez choisi ? Sinon, pourquoi ?
 

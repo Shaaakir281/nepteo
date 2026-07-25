@@ -44,6 +44,25 @@ Environnement : Supabase `hrqnzorapjnosjphftur`, repo GitHub `Shaaakir281/nepteo
 
 ## Historique des sessions
 
+### 2026-07-25 (4) — Claude (Cowork) — enchaînement rapide des cas + étape 3 (diagnostic de départ)
+
+**`npm run build` validé par Fathi** (Next 16.2.10, TypeScript 18,1 s, **23 routes**, `/onboarding/identite` présente) — les trois lots précédents de la journée sont confirmés côté prod.
+
+**Défaut corrigé (bloquant pour tester les cas à la suite)** : `loadDemoScenario` ne purgeait **pas** les propositions, le briefing ni l'outbox. On gardait donc les propositions de la menuiserie en regardant l'e-commerce — l'agent avait l'air de délirer. Ajout de `resetCockpitState` (outbox + actions + briefings), appelé au **chargement** comme au **retrait** d'un scénario.
+
+**« Charger et analyser »** : le bouton du panneau démo enchaîne désormais `runAnalysis` + `runAdsAnalysis` après le seed, et le message de retour annonce le nombre de propositions en attente. Un cas se teste en **un clic** au lieu de trois écrans. Un échec d'analyse ne fait pas échouer le chargement.
+
+**Étape 3 du chantier onboarding — `lib/diagnostic.ts`** (pur, aucun import) :
+- `detectProfile` : **B2C local / B2B / e-commerce / SaaS / générique** depuis activité + clientèle + zone (l'activité prime sur la clientèle : plus discriminante).
+- `buildStarterDiagnostic` : **3 canaux maximum** (question ouverte de la spec tranchée), chacun avec le *pourquoi*, le *premier geste*, l'effort et un ordre de coût ; **`avoid`** = ce qu'il vaut mieux ne pas faire tout de suite **avec la raison** (souvent le conseil le plus utile, et celui qu'aucun outil ne donne parce qu'il ne vend pas de fonctionnalité) ; **`firstWeek`** = trois gestes concrets ; **`basis`** = sur quoi le diagnostic s'appuie, pour qu'il soit contestable.
+- Reconnaît ce que l'entreprise **fait déjà** (canaux déclarés **+** section `presence` issue de la recherche web) et le signale au lieu de le lui apprendre. Si tout est couvert, l'intro le dit et ne pousse pas un canal de plus pour faire nombre.
+- **Affichage sur `/plan`** : tant qu'aucun prospect ni aucune ligne de campagne n'existe, l'écran rend le diagnostic (« Par où commencer ») au lieu d'un plan du mois creux ; deux CTA (« Corriger ma fiche » / « Brancher mes outils »). Dès qu'il y a des données, on retrouve le plan.
+- Tests : `tests/diagnostic.test.mjs` (7 — profils, bornage, mises en garde justifiées, reconnaissance de l'existant, fondement exposé).
+
+**Vérif** : `npm test` **130/130** ; **`tsc --noEmit` complet exit 0**.
+
+**Reste (Fathi)** : `git push` ; migration **0010** (toujours la seule en attente) ; `npm run build`. Parcours de test rapide : `/plan` **avant** de charger quoi que ce soit (diagnostic de départ) → `/agent` → « Charger et analyser » sur un scénario → `/` (propositions déjà là) → changer de scénario et vérifier qu'il ne reste rien de l'ancien.
+
 ### 2026-07-25 (3) — Claude (Cowork) — historique de campagnes + fenêtre d'analyse + communication publique
 
 **Déclencheur (Fathi)** : « il faudrait aussi les données fictives des campagnes précédentes pour une étude de cas plus pertinente ». Question juste — et elle a mis au jour un **vrai défaut** : **aucune lecture de `ad_metrics` ne filtrait par date**. Avec 14 jours de démo ça ne se voyait pas ; avec 6 mois d'historique, trois choses cassaient (ROAS moyenné sur 6 mois, campagne arrêtée toujours proposée « à couper », KPI « Dépenses (30 j) » affichant tout l'historique). L'historique n'était donc pas qu'un ajout de données.

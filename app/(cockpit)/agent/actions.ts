@@ -6,6 +6,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getEditorContext } from "@/lib/connectors/common";
 import { clearDemoData, loadDemoScenario } from "@/lib/demo/seed";
 import { DEMO_SCENARIO_IDS } from "@/lib/demo/scenarios";
+import { runAnalysis } from "@/lib/analysis";
+import { runAdsAnalysis } from "@/lib/ads/analysis";
 
 const LEVELS = ["suggest", "prepare"] as const;
 
@@ -38,7 +40,9 @@ function revalidateCockpit(): void {
   }
 }
 
-export type DemoResult = { ok: true; prospects: number } | { ok: false; reason: string };
+export type DemoResult =
+  | { ok: true; prospects: number; created: number }
+  | { ok: false; reason: string };
 
 /**
  * Charge un scénario de démonstration complet (entreprise fictive : identité,
@@ -52,14 +56,31 @@ export async function loadDemoScenarioAction(scenarioId: string): Promise<DemoRe
     return { ok: false, reason: "unknown_scenario" };
   }
 
+  const admin = createAdminClient();
   try {
-    const result = await loadDemoScenario(createAdminClient(), {
+    const result = await loadDemoScenario(admin, {
       orgId: ctx.orgId,
       actorId: ctx.userId,
       scenarioId,
     });
+
+    // On enchaîne l'analyse : le cockpit est immédiatement vivant (briefing +
+    // propositions), sans avoir à naviguer puis relancer à la main. Un échec
+    // d'analyse ne doit pas faire échouer le chargement des données.
+    let created = 0;
+    try {
+      created = await runAnalysis(admin, ctx.orgId, ctx.userId);
+    } catch {
+      /* ignoré volontairement */
+    }
+    try {
+      created += await runAdsAnalysis(admin, ctx.orgId, ctx.userId);
+    } catch {
+      /* ignoré volontairement */
+    }
+
     revalidateCockpit();
-    return { ok: true, prospects: result.prospects };
+    return { ok: true, prospects: result.prospects, created };
   } catch {
     return { ok: false, reason: "failed" };
   }
@@ -75,7 +96,7 @@ export async function clearDemoAction(): Promise<DemoResult> {
       actorId: ctx.userId,
     });
     revalidateCockpit();
-    return { ok: true, prospects: 0 };
+    return { ok: true, prospects: 0, created: 0 };
   } catch {
     return { ok: false, reason: "failed" };
   }
