@@ -26,6 +26,16 @@ const STEPS = [
 ];
 const STEP_MS = 700;
 
+/**
+ * Un retrait qui échoue peut laisser des données fictives en base : le dire,
+ * plutôt que d'afficher « Réessayez » comme pour un chargement.
+ */
+function failureMessage(id: string): string {
+  return id === "clear"
+    ? "Le retrait n'a pas abouti — des données de démonstration sont peut-être encore là, et votre fiche entreprise n'a pas été restaurée. Réessayez."
+    : "Le chargement n'a pas abouti. Réessayez.";
+}
+
 export function DemoPanel({
   scenarios,
   canEdit,
@@ -70,10 +80,10 @@ export function DemoPanel({
               : "Scénario chargé. L'analyse n'a rien trouvé à proposer cette fois.",
         );
       } else {
-        setError("Le chargement n'a pas abouti. Réessayez.");
+        setError(failureMessage(id));
       }
     } catch {
-      setError("Le chargement n'a pas abouti. Réessayez.");
+      setError(failureMessage(id));
     } finally {
       clearInterval(timer);
       setBusy(null);
@@ -91,6 +101,10 @@ export function DemoPanel({
 
   return (
     <div>
+      <p className="mb-3 rounded-[10px] bg-tint-soft px-3.5 py-2.5 text-[12.5px] leading-relaxed text-body">
+        Votre fiche entreprise sera remplacée le temps de la démonstration, puis
+        restaurée quand vous retirerez les données.
+      </p>
       <div className="grid gap-3 sm:grid-cols-3">
         {scenarios.map((s) => (
           <div

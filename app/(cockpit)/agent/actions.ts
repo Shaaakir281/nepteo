@@ -89,18 +89,33 @@ export async function loadDemoScenarioAction(scenarioId: string): Promise<DemoRe
   }
 }
 
-/** Vide les données de démo — pour montrer le cockpit à son état initial. */
+/**
+ * Vide les données de démo et **rend la fiche entreprise d'origine**.
+ *
+ * Un échec n'est jamais avalé : la base peut rester à moitié nettoyée, donc
+ * l'appelant doit pouvoir le dire à l'écran, et le journal en garde la trace.
+ */
 export async function clearDemoAction(): Promise<DemoResult> {
   const ctx = await getEditorContext();
   if (!ctx || !ctx.canEdit) return { ok: false, reason: "forbidden" };
+  const admin = createAdminClient();
   try {
-    await clearDemoData(createAdminClient(), {
+    await clearDemoData(admin, {
       orgId: ctx.orgId,
       actorId: ctx.userId,
     });
     revalidateCockpit();
     return { ok: true, prospects: 0, created: 0 };
-  } catch {
+  } catch (err) {
+    await admin.from("journal").insert({
+      organization_id: ctx.orgId,
+      event: "demo_scenario_clear_failed",
+      actor: "user",
+      actor_id: ctx.userId,
+      payload: { error: err instanceof Error ? err.message : "inconnu" },
+    });
+    // Le retrait a pu aboutir en partie : on rafraîchit pour montrer l'état réel.
+    revalidateCockpit();
     return { ok: false, reason: "failed" };
   }
 }

@@ -1,12 +1,11 @@
-import type { createAdminClient } from "@/lib/supabase/admin";
 import {
   buildDemoCampaigns,
   buildDemoProspects,
   buildDemoRevenue,
 } from "@/lib/demo/demo-rules";
 import { findScenario, type DemoScenario } from "@/lib/demo/scenarios";
-
-type Admin = ReturnType<typeof createAdminClient>;
+import { backupMemoryOnce, restoreMemory } from "@/lib/demo/memory-backup";
+import { ensureOk, type Admin } from "@/lib/demo/db";
 
 /**
  * Charge un scénario de démo complet : identité, prospects, campagnes, ventes.
@@ -14,6 +13,9 @@ type Admin = ReturnType<typeof createAdminClient>;
  * même scénario ne duplique rien ; charger un autre scénario remplace la base
  * de démo précédente (les données issues de vrais connecteurs ne sont jamais
  * touchées : on n'écrit que sous le connecteur `demo`).
+ *
+ * **La vraie fiche entreprise est sauvegardée avant d'être écrasée** (B1) : le
+ * scénario n'est qu'un emprunt, `clearDemoData` rend ce qu'il a pris.
  */
 
 export interface DemoLoadResult {
@@ -36,20 +38,65 @@ export const DEMO_PROVIDER = "demo";
  * l'impression que l'agent délire.
  */
 async function resetCockpitState(admin: Admin, orgId: string): Promise<void> {
-  await admin.from("outbox_messages").delete().eq("organization_id", orgId);
-  await admin.from("actions").delete().eq("organization_id", orgId);
-  await admin.from("briefings").delete().eq("organization_id", orgId);
+  const outbox = await admin
+    .from("outbox_messages")
+    .delete()
+    .eq("organization_id", orgId);
+  ensureOk(outbox.error, "envois préparés");
+
+  const actions = await admin.from("actions").delete().eq("organization_id", orgId);
+  ensureOk(actions.error, "propositions");
+
+  const briefings = await admin
+    .from("briefings")
+    .delete()
+    .eq("organization_id", orgId);
+  ensureOk(briefings.error, "briefings");
 }
 
-/** Connecteur porteur des prospects de démo (les prospects exigent un connecteur). */
-async function ensureDemoConnector(admin: Admin, orgId: string): Promise<string> {
-  const { data: existing } = await admin
+/**
+ * Tous les connecteurs du provider `demo`, du plus ancien au plus récent.
+ *
+ * Pas de `.maybeSingle()` ici : cette recherche n'est pas unique par nature.
+ * `connectors` porte bien `unique (organization_id, provider)` aujourd'hui —
+ * mais un `.maybeSingle()` renverrait `null` si la contrainte sautait un jour,
+ * et le code se mettrait alors à ne rien supprimer tout en insérant un
+ * connecteur de plus à chaque tentative. Silencieusement.
+ */
+async function demoConnectorIds(admin: Admin, orgId: string): Promise<string[]> {
+  const { data, error } = await admin
     .from("connectors")
     .select("id")
     .eq("organization_id", orgId)
     .eq("provider", DEMO_PROVIDER)
-    .maybeSingle();
-  if (existing?.id) return existing.id as string;
+    .order("created_at", { ascending: true });
+  ensureOk(error, "connecteurs de démonstration");
+  return ((data ?? []) as { id: string }[]).map((row) => row.id);
+}
+
+/** Supprime les prospects portés par les connecteurs de démo donnés. */
+async function deleteDemoProspects(admin: Admin, ids: string[]): Promise<void> {
+  if (ids.length === 0) return;
+  const { error } = await admin.from("prospects").delete().in("connector_id", ids);
+  ensureOk(error, "prospects de démonstration");
+}
+
+/**
+ * Prépare le connecteur porteur des prospects de démo : vide la base de démo
+ * précédente (tous connecteurs confondus), ne garde qu'un connecteur, en crée
+ * un s'il n'y en a pas.
+ */
+async function prepareDemoConnector(admin: Admin, orgId: string): Promise<string> {
+  const ids = await demoConnectorIds(admin, orgId);
+  // Changer de scénario remplace la base de démo, sans toucher aux vraies données.
+  await deleteDemoProspects(admin, ids);
+
+  if (ids.length > 1) {
+    const extra = ids.slice(1);
+    const { error } = await admin.from("connectors").delete().in("id", extra);
+    ensureOk(error, "connecteurs de démonstration en double");
+  }
+  if (ids.length > 0) return ids[0];
 
   const { data, error } = await admin
     .from("connectors")
@@ -92,7 +139,7 @@ async function seedMemory(
   ];
 
   const now = new Date().toISOString();
-  await admin.from("company_memory").upsert(
+  const { error: memError } = await admin.from("company_memory").upsert(
     sections.map((s) => ({
       organization_id: orgId,
       section: s.section,
@@ -101,11 +148,13 @@ async function seedMemory(
     })),
     { onConflict: "organization_id,section" },
   );
+  ensureOk(memError, "identité du scénario");
 
-  await admin
+  const { error: orgError } = await admin
     .from("organizations")
     .update({ name: scenario.orgName, activity: m.description.slice(0, 300) })
     .eq("id", orgId);
+  ensureOk(orgError, "nom de l'entreprise fictive");
 
   await admin.from("journal").insert({
     organization_id: orgId,
@@ -127,12 +176,12 @@ export async function loadDemoScenario(
   // On repart d'un cockpit propre : les propositions du scénario précédent
   // parleraient de campagnes et de prospects qui n'existent plus.
   await resetCockpitState(admin, orgId);
+  // AVANT d'écraser quoi que ce soit : la vraie fiche est mise à l'abri.
+  await backupMemoryOnce(admin, orgId);
   await seedMemory(admin, orgId, actorId, scenario);
 
   // --- Prospects (sous le connecteur de démo) ---
-  const connectorId = await ensureDemoConnector(admin, orgId);
-  // Changer de scénario remplace la base de démo, sans toucher aux vraies données.
-  await admin.from("prospects").delete().eq("connector_id", connectorId);
+  const connectorId = await prepareDemoConnector(admin, orgId);
 
   const now = new Date().toISOString();
   const prospects = buildDemoProspects(scenario.pool, scenario.id);
@@ -223,39 +272,46 @@ export async function loadDemoScenario(
 }
 
 /**
- * Retire toutes les données de démo (prospects, campagnes, ventes) sans toucher
- * à la mémoire : on peut repartir d'un cockpit vide pour montrer l'état initial.
+ * Retire toutes les données de démo (prospects, campagnes, ventes) **et rend la
+ * fiche entreprise d'origine**, sauvegardée au premier chargement de scénario.
+ *
+ * Lève si une suppression échoue : un retrait partiel annoncé comme réussi
+ * laisserait l'utilisateur avec des données fictives et aucun moyen de le
+ * savoir.
  */
 export async function clearDemoData(
   admin: Admin,
   args: { orgId: string; actorId: string | null },
 ): Promise<void> {
-  const { data: connector } = await admin
-    .from("connectors")
-    .select("id")
-    .eq("organization_id", args.orgId)
-    .eq("provider", DEMO_PROVIDER)
-    .maybeSingle();
-  if (connector?.id) {
-    await admin.from("prospects").delete().eq("connector_id", connector.id);
+  const ids = await demoConnectorIds(admin, args.orgId);
+  await deleteDemoProspects(admin, ids);
+  if (ids.length > 1) {
+    const { error } = await admin.from("connectors").delete().in("id", ids.slice(1));
+    ensureOk(error, "connecteurs de démonstration en double");
   }
-  await admin
+
+  const ads = await admin
     .from("ad_metrics")
     .delete()
     .eq("organization_id", args.orgId)
     .eq("provider", "meta_ads");
-  await admin
+  ensureOk(ads.error, "campagnes de démonstration");
+
+  const revenue = await admin
     .from("revenue_events")
     .delete()
     .eq("organization_id", args.orgId)
     .eq("source", "stripe");
+  ensureOk(revenue.error, "ventes de démonstration");
+
   await resetCockpitState(admin, args.orgId);
+  const restored = await restoreMemory(admin, args.orgId);
 
   await admin.from("journal").insert({
     organization_id: args.orgId,
     event: "demo_scenario_cleared",
     actor: "user",
     actor_id: args.actorId,
-    payload: {},
+    payload: { restored },
   });
 }

@@ -38,7 +38,7 @@ export async function ConnectorsPanel({
   };
 
   // Le connecteur `demo` porte les données de démonstration (voir
-  // `ensureDemoConnector`, lib/demo/seed.ts) — toujours "connected" dès qu'un
+  // `prepareDemoConnector`, lib/demo/seed.ts) — toujours "connected" dès qu'un
   // scénario est chargé. Il ne compte pas comme un VRAI outil branché, sinon
   // le panneau démo disparaîtrait juste après avoir servi.
   const hasConnected = (rows ?? []).some(

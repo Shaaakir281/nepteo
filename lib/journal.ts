@@ -43,6 +43,7 @@ export const EVENT_LABELS: Record<string, string> = {
   identity_proposed: "Identité proposée par l'agent",
   demo_scenario_loaded: "Scénario de démonstration chargé",
   demo_scenario_cleared: "Données de démonstration retirées",
+  demo_scenario_clear_failed: "Retrait des données de démonstration échoué",
 };
 
 const SECTION_LABELS: Record<string, string> = {
