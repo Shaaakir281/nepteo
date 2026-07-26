@@ -218,6 +218,12 @@ Sans les deux réglages Supabase, le lien de confirmation envoyé à un nouvel
 inscrit peut revenir sur localhost ou être refusé, et le parcours de l’ami
 s’arrête avant `/auth/confirm`.
 
+Pour la production Nepteo, le domaine principal est
+`https://nepteo.bogasolution.com`. Le sous-domaine OVH pointe par CNAME vers le
+FQDN Container Apps, et Azure porte un certificat managé validé par CNAME. Le
+FQDN `azurecontainerapps.io` reste une adresse technique ; les URLs Supabase et
+OAuth doivent utiliser le domaine principal.
+
 ## 6. Premier déploiement
 
 Le workflow `.github/workflows/deploy.yml` est volontairement
