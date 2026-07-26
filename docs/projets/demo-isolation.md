@@ -159,3 +159,146 @@ Ajouter la phrase. **Ne pas réorganiser le panneau** (C5 et C6 viennent d'être
   extension au-delà (documents, apprentissages) est hors périmètre.
 - Rendre la sauvegarde visible ou éditable par l'utilisateur.
 - Toucher au contenu des scénarios, à l'ordre des cartes, ou à la structure du panneau.
+
+# Chantier B2 — Une action validée doit pouvoir être supprimée
+
+> **Statut** : exécuté le 2026-07-26 (voir `docs/SUIVI.md`).
+> **Origine** : ce chantier ne figure pas dans `docs/projets/roadmap-beta.md`. C'est une
+> **correction bloquante relevée pendant la recette B1**, décidée par Fathi hors roadmap.
+> Les « Règles pour tout chantier — anti-erreurs IA » (§2 de la roadmap) s'appliquent
+> intégralement.
+
+---
+
+## 1. But
+
+Le mode démonstration doit pouvoir remettre le cockpit à zéro même après l'exécution
+d'une action validée. Aujourd'hui, une telle action devient impossible à supprimer dès
+qu'une entrée du journal la référence. `resetCockpitState` échoue alors, ce qui bloque
+à la fois le chargement d'un autre scénario et le retrait des données de démonstration.
+
+Après ce chantier : valider puis exécuter une action en mode sûr, charger un scénario,
+puis retirer les données ⇒ les deux opérations passent, le journal reste append-only et
+ses entrées historiques restent lisibles.
+
+---
+
+## 2. Défaut constaté (2026-07-26)
+
+`journal.action_id` est une clé étrangère vers `actions(id)` avec
+`on delete set null` (`supabase/migrations/0001_init.sql`). Le trigger
+`journal_no_update` interdit volontairement tout `update or delete` sur `journal`.
+Supprimer une action référencée demande donc à Postgres de mettre `action_id` à `null`,
+mais cette mise à jour est rejetée avec « journal is append-only ».
+
+Le grep complet avant chantier établit que :
+
+- les six écritures applicatives de `journal.action_id` sont toutes dans
+  `lib/execution.ts` ;
+- aucun code applicatif ne lit ni ne déréférence `journal.action_id` ;
+- les journaux de `/` et `/journal` sélectionnent et affichent l'événement, l'acteur,
+  le payload et la date, sans jointure vers `actions` : une action absente ne rend donc
+  pas son entrée illisible ;
+- la seule suppression directe de `actions` est celle de `resetCockpitState`
+  (`lib/demo/seed.ts`) ;
+- `outbox_messages.action_id` est une autre relation, volontairement en
+  `on delete cascade` (`0006_execution.sql`) : elle ne provoque aucune mutation du
+  journal et ne doit pas changer.
+
+---
+
+## 3. À faire
+
+### 3.1 Corriger la relation historique
+
+Ajouter une nouvelle migration `0011` qui supprime uniquement la contrainte
+`journal_action_id_fkey`, en gardant la colonne `journal.action_id`.
+
+**Décision retenue** : un journal est un historique autonome. Son identifiant d'action
+reste utile comme trace même lorsque l'entité opérationnelle a disparu ; il doit donc
+pouvoir devenir une référence orpheline. Retirer la contrainte exprime cette sémantique
+sans affaiblir l'invariant append-only.
+
+L'alternative consistant à ne plus supprimer les actions est écartée : elle obligerait
+à introduire une nouvelle convention d'archivage et à filtrer tous les écrans du cockpit,
+alors que le besoin explicite de `resetCockpitState` est de retirer l'état opérationnel
+du scénario précédent.
+
+### 3.2 Vérifier les lecteurs
+
+Contrôler tous les usages de `action_id` et l'affichage du journal. Corriger uniquement
+si un lecteur suppose que l'action existe. Au recensement initial, aucun lecteur ne fait
+cette hypothèse ; aucune modification applicative n'est donc attendue.
+
+### 3.3 Vérifier les deux parcours
+
+Après une action exécutée en mode sûr :
+
+1. charger un scénario de démonstration ;
+2. retirer les données de démonstration ;
+3. confirmer que les entrées du journal antérieures sont toujours rendues ;
+4. confirmer que la fiche entreprise d'origine revient à l'identique (invariant B1).
+
+La migration doit être appliquée manuellement dans Supabase par Fathi avant la recette
+réelle. Les vérifications automatisables dans le dépôt doivent néanmoins être exécutées
+ici avec un exit explicite.
+
+---
+
+## 4. Interdits
+
+- Ne pas toucher au trigger `journal_no_update`, à la fonction
+  `forbid_journal_mutation` ni au caractère append-only du journal.
+- Ne pas retirer les `ensureOk` de `lib/demo/seed.ts` ni atténuer la remontée d'erreur
+  ajoutée par B1.
+- Ne pas modifier une migration existante ; utiliser le prochain numéro libre.
+- Ne pas modifier `outbox_messages.action_id` ni son `on delete cascade`.
+- Aucune dépendance npm, aucune variable d'environnement, aucune nouvelle table.
+- Ne pas toucher aux données de démonstration (`lib/demo/demo-rules.ts`,
+  `lib/demo/scenarios.ts`) ni à `lib/memory.ts`.
+
+---
+
+## 5. Pièges spécifiques
+
+- La migration `0011` devra être passée à la main dans Supabase par Fathi.
+- `0010_research.sql` est déjà passée d'après `docs/SUIVI.md` (vérification du
+  2026-07-26) : elle n'est plus en attente.
+- Une entrée de journal peut désormais conserver un `action_id` sans ligne correspondante
+  dans `actions` : c'est volontaire, pas une corruption à « réparer ».
+- Dates en UTC ; textes produit en français, code et commit en anglais.
+- `npm test` et `npx tsc --noEmit` doivent se terminer avec exit 0 explicite. Le build
+  reste à faire côté Fathi sous Windows (SWC).
+
+---
+
+## 6. Fichiers autorisés
+
+| Fichier | Nature |
+|---|---|
+| `supabase/migrations/0011_drop_journal_action_fk.sql` | **nouveau** — retire uniquement la FK du journal |
+| `tests/journal-action-deletion.test.mjs` | **nouveau si utile** — garde de régression du schéma |
+| `docs/projets/demo-isolation.md` | modifié — ordre de mission B2 |
+| `docs/SUIVI.md` | modifié — entrée de session |
+
+---
+
+## 7. Critères d'acceptation
+
+1. Une action exécutée et référencée par le journal peut être supprimée.
+2. Charger un scénario après cette exécution réussit.
+3. « Retirer les données de démonstration » réussit ensuite et restaure la fiche
+   d'origine à l'identique.
+4. Les entrées historiques restent lisibles même si leur `action_id` ne correspond plus
+   à une ligne de `actions`.
+5. Le trigger append-only et la FK cascade de `outbox_messages` sont inchangés.
+6. `npm test` et `npx tsc --noEmit` se terminent avec exit 0 explicite.
+
+---
+
+## 8. Hors périmètre — à ne pas faire ici
+
+- Ajouter un écran, un état d'archivage ou un filtre pour les actions supprimées.
+- Modifier le flux d'exécution, le contenu de l'outbox ou les plafonds serveur.
+- Nettoyer ou réécrire les anciennes entrées du journal.
+- Modifier les données, la structure ou la présentation du mode démonstration.

@@ -20,7 +20,7 @@ Fonctionnel (build vert en local par Fathi ; `tsc` + `npm test` verts dans le sa
 - **Cockpit Phase 2** : file de validation avec **tiroir de raisonnement** (Aujourd'hui), **Décisions récentes** (Reporter/Reprendre + historique validées/refusées), vue **Prospects funnel + kanban** avec **repère de priorité** par carte (statut + complétude, sans score inventé).
 - **Observabilité** : `telemetryForTask` (`functionId` par tâche, champ `telemetry` de l'AI SDK 7) + hook Langfuse **v7** (`lib/observability.ts` = `NodeSDK` + `LangfuseSpanProcessor` + `registerTelemetry(LangfuseVercelAiSdkIntegration)`) — **activé et validé** (2026-07-22, trace `recommend_action` reçue, `gen_ai.agent.name = recommend_action`, tokens/coût OK). Paquets `@langfuse/otel` + `@langfuse/vercel-ai-sdk` + `@opentelemetry/sdk-node` **installés et dans `package.json`** ; dev sur **Node 22.23.1** ✓.
 
-Environnement : Supabase `hrqnzorapjnosjphftur`, repo GitHub `Shaaakir281/nepteo` (branche `main`), dev local **port 3001 figé dans le script** (`next dev -p 3001`), **Node 22.23.1 local ✓** (clé Anthropic présente ; mais overrides `LLM_MODEL*=openai:gpt-5.4` encore actifs → tourne sur OpenAI). Infra Azure toujours pas provisionnée.
+Environnement : Supabase `hrqnzorapjnosjphftur`, repo GitHub `Shaaakir281/nepteo` (branche `main`), dev local **port 3001 figé dans le script** (`next dev -p 3001`), **Node 22.23.1 local ✓**. Infra Azure provisionnée le 2026-07-26 dans `francecentral` : resource group `nepteo-prod-rg`, ACR `nepteoacr27de3b`, Container App `nepteo-prod`. GitHub `production` + OIDC créés ; premier déploiement applicatif encore à lancer.
 
 ## Prochaines étapes (dans l'ordre)
 
@@ -45,11 +45,158 @@ Environnement : Supabase `hrqnzorapjnosjphftur`, repo GitHub `Shaaakir281/nepteo
 - **Fichiers purs testés par node:test** : aucun import, même relatif, y compris vers `lib/memory.ts`. Quand une logique pure a besoin de constantes d'ailleurs (options de mémoire), on les **injecte en paramètre** (cf. `profile-rules.ts`).
 - **`headCacheNode in null` après une déconnexion** : le cache du routeur client gardait l'arbre du cockpit ; la requête RSC suivante était redirigée vers `/login` par `proxy.ts` et l'arbre devenait nul. Corrigé par `revalidatePath("/", "layout")` **avant** le `redirect` dans `login` et `logout` (`app/(auth)/actions.ts`). Toute action qui change de session doit purger le cache.
 - **Vérif tsc dans le sandbox Cowork** : le sandbox tue les process longs (~44 s) et laisse un log **vide** → « log vide » ≠ « vert ». Ne conclure au vert que sur un `tsc` **terminé** (exit 0 explicite) ; au besoin `pkill node` puis relancer sur sandbox non contendu. `next build` non exécutable (SWC win32 only) → build côté Fathi. `npm test` requiert **Node ≥ 22**. Mesure du 25/07 (C1) : `tsc --noEmit` complet passe en **~42 s** → lancer avec `timeout 43`, pas 40 ; `eslint` et `git status`, eux, **ne bouclent pas** sur le montage Windows.
+- **`.git/index.lock` qui reste après un `git status` dans le sandbox Cowork** : ce n'est **pas** un agent tué (hypothèse de C6, infirmée le 26/07). Le sandbox ne peut pas supprimer un fichier sur le montage Windows tant que la suppression n'est pas autorisée côté Cowork ; `git` crée le lock, échoue à l'effacer, et tout commit ultérieur est bloqué. Remède : autoriser la suppression pour le dossier, puis `rm -f .git/index.lock`.
+- **Mode démonstration et vraie fiche entreprise** : charger un scénario **écrase** `company_memory` + `organizations.name`/`activity`. La fiche d'origine est mise à l'abri dans la section réservée **`__demo_backup`** (voir `lib/demo/memory-backup.ts`) et rendue au retrait. `readMemory` masque les sections préfixées `__` : ne pas contourner ce filtre, et ne pas ajouter `__demo_backup` à `MEMORY_SECTIONS` — ce n'est pas une section de produit.
 - **Libellés de journal d'événements disparus** (`lib/journal.ts`) : quand un geste est retiré du produit, **garder son libellé**. La table `journal` refuse UPDATE/DELETE (trigger volontaire) — les entrées passées existent toujours et doivent rester lisibles. Cas vécu : `ads_demo_loaded` / `revenue_demo_loaded` conservés après C1.
 - **Fichiers purs vs I/O** : `lib/memory.ts` est pur (zéro import) ; la lecture Supabase de la mémoire vit à côté, dans **`lib/memory-store.ts`** (`readMemory(client, sections?, orgId?)`). Ne pas les refusionner.
 - **Coût de la recherche web OpenAI** : le prix affiché (10 $ / 1 000 appels d'outil) n'est **que la moitié de la facture** — les *search content tokens* sont facturés au tarif du modèle et dominent le total (~0,06 $ par recherche avec `gpt-5.5`). Toujours chiffrer les deux parts, et se rappeler que `MAX_RESEARCH_PER_DAY` compte des appels `runResearch`, **pas** des `web_search_call`.
 
 ## Historique des sessions
+
+### 2026-07-26 (14) — Codex — **Retour de recette B1/B2 + recherche web rendue accessible**
+
+**B2 validé sur la base réelle après passage de `0011` par Fathi** : le dernier retrait ne produit plus « journal is append-only ». Contrôle Supabase en lecture seule : `actions = 0`, `outbox_messages = 0`, tandis que **2 entrées historiques** `execution_started` / `execution_succeeded` gardent leur `action_id` orphelin et restent lisibles. C'est exactement l'invariant visé par B2.
+
+**Retour B1 — nom resté « Atelier Northwind ». Cause confirmée dans la base, pas un simple cache** : aucun `__demo_backup` n'existe et les deux derniers `demo_scenario_cleared` portent `restored:false`. Le scénario Northwind avait été chargé le **2026-07-25**, avant la livraison de B1 le 26 : au moment où la sauvegarde a été introduite, la fiche d'origine était déjà écrasée. Le journal append-only conserve toutefois `organization_created.payload.name = "Fathi Solution"`.
+
+**Correction de transition, volontairement prudente** :
+
+1. Si aucune sauvegarde B1 n'existe, `restoreLegacyOrganizationName` relit le nom de création et le dernier nom de scénario dans le journal.
+2. Le nom historique n'est rendu **que si le nom courant correspond encore exactement au dernier scénario chargé**. Si l'utilisateur l'a modifié depuis, le secours ne touche rien.
+3. Le succès spécifique est ajouté au payload du retrait (`legacy_name_restored`) sans prétendre que les anciennes sections ont été retrouvées.
+4. `revalidatePath("/", "layout")` invalide maintenant le layout du cockpit : le nom de la sidebar suit immédiatement le chargement/retrait au lieu de pouvoir rester en cache.
+
+**Limite honnête du cas pré-B1** : le journal de 2026-07-19 contient le nom initial mais pas `organizations.activity` ni le contenu des sections. Ces valeurs antérieures au premier scénario ne sont donc pas reconstructibles automatiquement. Les scénarios chargés depuis B1 restent, eux, entièrement protégés par `__demo_backup`.
+
+**Recherche web — backend présent, accès permanent manquant** : la recherche multi-fournisseurs, le cache, le journal-avant, la synthèse d'identité et le wizard `/onboarding/identite` étaient bien implémentés. Mais seule la fin du premier onboarding menait au wizard ; la carte permanente « Documents & sources » affichait encore « votre site pourra être lu… à l'arrivée des connecteurs », ce qui était faux et rendait la fonctionnalité introuvable après onboarding. La carte explique désormais la recherche réelle et expose **« Analyser mon site »**, vers le wizard existant. « Ajouter un document » reste honnêtement marqué « bientôt ».
+
+**Fichiers** : `lib/demo/memory-backup-rules.ts`, `lib/demo/memory-backup.ts`, `lib/demo/seed.ts`, `app/(cockpit)/agent/actions.ts`, `app/(cockpit)/entreprise/_components/{identity-panel,side-cards}.tsx`, tests B1.
+
+**Vérifs** : tests ciblés **11/11, exit 0** ; `npm test` **148/148, `NPM_TEST_EXIT:0`** ; `npx tsc --noEmit` **`TSC_EXIT:0`** ; `npm run build` (Turbopack + TypeScript + 23 pages) **`BUILD_EXIT:0`** ; `git diff --check` **exit 0**.
+
+**Reste (Fathi)** : dans l'app locale déjà ouverte, cliquer une fois encore sur « Retirer les données de démonstration » (le serveur dev tourne et prend le correctif à chaud) : la sidebar doit afficher **Fathi Solution**. Puis ouvrir Mon entreprise → Identité → Documents & sources → **Analyser mon site**. Codex contrôle ensuite la base et le journal.
+
+### 2026-07-26 (13) — Codex — **B2 « Une action validée doit pouvoir être supprimée »** (hors roadmap, docs/projets/demo-isolation.md)
+
+**Défaut bloquant corrigé dans le dépôt** : après une exécution en mode sûr, `lib/execution.ts` écrit `journal.action_id`. Or la FK de `0001_init.sql` était en `on delete set null`, tandis que le trigger volontaire `journal_no_update` refuse tout UPDATE/DELETE. La suppression de l'action demandait donc un UPDATE du journal et échouait avec « journal is append-only ». Comme `loadDemoScenario` et `clearDemoData` appellent tous deux `resetCockpitState`, les deux parcours étaient bloqués.
+
+**Ordre de mission écrit avant le code** : nouvelle section « Chantier B2 » dans `docs/projets/demo-isolation.md`, avec les mêmes rubriques que B1 et application intégrale des règles anti-erreurs de `roadmap-beta.md` §2.
+
+**Grep complet et décision** :
+
+1. Les six écritures applicatives de `action_id` sont toutes dans `lib/execution.ts`. Aucun code applicatif ne le lit ni ne déréférence une ligne d'`actions`.
+2. Les deux affichages du journal (`/` et `/journal`) sélectionnent `id, event, actor, actor_id, payload, created_at` et rendent l'entrée seule : une action disparue ne nuit pas à la lisibilité.
+3. La seule suppression directe de `actions` dans le repo est `resetCockpitState` (`lib/demo/seed.ts`). `outbox_messages` est supprimée juste avant ; sa FK `action_id on delete cascade` est correcte et reste intacte.
+4. **Correction retenue** : migration nouvelle `0011_drop_journal_action_fk.sql`, qui retire uniquement `journal_action_id_fkey` et garde la colonne `journal.action_id`. Le journal conserve ainsi l'identifiant historique, volontairement orphelin si l'entité opérationnelle est supprimée. L'alternative « archiver et filtrer les actions partout » est plus large et ne répond pas au besoin de remise à zéro.
+
+**Invariants respectés** : aucune modification de `journal_no_update` ni de `forbid_journal_mutation` ; aucun recul sur les `ensureOk` ou la remontée d'erreur B1 ; aucune modification de migration existante, de l'outbox, des données de démonstration ou de `lib/memory.ts` ; aucune dépendance, variable d'environnement ou table.
+
+**Vérification des parcours** : la lecture des deux chemins confirme que `loadDemoScenario` et `clearDemoData` ne rencontraient qu'un même bloqueur, le `delete` de `actions`. Après `0011`, le journal n'est plus une relation entrante contraignante ; la suppression préalable de l'outbox puis celle des actions peut aboutir, et `clearDemoData` poursuit vers `restoreMemory` sans modification de l'invariant B1. La recette réelle Supabase ne peut être faite avant l'application manuelle de la migration ; aucun `psql`/CLI Supabase n'est installé ici et le moteur Docker local n'est pas lancé. Aucune réussite UI n'est donc inventée.
+
+**Test de régression** : `tests/journal-action-deletion.test.mjs` vérifie le diagnostic de `0001`, conserve la cascade de `0006`, exige le retrait de la seule FK dans `0011`, et interdit dans cette migration toute suppression/désactivation du trigger, de la colonne, de l'outbox ou création de table. Total **145 → 146**.
+
+**Vérifs terminées** : test ciblé **1/1, exit 0** ; `npm test` **146/146, `NPM_TEST_EXIT:0`** ; `npx tsc --noEmit` **complet, `TSC_EXIT:0`** ; `git diff --check` **exit 0**. Après autorisation de Fathi, `npm run build` a aussi terminé sous Windows : compilation Turbopack, TypeScript, génération des **23 pages**, `BUILD_EXIT:0`.
+
+**Constat hors périmètre — noté, pas corrigé** : supprimer une organisation qui possède déjà des entrées de journal demanderait aussi un DELETE en cascade sur `journal`, que le trigger append-only refuserait. Aucun flux courant ne fait cela : le seul `organizations.delete()` applicatif est le rollback d'onboarding, avant l'écriture du journal. La stratégie future de suppression de compte/RGPD devra traiter explicitement cet invariant.
+
+**Jalon 0** : `0010_research.sql` est **déjà passée** d'après la vérification consignée le 2026-07-26 dans ce fichier ; elle n'est plus en attente.
+
+**Reste (Fathi)** :
+1. **Passer manuellement `supabase/migrations/0011_drop_journal_action_fk.sql` dans Supabase.**
+2. Dire à Codex que la migration est passée. **Codex prend ensuite en charge la recette réelle**, dans cet ordre : conserver une fiche entreprise d'origine → valider puis exécuter une action (mode sûr, messages préparés) → charger un scénario → vérifier que les anciennes entrées du journal restent lisibles → « Retirer les données de démonstration » → confirmer que la fiche d'origine revient à l'identique.
+
+**Publication** : commit B2 `012d506` poussé sur `agent/azure-container-apps-deployment` (`PUSH_EXIT:0`) ; la PR GitHub existante est la **#1**.
+
+### 2026-07-26 (12) — Codex — **Azure provisionné et GitHub Actions relié par OIDC**
+
+**Cible confirmée** : compte `fathimetalsi@gmail.com`, tenant `10dc421f-ab69-471c-8d9c-9e52a35e60b9`, souscription `Abonnement 1` (`22045923-e995-4df0-8001-27de3b66290f`). L’ancien abonnement `Cabinet-DrAbdelkader-Prod` reste mémorisé dans la CLI mais n’est plus la cible par défaut et n’a reçu aucune modification.
+
+**GitHub** : environnement `production` créé sur `Shaaakir281/nepteo`, approbateur requis `Shaaakir281`, branche autorisée `main`. Les variables d’infrastructure et applicatives ont été ajoutées ; les secrets Azure/Supabase/OpenAI/OAuth/Langfuse présents dans `.env.local` ont été importés sans affichage. Modèles fixés à `openai:gpt-5.4`, recherche fixée à `openai`.
+
+**Azure** : après un `what-if` limité à six créations, Bicep déployé avec succès dans `nepteo-prod-rg` / `francecentral` : ACR Basic `nepteoacr27de3b` (admin désactivé), identité managée dédiée + `AcrPull`, Log Analytics, Container Apps Environment et Container App `nepteo-prod`. URL bootstrap : `https://nepteo-prod.bravedune-81efb6a5.francecentral.azurecontainerapps.io`.
+
+**OIDC** : App Registration `github-nepteo-production`, client ID `39de0077-29f0-450f-8855-40e714f71d67`, aucun mot de passe. Federated Credential limitée à `repo:Shaaakir281/nepteo:environment:production`. Rôles : `Container Apps Contributor` sur le resource group et `Container Registry Tasks Contributor` sur l’ACR.
+
+**Correctif avant publication** : la vérification de région du workflow normalise désormais `France Central` et `francecentral`, car les deux CLI Azure ne rendent pas la même forme.
+
+**Publication** : commit `80b6a10` poussé sur `agent/azure-container-apps-deployment`, draft PR GitHub **#1** ouverte et CI GitHub verte.
+
+**Reste** : fusionner la PR #1 après accord de Fathi, lancer manuellement le workflow avec l’ID de souscription confirmé, approuver `production`, régler Supabase Site URL + redirect URL sur le FQDN final, puis dérouler le smoke test complet. Le cron reste désactivé.
+
+### 2026-07-26 (11) — Claude (Cowork) — **B1 « La démonstration ne doit jamais détruire la vraie fiche »** (hors roadmap, docs/projets/demo-isolation.md)
+
+**Défaut corrigé, relevé à l'usage par Fathi** : `loadDemoScenario` écrasait `company_memory` (les 8 sections) **et** `organizations.name` / `activity` avec l'identité du scénario, tandis que `clearDemoData` ne restaurait rien — son commentaire disait « sans toucher à la mémoire ». Qui essayait une entreprise fictive **perdait sa fiche entreprise définitivement**. Ordre de mission écrit avant de coder : `docs/projets/demo-isolation.md`. Aucune migration, aucune dépendance, aucune table, aucune variable d'env.
+
+**1. Sauvegarde / restauration.** Section réservée **`__demo_backup`** dans `company_memory` — convention de stockage, **pas** une section de produit : `MEMORY_SECTIONS` et `lib/memory.ts` sont **intacts** (interdit respecté), et `company_memory.section` est un `text` sans contrainte de check (confirmé migration 0001), donc **aucune migration**. `backupMemoryOnce` copie les sections réelles + les deux champs d'onboarding **avant** le premier `seedMemory` ; `restoreMemory` réécrit les sections d'origine, supprime celles que le scénario a ajoutées, rend nom et activité, puis retire la sauvegarde.
+
+**2. Enchaîner les scénarios ne casse rien** : la sauvegarde n'est écrite **que si aucune n'existe**. A → B → retirer ⇒ fiche d'origine, jamais A. Un test pur garde la moitié « relecture » de cette propriété.
+
+**3. Doublons de connecteur `demo`** : `demoConnectorIds` remplace les deux `.maybeSingle()`, traite **tous** les connecteurs du provider (prospects de chacun supprimés), n'en garde qu'un (le plus ancien) et nettoie les autres. **Honnêteté sur ce point** : `connectors` porte `unique (organization_id, provider)` (0001, l. 47) — le doublon est **impossible en base aujourd'hui**, ce défaut était donc théorique et le nettoyage est un no-op. Corrigé quand même : `.maybeSingle()` sur une recherche non unique par nature est un piège qui ne se voit pas si la contrainte saute un jour.
+
+**4. Plus de suppression muette** : `ensureOk(error, quoi)` sur les 3 `delete` de `resetCockpitState`, les prospects, `ad_metrics`, `revenue_events`, les connecteurs en double, et sur les écritures de `seedMemory` (une identité de scénario à moitié écrite après une sauvegarde réussie serait pire que pas de démo du tout). `clearDemoAction` écrit **`demo_scenario_clear_failed`** au journal (nouveau libellé dans `lib/journal.ts` — la table refuse UPDATE/DELETE, un libellé se garde pour toujours) et revalide quand même, le retrait ayant pu aboutir en partie. Le panneau affiche un message **propre au retrait** : « des données de démonstration sont peut-être encore là, et votre fiche entreprise n'a pas été restaurée » — pas le « Réessayez » du chargement.
+
+**5. Étanchéité de la sauvegarde — filtrée à la source.** `readMemory` (`lib/memory-store.ts`) écarte les sections réservées (préfixe `__`). C'est **un seul endroit** plutôt que trois écrans à surveiller. Vérifié sur les trois chemins du piège : `/entreprise` (`identity-panel.tsx` boucle sur `Object.entries(memCtx)` → n'aurait rien affiché, mais la sauvegarde entrait dans l'objet), `/` et `/plan` (`diagnosticInputFromMemory`, qui lit des clés nommées). Grep de contrôle sur `company_memory` : les autres lectures directes sont **toutes** filtrées par section (`readOffers`, `persist`) — aucune fuite. Qui a besoin de la sauvegarde la lit dans `lib/demo/memory-backup.ts`.
+
+**6. Avertissement dans le panneau** (`demo-panel.tsx`) : une ligne avant les trois cartes — « Votre fiche entreprise sera remplacée le temps de la démonstration, puis restaurée quand vous retirerez les données. » **Phrase ajoutée, panneau non réorganisé** : C5 et C6 ne sont pas rouverts.
+
+**Décisions de mise en œuvre**
+
+1. **Nom et activité de l'organisation sont sauvegardés aussi**, dans le même objet de sauvegarde. `seedMemory` les écrase, et le critère d'acceptation parle d'une « fiche remplie, même minimale : les **2 champs d'onboarding** » — or ces deux champs *sont* `organizations.name` et `activity` (`app/onboarding/actions.ts`). Sans eux, « revenue à l'identique » aurait été faux : l'utilisateur serait resté « Menuiserie Duval ». Aucune table ni colonne en plus : c'est une clé de l'objet JSON déjà stocké.
+2. **Sauvegarde bloquante, restauration bloquante.** Si la sauvegarde échoue, le chargement échoue (mieux vaut une démo qui ne démarre pas qu'une fiche perdue). Si la sauvegarde est illisible, la restauration **refuse** au lieu de restaurer à moitié — l'écran le dit, le journal le garde. La sauvegarde n'est supprimée qu'**en dernier** : tant qu'elle est là, un nouveau retrait peut réessayer.
+3. **`lib/demo/seed.ts` a été scindé** : il atteignait **452 lignes** en cours de route (règle 16 : ~200). Trois fichiers désormais — `memory-backup-rules.ts` (**pur**, zéro import, testé), `memory-backup.ts` (I/O de la fiche, 140 l.), `db.ts` (24 l. : le type `Admin` et `ensureOk`, partagés — sans lui `seed.ts` et `memory-backup.ts` se seraient importés mutuellement). `seed.ts` retombe à **317 lignes**, toujours au-dessus du repère mais **en dessous de son état de départ élargi**, et chaque fichier a un seul rôle.
+4. **Aucun nouvel événement de journal pour le succès** : `demo_scenario_cleared` porte simplement `payload: { restored }`. Un libellé de journal est irréversible, on n'en crée que pour ce qui manquait vraiment (l'échec).
+
+**Écart de périmètre signalé (règle 2)** : `entreprise/_components/connectors-panel.tsx` est modifié d'**une ligne de commentaire** (`ensureDemoConnector` → `prepareDemoConnector`, la fonction ayant été renommée). Aucun changement de rendu.
+
+**Tests** : +9 dans `tests/demo-memory-backup.test.mjs` — section réservée, sauvegarde (sections + 2 champs d'onboarding), la sauvegarde ne se sauvegarde pas elle-même, fiche vide (sauvegarde vide mais exploitable → les 8 sections du scénario partent au retrait), plan de restauration complet (réécritures + suppressions, la sauvegarde jamais dans les suppressions), **A puis B rend bien la fiche d'origine** après aller-retour jsonb, sauvegarde illisible refusée, sauvegarde partielle tolérée sans invention, pas de doublon dans les suppressions. **Total : 136 → 145.**
+
+**Vérif** : `npm test` **145/145, exit 0 — deux fois** ; `npx tsc --noEmit` **complet, exit 0 explicite — trois fois** (dont une après le découpage). `npx eslint` **non concluant dans le sandbox** : deux passages tués à 42-43 s (`exit 124`), aucune sortie — même symptôme que la session C6, à passer côté Fathi avec le build.
+
+**⚠️ Le mystère du `.git/index.lock` est résolu — ce n'était pas un agent tué.** La session C6 avait conclu à un `git` interrompu et Fathi avait décidé de ne pas y toucher. En réalité : **le sandbox Cowork ne peut pas supprimer de fichier sur le montage Windows tant que la suppression n'est pas autorisée** (`rm` → « Operation not permitted »). Or `git status` **crée** `index.lock` puis tente de l'effacer : il le crée, échoue à le retirer, et laisse un lock qui bloque tous les commits suivants. Le lock « inexpliqué » de C6 est très probablement celui-là. **Remède** : autoriser la suppression de fichiers pour le dossier côté Cowork, puis `rm -f .git/index.lock`. Fait cette session — le commit B1 est passé. À retenir pour les prochaines sessions : ce n'est pas un autre agent, c'est le montage.
+
+**Constats hors périmètre (notés, PAS corrigés)** :
+- **L'arbre porte du travail non commité d'une autre session** (Codex, entrée n°10 : `deploy.yml`, `infra/`, `scripts/`, `.env.example`, `README.md`, `docs/DEPLOIEMENT-AZURE.md`, plus des corrections ESLint dans `prospect-drafts.tsx`, `validation-queue.tsx`, `(cockpit)/actions.ts`, `coach-bubble.tsx`). Le commit B1 ne porte **que ses 11 fichiers** — `git add` nominatif, **jamais `git add -A`**. `docs/SUIVI.md` reste volontairement **hors du commit** : il contient déjà l'entrée Codex.
+- Le repo n'était donc **pas propre avant de lancer** (§0 de la roadmap). Signalé, pas arbitré ici.
+- `CLAUDE.md` § Structure ne mentionne toujours ni les onglets ni la nav à 5 (relevé par C4, C5, C6) — toujours hors périmètre.
+
+**Suite immédiate — commit `2891ec8`, « dire POURQUOI le retrait a échoué »** : Fathi a déclenché le message d'échec dès le premier essai. Le message était honnête mais **muet sur la cause** — il ne distinguait même pas une session expirée d'une erreur de base. Trois corrections : `DemoResult` porte désormais un `detail` (message technique, borné à 300 caractères) remonté de l'action serveur jusqu'au panneau, qui l'affiche sous le message en petit ; `reason: "forbidden"` a son propre texte (« votre session a peut-être expiré… reconnectez-vous ») au lieu du générique ; et **`entryDetail` affiche enfin `payload.error`** (`lib/journal.ts`) — la raison était écrite au journal depuis toujours et n'était rendue nulle part, ce qui vaut aussi pour `connector_sync_failed`. **Cause du dysfonctionnement non identifiée à ce stade** : le schéma ne l'explique pas (aucune clé étrangère bloquante sur `prospects`, `activity` nullable, toutes les tables visées existent en migrations 0001-0009) et le sandbox n'a pas d'accès base. Le prochain essai donnera la ligne « Détail : … » — c'est elle qu'il faut me rapporter.
+
+**⚠️ CAUSE IDENTIFIÉE le 2026-07-26 au soir — `propositions : journal is append-only`** (message relevé par Fathi grâce au `detail` ci-dessus). **À traiter en priorité : le mode démonstration est bloqué, chargement compris.**
+
+`journal.action_id` est déclaré `references actions(id) **on delete set null**` (migration 0001, l. 79), et le trigger `journal_no_update` interdit `update or delete` sur `journal` (l. 96). Supprimer une ligne de `actions` oblige donc Postgres à faire un **UPDATE sur `journal`** pour mettre `action_id` à `null` — que le trigger rejette. **Une action référencée par le journal ne peut pas être supprimée, jamais.** Seul `lib/execution.ts` écrit `action_id` (6 endroits) : le blocage apparaît donc **dès qu'une action a été validée** (mode sûr → `outbox_messages`).
+
+Conséquences, dans l'ordre de gravité :
+1. `resetCockpitState` échoue → **`clearDemoData` ET `loadDemoScenario` échouent tous les deux** (les deux appellent cette fonction). Depuis B1 c'est un échec **dur** ; avant B1 c'était un échec **muet** — les propositions n'étaient en réalité jamais supprimées entre deux scénarios, ce que personne ne voyait.
+2. **Ne PAS revenir en arrière sur `ensureOk`** : le silence était le défaut, pas le remède. C'est lui qui a caché ce bug jusqu'à aujourd'hui.
+3. **Ne pas toucher au trigger** (invariant volontaire, règle 7).
+
+**Piste recommandée, à valider par l'agent qui reprendra** : retirer la **contrainte de clé étrangère** `journal_action_id_fkey` en gardant la colonne `action_id` (migration 0011, `alter table journal drop constraint …`). Un journal est un historique : il est normal qu'il pointe vers une entité disparue, et c'est la contrainte — pas le trigger — qui rend toute suppression impossible. Alternative sans migration, plus lourde : ne plus supprimer `actions` du tout et les écarter du cockpit autrement. À trancher après avoir grepé tous les usages de `action_id`.
+
+**Reste (Fathi)** :
+0. ~~Relever la ligne « Détail : … »~~ **fait** : `propositions : journal is append-only` (voir ci-dessus).
+1. ~~Commiter `docs/SUIVI.md`~~ — **fait**, embarqué par les commits Azure `80b6a10`/`5e67427` arrivés entre-temps. L'arbre est propre.
+2. **`git push`** — les commits locaux s'accumulent (dix à ce jour, plus B1).
+3. `npm run lint` et `npm run build` en local (non concluants / impossibles dans le sandbox).
+4. **Parcours d'acceptation, dans cet ordre** : remplir la fiche (au moins nom + activité, idéalement une ou deux sections) → charger le scénario A → vérifier que `/entreprise?onglet=identite` montre bien l'identité du scénario → charger le scénario B → **« Retirer les données de démonstration »** → la fiche d'origine doit être revenue **à l'identique**, nom de l'entreprise compris, et **pas** celle du scénario A.
+5. **Vérifier qu'aucune ligne parasite n'apparaît** dans `/entreprise`, sur `/` et sur `/plan` (redirigé vers `/`) après un retrait — la section `__demo_backup` ne doit se voir nulle part. Elle est de toute façon supprimée au retrait ; le contrôle intéressant se fait **pendant** la démo, scénario chargé.
+6. **Contrôle SQL facultatif** (Supabase) pendant un scénario chargé : `select section from company_memory where organization_id = '…'` doit montrer les 8 sections **plus** `__demo_backup` ; après retrait, ni l'un ni l'autre en trop.
+7. **Si un retrait échoue**, l'écran le dit désormais et `/journal` porte « Retrait des données de démonstration échoué ».
+
+### 2026-07-26 (10) — Codex — **Préparation du déploiement Azure avec verrou compte/tenant/souscription**
+
+**Résultat** : le dépôt est prêt pour un premier déploiement manuel Docker → ACR → Azure Container Apps en région UE, sans aucune création ni modification Azure pendant cette session. Le seul compte visible dans la CLI locale a été explicitement déclaré incorrect par Fathi : il n’a pas été utilisé.
+
+**Sécurité de cible** : `.github/workflows/deploy.yml` ne se déclenche plus automatiquement sur `main` pour le premier passage. Il exige `workflow_dispatch`, la saisie manuelle de l’ID de souscription et l’environnement GitHub `production`, puis compare l’ID saisi à `AZURE_SUBSCRIPTION_ID`. Après login OIDC, il revalide souscription, tenant et région, et toutes les commandes Azure reçoivent `--subscription`. `scripts/azure/verify-target.ps1` fournit le même contrôle en lecture seule côté poste.
+
+**Infrastructure et runtime** : `infra/azure/main.bicep` crée ACR Basic sans compte admin, une identité managée dédiée + `AcrPull`, Log Analytics, un Container Apps Environment et la Container App (port 3000, HTTPS, scale-to-zero). Le workflow construit une image immuable taguée par SHA avec Node 22, place les secrets dans Container Apps, remplace les variables runtime, puis teste `/api/health`. Les variables requises/optionnelles (Supabase, LLM, recherche, OAuth, Langfuse et `LLM_TASK_*`) sont validées avant mutation ; les paires OAuth/Langfuse incomplètes, modèle sans clé fournisseur et clé de chiffrement invalide bloquent le job.
+
+**Documentation** : `docs/DEPLOIEMENT-AZURE.md` décrit le choix explicite du compte, le `what-if` Bicep, OIDC GitHub, les rôles minimaux, toutes les variables/secrets, les URLs Supabase Auth/OAuth et le smoke test inscription → confirmation → onboarding → scénario démo → analyse → `GET /api/llm/status`. `.env.example` et `README.md` ont été alignés (Node ≥ 22).
+
+**Blocage CI préexistant corrigé** : quatre erreurs ESLint `react-hooks/set-state-in-effect` dans les brouillons et la bulle coach, plus un import inutilisé. Les chargements initiaux passent désormais par les callbacks asynchrones ; les sections dépendant d’une action sont remontées avec `key={active.id}`. Aucun comportement métier ni envoi externe ajouté.
+
+**Vérifications** : `npm test` **136/136**, `npm run lint` **exit 0**, `npm run typecheck` **exit 0**, `npm run build` **exit 0** ; Bicep compile ; workflow validé par `actionlint` ; syntaxe PowerShell et YAML valides ; `git diff --check` propre. Docker Desktop n’était pas démarré, donc l’image Docker n’a pas été construite localement ; le build Next.js standalone inclus dans l’image est vert.
+
+**Reste (Fathi + Codex)** : connecter le bon compte Azure et confirmer à l’écran `compte + tenant + souscription` ; choisir les noms/région ; exécuter le `what-if`, puis seulement le provisioning ; créer l’identité OIDC et l’environnement GitHub `production` ; régler Supabase Site URL/redirect URL ; lancer le workflow manuel et dérouler le smoke test complet. Le cron reste optionnel.
 
 ### 2026-07-26 (9) — Claude (Cowork) — **Correctif C5 : le panneau démo disparaissait après chargement d'un scénario**
 

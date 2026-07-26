@@ -110,6 +110,36 @@ export function parseDemoBackup(content: unknown): DemoBackup | null {
   };
 }
 
+function payloadName(payload: unknown): string | null {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return null;
+  const name = (payload as Record<string, unknown>).name;
+  if (typeof name !== "string") return null;
+  const clean = name.trim().slice(0, 80);
+  return clean || null;
+}
+
+/**
+ * Réparation limitée aux scénarios chargés AVANT B1, donc sans sauvegarde.
+ *
+ * Le journal append-only conserve le nom de création et celui du dernier
+ * scénario chargé. On ne rend l'original que si le nom courant est encore
+ * exactement celui du scénario : une modification ultérieure de l'utilisateur
+ * ne doit jamais être écrasée par cette voie de secours.
+ */
+export function legacyOriginalOrgName(
+  currentName: unknown,
+  organizationCreatedPayload: unknown,
+  lastDemoLoadedPayload: unknown,
+): string | null {
+  const current =
+    typeof currentName === "string" ? currentName.trim().slice(0, 80) : "";
+  const original = payloadName(organizationCreatedPayload);
+  const demo = payloadName(lastDemoLoadedPayload);
+  if (!current || !original || !demo) return null;
+  if (current !== demo || original === current) return null;
+  return original;
+}
+
 export interface RestorePlan {
   /** Sections à réécrire telles qu'elles étaient. */
   upserts: { section: string; content: unknown }[];

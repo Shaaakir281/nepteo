@@ -72,6 +72,10 @@ export function entryDetail(e: JournalEntry): string | null {
       ? `${p.name} — ${p.count} prospect${p.count > 1 ? "s" : ""}`
       : p.name;
   }
+  // En dernier : la raison d'un échec. Écrite depuis toujours dans le payload,
+  // elle n'était affichée nulle part — un journal qui dit « échoué » sans dire
+  // pourquoi ne sert à personne.
+  if (typeof p.error === "string" && p.error.trim()) return p.error;
   return null;
 }
 

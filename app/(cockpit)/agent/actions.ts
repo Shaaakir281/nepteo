@@ -38,6 +38,10 @@ export async function setAutonomyLevel(level: string): Promise<void> {
 /** Toutes les vues qui dépendent des données de démo. `/agent` et `/plan` ne
  *  sont plus des écrans : ce sont des redirections (onglet Agent, Aujourd'hui). */
 function revalidateCockpit(): void {
+  // Le nom d'organisation vit dans le layout du cockpit (sidebar), pas dans
+  // les pages ci-dessous. Sans cette invalidation, charger/retirer un scénario
+  // peut laisser l'ancien nom visible malgré une base correctement mise à jour.
+  revalidatePath("/", "layout");
   for (const p of ["/", "/prospects", "/campagnes", "/contenu", "/entreprise"]) {
     revalidatePath(p);
   }
@@ -45,7 +49,18 @@ function revalidateCockpit(): void {
 
 export type DemoResult =
   | { ok: true; prospects: number; created: number }
-  | { ok: false; reason: string };
+  /**
+   * `detail` porte le message technique de l'échec (table + erreur Postgres).
+   * Sans lui, « ça n'a pas abouti » n'est pas exploitable : ni l'utilisateur ni
+   * nous ne savons quoi réessayer. Il est affiché à l'écran ET écrit au journal.
+   */
+  | { ok: false; reason: string; detail?: string };
+
+/** Message technique d'une exception, sans jamais faire tomber l'affichage. */
+function detailOf(err: unknown): string {
+  const raw = err instanceof Error ? err.message : String(err ?? "");
+  return raw.trim().slice(0, 300) || "erreur inconnue";
+}
 
 /**
  * Charge un scénario de démonstration complet (entreprise fictive : identité,
@@ -84,8 +99,8 @@ export async function loadDemoScenarioAction(scenarioId: string): Promise<DemoRe
 
     revalidateCockpit();
     return { ok: true, prospects: result.prospects, created };
-  } catch {
-    return { ok: false, reason: "failed" };
+  } catch (err) {
+    return { ok: false, reason: "failed", detail: detailOf(err) };
   }
 }
 
@@ -107,15 +122,16 @@ export async function clearDemoAction(): Promise<DemoResult> {
     revalidateCockpit();
     return { ok: true, prospects: 0, created: 0 };
   } catch (err) {
+    const detail = detailOf(err);
     await admin.from("journal").insert({
       organization_id: ctx.orgId,
       event: "demo_scenario_clear_failed",
       actor: "user",
       actor_id: ctx.userId,
-      payload: { error: err instanceof Error ? err.message : "inconnu" },
+      payload: { error: detail },
     });
     // Le retrait a pu aboutir en partie : on rafraîchit pour montrer l'état réel.
     revalidateCockpit();
-    return { ok: false, reason: "failed" };
+    return { ok: false, reason: "failed", detail };
   }
 }

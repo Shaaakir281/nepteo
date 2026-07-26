@@ -1,17 +1,38 @@
+import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { icons } from "@/components/icons";
 
-export function DocumentsCard() {
+export function DocumentsCard({
+  canEdit,
+  researchEnabled,
+}: {
+  canEdit: boolean;
+  researchEnabled: boolean;
+}) {
   return (
     <Card title="Documents & sources" sub="Ce que Nepteo a lu">
       <div className="px-[22px] py-6">
         <p className="text-[13px] font-medium text-ink">
-          Aucun document pour l&apos;instant
+          Faites découvrir votre entreprise à Nepteo
         </p>
         <p className="mt-1 text-[12.5px] leading-relaxed text-muted">
-          Votre site internet, catalogue et documents commerciaux pourront être
-          lus par Nepteo à l&apos;arrivée des connecteurs.
+          Donnez l&apos;adresse de votre site : Nepteo le lit, consulte des
+          sources publiques et vous propose une fiche à corriger avant
+          enregistrement.
         </p>
+        {researchEnabled && canEdit ? (
+          <Link
+            href="/onboarding/identite"
+            className="mt-4 flex items-center justify-center gap-2 rounded-[10px] bg-violet px-4 py-2.5 text-[13px] font-semibold text-white transition hover:bg-violet-deep"
+          >
+            {icons.search}
+            Analyser mon site
+          </Link>
+        ) : !researchEnabled ? (
+          <p className="mt-4 rounded-[10px] bg-tint-soft px-3.5 py-2.5 text-[12px] text-muted">
+            La recherche web n&apos;est pas configurée sur ce compte.
+          </p>
+        ) : null}
         <span className="mt-4 flex cursor-default items-center justify-center gap-2 rounded-[13px] border-[1.5px] border-dashed border-line px-4 py-[11px] text-[13px] font-semibold text-faint">
           {icons.plus}
           Ajouter un document — bientôt
