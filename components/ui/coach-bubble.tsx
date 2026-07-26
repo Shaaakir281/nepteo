@@ -20,7 +20,7 @@ const TIPS: Record<string, Tip> = {
   today: {
     title: "Commencez ici",
     body: "Cliquez sur « Analyser » : l'agent lit vos données, résume la situation et propose des actions. Ouvrez une proposition pour voir son raisonnement et le message déjà rédigé.",
-    watch: "Chaque proposition affiche son constat, sa raison, l'impact attendu et sa confiance — rien n'est une boîte noire.",
+    watch: "Le « cap du mois » donne la direction (des conseils, rien ne s'exécute) ; « À valider » est le seul endroit où vous décidez. Chaque proposition affiche son constat, sa raison, l'impact attendu et sa confiance — rien n'est une boîte noire.",
   },
   prospects: {
     title: "Votre base, vue par l'agent",
@@ -37,22 +37,20 @@ const TIPS: Record<string, Tip> = {
     body: "Pas de page blanche : les idées viennent de ce que l'agent sait déjà de vous. Cliquez sur l'une d'elles pour obtenir un brief exploitable.",
     watch: "Le brief est prêt à transmettre à un créateur ou à une IA de génération.",
   },
-  plan: {
-    title: "Le cap du mois",
-    body: "L'agent orchestre ce qu'il sait en quelques mouvements priorisés : couper les pertes d'abord, réactiver les contacts chauds ensuite, alimenter le haut du funnel enfin.",
-    watch: "Chaque mouvement renvoie vers l'écran où agir — c'est une stratégie, pas une liste de tâches.",
-  },
   agent: {
     title: "Vous gardez la main",
     body: "Chargez un scénario de démonstration pour remplir le cockpit sans brancher d'outil. Le bouton d'arrêt et les plafonds s'appliquent côté serveur, jamais seulement à l'écran.",
     watch: "Passez l'autonomie sur « Proposer seulement » : une action validée refusera de s'exécuter.",
   },
   entreprise: {
-    title: "La mémoire de l'agent",
-    body: "Tout ce qui est ici nourrit les messages, les briefs et les recommandations. Plus c'est juste, meilleures sont les propositions.",
+    title: "Ce que Nepteo sait de vous",
+    body: "Trois onglets : votre identité (la mémoire qui nourrit messages, briefs et recommandations), vos connecteurs, et les garde-fous de l'agent.",
     watch: "La « Philosophie » est ce qui donne sa voix à l'agent — c'est le champ le plus sous-estimé.",
   },
 };
+// Note : la bulle `plan` a été retirée avec l'écran « Plan du mois » (C4). Le
+// cap du mois est désormais un bandeau d'Aujourd'hui, couvert par la bulle
+// `today`. Ne pas rouvrir une bulle sans écran.
 
 export function CoachBubble({ id }: { id: keyof typeof TIPS | string }) {
   const tip = TIPS[id];

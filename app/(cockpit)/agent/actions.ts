@@ -15,7 +15,8 @@ const LEVELS = ["suggest", "prepare"] as const;
 export async function setAutonomyLevel(level: string): Promise<void> {
   const ctx = await getEditorContext();
   if (!ctx || !ctx.canEdit) redirect("/login");
-  if (!(LEVELS as readonly string[]).includes(level)) redirect("/agent");
+  if (!(LEVELS as readonly string[]).includes(level))
+    redirect("/entreprise?onglet=agent");
 
   const admin = createAdminClient();
   await admin
@@ -29,13 +30,15 @@ export async function setAutonomyLevel(level: string): Promise<void> {
     actor_id: ctx.userId,
     payload: { level },
   });
-  revalidatePath("/agent");
+  // L'onglet Agent vit désormais sous /entreprise (C4).
+  revalidatePath("/entreprise");
   revalidatePath("/");
 }
 
-/** Toutes les vues qui dépendent des données de démo. */
+/** Toutes les vues qui dépendent des données de démo. `/agent` et `/plan` ne
+ *  sont plus des écrans : ce sont des redirections (onglet Agent, Aujourd'hui). */
 function revalidateCockpit(): void {
-  for (const p of ["/", "/agent", "/prospects", "/campagnes", "/contenu", "/plan", "/entreprise"]) {
+  for (const p of ["/", "/prospects", "/campagnes", "/contenu", "/entreprise"]) {
     revalidatePath(p);
   }
 }

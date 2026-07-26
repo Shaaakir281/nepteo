@@ -16,6 +16,7 @@ import {
 } from "./_components/decisions-history";
 import { ExecutionSwitch } from "./_components/execution-switch";
 import { StarterDiagnosticCard } from "./_components/starter-diagnostic";
+import { PlanBanner } from "./_components/plan-banner";
 import { revenueStats } from "@/lib/revenue/revenue-rules";
 import { memoText } from "@/lib/draft-template";
 import {
@@ -194,7 +195,7 @@ export default async function TodayPage() {
           {!hasRevenue &&
             (canEdit ? (
               <Link
-                href="/agent"
+                href="/entreprise?onglet=agent"
                 className="mt-2.5 inline-block text-[12px] font-semibold text-violet hover:underline"
               >
                 Essayer avec une entreprise fictive →
@@ -205,6 +206,16 @@ export default async function TodayPage() {
               </p>
             ))}
         </>
+      )}
+
+      {/* Cap du mois — ce qui était « Plan du mois ». Des conseils avec CTA,
+          en lecture seule : la file de validation juste en dessous reste le
+          seul endroit où l'on décide. Sans données, le diagnostic de départ
+          ci-dessus tient déjà ce rôle — un plan chiffré serait creux. */}
+      {!diagnostic && (
+        <div className="mt-5">
+          <PlanBanner />
+        </div>
       )}
 
       <div className="mt-7 grid gap-4 lg:grid-cols-2">

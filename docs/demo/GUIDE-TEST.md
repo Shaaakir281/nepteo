@@ -18,8 +18,8 @@ Trois questions à garder en tête pendant le test :
 1. Créer un compte, confirmer l'email.
 2. **Onboarding** : nom de l'entreprise, ce que vous vendez, et le champ **« Votre philosophie »** — écrivez-y votre façon de travailler, ce à quoi vous tenez. C'est ce qui donne sa voix à l'agent.
 3. **Un écran facultatif peut s'intercaler** : si la recherche web est activée, l'agent lit votre site et **propose une fiche d'identité** (ce que vous vendez, vos offres, votre ton, ce que vous faites déjà en communication) que vous corrigez avant de valider — chaque affirmation porte ses sources, cliquez-les. « Passer cette étape » entre directement au cockpit. Sans clé de recherche, cet écran n'apparaît pas du tout.
-4. **Vous arrivez sur « Aujourd'hui ». Arrêtez-vous là une minute avant de charger quoi que ce soit** : sans aucune donnée branchée, l'écran d'accueil affiche un **diagnostic de départ** — deux ou trois canaux conseillés à partir de votre seule fiche entreprise, avec le premier geste, ce qu'il vaut mieux éviter, et trois actions pour la semaine. C'est le moment où l'agent doit déjà paraître compétent, avant tout connecteur. (Le même diagnostic est visible sur « Plan du mois ».)
-5. Aller sur **« Agent & garde-fous »** → section **« Mode démonstration »** → choisir un scénario :
+4. **Vous arrivez sur « Aujourd'hui ». Arrêtez-vous là une minute avant de charger quoi que ce soit** : sans aucune donnée branchée, l'écran d'accueil affiche un **diagnostic de départ** — deux ou trois canaux conseillés à partir de votre seule fiche entreprise, avec le premier geste, ce qu'il vaut mieux éviter, et trois actions pour la semaine. C'est le moment où l'agent doit déjà paraître compétent, avant tout connecteur.
+5. Aller sur **« Mon entreprise » → onglet « Agent »** → section **« Mode démonstration »** → choisir un scénario :
 
 | Scénario | Profil | Ce qu'il montre |
 |---|---|---|
@@ -42,7 +42,10 @@ Le diagnostic de départ a laissé la place aux **KPI réels** dès que le scén
 Cliquez sur **« Analyser »**. Observez les étapes qui défilent, puis :
 
 - le **bandeau « Le point de l'agent »** : deux ou trois phrases sur l'état réel du funnel, à partir de vos chiffres, sans invention ;
-- les **propositions à valider**.
+- le **bandeau « Cap du mois »** : quelques mouvements priorisés par levier — couper les pertes d'abord, réactiver les contacts chauds ensuite, alimenter le haut du funnel enfin. Chaque mouvement renvoie vers l'écran où agir. Ce sont des **conseils** : rien ne s'exécute depuis ce bandeau ;
+- les **propositions à valider** — le seul endroit où l'on décide.
+
+> **À juger** : l'ordre des mouvements du cap est-il celui que vous auriez choisi ? Sinon, pourquoi ?
 
 Ouvrez une proposition de relance. Vous devez y trouver : le **constat**, la **raison**, les **données utilisées**, l'**impact estimé**, la **confiance**, le **risque** — et le **message déjà rédigé**.
 
@@ -67,15 +70,9 @@ Testez aussi **« + Nouvelle campagne »** : brief → construction → proposit
 
 ### 4. Contenu — la page blanche en moins
 
-L'agent propose des idées tirées de ce qu'il sait déjà de vous. Cliquez sur l'une d'elles : vous obtenez un brief créatif exploitable par un humain ou par une IA de génération.
+L'atelier de contenu n'est pas dans le menu : on y arrive par le bouton **« Idées de contenu »** de Campagnes, ou par le mouvement « Contenu » du cap du mois. L'agent propose des idées tirées de ce qu'il sait déjà de vous. Cliquez sur l'une d'elles : vous obtenez un brief créatif exploitable par un humain ou par une IA de génération.
 
-### 5. Plan du mois — le geste de directeur marketing
-
-Une fois des données chargées, cet écran passe lui aussi du diagnostic de départ au **plan du mois** : quelques mouvements priorisés par levier — couper les pertes d'abord, réactiver les contacts chauds ensuite, alimenter le haut du funnel enfin. Chaque mouvement renvoie vers l'écran où agir.
-
-> **À juger** : est-ce l'ordre que vous auriez choisi ? Sinon, pourquoi ?
-
-### 6. Agent & garde-fous — la confiance
+### 5. Mon entreprise → Agent — la confiance
 
 C'est ici que se joue la crédibilité du produit. Trois choses à essayer :
 
@@ -85,9 +82,11 @@ C'est ici que se joue la crédibilité du produit. Trois choses à essayer :
 
 Les plafonds (messages par exécution, par jour) sont appliqués **côté serveur** : ils ne sont pas contournables depuis l'écran.
 
-### 7. Votre entreprise — la mémoire
+### 6. Mon entreprise → Identité — la mémoire
 
 Tout ce qui s'y trouve nourrit les messages, les briefs et les recommandations. Modifiez le **Ton** ou la **Philosophie**, puis régénérez une relance : la voix doit changer.
+
+L'onglet **Connecteurs**, à côté, est le même écran qu'avant : c'est là qu'on branche Google Sheets ou Notion.
 
 ## Ce qui n'est pas encore là
 

@@ -65,7 +65,7 @@ export default async function ProspectsPage() {
             vos contacts apparaîtront ici.
           </p>
           <Link
-            href="/connecteurs"
+            href="/entreprise?onglet=connecteurs"
             className="mt-4 inline-block rounded-[10px] bg-violet px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-violet-deep"
           >
             Ouvrir les connecteurs

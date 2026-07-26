@@ -116,7 +116,7 @@ export function StarterDiagnosticCard({
             Corriger ma fiche
           </Link>
           <Link
-            href="/connecteurs"
+            href="/entreprise?onglet=connecteurs"
             className="rounded-[9px] bg-violet px-3 py-1.5 text-[12px] font-semibold text-white transition hover:bg-violet-deep"
           >
             Brancher mes outils

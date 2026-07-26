@@ -100,6 +100,14 @@ export default async function CampagnesPage({
         </div>
         {canEdit && (
           <div className="flex flex-none items-center gap-2">
+            {/* « Contenu » n'est plus dans la navigation : l'atelier reste
+                atteignable d'ici et depuis le cap du mois. */}
+            <Link
+              href="/contenu"
+              className="rounded-[10px] border border-line px-3.5 py-2 text-[12.5px] font-semibold text-body transition hover:bg-tint-soft hover:text-ink"
+            >
+              Idées de contenu
+            </Link>
             <NewCampaignModal />
             {metrics.length > 0 && (
               <form action={analyzeAdsForm}>
@@ -154,7 +162,7 @@ export default async function CampagnesPage({
           </p>
           {canEdit && (
             <Link
-              href="/agent"
+              href="/entreprise?onglet=agent"
               className="mt-4 inline-block rounded-[10px] bg-violet px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-violet-deep"
             >
               Essayer avec une entreprise fictive →

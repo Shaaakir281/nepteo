@@ -2,19 +2,19 @@ import { icons } from "@/components/icons";
 import { logout } from "@/app/(auth)/actions";
 import { CockpitNav, type NavItem } from "./nav";
 
-const PILOTAGE: NavItem[] = [
+/**
+ * Cinq entrées, pas neuf. « Plan du mois » a rejoint Aujourd'hui (bandeau de
+ * cap) ; « Connecteurs » et « Agent & garde-fous » sont devenus des onglets de
+ * « Mon entreprise » ; « Contenu » reste un atelier, atteint depuis le cap du
+ * mois et depuis Campagnes — plus une entrée de menu. Toutes les anciennes
+ * URLs redirigent. Voir docs/DECISIONS.md (ADR « navigation à cinq entrées »).
+ */
+const NAV: NavItem[] = [
   { label: "Aujourd'hui", href: "/", icon: icons.star },
-  { label: "Plan du mois", href: "/plan", icon: icons.bulb },
-  { label: "Campagnes", href: "/campagnes", icon: icons.send },
   { label: "Prospects", href: "/prospects", icon: icons.people },
-  { label: "Contenu", href: "/contenu", icon: icons.pen },
-];
-
-const SYSTEME: NavItem[] = [
-  { label: "Entreprise", href: "/entreprise", icon: icons.house },
-  { label: "Connecteurs", href: "/connecteurs", icon: icons.link },
+  { label: "Campagnes", href: "/campagnes", icon: icons.send },
+  { label: "Mon entreprise", href: "/entreprise", icon: icons.house },
   { label: "Journal", href: "/journal", icon: icons.journal },
-  { label: "Agent & garde-fous", href: "/agent", icon: icons.shield },
 ];
 
 export function Sidebar({
@@ -40,14 +40,8 @@ export function Sidebar({
         <b className="block truncate font-semibold text-ink">{orgName}</b>
       </div>
 
-      <div className="px-[22px] pb-1.5 pt-3 text-[10.5px] font-semibold uppercase tracking-[.12em] text-faint">
-        Pilotage
-      </div>
-      <CockpitNav items={PILOTAGE} />
-      <div className="px-[22px] pb-1.5 pt-3 text-[10.5px] font-semibold uppercase tracking-[.12em] text-faint">
-        Système
-      </div>
-      <CockpitNav items={SYSTEME} />
+      <div className="pt-2" />
+      <CockpitNav items={NAV} />
 
       <div className="min-h-4 flex-1" />
 
@@ -61,7 +55,10 @@ export function Sidebar({
         <p className="mt-1.5 text-[12px] leading-relaxed text-muted">
           L&apos;agent prépare sous votre validation — aucun envoi externe. Réglez
           l&apos;autonomie dans{" "}
-          <span className="font-semibold text-ink">Agent &amp; garde-fous</span>.
+          <span className="font-semibold text-ink">
+            Mon entreprise → Agent
+          </span>
+          .
         </p>
       </div>
 

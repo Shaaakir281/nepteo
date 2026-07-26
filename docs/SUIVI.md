@@ -51,6 +51,49 @@ Environnement : Supabase `hrqnzorapjnosjphftur`, repo GitHub `Shaaakir281/nepteo
 
 ## Historique des sessions
 
+### 2026-07-26 (6) — Claude (Cowork) — **C4 « Structure cible : nav à 5, un seul endroit pour les propositions »** (roadmap-beta, phase B)
+
+**But atteint** : neuf entrées de navigation deviennent **cinq** (`Aujourd'hui · Prospects · Campagnes · Mon entreprise · Journal`), et l'agent ne parle plus que depuis Aujourd'hui. **Aucun moteur pur modifié** (`lib/plan.ts`, `lib/diagnostic.ts`, `analysis-rules.ts` intacts), **aucune route supprimée** — toutes redirigent. Aucune migration, aucune dépendance, aucune variable d'env.
+
+**1. Recensement d'abord (étape 1 du chantier, avant toute modification)** — la liste complète, pour mémoire :
+- **Nav** : `sidebar.tsx` (2 groupes, 9 entrées) + le texte de la carte « mode sûr » qui nommait « Agent & garde-fous ».
+- **`href`** : `campagnes/page.tsx` → `/agent` ; `page.tsx` → `/agent` ; `prospects/page.tsx` → `/connecteurs` ; `starter-diagnostic.tsx` → `/connecteurs` ; `validation-queue.tsx` → `/agent` ; `connecteurs/[provider]/page.tsx` → `/connecteurs` (fil d'Ariane).
+- **`ctaHref` (`lib/plan.ts`)** : `/campagnes` ×3, `/` ×2, `/contenu` ×1 — **toutes restent valides**, `/contenu` étant conservée. Rien à changer dans le moteur, et la liste blanche de `tests/plan.test.mjs` reste juste.
+- **Redirects serveur** : `agent/actions.ts` (`redirect("/agent")`, `revalidatePath("/agent")`, et la liste `revalidateCockpit` qui citait `/agent` et `/plan`) ; `connecteurs/actions.ts` (`?error=`, `?saved=<provider>`) ; `connecteurs/[provider]/actions.ts` (4 × `redirect("/connecteurs")`) ; **4 route handlers OAuth** (`google_sheets` et `notion`, `authorize` + `callback`).
+- **Bulles** : `today`, `prospects`, `campagnes`, `contenu`, `plan` (×2), `agent`, `entreprise`.
+- **Guide** : `docs/demo/GUIDE-TEST.md` §Mise en route 4–5, §4, §5, §6, §7.
+
+**2. « Mon entreprise » à trois onglets.** `entreprise/page.tsx` ne fait plus que l'authentification, l'en-tête et l'aiguillage ; les contenus vivent dans `entreprise/_components/{identity,connectors,agent}-panel.tsx` (composants **serveur asynchrones**, chacun fait ses propres lectures → un seul onglet interrogé à la fois) + `entreprise-tabs.tsx` (`resolveTab`, valeur inconnue ⇒ Identité). `AutonomySelector`, `DemoPanel` et `ConnectorCard` sont **importés depuis leur dossier d'origine**, pas déplacés : moins de churn, et `/connecteurs/<provider>` continue d'utiliser le même composant.
+
+**3. Redirects.** `/plan` → `/` en **permanent** (`permanentRedirect`) : C2 a installé le diagnostic sur `/`, aucun écran n'est perdu. `/connecteurs` et `/agent` → onglet correspondant en **temporaire** (`redirect`) — un 308 mis en cache par les navigateurs rendrait un éventuel retour arrière pénible, et C4 est un amendement à valider avec Charly. `/connecteurs` **conserve ses `searchParams`** au passage (un retour OAuth en `?error=` ne doit pas se perdre).
+
+**4. Aujourd'hui.** Nouveau `_components/plan-banner.tsx` (serveur asynchrone) : intro + budget de `buildMarketingPlan` + les **3 premiers mouvements condensés** avec leurs CTA. Rendu **seulement s'il y a des données** — sans données, le diagnostic de départ tient déjà le rôle et un plan chiffré serait creux (c'est exactement la branche qu'avait `/plan`).
+
+**Décisions de mise en œuvre** :
+- **Le bandeau de cap est placé APRÈS les KPIs, juste avant « À valider »** (la roadmap listait les blocs sans en figer l'ordre). Deux raisons : « Le point de l'agent » et le cap partagent le même dégradé, adjacents ils se confondaient ; et le cap gagne à précéder immédiatement la file qu'il alimente. Il porte une mention explicite « des conseils, pas des actions à valider : rien ne s'exécute d'ici » — c'est la distinction que le chantier demandait de ne pas perdre.
+- **Un bouton « Idées de contenu » ajouté sur `/campagnes`** (en-tête, à côté de « Nouvelle campagne ») : la roadmap le prévoyait, et sans lui `/contenu` n'aurait plus qu'un seul point d'entrée.
+- **Les actions serveur pointent directement sur `/entreprise?onglet=…`**, pas sur la redirection : un `redirect("/connecteurs?saved=notion")` aurait fait un aller-retour de plus pour rien.
+- **La bulle `plan` est supprimée** (son écran n'existe plus) et un commentaire dans `coach-bubble.tsx` interdit de rouvrir une bulle sans écran. La bulle `entreprise` est réécrite pour les trois onglets ; la bulle `today` mentionne désormais la distinction cap / à valider. `agent` inchangée, réaffichée sur son onglet.
+
+**Tests** : **aucun changement** — `tests/plan.test.mjs` vérifie que chaque `ctaHref` est dans `["/", "/campagnes", "/contenu"]`, et les trois routes existent toujours. **Total inchangé : 136.**
+
+**Vérif** : `npm test` **136/136, exit 0** (deux fois) ; `npx tsc --noEmit` **complet, exit 0 explicite**, plus un passage `exit 0` sur un `tsconfig` réduit à `app/**` + `components/**` (fichier temporaire **supprimé**).
+
+**Constat sur l'outillage (hors périmètre, mais il m'a coûté ~15 minutes — à retenir)** : **les processus lancés en arrière-plan (`nohup`, `&`) ne survivent PAS d'un appel bash à l'autre** — chaque appel a son propre espace de PID. Pire, `pgrep -f "tsc --noEmit"` **matche sa propre ligne de commande** et répond donc toujours « ça tourne ». Les deux combinés font croire à un `tsc` interminable alors qu'il était mort depuis le premier appel. **Recette qui marche** : lancer `tsc` **en premier plan** avec `timeout 41` dans un seul appel, et relancer si `EXIT=124` (le premier passage réchauffe le cache : 124 puis 0 chez moi). Pour surveiller un process, écrire un motif qui ne se matche pas lui-même (`'tsc[ ]--noEmi[t]'`) — sinon `pkill` **tue son propre shell** (exit 143, vécu). Rappel confirmé : `rm` est refusé sur le montage tant que la suppression n'est pas autorisée côté Cowork.
+
+**Constats hors périmètre (notés, PAS corrigés)** :
+- `docs/projets/simplification.md` et `docs/projets/onboarding-ia.md` citent encore l'ancienne arborescence (`/plan`, `/connecteurs`, `/agent` comme écrans). Documents historiques — pas réécrits.
+- `CLAUDE.md` § Structure décrit `(cockpit) shell sidebar + pages / et /entreprise` : formulation restée juste par chance, mais elle ne mentionne ni les onglets ni la nav à 5. À rafraîchir lors d'un chantier qui touche légitimement `CLAUDE.md` (C5 le fera pour la partie autonomie).
+- **C5 dépend de ce chantier et devient plus simple** : la carte « Mode d'exécution » et « Envois préparés » qu'il doit déplacer sont maintenant dans `entreprise/_components/agent-panel.tsx`, un seul fichier.
+
+**Reste (Fathi)** :
+1. **`git push`** — sept commits locaux (docs session 5, C1, cadrage R1, C2, C3, R1, C4).
+2. `npm run build` (SWC Windows) — c'est le vrai filet pour un chantier de navigation.
+3. **Parcours de contrôle des redirections**, à taper à la main dans la barre d'adresse : `/plan` → `/` ; `/contenu` → **s'ouvre normalement** (route vivante, juste retirée du menu) ; `/connecteurs` → onglet Connecteurs ; `/agent` → onglet Agent ; `/connecteurs/google_sheets` → fiche de l'outil, dont le « ← Tous les connecteurs » revient sur l'onglet.
+4. **Parcours démo** : `/entreprise` → onglet Agent → charger un scénario → revenir sur `/` : le **bandeau « Cap du mois »** doit apparaître sous les KPIs, au-dessus de « À valider », avec 3 mouvements et leurs CTA. Base vide → pas de bandeau, le diagnostic de départ à la place.
+5. **Le point à trancher avec Charly n'a pas disparu** : l'ADR est consigné comme **amendement à la maquette V2 décidé sans lui**. Le point 2 de l'ordre du jour de la démo reste entier — la nav est maintenant montrable en vrai plutôt que sur papier.
+6. Vérifier qu'un « Connecter » sur un outil non ouvert revient bien sur l'onglet Connecteurs avec son bandeau de confirmation (`?onglet=connecteurs&saved=<provider>`).
+
 ### 2026-07-26 (5) — Claude (Cowork) — relecture de R1 : correction du chiffrage + `.env.example`
 
 Passe de contrôle sur le commit `579fcfb` (R1), **sans toucher au code livré**.

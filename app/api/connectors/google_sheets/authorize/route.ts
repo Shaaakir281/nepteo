@@ -8,7 +8,10 @@ export async function GET(request: NextRequest) {
   if (!ctx) return NextResponse.redirect(new URL("/login", request.url));
   if (!ctx.canEdit) {
     return NextResponse.redirect(
-      new URL(`/connecteurs?error=${encodeURIComponent("Rôle insuffisant.")}`, request.url),
+      new URL(
+        `/entreprise?onglet=connecteurs&error=${encodeURIComponent("Rôle insuffisant.")}`,
+        request.url,
+      ),
     );
   }
   const state = randomUUID();

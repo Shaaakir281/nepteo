@@ -149,7 +149,10 @@ export default async function ConnectorDetailPage({
 
   return (
     <>
-      <Link href="/connecteurs" className="text-[13px] text-muted hover:text-ink">
+      <Link
+        href="/entreprise?onglet=connecteurs"
+        className="text-[13px] text-muted hover:text-ink"
+      >
         ← Tous les connecteurs
       </Link>
       <div className="mt-3 mb-5 flex items-center gap-3.5">

@@ -17,6 +17,10 @@ import {
 } from "@/lib/connectors/sync";
 import { findTool } from "@/lib/connectors";
 
+/** Liste des connecteurs = onglet de « Mon entreprise » depuis C4. La fiche
+ *  par outil (`/connecteurs/<provider>`) reste, elle, un écran à part entière. */
+const CONNECTORS_TAB = "/entreprise?onglet=connecteurs";
+
 function fail(provider: string, message: string): never {
   redirect(`/connecteurs/${provider}?error=${encodeURIComponent(message)}`);
 }
@@ -82,7 +86,7 @@ export async function saveNotionDatabase(formData: FormData) {
 
 export async function saveFieldMapping(formData: FormData) {
   const provider = String(formData.get("provider") ?? "");
-  if (!isOauthProvider(provider)) redirect("/connecteurs");
+  if (!isOauthProvider(provider)) redirect(CONNECTORS_TAB);
   const ctx = await getEditorContext();
   if (!ctx) redirect("/login");
   const mapping: FieldMapping = {};
@@ -95,7 +99,7 @@ export async function saveFieldMapping(formData: FormData) {
 
 export async function syncNow(formData: FormData) {
   const provider = String(formData.get("provider") ?? "");
-  if (!isOauthProvider(provider)) redirect("/connecteurs");
+  if (!isOauthProvider(provider)) redirect(CONNECTORS_TAB);
   const ctx = await requireEditor(provider);
   const { admin, connector } = await loadConnector(ctx.orgId, provider);
   if (!connector || connector.status !== "connected") {
@@ -118,7 +122,7 @@ export async function syncNow(formData: FormData) {
 
 export async function disconnectConnector(formData: FormData) {
   const provider = String(formData.get("provider") ?? "");
-  if (!isOauthProvider(provider)) redirect("/connecteurs");
+  if (!isOauthProvider(provider)) redirect(CONNECTORS_TAB);
   const ctx = await requireEditor(provider);
   const { admin, connector } = await loadConnector(ctx.orgId, provider);
   if (connector) {
@@ -134,5 +138,5 @@ export async function disconnectConnector(formData: FormData) {
       payload: { provider, name: findTool(provider)?.name },
     });
   }
-  redirect("/connecteurs");
+  redirect(CONNECTORS_TAB);
 }

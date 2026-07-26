@@ -6,7 +6,10 @@ import { storeConnection } from "@/lib/connectors/store";
 export async function GET(request: NextRequest) {
   const fail = (msg: string) =>
     NextResponse.redirect(
-      new URL(`/connecteurs?error=${encodeURIComponent(msg)}`, request.url),
+      new URL(
+        `/entreprise?onglet=connecteurs&error=${encodeURIComponent(msg)}`,
+        request.url,
+      ),
     );
 
   const ctx = await getEditorContext();

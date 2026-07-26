@@ -1,19 +1,32 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { icons } from "@/components/icons";
-import { EDIT_ROLES, type MemoryContent } from "@/lib/memory";
-import { readMemory } from "@/lib/memory-store";
-import { IdentityCard } from "./_components/identity-card";
-import { OffersCard } from "./_components/offers-card";
-import { DocumentsCard, LearningsCard } from "./_components/side-cards";
+import { EDIT_ROLES } from "@/lib/memory";
+import {
+  EntrepriseTabs,
+  resolveTab,
+  type TabId,
+} from "./_components/entreprise-tabs";
+import { IdentityPanel } from "./_components/identity-panel";
+import { ConnectorsPanel } from "./_components/connectors-panel";
+import { AgentPanel } from "./_components/agent-panel";
 import { CoachBubble } from "@/components/ui/coach-bubble";
+
+/** Chaque onglet garde l'introduction de l'écran dont il vient. */
+const INTRO: Record<TabId, string> = {
+  identite:
+    "C'est la mémoire de Nepteo : tout ce qu'il sait pour personnaliser ses recommandations. Plus elle est juste, meilleures sont les propositions — chaque élément est modifiable et s'applique immédiatement.",
+  connecteurs:
+    "Nepteo lit vos outils pour comprendre, et n'écrira que ce que vous validez. Chaque accès est tracé dans le journal et révocable à tout moment.",
+  agent:
+    "Vous gardez la main. L'agent ne fait rien que vous n'ayez autorisé, et rien ne part à l'extérieur en mode sûr.",
+};
 
 export default async function EntreprisePage({
   searchParams,
 }: {
-  searchParams: Promise<{ saved?: string; error?: string }>;
+  searchParams: Promise<{ onglet?: string; saved?: string; error?: string }>;
 }) {
-  const { saved, error } = await searchParams;
+  const { onglet, saved, error } = await searchParams;
   const supabase = await createClient();
 
   const {
@@ -29,68 +42,34 @@ export default async function EntreprisePage({
   if (!membership) redirect("/onboarding");
   const canEdit = EDIT_ROLES.includes(membership.role);
 
-  const memCtx = await readMemory(supabase);
-  const mem: Partial<MemoryContent> = {};
-  for (const [section, content] of Object.entries(memCtx)) {
-    (mem as Record<string, unknown>)[section] = content ?? {};
-  }
+  const tab = resolveTab(onglet);
 
   return (
     <>
-      <CoachBubble id="entreprise" />
+      {/* La bulle suit l'onglet : celle de l'agent parlait des garde-fous. */}
+      <CoachBubble id={tab === "agent" ? "agent" : "entreprise"} />
       <div className="mb-5">
         <h1 className="text-[22px] font-semibold tracking-tight">
-          Votre entreprise
+          Mon entreprise
         </h1>
         <p className="mt-1.5 max-w-2xl text-[13.5px] leading-relaxed text-muted">
-          C&apos;est la <b className="text-ink">mémoire de Nepteo</b> : tout ce
-          qu&apos;il sait pour personnaliser ses recommandations. Plus elle est
-          juste, meilleures sont les propositions — chaque élément est
-          modifiable et s&apos;applique immédiatement.
+          {INTRO[tab]}
         </p>
       </div>
 
-      <div className="mb-4 flex items-start gap-3 rounded-[18px] border border-line bg-gradient-to-b from-[#fbfbff] to-[#f4f3fc] px-5 py-4">
-        <span className="grid h-9 w-9 flex-none place-items-center rounded-[11px] border border-line bg-white text-violet">
-          {icons.bulb}
-        </span>
-        <div>
-          <h4 className="font-display text-[13.5px] font-semibold">
-            Remplissez ce que vous savez, comme vous le diriez à un client
-          </h4>
-          <p className="mt-0.5 text-[12.5px] leading-relaxed text-body">
-            Pas besoin des bons termes marketing. Nepteo enrichira ensuite
-            cette mémoire avec ce qu&apos;il observe dans vos données — et vous
-            garderez le dernier mot sur chaque apprentissage.
-          </p>
-        </div>
-      </div>
+      <EntrepriseTabs active={tab} />
 
       {error && (
         <p className="mb-4 rounded-[10px] bg-red-tint px-4 py-2.5 text-[13px] font-medium text-red">
           {error}
         </p>
       )}
-      {!canEdit && (
-        <p className="mb-4 rounded-[10px] bg-tint-soft px-4 py-2.5 text-[13px] text-muted">
-          Lecture seule — votre rôle ne permet pas la modification.
-        </p>
-      )}
 
-      <div className="grid items-start gap-4 lg:grid-cols-[1.15fr_1fr]">
-        <div className="space-y-4">
-          <IdentityCard mem={mem} canEdit={canEdit} saved={saved} />
-          <OffersCard
-            offers={mem.offres?.items ?? []}
-            canEdit={canEdit}
-            saved={saved === "offres"}
-          />
-        </div>
-        <div className="space-y-4">
-          <DocumentsCard />
-          <LearningsCard />
-        </div>
-      </div>
+      {tab === "identite" && <IdentityPanel canEdit={canEdit} saved={saved} />}
+      {tab === "connecteurs" && (
+        <ConnectorsPanel canEdit={canEdit} saved={saved} />
+      )}
+      {tab === "agent" && <AgentPanel canEdit={canEdit} />}
     </>
   );
 }

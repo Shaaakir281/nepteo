@@ -6,8 +6,13 @@ import { createClient } from "@/lib/supabase/server";
 import { findTool } from "@/lib/connectors";
 import { EDIT_ROLES } from "@/lib/memory";
 
+/** Les connecteurs sont un onglet de « Mon entreprise » depuis C4 — on y
+ *  revient directement plutôt que de passer par la redirection de
+ *  `/connecteurs`, pour ne rien perdre du paramètre au passage. */
+const CONNECTORS_TAB = "/entreprise?onglet=connecteurs";
+
 function fail(message: string): never {
-  redirect(`/connecteurs?error=${encodeURIComponent(message)}`);
+  redirect(`${CONNECTORS_TAB}&error=${encodeURIComponent(message)}`);
 }
 
 /**
@@ -57,5 +62,5 @@ export async function requestConnector(formData: FormData) {
     payload: { provider: tool.provider, name: tool.name },
   });
 
-  redirect(`/connecteurs?saved=${tool.provider}`);
+  redirect(`${CONNECTORS_TAB}&saved=${tool.provider}`);
 }
