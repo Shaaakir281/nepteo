@@ -4,7 +4,7 @@ Copilote marketing IA pour PME et solopreneurs : comprendre, décider et agir en
 
 ## Démarrage
 
-Prérequis : Node.js 20+, un projet [Supabase](https://supabase.com) (région EU), une clé API Anthropic.
+Prérequis : Node.js 22+, un projet [Supabase](https://supabase.com) (région EU), une clé LLM (OpenAI et/ou Anthropic).
 
 ```bash
 npm install
@@ -36,14 +36,8 @@ docker run -p 3000:3000 --env-file .env.local nepteo
 ## Déploiement (GitHub → Azure)
 
 - **CI** (`.github/workflows/ci.yml`) : lint + typecheck + build sur chaque PR et push `main`.
-- **Deploy** (`.github/workflows/deploy.yml`) : push `main` → build image dans ACR → déploiement Azure Container Apps (région EU).
-
-Prérequis à configurer une fois côté Azure/GitHub :
-
-1. ACR + Container App créés (adapter `ACR_NAME`, `RESOURCE_GROUP`, `CONTAINER_APP` dans deploy.yml).
-2. App registration avec federated credential OIDC sur ce repo → secrets `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`.
-3. Variables repo `NEXT_PUBLIC_SUPABASE_URL` et `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
-4. Secrets runtime (`SUPABASE_SERVICE_ROLE_KEY`, `ANTHROPIC_API_KEY`…) : dans la config du Container App, pas dans l'image.
+- **Deploy** (`.github/workflows/deploy.yml`) : lancement manuel protégé pour le premier déploiement → image immutable dans ACR → Azure Container Apps (région EU).
+- **Mode opératoire complet** : [docs/DEPLOIEMENT-AZURE.md](docs/DEPLOIEMENT-AZURE.md), avec verrou compte/tenant/souscription, Bicep, OIDC, variables, Supabase Auth et smoke test.
 
 ## Documentation
 

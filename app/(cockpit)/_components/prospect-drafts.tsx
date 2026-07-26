@@ -30,8 +30,6 @@ export function ProspectDrafts({
 
   useEffect(() => {
     let alive = true;
-    setList(null);
-    setOpenId(null);
     prospectsForAction(actionId)
       .then((res) => alive && setList(res.ok ? res.prospects : []))
       .catch(() => alive && setList([]));
@@ -102,9 +100,21 @@ function ProspectRow({
 
   // Génère (ou récupère) le brouillon à la première ouverture.
   useEffect(() => {
-    if (open && !draft && !loading) void load(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+    if (!open || draft || loading) return;
+    let alive = true;
+    draftForProspect(actionId, prospect.id, false)
+      .then((res) => {
+        if (!alive) return;
+        if (res.ok) setDraft(res.draft);
+        else setFailed(true);
+      })
+      .catch(() => {
+        if (alive) setFailed(true);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [actionId, draft, loading, open, prospect.id]);
 
   async function copy() {
     if (!draft) return;
@@ -187,7 +197,7 @@ function ProspectRow({
               </div>
             </div>
           )}
-          {loading && !draft ? (
+          {!draft && !failed ? (
             <p className="text-[12px] italic text-muted">
               L&apos;agent personnalise le message…
             </p>

@@ -1,28 +1,203 @@
 name: Deploy (Azure Container Apps)
 
+# Premier déploiement volontairement manuel : l'ID de souscription doit être
+# recopié à chaque lancement. Après validation du pilote, un trigger push/main
+# pourra être ajouté sans retirer les contrôles de cible ci-dessous.
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
+    inputs:
+      target_subscription_id:
+        description: "ID exact de la souscription Azure de production"
+        required: true
+        type: string
 
-# Auth OIDC (federated credentials) — pas de secret mot de passe.
-# Prérequis côté Azure : app registration + federated credential sur ce repo,
-# rôles AcrPush + Container Apps Contributor.
 permissions:
   id-token: write
   contents: read
 
-env:
-  ACR_NAME: nepteoacr            # ← à adapter
-  IMAGE_NAME: nepteo
-  RESOURCE_GROUP: nepteo-rg      # ← à adapter (région EU : francecentral / westeurope)
-  CONTAINER_APP: nepteo
+concurrency:
+  group: production
+  cancel-in-progress: false
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: production
+
+    env:
+      EXPECTED_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      EXPECTED_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      ACR_NAME: ${{ vars.ACR_NAME }}
+      IMAGE_NAME: ${{ vars.IMAGE_NAME }}
+      RESOURCE_GROUP: ${{ vars.RESOURCE_GROUP }}
+      CONTAINER_APP: ${{ vars.CONTAINER_APP }}
+      AZURE_LOCATION: ${{ vars.AZURE_LOCATION }}
+
     steps:
       - uses: actions/checkout@v4
+
+      - name: Validate production configuration
+        shell: bash
+        env:
+          REQUESTED_SUBSCRIPTION_ID: ${{ inputs.target_subscription_id }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          CONNECTOR_TOKEN_ENCRYPTION_KEY: ${{ secrets.CONNECTOR_TOKEN_ENCRYPTION_KEY }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
+          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+          GOOGLE_OAUTH_CLIENT_ID: ${{ vars.GOOGLE_OAUTH_CLIENT_ID }}
+          GOOGLE_OAUTH_CLIENT_SECRET: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
+          NOTION_OAUTH_CLIENT_ID: ${{ vars.NOTION_OAUTH_CLIENT_ID }}
+          NOTION_OAUTH_CLIENT_SECRET: ${{ secrets.NOTION_OAUTH_CLIENT_SECRET }}
+          RESEARCH_PROVIDER: ${{ vars.RESEARCH_PROVIDER }}
+          PERPLEXITY_API_KEY: ${{ secrets.PERPLEXITY_API_KEY }}
+          LANGFUSE_PUBLIC_KEY: ${{ vars.LANGFUSE_PUBLIC_KEY }}
+          LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
+          LLM_MODEL: ${{ vars.LLM_MODEL }}
+          LLM_MODEL_LIGHT: ${{ vars.LLM_MODEL_LIGHT }}
+          LLM_MODEL_PREMIUM: ${{ vars.LLM_MODEL_PREMIUM }}
+          LLM_TASK_CLASSIFY_INTENT: ${{ vars.LLM_TASK_CLASSIFY_INTENT }}
+          LLM_TASK_SUMMARIZE_DOCUMENT: ${{ vars.LLM_TASK_SUMMARIZE_DOCUMENT }}
+          LLM_TASK_SCORE_LEAD: ${{ vars.LLM_TASK_SCORE_LEAD }}
+          LLM_TASK_DETECT_ANOMALY: ${{ vars.LLM_TASK_DETECT_ANOMALY }}
+          LLM_TASK_DRAFT_EMAIL: ${{ vars.LLM_TASK_DRAFT_EMAIL }}
+          LLM_TASK_DRAFT_POST: ${{ vars.LLM_TASK_DRAFT_POST }}
+          LLM_TASK_WEEKLY_REPORT: ${{ vars.LLM_TASK_WEEKLY_REPORT }}
+          LLM_TASK_IDENTITY_SYNTHESIS: ${{ vars.LLM_TASK_IDENTITY_SYNTHESIS }}
+          LLM_TASK_RECOMMEND_ACTION: ${{ vars.LLM_TASK_RECOMMEND_ACTION }}
+          LLM_TASK_CAMPAIGN_BRIEF: ${{ vars.LLM_TASK_CAMPAIGN_BRIEF }}
+        run: |
+          set -euo pipefail
+
+          required=(
+            REQUESTED_SUBSCRIPTION_ID EXPECTED_SUBSCRIPTION_ID EXPECTED_TENANT_ID
+            AZURE_CLIENT_ID ACR_NAME IMAGE_NAME RESOURCE_GROUP CONTAINER_APP
+            AZURE_LOCATION NEXT_PUBLIC_SUPABASE_URL
+            NEXT_PUBLIC_SUPABASE_ANON_KEY SUPABASE_SERVICE_ROLE_KEY
+            CONNECTOR_TOKEN_ENCRYPTION_KEY CRON_SECRET
+            LLM_MODEL LLM_MODEL_LIGHT LLM_MODEL_PREMIUM
+          )
+          for name in "${required[@]}"; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "::error::$name is missing from the GitHub production environment."
+              exit 1
+            fi
+          done
+
+          if [[ "${REQUESTED_SUBSCRIPTION_ID,,}" != "${EXPECTED_SUBSCRIPTION_ID,,}" ]]; then
+            echo "::error::The manually confirmed subscription does not match AZURE_SUBSCRIPTION_ID."
+            exit 1
+          fi
+
+          if [[ -z "${OPENAI_API_KEY:-}" && -z "${ANTHROPIC_API_KEY:-}" ]]; then
+            echo "::error::Configure OPENAI_API_KEY and/or ANTHROPIC_API_KEY."
+            exit 1
+          fi
+
+          if [[ -n "${GOOGLE_OAUTH_CLIENT_ID:-}" && -z "${GOOGLE_OAUTH_CLIENT_SECRET:-}" ]] ||
+             [[ -z "${GOOGLE_OAUTH_CLIENT_ID:-}" && -n "${GOOGLE_OAUTH_CLIENT_SECRET:-}" ]]; then
+            echo "::error::Google OAuth requires both client ID and client secret."
+            exit 1
+          fi
+          if [[ -n "${NOTION_OAUTH_CLIENT_ID:-}" && -z "${NOTION_OAUTH_CLIENT_SECRET:-}" ]] ||
+             [[ -z "${NOTION_OAUTH_CLIENT_ID:-}" && -n "${NOTION_OAUTH_CLIENT_SECRET:-}" ]]; then
+            echo "::error::Notion OAuth requires both client ID and client secret."
+            exit 1
+          fi
+          if [[ -n "${LANGFUSE_PUBLIC_KEY:-}" && -z "${LANGFUSE_SECRET_KEY:-}" ]] ||
+             [[ -z "${LANGFUSE_PUBLIC_KEY:-}" && -n "${LANGFUSE_SECRET_KEY:-}" ]]; then
+            echo "::error::Langfuse requires both public key and secret key."
+            exit 1
+          fi
+
+          case "${RESEARCH_PROVIDER:-}" in
+            ""|openai|perplexity) ;;
+            *)
+              echo "::error::RESEARCH_PROVIDER must be empty, openai or perplexity."
+              exit 1
+              ;;
+          esac
+          if [[ "${RESEARCH_PROVIDER:-}" == "perplexity" && -z "${PERPLEXITY_API_KEY:-}" ]]; then
+            echo "::error::RESEARCH_PROVIDER=perplexity requires PERPLEXITY_API_KEY."
+            exit 1
+          fi
+          if [[ "${RESEARCH_PROVIDER:-}" == "openai" && -z "${OPENAI_API_KEY:-}" ]]; then
+            echo "::error::RESEARCH_PROVIDER=openai requires OPENAI_API_KEY."
+            exit 1
+          fi
+
+          model_specs=(
+            "$LLM_MODEL" "$LLM_MODEL_LIGHT" "$LLM_MODEL_PREMIUM"
+            "${LLM_TASK_CLASSIFY_INTENT:-}"
+            "${LLM_TASK_SUMMARIZE_DOCUMENT:-}"
+            "${LLM_TASK_SCORE_LEAD:-}"
+            "${LLM_TASK_DETECT_ANOMALY:-}"
+            "${LLM_TASK_DRAFT_EMAIL:-}"
+            "${LLM_TASK_DRAFT_POST:-}"
+            "${LLM_TASK_WEEKLY_REPORT:-}"
+            "${LLM_TASK_IDENTITY_SYNTHESIS:-}"
+            "${LLM_TASK_RECOMMEND_ACTION:-}"
+            "${LLM_TASK_CAMPAIGN_BRIEF:-}"
+          )
+          for spec in "${model_specs[@]}"; do
+            [[ -n "$spec" ]] || continue
+            provider="${spec%%:*}"
+            model="${spec#*:}"
+            if [[ "$provider" == "$spec" || -z "$model" ]]; then
+              echo "::error::Invalid LLM model '$spec'; expected provider:model."
+              exit 1
+            fi
+            case "$provider" in
+              openai)
+                [[ -n "${OPENAI_API_KEY:-}" ]] || {
+                  echo "::error::$spec requires OPENAI_API_KEY."
+                  exit 1
+                }
+                ;;
+              anthropic)
+                [[ -n "${ANTHROPIC_API_KEY:-}" ]] || {
+                  echo "::error::$spec requires ANTHROPIC_API_KEY."
+                  exit 1
+                }
+                ;;
+              google)
+                [[ -n "${GOOGLE_GENERATIVE_AI_API_KEY:-}" ]] || {
+                  echo "::error::$spec requires GOOGLE_GENERATIVE_AI_API_KEY."
+                  exit 1
+                }
+                ;;
+              mistral)
+                [[ -n "${MISTRAL_API_KEY:-}" ]] || {
+                  echo "::error::$spec requires MISTRAL_API_KEY."
+                  exit 1
+                }
+                ;;
+              *)
+                echo "::error::Unsupported LLM provider '$provider'."
+                exit 1
+                ;;
+            esac
+          done
+
+          if ! decoded_key_length="$(
+            printf '%s' "$CONNECTOR_TOKEN_ENCRYPTION_KEY" |
+              base64 --decode 2>/dev/null |
+              wc -c
+          )"; then
+            echo "::error::CONNECTOR_TOKEN_ENCRYPTION_KEY is not valid base64."
+            exit 1
+          fi
+          if [[ "$decoded_key_length" -ne 32 ]]; then
+            echo "::error::CONNECTOR_TOKEN_ENCRYPTION_KEY must contain exactly 32 bytes encoded as base64."
+            exit 1
+          fi
 
       - name: Azure login (OIDC)
         uses: azure/login@v2
@@ -31,18 +206,259 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Build & push image (ACR)
+      - name: Lock and verify the Azure target
+        shell: bash
         run: |
+          set -euo pipefail
+
+          actual_subscription_id="$(az account show --query id -o tsv)"
+          actual_subscription_name="$(az account show --query name -o tsv)"
+          actual_tenant_id="$(az account show --query tenantId -o tsv)"
+
+          if [[ "${actual_subscription_id,,}" != "${EXPECTED_SUBSCRIPTION_ID,,}" ]]; then
+            echo "::error::OIDC opened subscription '$actual_subscription_name' ($actual_subscription_id), not the expected subscription."
+            exit 1
+          fi
+          if [[ "${actual_tenant_id,,}" != "${EXPECTED_TENANT_ID,,}" ]]; then
+            echo "::error::OIDC opened tenant '$actual_tenant_id', not the expected tenant."
+            exit 1
+          fi
+
+          acr_location="$(az acr show \
+            --name "$ACR_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
+            --subscription "$EXPECTED_SUBSCRIPTION_ID" \
+            --query location -o tsv)"
+          app_location="$(az containerapp show \
+            --name "$CONTAINER_APP" \
+            --resource-group "$RESOURCE_GROUP" \
+            --subscription "$EXPECTED_SUBSCRIPTION_ID" \
+            --query location -o tsv)"
+
+          normalize_location() {
+            printf '%s' "$1" |
+              tr '[:upper:]' '[:lower:]' |
+              tr -cd '[:alnum:]'
+          }
+          expected_location="$(normalize_location "$AZURE_LOCATION")"
+          normalized_acr_location="$(normalize_location "$acr_location")"
+          normalized_app_location="$(normalize_location "$app_location")"
+
+          if [[ "$normalized_acr_location" != "$expected_location" ]]; then
+            echo "::error::ACR is in '$acr_location', expected '$AZURE_LOCATION'."
+            exit 1
+          fi
+          if [[ "$normalized_app_location" != "$expected_location" ]]; then
+            echo "::error::Container App is in '$app_location', expected '$AZURE_LOCATION'."
+            exit 1
+          fi
+
+          echo "Azure target verified: $actual_subscription_name / $AZURE_LOCATION / $RESOURCE_GROUP"
+
+      - name: Build and push the immutable image to ACR
+        shell: bash
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+        run: |
+          set -euo pipefail
           az acr build \
             --registry "$ACR_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
+            --subscription "$EXPECTED_SUBSCRIPTION_ID" \
             --image "$IMAGE_NAME:${{ github.sha }}" \
-            --build-arg NEXT_PUBLIC_SUPABASE_URL="${{ vars.NEXT_PUBLIC_SUPABASE_URL }}" \
-            --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY="${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" \
+            --build-arg "NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL" \
+            --build-arg "NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY" \
             .
 
-      - name: Deploy to Container Apps
+      - name: Store Container Apps secrets
+        shell: bash
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          CONNECTOR_TOKEN_ENCRYPTION_KEY: ${{ secrets.CONNECTOR_TOKEN_ENCRYPTION_KEY }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
+          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+          GOOGLE_OAUTH_CLIENT_SECRET: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
+          NOTION_OAUTH_CLIENT_SECRET: ${{ secrets.NOTION_OAUTH_CLIENT_SECRET }}
+          PERPLEXITY_API_KEY: ${{ secrets.PERPLEXITY_API_KEY }}
+          LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
         run: |
+          set -euo pipefail
+
+          secrets_to_set=(
+            "supabase-service-role-key=$SUPABASE_SERVICE_ROLE_KEY"
+            "connector-token-encryption-key=$CONNECTOR_TOKEN_ENCRYPTION_KEY"
+            "cron-secret=$CRON_SECRET"
+          )
+
+          add_optional_secret() {
+            local azure_name="$1"
+            local value="$2"
+            if [[ -n "$value" ]]; then
+              secrets_to_set+=("$azure_name=$value")
+            fi
+          }
+
+          add_optional_secret openai-api-key "${OPENAI_API_KEY:-}"
+          add_optional_secret anthropic-api-key "${ANTHROPIC_API_KEY:-}"
+          add_optional_secret google-generative-ai-api-key "${GOOGLE_GENERATIVE_AI_API_KEY:-}"
+          add_optional_secret mistral-api-key "${MISTRAL_API_KEY:-}"
+          add_optional_secret google-oauth-client-secret "${GOOGLE_OAUTH_CLIENT_SECRET:-}"
+          add_optional_secret notion-oauth-client-secret "${NOTION_OAUTH_CLIENT_SECRET:-}"
+          add_optional_secret perplexity-api-key "${PERPLEXITY_API_KEY:-}"
+          add_optional_secret langfuse-secret-key "${LANGFUSE_SECRET_KEY:-}"
+
+          az containerapp secret set \
+            --name "$CONTAINER_APP" \
+            --resource-group "$RESOURCE_GROUP" \
+            --subscription "$EXPECTED_SUBSCRIPTION_ID" \
+            --secrets "${secrets_to_set[@]}" \
+            --output none
+
+      - name: Deploy image and runtime environment
+        shell: bash
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          LLM_MODEL: ${{ vars.LLM_MODEL }}
+          LLM_MODEL_LIGHT: ${{ vars.LLM_MODEL_LIGHT }}
+          LLM_MODEL_PREMIUM: ${{ vars.LLM_MODEL_PREMIUM }}
+          LLM_TASK_CLASSIFY_INTENT: ${{ vars.LLM_TASK_CLASSIFY_INTENT }}
+          LLM_TASK_SUMMARIZE_DOCUMENT: ${{ vars.LLM_TASK_SUMMARIZE_DOCUMENT }}
+          LLM_TASK_SCORE_LEAD: ${{ vars.LLM_TASK_SCORE_LEAD }}
+          LLM_TASK_DETECT_ANOMALY: ${{ vars.LLM_TASK_DETECT_ANOMALY }}
+          LLM_TASK_DRAFT_EMAIL: ${{ vars.LLM_TASK_DRAFT_EMAIL }}
+          LLM_TASK_DRAFT_POST: ${{ vars.LLM_TASK_DRAFT_POST }}
+          LLM_TASK_WEEKLY_REPORT: ${{ vars.LLM_TASK_WEEKLY_REPORT }}
+          LLM_TASK_IDENTITY_SYNTHESIS: ${{ vars.LLM_TASK_IDENTITY_SYNTHESIS }}
+          LLM_TASK_RECOMMEND_ACTION: ${{ vars.LLM_TASK_RECOMMEND_ACTION }}
+          LLM_TASK_CAMPAIGN_BRIEF: ${{ vars.LLM_TASK_CAMPAIGN_BRIEF }}
+          GOOGLE_OAUTH_CLIENT_ID: ${{ vars.GOOGLE_OAUTH_CLIENT_ID }}
+          GOOGLE_OAUTH_CLIENT_SECRET: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
+          NOTION_OAUTH_CLIENT_ID: ${{ vars.NOTION_OAUTH_CLIENT_ID }}
+          NOTION_OAUTH_CLIENT_SECRET: ${{ secrets.NOTION_OAUTH_CLIENT_SECRET }}
+          RESEARCH_PROVIDER: ${{ vars.RESEARCH_PROVIDER }}
+          RESEARCH_OPENAI_MODEL: ${{ vars.RESEARCH_OPENAI_MODEL }}
+          PERPLEXITY_PRESET: ${{ vars.PERPLEXITY_PRESET }}
+          PERPLEXITY_API_KEY: ${{ secrets.PERPLEXITY_API_KEY }}
+          LANGFUSE_PUBLIC_KEY: ${{ vars.LANGFUSE_PUBLIC_KEY }}
+          LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
+          LANGFUSE_BASE_URL: ${{ vars.LANGFUSE_BASE_URL }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
+          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+        run: |
+          set -euo pipefail
+
+          runtime_env=(
+            "NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL"
+            "NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY"
+            "SUPABASE_SERVICE_ROLE_KEY=secretref:supabase-service-role-key"
+            "CONNECTOR_TOKEN_ENCRYPTION_KEY=secretref:connector-token-encryption-key"
+            "CRON_SECRET=secretref:cron-secret"
+            "LLM_MODEL=$LLM_MODEL"
+            "LLM_MODEL_LIGHT=$LLM_MODEL_LIGHT"
+            "LLM_MODEL_PREMIUM=$LLM_MODEL_PREMIUM"
+          )
+
+          add_value() {
+            local name="$1"
+            local value="$2"
+            if [[ -n "$value" ]]; then
+              runtime_env+=("$name=$value")
+            fi
+          }
+          add_secret_ref() {
+            local env_name="$1"
+            local secret_name="$2"
+            local value="$3"
+            if [[ -n "$value" ]]; then
+              runtime_env+=("$env_name=secretref:$secret_name")
+            fi
+          }
+
+          add_secret_ref OPENAI_API_KEY openai-api-key "${OPENAI_API_KEY:-}"
+          add_secret_ref ANTHROPIC_API_KEY anthropic-api-key "${ANTHROPIC_API_KEY:-}"
+          add_secret_ref GOOGLE_GENERATIVE_AI_API_KEY google-generative-ai-api-key "${GOOGLE_GENERATIVE_AI_API_KEY:-}"
+          add_secret_ref MISTRAL_API_KEY mistral-api-key "${MISTRAL_API_KEY:-}"
+          add_secret_ref GOOGLE_OAUTH_CLIENT_SECRET google-oauth-client-secret "${GOOGLE_OAUTH_CLIENT_SECRET:-}"
+          add_secret_ref NOTION_OAUTH_CLIENT_SECRET notion-oauth-client-secret "${NOTION_OAUTH_CLIENT_SECRET:-}"
+          add_secret_ref PERPLEXITY_API_KEY perplexity-api-key "${PERPLEXITY_API_KEY:-}"
+          add_secret_ref LANGFUSE_SECRET_KEY langfuse-secret-key "${LANGFUSE_SECRET_KEY:-}"
+
+          optional_values=(
+            LLM_TASK_CLASSIFY_INTENT LLM_TASK_SUMMARIZE_DOCUMENT
+            LLM_TASK_SCORE_LEAD LLM_TASK_DETECT_ANOMALY
+            LLM_TASK_DRAFT_EMAIL LLM_TASK_DRAFT_POST
+            LLM_TASK_WEEKLY_REPORT LLM_TASK_IDENTITY_SYNTHESIS
+            LLM_TASK_RECOMMEND_ACTION LLM_TASK_CAMPAIGN_BRIEF
+            GOOGLE_OAUTH_CLIENT_ID NOTION_OAUTH_CLIENT_ID
+            RESEARCH_PROVIDER RESEARCH_OPENAI_MODEL PERPLEXITY_PRESET
+            LANGFUSE_PUBLIC_KEY LANGFUSE_BASE_URL
+          )
+          for name in "${optional_values[@]}"; do
+            add_value "$name" "${!name:-}"
+          done
+
+          if [[ -n "${GOOGLE_OAUTH_CLIENT_ID:-}" && -z "${GOOGLE_OAUTH_CLIENT_SECRET:-}" ]] ||
+             [[ -z "${GOOGLE_OAUTH_CLIENT_ID:-}" && -n "${GOOGLE_OAUTH_CLIENT_SECRET:-}" ]]; then
+            echo "::error::Google OAuth requires both client ID and client secret."
+            exit 1
+          fi
+          if [[ -n "${NOTION_OAUTH_CLIENT_ID:-}" && -z "${NOTION_OAUTH_CLIENT_SECRET:-}" ]] ||
+             [[ -z "${NOTION_OAUTH_CLIENT_ID:-}" && -n "${NOTION_OAUTH_CLIENT_SECRET:-}" ]]; then
+            echo "::error::Notion OAuth requires both client ID and client secret."
+            exit 1
+          fi
+          if [[ "${RESEARCH_PROVIDER:-}" == "perplexity" && -z "${PERPLEXITY_API_KEY:-}" ]]; then
+            echo "::error::RESEARCH_PROVIDER=perplexity requires PERPLEXITY_API_KEY."
+            exit 1
+          fi
+          if [[ "${RESEARCH_PROVIDER:-}" == "openai" && -z "${OPENAI_API_KEY:-}" ]]; then
+            echo "::error::RESEARCH_PROVIDER=openai requires OPENAI_API_KEY."
+            exit 1
+          fi
+
           az containerapp update \
             --name "$CONTAINER_APP" \
             --resource-group "$RESOURCE_GROUP" \
-            --image "$ACR_NAME.azurecr.io/$IMAGE_NAME:${{ github.sha }}"
+            --subscription "$EXPECTED_SUBSCRIPTION_ID" \
+            --image "$ACR_NAME.azurecr.io/$IMAGE_NAME:${{ github.sha }}" \
+            --replace-env-vars "${runtime_env[@]}" \
+            --output none
+
+      - name: Public smoke check
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          fqdn="$(az containerapp show \
+            --name "$CONTAINER_APP" \
+            --resource-group "$RESOURCE_GROUP" \
+            --subscription "$EXPECTED_SUBSCRIPTION_ID" \
+            --query properties.configuration.ingress.fqdn -o tsv)"
+          revision="$(az containerapp show \
+            --name "$CONTAINER_APP" \
+            --resource-group "$RESOURCE_GROUP" \
+            --subscription "$EXPECTED_SUBSCRIPTION_ID" \
+            --query properties.latestRevisionName -o tsv)"
+          app_url="https://$fqdn"
+
+          curl --fail --silent --show-error \
+            --retry 12 --retry-delay 5 --retry-all-errors \
+            "$app_url/api/health" > /dev/null
+
+          {
+            echo "### Azure Container Apps deployment"
+            echo ""
+            echo "- Subscription: \`$EXPECTED_SUBSCRIPTION_ID\`"
+            echo "- Region: \`$AZURE_LOCATION\`"
+            echo "- Revision: \`$revision\`"
+            echo "- URL: $app_url"
+            echo "- Public smoke check: OK"
+            echo "- Manual product smoke test remains required (signup → confirmation → onboarding → demo → analysis → GET /api/llm/status)."
+          } >> "$GITHUB_STEP_SUMMARY"

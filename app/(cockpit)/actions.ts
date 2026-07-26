@@ -18,7 +18,7 @@ import { LLM_MEMORY_SECTIONS } from "@/lib/memory";
 import { readMemory } from "@/lib/memory-store";
 import { researchProspectCompany } from "@/lib/research/prospect-company";
 import { executeApprovedAction, type ExecutionResult } from "@/lib/execution";
-import { dedupeByEmail, dedupeContacts } from "@/lib/execution-rules";
+import { dedupeContacts } from "@/lib/execution-rules";
 
 const DECISIONS = {
   approve: { status: "approved", event: "action_approved" },

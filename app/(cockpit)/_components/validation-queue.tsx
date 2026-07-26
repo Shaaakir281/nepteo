@@ -209,13 +209,17 @@ export function ValidationQueue({
 
               {isRelance(active.kind) && (
                 <>
-                  <DraftSection id={active.id} canEdit={canEdit} />
+                  <DraftSection key={active.id} id={active.id} canEdit={canEdit} />
                   <Section label="Personnaliser par prospect" />
                   <p className="mb-1 text-[11.5px] leading-relaxed text-muted">
                     Un message individuel, appuyé sur les notes et les infos de
                     chaque contact.
                   </p>
-                  <ProspectDrafts actionId={active.id} canEdit={canEdit} />
+                  <ProspectDrafts
+                    key={active.id}
+                    actionId={active.id}
+                    canEdit={canEdit}
+                  />
                 </>
               )}
             </div>
@@ -319,7 +323,7 @@ function MiniStat({ l, v }: { l: string; v: string }) {
 /** « Message prêt à envoyer » — l'agent rédige à l'ouverture, rien n'est envoyé. */
 function DraftSection({ id, canEdit }: { id: string; canEdit: boolean }) {
   const [draft, setDraft] = useState<Draft | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
   const [copied, setCopied] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -343,11 +347,22 @@ function DraftSection({ id, canEdit }: { id: string; canEdit: boolean }) {
 
   // Génère (ou récupère) le brouillon dès l'ouverture, pour chaque action.
   useEffect(() => {
-    setDraft(null);
-    setCopied(false);
-    setEditing(false);
-    void load(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    let alive = true;
+    draftForAction(id, false)
+      .then((res) => {
+        if (!alive) return;
+        if (res.ok) setDraft(res.draft);
+        else setFailed(true);
+      })
+      .catch(() => {
+        if (alive) setFailed(true);
+      })
+      .finally(() => {
+        if (alive) setLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
   }, [id]);
 
   function startEdit() {

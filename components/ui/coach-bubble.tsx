@@ -60,11 +60,14 @@ export function CoachBubble({ id }: { id: keyof typeof TIPS | string }) {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    try {
-      if (window.localStorage.getItem(storageKey) !== "done") setVisible(true);
-    } catch {
-      setVisible(true); // stockage indisponible : on affiche quand même
-    }
+    const timer = window.setTimeout(() => {
+      try {
+        if (window.localStorage.getItem(storageKey) !== "done") setVisible(true);
+      } catch {
+        setVisible(true); // stockage indisponible : on affiche quand même
+      }
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [storageKey]);
 
   if (!tip || !visible) return null;
