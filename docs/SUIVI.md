@@ -51,6 +51,20 @@ Environnement : Supabase `hrqnzorapjnosjphftur`, repo GitHub `Shaaakir281/nepteo
 
 ## Historique des sessions
 
+### 2026-07-26 (9) — Claude (Cowork) — **Correctif C5 : le panneau démo disparaissait après chargement d'un scénario**
+
+**Régression signalée par Fathi**, dans le périmètre C5 (session précédente). `entreprise/_components/connectors-panel.tsx` cachait le panneau démo dès qu'**un** `connectors.status = 'connected'` existait — or `ensureDemoConnector` (`lib/demo/seed.ts`) crée justement un connecteur `provider="demo"` **status `connected`** au premier scénario chargé. Résultat : le panneau se cachait lui-même juste après avoir servi, impossible de changer de scénario ou de retirer les données de démo sans quitter l'onglet Connecteurs — exactement le parcours que GUIDE-TEST.md demande de montrer à Charly.
+
+**Correctif** : `DEMO_PROVIDER` (`lib/demo/seed.ts`, déjà une constante locale) **exporté** — un seul endroit qui connaît le nom du connecteur de démo. `hasConnected` dans `connectors-panel.tsx` exclut désormais ce provider : `r.status === "connected" && r.provider !== DEMO_PROVIDER`. Aucune chaîne `"demo"` réécrite en dur côté UI.
+
+**Vérifié par lecture** (pas d'accès à une vraie base dans le sandbox) : `clearDemoData` ne supprime pas la ligne `connectors` du provider `demo` (seulement prospects/ad_metrics/revenue_events) — sans conséquence pour ce correctif, puisque `hasConnected` l'exclut de toute façon que le connecteur démo traîne ou non après un `clearDemoAction`. Le panneau reste donc visible dans les trois temps du parcours : après chargement d'un scénario, après changement de scénario, après retrait des données — tant qu'aucun **vrai** connecteur (Google Sheets, Notion…) n'est branché.
+
+**Tests** : aucun changement de règle pure, `DEMO_PROVIDER` n'est référencé par aucun test. **Total inchangé : 136/136.**
+
+**Vérif** : `npm test` **136/136, exit 0** ; `npx tsc --noEmit` **complet, exit 0 explicite — deux fois** (sandbox anormalement lent cette session : plusieurs passages à 40+ s avant de repasser sous les ~20-27 s habituels ; un `tsconfig` temporaire réduit à la fermeture transitive des fichiers touchés a servi de confiance intermédiaire pendant les tentatives, supprimé ensuite) ; `npm run lint` exit 0.
+
+**Reste (Fathi)** : `git push` ; dérouler le parcours démo dans l'app (charger un scénario → le panneau « Pas d'outil à brancher ? » reste visible → en charger un autre → « Retirer les données de démonstration » → panneau toujours là) ; le reste des points « Reste (Fathi) » de la session C5 (§7) et C6 (§8) tiennent toujours.
+
 ### 2026-07-26 (8) — Claude (Cowork) — **C6 « La mémoire en trois blocs »** (roadmap-beta, phase B)
 
 **But atteint** : les sept lignes de `entreprise/_components/identity-card.tsx` sont regroupées sous **trois intertitres** — **Ce que je vends** (Activité, Zone) · **Comment je parle** (Ton, Philosophie) · **Ce que je fais déjà** (Canaux actuels, Communication, Objectifs). **Un seul fichier touché.** Aucune migration, aucune dépendance, `lib/memory.ts` et `entreprise/actions.ts` **non touchés**.

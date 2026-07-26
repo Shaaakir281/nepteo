@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { icons } from "@/components/icons";
 import { CONNECTOR_CATALOG } from "@/lib/connectors";
 import { DEMO_SCENARIOS } from "@/lib/demo/scenarios";
+import { DEMO_PROVIDER } from "@/lib/demo/seed";
 import { DemoPanel } from "../../agent/_components/demo-panel";
 import {
   ConnectorCard,
@@ -36,7 +37,13 @@ export async function ConnectorsPanel({
     return "available";
   };
 
-  const hasConnected = (rows ?? []).some((r) => r.status === "connected");
+  // Le connecteur `demo` porte les données de démonstration (voir
+  // `ensureDemoConnector`, lib/demo/seed.ts) — toujours "connected" dès qu'un
+  // scénario est chargé. Il ne compte pas comme un VRAI outil branché, sinon
+  // le panneau démo disparaîtrait juste après avoir servi.
+  const hasConnected = (rows ?? []).some(
+    (r) => r.status === "connected" && r.provider !== DEMO_PROVIDER,
+  );
 
   return (
     <>

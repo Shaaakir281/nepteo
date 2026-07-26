@@ -23,7 +23,9 @@ export interface DemoLoadResult {
   sales: number;
 }
 
-const DEMO_PROVIDER = "demo";
+/** Provider réservé aux données de démo — jamais un vrai connecteur. Exporté
+ *  pour que l'UI puisse l'exclure des comptages "connecteur réel branché". */
+export const DEMO_PROVIDER = "demo";
 
 /**
  * Remet le cockpit à zéro entre deux scénarios : propositions, briefing et
