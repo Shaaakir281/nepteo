@@ -107,8 +107,19 @@ Environnement : Supabase `hrqnzorapjnosjphftur`, repo GitHub `Shaaakir281/nepteo
 
 **Suite immédiate — commit `2891ec8`, « dire POURQUOI le retrait a échoué »** : Fathi a déclenché le message d'échec dès le premier essai. Le message était honnête mais **muet sur la cause** — il ne distinguait même pas une session expirée d'une erreur de base. Trois corrections : `DemoResult` porte désormais un `detail` (message technique, borné à 300 caractères) remonté de l'action serveur jusqu'au panneau, qui l'affiche sous le message en petit ; `reason: "forbidden"` a son propre texte (« votre session a peut-être expiré… reconnectez-vous ») au lieu du générique ; et **`entryDetail` affiche enfin `payload.error`** (`lib/journal.ts`) — la raison était écrite au journal depuis toujours et n'était rendue nulle part, ce qui vaut aussi pour `connector_sync_failed`. **Cause du dysfonctionnement non identifiée à ce stade** : le schéma ne l'explique pas (aucune clé étrangère bloquante sur `prospects`, `activity` nullable, toutes les tables visées existent en migrations 0001-0009) et le sandbox n'a pas d'accès base. Le prochain essai donnera la ligne « Détail : … » — c'est elle qu'il faut me rapporter.
 
+**⚠️ CAUSE IDENTIFIÉE le 2026-07-26 au soir — `propositions : journal is append-only`** (message relevé par Fathi grâce au `detail` ci-dessus). **À traiter en priorité : le mode démonstration est bloqué, chargement compris.**
+
+`journal.action_id` est déclaré `references actions(id) **on delete set null**` (migration 0001, l. 79), et le trigger `journal_no_update` interdit `update or delete` sur `journal` (l. 96). Supprimer une ligne de `actions` oblige donc Postgres à faire un **UPDATE sur `journal`** pour mettre `action_id` à `null` — que le trigger rejette. **Une action référencée par le journal ne peut pas être supprimée, jamais.** Seul `lib/execution.ts` écrit `action_id` (6 endroits) : le blocage apparaît donc **dès qu'une action a été validée** (mode sûr → `outbox_messages`).
+
+Conséquences, dans l'ordre de gravité :
+1. `resetCockpitState` échoue → **`clearDemoData` ET `loadDemoScenario` échouent tous les deux** (les deux appellent cette fonction). Depuis B1 c'est un échec **dur** ; avant B1 c'était un échec **muet** — les propositions n'étaient en réalité jamais supprimées entre deux scénarios, ce que personne ne voyait.
+2. **Ne PAS revenir en arrière sur `ensureOk`** : le silence était le défaut, pas le remède. C'est lui qui a caché ce bug jusqu'à aujourd'hui.
+3. **Ne pas toucher au trigger** (invariant volontaire, règle 7).
+
+**Piste recommandée, à valider par l'agent qui reprendra** : retirer la **contrainte de clé étrangère** `journal_action_id_fkey` en gardant la colonne `action_id` (migration 0011, `alter table journal drop constraint …`). Un journal est un historique : il est normal qu'il pointe vers une entité disparue, et c'est la contrainte — pas le trigger — qui rend toute suppression impossible. Alternative sans migration, plus lourde : ne plus supprimer `actions` du tout et les écarter du cockpit autrement. À trancher après avoir grepé tous les usages de `action_id`.
+
 **Reste (Fathi)** :
-0. **Refaire un retrait et relever la ligne « Détail : … »** (ou l'entrée « Retrait des données de démonstration échoué » dans `/journal`, qui affiche désormais la raison). Sans ce message, la cause reste une devinette.
+0. ~~Relever la ligne « Détail : … »~~ **fait** : `propositions : journal is append-only` (voir ci-dessus).
 1. ~~Commiter `docs/SUIVI.md`~~ — **fait**, embarqué par les commits Azure `80b6a10`/`5e67427` arrivés entre-temps. L'arbre est propre.
 2. **`git push`** — les commits locaux s'accumulent (dix à ce jour, plus B1).
 3. `npm run lint` et `npm run build` en local (non concluants / impossibles dans le sandbox).
