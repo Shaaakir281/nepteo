@@ -7,7 +7,7 @@
 
 > **Kit de test prêt** : `docs/TESTS.md` (procédure complète connecteurs + parcours Phase 2) et `docs/tests/prospects-test.csv` (fausse base). **Tests en cours (2026-07-20 soir)** : app OAuth Google « Nepteo (dev) » créée par Fathi (écran de consentement configuré, email testeur ajouté après un 403 access_denied, ID client + secret dans `.env.local`). Tests LLM avec **clé OpenAI** (`LLM_MODEL*=openai:gpt-5.4` en env — pas encore de clé Anthropic). Reste à dérouler : connexion Sheets → sync → analyse → décisions, puis Notion. En prod : 1 seule app Google/Notion pour tous les clients (validation Google à passer avant lancement — voir TESTS.md § production).
 
-## État actuel (2026-07-22)
+## État actuel (2026-07-26)
 
 **Phase 2 — Recommandations : bien avancée.** L'agent lit les données réelles, détecte et propose ; il n'exécute **jamais** (exécution = Phase 3).
 
@@ -20,15 +20,16 @@ Fonctionnel (build vert en local par Fathi ; `tsc` + `npm test` verts dans le sa
 - **Cockpit Phase 2** : file de validation avec **tiroir de raisonnement** (Aujourd'hui), **Décisions récentes** (Reporter/Reprendre + historique validées/refusées), vue **Prospects funnel + kanban** avec **repère de priorité** par carte (statut + complétude, sans score inventé).
 - **Observabilité** : `telemetryForTask` (`functionId` par tâche, champ `telemetry` de l'AI SDK 7) + hook Langfuse **v7** (`lib/observability.ts` = `NodeSDK` + `LangfuseSpanProcessor` + `registerTelemetry(LangfuseVercelAiSdkIntegration)`) — **activé et validé** (2026-07-22, trace `recommend_action` reçue, `gen_ai.agent.name = recommend_action`, tokens/coût OK). Paquets `@langfuse/otel` + `@langfuse/vercel-ai-sdk` + `@opentelemetry/sdk-node` **installés et dans `package.json`** ; dev sur **Node 22.23.1** ✓.
 
-Environnement : Supabase `hrqnzorapjnosjphftur`, repo GitHub `Shaaakir281/nepteo` (branche `main`), dev local **port 3001 figé dans le script** (`next dev -p 3001`), **Node 22.23.1 local ✓**. Infra Azure provisionnée le 2026-07-26 dans `francecentral` : resource group `nepteo-prod-rg`, ACR `nepteoacr27de3b`, Container App `nepteo-prod`. GitHub `production` + OIDC créés ; premier déploiement applicatif encore à lancer.
+Environnement : Supabase `hrqnzorapjnosjphftur`, repo GitHub `Shaaakir281/nepteo` (branche `main`), dev local **port 3001 figé dans le script** (`next dev -p 3001`), **Node 22.23.1 local ✓**. Production Azure déployée le 2026-07-26 dans `francecentral` : resource group `nepteo-prod-rg`, ACR `nepteoacr27de3b`, Container App `nepteo-prod`, révision `nepteo-prod--0000001`, image du commit `49b410a`, URL `https://nepteo-prod.bravedune-81efb6a5.francecentral.azurecontainerapps.io`. GitHub `production` + OIDC opérationnels ; `/api/health` répond 200.
 
 ## Prochaines étapes (dans l'ordre)
 
-1. **Fathi (manuel)** : ~~connecter Notion~~ **fait**. `npm test` **28/28 (Node 22)**. Reste : `npm run build` (Windows) pour le check final, dérouler le parcours §3 dans l'app (3 propositions + badges de priorité + dédup), et **tester le nouvel écran de correspondance de colonnes** (config connecteur → bloc « Correspondance des colonnes » → pré-remplissage auto, corriger un champ, Enregistrer, resync). ~~Backlog : écran de correspondance de colonnes~~ **construit (2026-07-22)**.
-2. ~~Activer Langfuse~~ **fait et validé (2026-07-22)** : paquets installés, clés en place, trace `recommend_action` reçue dans Langfuse. Optionnel plus tard : enrichir les traces (`propagateAttributes`/`observe`) pour grouper par org/client, et confirmer que le mojibake d'accents est bien limité à l'export CSV (pas l'UI).
-3. ~~Priorisation des prospects (Phase 2)~~ — **fait (2026-07-21)** : signal transparent (statut + complétude) dans le kanban + proposition « relancer en priorité », sans score inventé. Reste à Fathi : le voir dans le parcours §3 (désormais **3 propositions**) et confirmer les badges kanban.
-4. **Porte Phase 2** : ≥ 1 recommandation pertinente/semaine jugée utile par le pilote (ROADMAP). Client pilote toujours à confirmer avec Charly.
-5. **Ne pas anticiper la Phase 3** (exécution réelle + garde-fous serveur).
+1. **Production (manuel)** : ajouter l’URL Azure dans Supabase Auth (`Site URL` + redirect `/auth/confirm`), puis dérouler inscription → confirmation → onboarding → scénario démo → analyse → `GET /api/llm/status` avec une session authentifiée. Ajouter aussi les callbacks Google/Notion de production avant de tester ces connecteurs.
+2. **Fathi (manuel)** : ~~connecter Notion~~ **fait**. Dérouler le parcours §3 dans l'app (3 propositions + badges de priorité + dédup), et **tester le nouvel écran de correspondance de colonnes** (config connecteur → bloc « Correspondance des colonnes » → pré-remplissage auto, corriger un champ, Enregistrer, resync). ~~Backlog : écran de correspondance de colonnes~~ **construit (2026-07-22)**.
+3. ~~Activer Langfuse~~ **fait et validé (2026-07-22)** : paquets installés, clés en place, trace `recommend_action` reçue dans Langfuse. Optionnel plus tard : enrichir les traces (`propagateAttributes`/`observe`) pour grouper par org/client, et confirmer que le mojibake d'accents est bien limité à l'export CSV (pas l'UI).
+4. ~~Priorisation des prospects (Phase 2)~~ — **fait (2026-07-21)** : signal transparent (statut + complétude) dans le kanban + proposition « relancer en priorité », sans score inventé. Reste à Fathi : le voir dans le parcours §3 (désormais **3 propositions**) et confirmer les badges kanban.
+5. **Porte Phase 2** : ≥ 1 recommandation pertinente/semaine jugée utile par le pilote (ROADMAP). Client pilote toujours à confirmer avec Charly.
+6. **Ne pas anticiper la Phase 3** (exécution réelle + garde-fous serveur).
 
 ## Pièges connus
 
@@ -52,6 +53,16 @@ Environnement : Supabase `hrqnzorapjnosjphftur`, repo GitHub `Shaaakir281/nepteo
 - **Coût de la recherche web OpenAI** : le prix affiché (10 $ / 1 000 appels d'outil) n'est **que la moitié de la facture** — les *search content tokens* sont facturés au tarif du modèle et dominent le total (~0,06 $ par recherche avec `gpt-5.5`). Toujours chiffrer les deux parts, et se rappeler que `MAX_RESEARCH_PER_DAY` compte des appels `runResearch`, **pas** des `web_search_call`.
 
 ## Historique des sessions
+
+### 2026-07-26 (15) — Codex — **Nepteo déployé en production sur Azure Container Apps**
+
+**Publication** : la PR #1 a été sortie du mode brouillon puis fusionnée dans `main` au commit `49b410a`. La CI de `main` est verte (install, lint, typecheck, build). Le workflow manuel `Deploy (Azure Container Apps)` a été lancé avec l’ID exact de la souscription `Abonnement 1`, puis l’environnement GitHub protégé `production` a été approuvé.
+
+**Deux écarts réels corrigés** : GitHub émet le sujet OIDC immuable `repo:Shaaakir281@128485159/nepteo@1305970728:environment:production` ; une Federated Credential correspondante a été ajoutée à l’App Registration. Le service principal a aussi reçu `Managed Identity Operator` au seul scope de `nepteo-prod-acr-pull`, nécessaire pour conserver cette identité lors des mises à jour de la Container App. Les rôles existants restent limités au resource group et à l’ACR.
+
+**Résultat Azure** : ACR a construit l’image immuable `nepteo:49b410a7ad95d9ed8d0b2c044d2f396924360935` (digest `sha256:3e3d95a8d6a7997ced83b842d464c3d1139093c816ef7852df755397ad1b7607`). La révision `nepteo-prod--0000001` est `Healthy`, `Running`, reçoit 100 % du trafic et répond sur `https://nepteo-prod.bravedune-81efb6a5.francecentral.azurecontainerapps.io`. Le workflow GitHub Actions (essai 3) est vert et son smoke `/api/health` a réussi ; un second contrôle externe renvoie `{"status":"ok","service":"nepteo"}` en HTTP 200. Sans session, `/api/llm/status` renvoie HTTP 401, comportement de sécurité attendu.
+
+**Reste manuel** : régler Supabase Auth avec cette URL (`Site URL` et redirect `/auth/confirm`), puis faire le smoke authentifié complet. Les callbacks OAuth Google/Notion de production restent à ajouter avant leur recette. Le cron `/api/cron/sync` reste volontairement désactivé.
 
 ### 2026-07-26 (14) — Codex — **Retour de recette B1/B2 + recherche web rendue accessible**
 
