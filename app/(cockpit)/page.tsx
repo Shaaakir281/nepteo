@@ -15,7 +15,15 @@ import {
   type DecidedAction,
 } from "./_components/decisions-history";
 import { ExecutionSwitch } from "./_components/execution-switch";
+import { StarterDiagnosticCard } from "./_components/starter-diagnostic";
 import { revenueStats } from "@/lib/revenue/revenue-rules";
+import { memoText } from "@/lib/draft-template";
+import {
+  buildStarterDiagnostic,
+  diagnosticInputFromMemory,
+  type DiagnosticMemory,
+} from "@/lib/diagnostic";
+import { readMemory } from "@/lib/memory-store";
 import { CoachBubble } from "@/components/ui/coach-bubble";
 
 export default async function TodayPage() {
@@ -94,6 +102,21 @@ export default async function TodayPage() {
     .from("prospects")
     .select("id", { count: "exact", head: true });
 
+  // Base vide : quatre tirets ne disent rien. On rend plutôt le diagnostic de
+  // départ — la première expertise de l'agent, avant tout connecteur (même
+  // rendu que /plan). Dès qu'il y a des données, on retrouve les KPIs.
+  const hasData =
+    (prospectCount ?? 0) > 0 || (adSpendRows ?? []).length > 0;
+  const memCtx = hasData ? null : await readMemory(supabase);
+  const diagnostic = memCtx
+    ? buildStarterDiagnostic(
+        diagnosticInputFromMemory(
+          memCtx as DiagnosticMemory,
+          memoText(memCtx, "offres") || memoText(memCtx, "activite"),
+        ),
+      )
+    : null;
+
   const hasRevenue = rev.count > 0;
   const eur = (n: number) => `${Math.round(n).toLocaleString("fr-FR")} €`;
   const kpis = [
@@ -108,13 +131,17 @@ export default async function TodayPage() {
       <CoachBubble id="today" />
       <div className="mb-6">
         <h1 className="text-[22px] font-semibold tracking-tight">Bonjour</h1>
-        <p className="mt-1.5 max-w-2xl text-[13.5px] leading-relaxed text-muted">
-          Nepteo apprend votre entreprise. Complétez la{" "}
-          <Link href="/entreprise" className="font-semibold text-violet hover:underline">
-            mémoire de l&apos;agent
-          </Link>{" "}
-          — vos données réelles apparaîtront ici dès le premier connecteur.
-        </p>
+        {/* Cette phrase n'est vraie que tant qu'aucune donnée n'est branchée —
+            elle disparaît dès que l'agent a de la matière. */}
+        {diagnostic && (
+          <p className="mt-1.5 max-w-2xl text-[13.5px] leading-relaxed text-muted">
+            Nepteo apprend votre entreprise. Complétez la{" "}
+            <Link href="/entreprise" className="font-semibold text-violet hover:underline">
+              mémoire de l&apos;agent
+            </Link>{" "}
+            — vos données réelles apparaîtront ici dès le premier connecteur.
+          </p>
+        )}
       </div>
 
       {/* Briefing de l'agent — résumé en langage naturel du funnel */}
@@ -138,38 +165,47 @@ export default async function TodayPage() {
         </div>
       )}
 
-      {/* KPIs — données réelles (30 derniers jours) */}
-      <div className="grid grid-cols-2 gap-3.5 xl:grid-cols-4">
-        {kpis.map((k) => (
-          <div
-            key={k.label}
-            className="rounded-[13px] border border-line-soft bg-white p-4 shadow-card"
-          >
-            <p className="text-[10.5px] font-semibold uppercase tracking-[.08em] text-faint">
-              {k.label}
-            </p>
-            <p
-              className={`mt-1.5 font-display text-[22px] font-semibold ${k.value === "—" ? "text-faint" : "text-ink"}`}
-            >
-              {k.value}
-            </p>
-            <p className="mt-0.5 text-[11.5px] text-muted">{k.hint}</p>
+      {diagnostic ? (
+        /* Rien de branché : le diagnostic de départ tient lieu de tableau de
+           bord. Le chemin vers une entreprise fictive reste offert juste en
+           dessous, par l'état vide de la file de validation. */
+        <StarterDiagnosticCard diagnostic={diagnostic} />
+      ) : (
+        <>
+          {/* KPIs — données réelles (30 derniers jours) */}
+          <div className="grid grid-cols-2 gap-3.5 xl:grid-cols-4">
+            {kpis.map((k) => (
+              <div
+                key={k.label}
+                className="rounded-[13px] border border-line-soft bg-white p-4 shadow-card"
+              >
+                <p className="text-[10.5px] font-semibold uppercase tracking-[.08em] text-faint">
+                  {k.label}
+                </p>
+                <p
+                  className={`mt-1.5 font-display text-[22px] font-semibold ${k.value === "—" ? "text-faint" : "text-ink"}`}
+                >
+                  {k.value}
+                </p>
+                <p className="mt-0.5 text-[11.5px] text-muted">{k.hint}</p>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
-      {!hasRevenue &&
-        (canEdit ? (
-          <Link
-            href="/agent"
-            className="mt-2.5 inline-block text-[12px] font-semibold text-violet hover:underline"
-          >
-            Essayer avec une entreprise fictive →
-          </Link>
-        ) : (
-          <p className="mt-2.5 text-[12px] text-faint">
-            Connectez vos paiements pour voir ventes et revenu réels.
-          </p>
-        ))}
+          {!hasRevenue &&
+            (canEdit ? (
+              <Link
+                href="/agent"
+                className="mt-2.5 inline-block text-[12px] font-semibold text-violet hover:underline"
+              >
+                Essayer avec une entreprise fictive →
+              </Link>
+            ) : (
+              <p className="mt-2.5 text-[12px] text-faint">
+                Connectez vos paiements pour voir ventes et revenu réels.
+              </p>
+            ))}
+        </>
+      )}
 
       <div className="mt-7 grid gap-4 lg:grid-cols-2">
         {/* File de validation */}

@@ -47,6 +47,37 @@ Environnement : Supabase `hrqnzorapjnosjphftur`, repo GitHub `Shaaakir281/nepteo
 
 ## Historique des sessions
 
+### 2026-07-26 (2) — Claude (Cowork) — **C2 « Le premier écran dit la vérité »** (roadmap-beta, phase A)
+
+**But atteint** : un nouvel utilisateur (ou Charly) qui arrive sur `/` avec une base vide voit désormais le **diagnostic de départ** au lieu de quatre tirets et d'une consigne d'onboarding gravée à vie.
+
+**1. Rendu partagé** — `app/(cockpit)/_components/starter-diagnostic.tsx` (`StarterDiagnosticCard`, props `{ diagnostic: StarterDiagnostic }`). Composant **serveur**, aucun état, aucun `"use client"`. Le rendu est repris **à l'identique** de `/plan` ; l'en-tête de page reste à l'appelant (les deux écrans n'ont pas le même titre). `/plan` l'utilise : **comportement inchangé**.
+
+**2. Accueil** (`app/(cockpit)/page.tsx`) — `hasData = prospects > 0 || lignes ad_metrics sur 30 j > 0`. Si faux : le diagnostic **remplace la grille de KPIs** (et le lien « entreprise fictive » qui la suivait). Si vrai : accueil actuel, strictement inchangé. La fenêtre de 30 jours réutilise la requête `adSpendRows` déjà présente — **même sémantique que `/plan`**, pour que les deux écrans basculent au même moment.
+
+**3. Copie d'onboarding** — le paragraphe « Nepteo apprend votre entreprise… » sous « Bonjour » n'apparaît plus **que dans l'état vide**, où il est vrai.
+
+**4. Guide** — `docs/demo/GUIDE-TEST.md` : le parcours commence maintenant sur `/` (l'étape 3 de « Mise en route » invite à s'y arrêter avant de charger un scénario) ; le détour obligatoire par « Plan du mois » est retiré ; §1 et §5 réécrits en conséquence.
+
+**Décisions de mise en œuvre** :
+- **`diagnosticInputFromMemory` ajouté à `lib/diagnostic.ts`** (pur, **zéro import** — la forme des sections est décrite structurellement via `DiagnosticMemory`, pas importée de `lib/memory.ts`). La roadmap ne demandait que d'extraire le *rendu* ; extraire aussi le *mapping* évite que `/` et `/plan` finissent par conseiller des choses différentes à partir de la même fiche. C'est la duplication que C2 aurait créée. **Écart assumé, signalé ici.**
+- **Aucun lien démo ajouté sous le diagnostic** : l'état vide de la file de validation porte déjà « Pas encore d'outil à brancher ? → /agent ». Un troisième CTA aurait fait doublon.
+- **Bulle `CoachBubble id="today"` non modifiée** : vérifiée, son texte ne fait référence ni à `/plan` ni au parcours déplacé. Le bouton « Analyser » qu'elle mentionne reste présent dans l'état vide (`AnalysisRunner` de `ValidationQueue`).
+
+**Tests** : +1 sur `diagnosticInputFromMemory` (mémoire vide ⇒ que des valeurs neutres, jamais d'`undefined` ; et deux appels équivalents produisent le **même** diagnostic — le contrat anti-divergence entre les deux écrans). **Total : 128 → 129.**
+
+**Vérif** : `npm test` **129/129, exit 0** ; `npx tsc --noEmit` **complet, exit 0 explicite**.
+
+**Constat sur l'outillage (hors périmètre)** : la VM du sandbox a redémarré en cours de session et le `tsc` complet est passé de ~42 s à **plus de 43 s** (échecs répétés) avant de repasser au vert une fois le cache chaud. Confirmation que le montage Windows, et non la charge CPU, est le facteur limitant (mesure : `tar` ne copie que **~11 Mo en 38 s** depuis `node_modules`). Recette utile quand le complet ne boucle pas : un `tsconfig` temporaire `extends: "./tsconfig.json"` avec `incremental: false` et un `include` réduit aux fichiers du chantier **type-checke leur fermeture transitive en < 38 s** — à supprimer après usage, et ce n'est **pas** un substitut au complet.
+
+**Reste (Fathi)** :
+1. **`git push`** — quatre commits locaux (docs session 5, C1, cadrage R1, C2).
+2. **Migration `0010_research.sql`** : ✅ **déjà passée** (vérifiée le 26/07 — l'erreur `42P07 relation already exists` signifie que le script avait été validé en entier). Plus rien à migrer.
+3. `npm run build` (SWC Windows).
+4. **Parcours de contrôle** : compte neuf ou base vidée → `/` doit montrer « Bonjour » + le paragraphe d'onboarding + le **diagnostic** avec ses deux CTA ; puis `/agent` → charger un scénario → revenir sur `/` : **KPIs, plus de diagnostic, plus de paragraphe d'onboarding** ; `/plan` inchangé dans les deux états.
+
+**Suite** : phase A terminée côté code (C1 + C2), **C3** (libellés CVR/CTR, ~1 h) reste disponible quand tu veux — après quoi il n'y a plus que le jalon 0 avant la démo.
+
 ### 2026-07-26 — Claude (Cowork) — cadrage **R1 : recherche web via OpenAI** (aucun code)
 
 Suite immédiate de la session C1, **hors périmètre C1 et volontairement sans code** (règle « un chantier = une session »).

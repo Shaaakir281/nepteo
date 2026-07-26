@@ -332,5 +332,7 @@ Jalon 0 (checklist Fathi)
 
 - **2026-07-25** — Fichier créé (Claude, Cowork) à partir de l'audit contradictoire du plan `simplification.md` et de l'évaluation valeur. Rien codé. Prochain geste : jalon 0, puis C1.
 - **2026-07-25** — **C1 terminé** (Claude, Cowork ; détail dans `docs/SUIVI.md`). Mock/seed ads + revenu supprimés, `lib/memory-store.ts` (`readMemory`) créé et branché sur 9 lectures, `lib/types.ts` supprimé (`ConnectorType` relogé dans `lib/connectors.ts`). Tests 130 → **128**, `tsc` exit 0. Écart assumé : l'état vide de `/campagnes` a reçu le même lien `/agent` que l'accueil. Prochain geste : **C2**.
+- **2026-07-26** — **R1 cadré** (hors C1–C12) : recherche web OpenAI `web_search` en second fournisseur, ordre de mission dans `docs/projets/recherche-web-openai.md` + ADR. Rien codé.
+- **2026-07-26** — **C2 terminé**. `_components/starter-diagnostic.tsx` extrait et partagé par `/` et `/plan` ; l'accueil rend le diagnostic tant que 0 prospect **et** 0 ligne `ad_metrics` (30 j) ; copie d'onboarding réduite à l'état vide ; GUIDE-TEST recentré sur `/`. Écart assumé : `diagnosticInputFromMemory` (pur) extrait en plus du rendu, pour que les deux écrans ne divergent pas. Tests 128 → **129**, `tsc` exit 0. **Phase A : reste C3.**
 
 

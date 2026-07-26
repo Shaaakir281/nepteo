@@ -25,6 +25,40 @@ export interface DiagnosticInput {
   presence: string[];
 }
 
+/**
+ * Forme des sections de mémoire consommées par le diagnostic. Décrite
+ * structurellement plutôt qu'importée de `lib/memory.ts` : ce fichier doit
+ * rester **sans aucun import** pour que `node:test` puisse le charger.
+ */
+export interface DiagnosticMemory {
+  activite?: { activity_type?: string; audience?: string };
+  zone?: { text?: string };
+  objectifs?: { list?: string[] };
+  canaux?: { list?: string[] };
+  presence?: { list?: string[] };
+}
+
+/**
+ * Traduit la mémoire entreprise en entrée de diagnostic. Partagé par `/` et
+ * `/plan` : sans ce point unique, les deux écrans finiraient par conseiller
+ * des choses différentes à partir de la même fiche.
+ * `offre` reste à l'appelant (elle vient de `memoText`, hors de ce fichier pur).
+ */
+export function diagnosticInputFromMemory(
+  memory: DiagnosticMemory,
+  offre: string,
+): DiagnosticInput {
+  return {
+    activityType: memory.activite?.activity_type ?? "",
+    audience: memory.activite?.audience ?? "",
+    zone: memory.zone?.text ?? "",
+    offre,
+    objectifs: memory.objectifs?.list ?? [],
+    canauxActuels: memory.canaux?.list ?? [],
+    presence: memory.presence?.list ?? [],
+  };
+}
+
 export interface ChannelAdvice {
   channel: string;
   why: string;

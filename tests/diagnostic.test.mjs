@@ -10,6 +10,7 @@ import assert from "node:assert/strict";
 import {
   buildStarterDiagnostic,
   detectProfile,
+  diagnosticInputFromMemory,
   MAX_CHANNELS,
 } from "../lib/diagnostic.ts";
 
@@ -124,4 +125,49 @@ test("diagnostic — expose son fondement pour pouvoir être contesté", () => {
   });
   assert.ok(/Complétez votre fiche entreprise/.test(vide.basis));
   assert.ok(vide.channels.length >= 2, "un diagnostic générique reste utile");
+});
+
+test("diagnosticInputFromMemory — mémoire partielle, aucun champ manquant", () => {
+  // Mémoire vide : que des valeurs neutres, jamais d'undefined qui remonterait
+  // dans le diagnostic (les deux écrans qui l'appellent doivent tenir debout).
+  const vide = diagnosticInputFromMemory({}, "");
+  assert.deepEqual(vide, {
+    activityType: "",
+    audience: "",
+    zone: "",
+    offre: "",
+    objectifs: [],
+    canauxActuels: [],
+    presence: [],
+  });
+
+  const plein = diagnosticInputFromMemory(
+    {
+      activite: { activity_type: "Services", audience: "Particuliers" },
+      zone: { text: "Eure-et-Loir" },
+      objectifs: { list: ["Trouver de nouveaux clients"] },
+      canaux: { list: ["Bouche-à-oreille"] },
+      presence: { list: ["Page Facebook active"] },
+    },
+    "fenêtres sur mesure",
+  );
+  assert.equal(plein.activityType, "Services");
+  assert.equal(plein.zone, "Eure-et-Loir");
+  assert.equal(plein.offre, "fenêtres sur mesure");
+  assert.deepEqual(plein.presence, ["Page Facebook active"]);
+
+  // Ce que l'accueil et /plan doivent produire à l'identique.
+  assert.deepEqual(
+    buildStarterDiagnostic(plein),
+    buildStarterDiagnostic(diagnosticInputFromMemory(
+      {
+        activite: { activity_type: "Services", audience: "Particuliers" },
+        zone: { text: "Eure-et-Loir" },
+        objectifs: { list: ["Trouver de nouveaux clients"] },
+        canaux: { list: ["Bouche-à-oreille"] },
+        presence: { list: ["Page Facebook active"] },
+      },
+      "fenêtres sur mesure",
+    )),
+  );
 });
