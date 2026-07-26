@@ -29,8 +29,14 @@ const STEP_MS = 700;
 /**
  * Un retrait qui échoue peut laisser des données fictives en base : le dire,
  * plutôt que d'afficher « Réessayez » comme pour un chargement.
+ *
+ * Une session expirée et une erreur de base ne se réparent pas pareil : on ne
+ * renvoie donc pas le même conseil pour les deux.
  */
-function failureMessage(id: string): string {
+function failureMessage(id: string, reason?: string): string {
+  if (reason === "forbidden") {
+    return "Action refusée : votre session a peut-être expiré, ou votre rôle ne permet pas cette action. Reconnectez-vous, puis réessayez.";
+  }
   return id === "clear"
     ? "Le retrait n'a pas abouti — des données de démonstration sont peut-être encore là, et votre fiche entreprise n'a pas été restaurée. Réessayez."
     : "Le chargement n'a pas abouti. Réessayez.";
@@ -48,15 +54,22 @@ export function DemoPanel({
   const [step, setStep] = useState(0);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [detail, setDetail] = useState<string | null>(null);
 
   async function run(
     id: string,
-    task: () => Promise<{ ok: boolean; created?: number }>,
+    task: () => Promise<{
+      ok: boolean;
+      created?: number;
+      reason?: string;
+      detail?: string;
+    }>,
   ) {
     if (busy) return;
     setBusy(id);
     setMessage(null);
     setError(null);
+    setDetail(null);
     setStep(0);
 
     let current = 0;
@@ -80,10 +93,12 @@ export function DemoPanel({
               : "Scénario chargé. L'analyse n'a rien trouvé à proposer cette fois.",
         );
       } else {
-        setError(failureMessage(id));
+        setError(failureMessage(id, result.reason));
+        setDetail(result.detail ?? null);
       }
-    } catch {
+    } catch (err) {
       setError(failureMessage(id));
+      setDetail(err instanceof Error ? err.message : null);
     } finally {
       clearInterval(timer);
       setBusy(null);
@@ -141,9 +156,14 @@ export function DemoPanel({
         </p>
       )}
       {error && (
-        <p className="mt-4 rounded-[10px] bg-red-tint px-3.5 py-2.5 text-[13px] font-medium text-red">
-          {error}
-        </p>
+        <div className="mt-4 rounded-[10px] bg-red-tint px-3.5 py-2.5">
+          <p className="text-[13px] font-medium text-red">{error}</p>
+          {detail && (
+            <p className="mt-1 text-[11.5px] leading-relaxed text-red/80">
+              Détail : {detail}
+            </p>
+          )}
+        </div>
       )}
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-line-soft pt-3">
