@@ -115,13 +115,21 @@ Ajouter une Federated Credential GitHub :
 | Repository | `nepteo` |
 | Entity | `Environment` |
 | Environment | `production` |
-| Subject attendu | `repo:Shaaakir281/nepteo:environment:production` |
+| Subject attendu | `repo:Shaaakir281@128485159/nepteo@1305970728:environment:production` |
+
+GitHub émet ici un sujet fondé sur les identifiants immuables du propriétaire et
+du dépôt. Utiliser le sujet exact présenté dans l’assertion OIDC ; le fichier
+`infra/azure/github-federated-credential.json` contient la valeur validée en
+production.
 
 Attribuer au service principal, au moindre périmètre possible :
 
 - `Container Apps Contributor` sur le resource group `nepteo-prod-rg` ;
 - `Container Registry Tasks Contributor` sur l’ACR, requis par
-  `az acr build`.
+  `az acr build` ;
+- `Managed Identity Operator` uniquement sur l’identité
+  `nepteo-prod-acr-pull`, pour autoriser la Container App à continuer de
+  l’utiliser lors de ses mises à jour.
 
 L’identité managée de la Container App, et non GitHub, porte `AcrPull`.
 
