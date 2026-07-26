@@ -39,8 +39,8 @@ const TIPS: Record<string, Tip> = {
   },
   agent: {
     title: "Vous gardez la main",
-    body: "Chargez un scénario de démonstration pour remplir le cockpit sans brancher d'outil. Le bouton d'arrêt et les plafonds s'appliquent côté serveur, jamais seulement à l'écran.",
-    watch: "Passez l'autonomie sur « Proposer seulement » : une action validée refusera de s'exécuter.",
+    body: "Le bouton d'arrêt et les plafonds s'appliquent côté serveur, jamais seulement à l'écran. Le troisième cran du curseur, « Envoie », arrive avec l'étape B — désactivé pour l'instant.",
+    watch: "Passez l'autonomie sur « Propose seulement » : une action validée refusera de s'exécuter.",
   },
   entreprise: {
     title: "Ce que Nepteo sait de vous",

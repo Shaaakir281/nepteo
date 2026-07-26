@@ -19,7 +19,7 @@ Trois questions à garder en tête pendant le test :
 2. **Onboarding** : nom de l'entreprise, ce que vous vendez, et le champ **« Votre philosophie »** — écrivez-y votre façon de travailler, ce à quoi vous tenez. C'est ce qui donne sa voix à l'agent.
 3. **Un écran facultatif peut s'intercaler** : si la recherche web est activée, l'agent lit votre site et **propose une fiche d'identité** (ce que vous vendez, vos offres, votre ton, ce que vous faites déjà en communication) que vous corrigez avant de valider — chaque affirmation porte ses sources, cliquez-les. « Passer cette étape » entre directement au cockpit. Sans clé de recherche, cet écran n'apparaît pas du tout.
 4. **Vous arrivez sur « Aujourd'hui ». Arrêtez-vous là une minute avant de charger quoi que ce soit** : sans aucune donnée branchée, l'écran d'accueil affiche un **diagnostic de départ** — deux ou trois canaux conseillés à partir de votre seule fiche entreprise, avec le premier geste, ce qu'il vaut mieux éviter, et trois actions pour la semaine. C'est le moment où l'agent doit déjà paraître compétent, avant tout connecteur.
-5. Aller sur **« Mon entreprise » → onglet « Agent »** → section **« Mode démonstration »** → choisir un scénario :
+5. Aller sur **« Mon entreprise » → onglet « Connecteurs »** → section **« Pas d'outil à brancher ? »** → choisir un scénario :
 
 | Scénario | Profil | Ce qu'il montre |
 |---|---|---|
@@ -74,19 +74,20 @@ L'atelier de contenu n'est pas dans le menu : on y arrive par le bouton **« Id�
 
 ### 5. Mon entreprise → Agent — la confiance
 
-C'est ici que se joue la crédibilité du produit. Trois choses à essayer :
+C'est ici que se joue la crédibilité du produit. Deux choses à essayer :
 
 - **Bouton d'arrêt** → mettre en pause, puis tenter d'exécuter une action validée : elle est refusée, et le refus est tracé.
-- **Autonomie « Proposer seulement »** → même chose : l'agent ne prépare plus rien.
-- **Envois préparés** → après avoir exécuté une relance validée, les messages apparaissent avec le statut « Préparé ». **Aucun n'est parti.**
+- **Niveau d'autonomie « Propose seulement »** → même chose : l'agent ne prépare plus rien. Le troisième cran, **« Envoie »**, est grisé avec le badge « Bientôt » — c'est l'étape B, pas encore branchée.
 
-Les plafonds (messages par exécution, par jour) sont appliqués **côté serveur** : ils ne sont pas contournables depuis l'écran.
+Les plafonds (messages par exécution, par jour) sont indiqués en note sous le curseur et appliqués **côté serveur** : ils ne sont pas contournables depuis l'écran.
+
+> **Envois préparés** a déménagé sur **Journal**, en tête de page : après avoir exécuté une relance validée, les messages y apparaissent avec le statut « Préparé ». **Aucun n'est parti.**
 
 ### 6. Mon entreprise → Identité — la mémoire
 
 Tout ce qui s'y trouve nourrit les messages, les briefs et les recommandations. Modifiez le **Ton** ou la **Philosophie**, puis régénérez une relance : la voix doit changer.
 
-L'onglet **Connecteurs**, à côté, est le même écran qu'avant : c'est là qu'on branche Google Sheets ou Notion.
+L'onglet **Connecteurs**, à côté, gagne désormais la section **« Pas d'outil à brancher ? »** (mode démonstration) tant qu'aucun outil réel n'est connecté — c'est aussi là qu'on branche Google Sheets ou Notion.
 
 ## Ce qui n'est pas encore là
 

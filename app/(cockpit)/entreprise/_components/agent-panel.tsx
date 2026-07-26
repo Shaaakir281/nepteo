@@ -1,14 +1,15 @@
 import { createClient } from "@/lib/supabase/server";
 import { MAX_PER_RUN, MAX_PER_DAY } from "@/lib/execution-rules";
-import { DEMO_SCENARIOS } from "@/lib/demo/scenarios";
 import { ExecutionSwitch } from "../../_components/execution-switch";
 import { AutonomySelector } from "../../agent/_components/autonomy-selector";
-import { DemoPanel } from "../../agent/_components/demo-panel";
 
 /**
- * Onglet « Agent » — repris tel quel de l'ancienne page `/agent`, qui redirige
- * désormais ici. Le curseur d'autonomie et le panneau démo restent les mêmes
- * composants (aucune logique d'exécution modifiée par ce déplacement).
+ * Onglet « Agent » — repris de l'ancienne page `/agent`, qui redirige
+ * désormais ici. Depuis C5, tient en deux notions : le curseur d'autonomie
+ * (+ la note de plafonds qu'il porte) et le bouton d'arrêt. « Mode
+ * démonstration » a rejoint l'état vide de l'onglet Connecteurs, et
+ * « Envois préparés » vit désormais en tête de `/journal` — aucune logique
+ * d'exécution modifiée par ces déplacements.
  */
 export async function AgentPanel({ canEdit }: { canEdit: boolean }) {
   const supabase = await createClient();
@@ -20,49 +21,18 @@ export async function AgentPanel({ canEdit }: { canEdit: boolean }) {
   const paused = Boolean(org?.execution_paused);
   const autonomy = (org?.autonomy_level as string) ?? "prepare";
 
-  const { count: preparedCount } = await supabase
-    .from("outbox_messages")
-    .select("id", { count: "exact", head: true })
-    .eq("status", "prepared");
-  const { data: outboxRows } = await supabase
-    .from("outbox_messages")
-    .select("id, to_email, subject, status, created_at")
-    .order("created_at", { ascending: false })
-    .limit(15);
-  const outbox = (outboxRows ?? []) as {
-    id: string;
-    to_email: string;
-    subject: string;
-    status: string;
-    created_at: string;
-  }[];
-  const fmtDate = new Intl.DateTimeFormat("fr-FR", {
-    day: "numeric",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-  const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
-    prepared: { label: "Préparé", cls: "bg-tint text-violet" },
-    sent: { label: "Envoyé", cls: "bg-green-tint text-green" },
-    failed: { label: "Échec", cls: "bg-red-tint text-red" },
-  };
-
   return (
     <div className="space-y-4">
-      {/* Mode démonstration */}
+      {/* Niveau d'autonomie */}
       <Section
-        title="Mode démonstration"
-        hint="Une entreprise fictive complète en un clic — pour tester sans brancher le moindre outil."
+        title="Niveau d'autonomie"
+        hint="Jusqu'où l'agent peut aller sans vous."
       >
-        <DemoPanel
-          canEdit={canEdit}
-          scenarios={DEMO_SCENARIOS.map((s) => ({
-            id: s.id,
-            label: s.label,
-            pitch: s.pitch,
-          }))}
-        />
+        <AutonomySelector level={autonomy} canEdit={canEdit} />
+        <p className="mt-3 text-[12px] leading-relaxed text-faint">
+          Plafonds serveur : {MAX_PER_RUN} par exécution, {MAX_PER_DAY} par
+          jour — non contournables.
+        </p>
       </Section>
 
       {/* Bouton d'arrêt */}
@@ -82,118 +52,6 @@ export async function AgentPanel({ canEdit }: { canEdit: boolean }) {
             <span className="text-[12px] text-muted">Lecture seule</span>
           )}
         </div>
-      </Section>
-
-      {/* Niveau d'autonomie */}
-      <Section
-        title="Niveau d'autonomie"
-        hint="Jusqu'où l'agent peut aller sans vous."
-      >
-        <AutonomySelector level={autonomy} canEdit={canEdit} />
-      </Section>
-
-      {/* Plafonds serveur */}
-      <Section
-        title="Plafonds de sécurité"
-        hint="Appliqués côté serveur, jamais contournables depuis l'interface."
-      >
-        <div className="grid grid-cols-2 gap-3">
-          <Stat value={MAX_PER_RUN} label="messages par exécution" />
-          <Stat value={MAX_PER_DAY} label="messages par jour" />
-        </div>
-      </Section>
-
-      {/* Mode d'exécution */}
-      <Section
-        title="Mode d'exécution"
-        hint="Ce que « Exécuter » fait réellement."
-      >
-        <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-[12px] border-2 border-violet bg-tint-soft px-4 py-3">
-            <div className="flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-green" />
-              <span className="text-[13px] font-semibold text-ink">
-                Mode sûr
-              </span>
-              <span className="ml-auto rounded-full bg-green-tint px-2 py-0.5 text-[10px] font-semibold text-green">
-                Actif
-              </span>
-            </div>
-            <p className="mt-1.5 text-[12px] leading-relaxed text-muted">
-              L&apos;agent prépare les messages (statut « préparé »). Aucun
-              envoi externe.
-            </p>
-          </div>
-          <div className="rounded-[12px] border border-line bg-white px-4 py-3 opacity-70">
-            <div className="flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-faint" />
-              <span className="text-[13px] font-semibold text-muted">
-                Mode réel — envoi SMTP
-              </span>
-              <span className="ml-auto rounded-full bg-tint-soft px-2 py-0.5 text-[10px] font-semibold text-faint">
-                Bientôt · étape B
-              </span>
-            </div>
-            <p className="mt-1.5 text-[12px] leading-relaxed text-muted">
-              Enverra réellement les messages préparés, derrière ces mêmes
-              garde-fous et une configuration SMTP explicite.
-            </p>
-          </div>
-        </div>
-      </Section>
-
-      {/* Envois préparés (boîte d'envoi) */}
-      <Section
-        title="Envois préparés"
-        hint="Les messages que l'agent a préparés — en mode sûr, rien n'est parti."
-      >
-        {outbox.length === 0 ? (
-          <p className="text-[13px] text-muted">
-            Aucun message préparé pour l&apos;instant. Validez puis exécutez
-            une relance pour les voir apparaître ici.
-          </p>
-        ) : (
-          <>
-            <p className="mb-3 text-[12.5px] text-muted">
-              {preparedCount ?? 0} message
-              {(preparedCount ?? 0) > 1 ? "s" : ""} préparé
-              {(preparedCount ?? 0) > 1 ? "s" : ""} · {outbox.length} récent
-              {outbox.length > 1 ? "s" : ""} affiché
-              {outbox.length > 1 ? "s" : ""}
-            </p>
-            <ul className="space-y-1.5">
-              {outbox.map((m) => {
-                const badge = STATUS_BADGE[m.status] ?? {
-                  label: m.status,
-                  cls: "bg-tint-soft text-body",
-                };
-                return (
-                  <li
-                    key={m.id}
-                    className="flex items-center gap-3 rounded-[10px] border border-line-soft px-3.5 py-2.5"
-                  >
-                    <span
-                      className={`flex-none rounded-full px-2 py-0.5 text-[10.5px] font-semibold ${badge.cls}`}
-                    >
-                      {badge.label}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-[13px] font-medium text-ink">
-                        {m.subject}
-                      </p>
-                      <p className="truncate text-[11.5px] text-muted">
-                        {m.to_email}
-                      </p>
-                    </div>
-                    <span className="flex-none text-[11px] text-faint">
-                      {fmtDate.format(new Date(m.created_at))}
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
-          </>
-        )}
       </Section>
     </div>
   );
@@ -215,15 +73,6 @@ function Section({
         <p className="mt-0.5 text-[12px] text-muted">{hint}</p>
       </div>
       <div className="p-[22px]">{children}</div>
-    </div>
-  );
-}
-
-function Stat({ value, label }: { value: number; label: string }) {
-  return (
-    <div className="rounded-[12px] border border-line-soft bg-tint-soft/50 px-4 py-3">
-      <p className="font-display text-[22px] font-semibold text-ink">{value}</p>
-      <p className="mt-0.5 text-[12px] text-muted">{label}</p>
     </div>
   );
 }

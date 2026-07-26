@@ -51,6 +51,74 @@ Environnement : Supabase `hrqnzorapjnosjphftur`, repo GitHub `Shaaakir281/nepteo
 
 ## Historique des sessions
 
+### 2026-07-26 (8) — Claude (Cowork) — **C6 « La mémoire en trois blocs »** (roadmap-beta, phase B)
+
+**But atteint** : les sept lignes de `entreprise/_components/identity-card.tsx` sont regroupées sous **trois intertitres** — **Ce que je vends** (Activité, Zone) · **Comment je parle** (Ton, Philosophie) · **Ce que je fais déjà** (Canaux actuels, Communication, Objectifs). **Un seul fichier touché.** Aucune migration, aucune dépendance, `lib/memory.ts` et `entreprise/actions.ts` **non touchés**.
+
+**Invariant préservé — la sauvegarde reste PAR SECTION** : `MemGroup` est un simple `<section>` de présentation posé *autour* des `MemRow`. Chaque ligne garde son `<form action={save…}>` et son action serveur ; aucun formulaire n'a été fusionné ni imbriqué (un `<form>` dans un `<form>` aurait été exactement la faute à ne pas commettre). Une section vide ne peut donc toujours pas écraser l'existant — `applyIdentity` reste valide. Diff vérifié à `git diff -w` : hors les trois intertitres, seuls des **déplacements de blocs** apparaissent, aucun changement de props ni de champ.
+
+**Décisions de mise en œuvre**
+
+1. **`MemGroup` vit dans `identity-card.tsx`**, pas dans un fichier à part : le périmètre annoncé de la session était ce seul fichier (chantier parallélisable avec C5, qui travaillait dans le même arbre). Composant local de 20 lignes, sans état, utilisé une seule fois — s'il sert ailleurs un jour, il ira dans `_components/`.
+2. **Seul « Canaux actuels » change de place** dans l'ordre du fichier (il passe après Philosophie, dans le 3e bloc). L'ordre interne de chaque bloc est celui d'avant, comme demandé.
+3. **« Offres » n'est pas dans la carte.** La roadmap range « offres » dans « Ce que je vends », mais cette section est rendue par **`OffersCard`**, une carte distincte affichée juste en dessous par `identity-panel.tsx` — hors périmètre, donc **non déplacée**. Pour que le bloc ne mente pas, son sous-titre le dit : « Vos offres sont juste en dessous, dans leur propre carte. » Les huit sections de mémoire restent donc éditables individuellement : sept ici, `offres` dans sa carte.
+4. **Style** : intertitre sur fond `bg-tint-soft` (token existant), `font-display`, sous-titre `text-muted` ; `border-t border-line-soft first:border-t-0` déplacé au niveau de la `<section>` — d'où des séparateurs qui tombent juste entre blocs comme entre lignes. Aucune couleur en dur.
+
+**Tests** : **aucun changement** — présentation seule, aucune règle pure touchée. **Total inchangé : 136/136.**
+
+**Vérif** : `npm test` **136/136, exit 0** ; `npx tsc --noEmit` **complet, exit 0 explicite — deux fois** (premier passage `124`, cache froid : conforme à la recette notée par C4). `npx eslint` sur le fichier : **non concluant dans le sandbox** — deux passages tués à 44 s (`exit 124`), aucune sortie. Non bloquant (le mandat demande test + tsc), mais à passer côté Fathi avec le build.
+
+**Écart de périmètre signalé (règle 2)** : le fichier fait désormais **~290 lignes** (268 avant), au-dessus du repère « ~200 lignes » de la règle 16. Le découper supposait de créer des fichiers hors du périmètre annoncé pendant qu'un autre agent travaillait dans le même arbre — **pas fait**. Découpage naturel s'il faut y revenir : un fichier par bloc (`identity-sales.tsx`, `identity-voice.tsx`, `identity-doing.tsx`), `identity-card.tsx` ne gardant que la `Card` et les trois `MemGroup`.
+
+**Constats hors périmètre (notés, PAS corrigés)** :
+- **⚠️ C6 N'EST PAS COMMITÉ — `.git/index.lock` bloquait le dépôt.** Le lock (fichier vide, 16h58) était encore là 23 minutes plus tard, sans nouveau commit depuis C4 : très probablement un `git` de l'agent C5 tué en cours de route. **Décision de Fathi, prise en séance : ne pas y toucher** — supprimer le lock d'un autre agent risquait de corrompre son index. Le travail C6 est donc **dans l'arbre, non commité** (voir Reste (Fathi) n°1).
+- **Session partagée avec l'agent C5** : `docs/SUIVI.md` et `docs/projets/roadmap-beta.md` contiennent déjà l'entrée C5 non commitée. Ces deux fichiers ne doivent **pas** entrer dans le commit C6 (ils y embarqueraient le chantier C5 — règle « un chantier = un commit »). Le commit C6 ne porte qu'un fichier : `app/(cockpit)/entreprise/_components/identity-card.tsx`.
+- `CLAUDE.md` § Structure ne mentionne toujours ni les onglets ni la nav à 5 (relevé par C4 puis C5) — toujours pas fait, toujours hors périmètre.
+
+**Reste (Fathi)** :
+1. **Débloquer git puis commiter C6.** Une fois C5 terminé et le lock disparu (ou supprimé sciemment : `del .git\index.lock`) :
+   `git add "app/(cockpit)/entreprise/_components/identity-card.tsx"` puis `git commit -m "C6: group company memory rows into three blocks"`. **Ne pas faire `git add -A`** — l'arbre contient aussi le chantier C5.
+2. **Contrôle visuel** : `/entreprise?onglet=identite` → trois intertitres dans la carte « Identité & activité », sept lignes dans le bon bloc, « Vos offres » toujours en carte séparée dessous.
+3. **Contrôle de l'invariant** : renseigner Philosophie, enregistrer, puis modifier **Ton** et enregistrer → la philosophie doit être intacte (et inversement).
+4. `npm run lint` et `npm run build` en local (non concluants / impossibles dans le sandbox).
+5. **Commiter les docs partagées** (`docs/SUIVI.md`, `docs/projets/roadmap-beta.md`) une fois le chantier C5 revu — elles portent les entrées des deux sessions.
+6. **`git push`** — les commits locaux s'accumulent (huit à ce jour, plus C5 et C6 à venir).
+
+### 2026-07-26 (7) — Claude (Cowork) — **C5 « L'autonomie en un réglage »** (roadmap-beta, phase B)
+
+**But atteint** : l'onglet Agent tient désormais en **deux notions** — un curseur à trois crans (Propose seulement · Prépare · Envoie, ce dernier désactivé avec badge « Bientôt ») + le bouton d'arrêt. Les deux autres blocs qui y vivaient ont déménagé : « Mode démonstration » vers l'état vide de l'onglet Connecteurs, « Envois préparés » en tête de `/journal`. Aucune migration, aucune dépendance. `lib/execution-rules.ts`, `lib/execution.ts` et le modèle `autonomy_level` (`suggest|prepare` en base) **intacts**.
+
+**1. Curseur à trois crans** (`agent/_components/autonomy-selector.tsx`) : les deux options actives reprennent exactement `setAutonomyLevel` — non modifié, toujours borné à `["suggest","prepare"]` côté serveur dans `agent/actions.ts`, non touché. Le troisième cran est un `<div aria-disabled>` sans `onClick`, purement visuel : il porte le texte de l'ancienne carte « Mode d'exécution » (« Enverra réellement les messages préparés… »), qui disparaît donc sans perdre l'information — exactement ce que demandait le chantier.
+
+**2. Onglet Agent réduit** (`entreprise/_components/agent-panel.tsx`) : deux `Section` seulement (Niveau d'autonomie, Bouton d'arrêt). La note de plafonds (`MAX_PER_RUN`/`MAX_PER_DAY`, importés de `lib/execution-rules.ts` en lecture seule, comme avant) devient une ligne sous le curseur au lieu d'une carte à deux stats. Les requêtes `outbox_messages` et les imports `DemoPanel`/`DEMO_SCENARIOS` sont retirés — ce contenu vit ailleurs maintenant.
+
+**3. Mode démonstration → Connecteurs** (`entreprise/_components/connectors-panel.tsx`) : nouvelle section conditionnelle `!hasConnected` (aucune ligne `connectors.status = 'connected'`), titrée « Pas d'outil à brancher ? » / « Essayez avec une entreprise fictive… », qui embarque le **même** `DemoPanel` (composant non modifié) juste après le bandeau d'info, avant le catalogue. Elle s'efface d'elle-même dès qu'un connecteur réel est branché.
+
+**4. Envois préparés → Journal** (`journal/_components/prepared-outbox.tsx`, nouveau composant serveur, branché en tête de `journal/page.tsx` avant les filtres) : reprend telle quelle la requête et le rendu de l'ancienne section (mêmes badges de statut, même format de date) — aucune logique changée, seulement déplacée.
+
+**5. Trois liens « Essayer avec une entreprise fictive »** pointaient vers `/entreprise?onglet=agent`, endroit où le mode démo n'est plus visible — corrigés vers `/entreprise?onglet=connecteurs` (`page.tsx` accueil, `campagnes/page.tsx` état vide, `validation-queue.tsx` état vide de la file). Repérés par grep systématique de `onglet=agent` sur tout le repo, pas seulement les fichiers évidents — ce sont exactement le genre de CTA qui casse silencieusement un déplacement de section.
+
+**6. Bulle et guide** : bulle `agent` (`components/ui/coach-bubble.tsx`) ne mentionne plus le chargement d'un scénario (qui n'est plus sur cet onglet), mentionne le 3e cran à la place. `docs/demo/GUIDE-TEST.md` mis à jour : Mise en route §5 (pointe vers Connecteurs), section « Mon entreprise → Agent » (deux choses à essayer, pas trois, avec renvoi vers Journal pour les envois préparés), section « Mon entreprise → Identité » (mentionne que Connecteurs porte désormais aussi le mode démo).
+
+**Écart signalé (règle 2)** : contrairement à d'autres chantiers, la roadmap ne listait pas explicitement les fichiers autorisés pour C5 — traité comme périmètre implicite tout fichier nécessaire pour que le déplacement soit cohérent de bout en bout (les 3 liens CTA, la bulle, le guide), plutôt que déplacer les blocs et laisser des renvois orphelins vers un onglet qui n'a plus l'info.
+
+**Non touché, conformément aux interdits** : `lib/execution-rules.ts`, `lib/execution.ts`, `agent/actions.ts` (`LEVELS = ["suggest","prepare"]` intact), aucune migration. `DemoPanel` et `ExecutionSwitch` réutilisés sans dupliquer — un seul `ExecutionSwitch` (`_components/execution-switch.tsx`), importé à la fois par l'accueil et par l'onglet Agent, comme avant.
+
+**Constat hors périmètre (noté, pas corrigé)** : `CLAUDE.md` § Structure décrit toujours `(cockpit) shell sidebar + pages / et /entreprise` sans mentionner les onglets ni la nav à 5 (relevé par C4). La note de C4 anticipait que « C5 le fera pour la partie autonomie » — mais le mandat de C5 ne mentionne pas `CLAUDE.md`, et sa section « Philosophie d'autonomie » (« Slider d'autonomie configurable par client ») reste juste telle quelle sans changement. Laissé pour un chantier qui touche légitimement `CLAUDE.md`.
+
+**Tests** : aucun changement — aucune règle pure touchée par ce chantier. **Total inchangé : 136/136.**
+
+**Vérif** : `npm test` **136/136, exit 0** ; `npx tsc --noEmit` **complet, exit 0 explicite — deux fois** ; `npm run lint` exit 0.
+
+**⚠️ Trouvé en cours de session, pas de moi** : `entreprise/_components/identity-card.tsx` portait déjà, **non commité**, un début de C6 (regroupement en trois blocs — `MemGroup`, « Ce que je vends »…) au moment où j'ai lu l'arbre de travail. C6 est bien marqué « parallélisable avec C5 » (fichiers disjoints), donc pas d'interdit technique — mais §0 dit aussi « une seule session à la fois ». Je n'ai **pas touché** ce fichier (retiré de l'index avant mon commit avec `git restore --staged`, changement intact dans l'arbre) : si une autre session C6 est réellement en cours, mon commit C5 ne la gêne pas (fichiers disjoints, confirmé) ; sinon, ce brouillon attend simplement d'être repris ou commité.
+
+**Reste (Fathi)** :
+1. **`git push`** — huit commits locaux (docs session 5, C1, cadrage R1, C2, C3, R1, C4, C5).
+2. `npm run build` (SWC Windows).
+3. **Parcours de contrôle** : `/entreprise?onglet=agent` → curseur à 3 crans (le 3e grisé, non cliquable, badge « Bientôt ») + note de plafonds sous le curseur + bouton d'arrêt, rien d'autre. `/entreprise?onglet=connecteurs` sans connecteur branché → section « Pas d'outil à brancher ? » avec les 3 scénarios visibles ; brancher un connecteur → la section disparaît. `/journal` → « Envois préparés » en tête de page (visible même sans message, avec le texte d'état vide).
+4. Vérifier que les 3 CTA « Essayer avec une entreprise fictive » (accueil, `/campagnes` vide, file de validation vide) ramènent bien sur l'onglet Connecteurs et non plus Agent.
+5. Décision ouverte, non tranchée ici : rafraîchir `CLAUDE.md` § Structure pour qu'il mentionne les onglets et la nav à 5 (relevé par C4, toujours pas fait — hors périmètre listé de C5 malgré la note qui le suggérait).
+
 ### 2026-07-26 (6) — Claude (Cowork) — **C4 « Structure cible : nav à 5, un seul endroit pour les propositions »** (roadmap-beta, phase B)
 
 **But atteint** : neuf entrées de navigation deviennent **cinq** (`Aujourd'hui · Prospects · Campagnes · Mon entreprise · Journal`), et l'agent ne parle plus que depuis Aujourd'hui. **Aucun moteur pur modifié** (`lib/plan.ts`, `lib/diagnostic.ts`, `analysis-rules.ts` intacts), **aucune route supprimée** — toutes redirigent. Aucune migration, aucune dépendance, aucune variable d'env.

@@ -1,15 +1,19 @@
 import { createClient } from "@/lib/supabase/server";
 import { icons } from "@/components/icons";
 import { CONNECTOR_CATALOG } from "@/lib/connectors";
+import { DEMO_SCENARIOS } from "@/lib/demo/scenarios";
+import { DemoPanel } from "../../agent/_components/demo-panel";
 import {
   ConnectorCard,
   type ConnectorStatus,
 } from "../../connecteurs/_components/connector-card";
 
 /**
- * Onglet « Connecteurs » — repris tel quel de l'ancienne page `/connecteurs`,
- * qui redirige désormais ici. Les fiches de configuration par outil restent sur
+ * Onglet « Connecteurs » — repris de l'ancienne page `/connecteurs`, qui
+ * redirige désormais ici. Les fiches de configuration par outil restent sur
  * `/connecteurs/<provider>` : ce sont des sous-écrans, pas une entrée de menu.
+ * Depuis C5, l'état vide (aucun connecteur branché) porte le mode
+ * démonstration — déplacé depuis l'ancien onglet Agent.
  */
 export async function ConnectorsPanel({
   canEdit,
@@ -32,6 +36,8 @@ export async function ConnectorsPanel({
     return "available";
   };
 
+  const hasConnected = (rows ?? []).some((r) => r.status === "connected");
+
   return (
     <>
       <div className="mb-5 flex items-start gap-2.5 rounded-[13px] border border-line bg-tint-soft px-4 py-3 text-[12.5px] leading-relaxed text-body">
@@ -43,6 +49,30 @@ export async function ConnectorsPanel({
           demandés arrivent en premier.
         </span>
       </div>
+
+      {!hasConnected && (
+        <div className="mb-7 rounded-[18px] border border-line-soft bg-white shadow-card">
+          <div className="border-b border-line-soft px-[22px] py-4">
+            <h3 className="font-display text-[15px] font-semibold">
+              Pas d&apos;outil à brancher ?
+            </h3>
+            <p className="mt-0.5 text-[12px] text-muted">
+              Essayez avec une entreprise fictive — identité, prospects,
+              campagnes et ventes en un clic.
+            </p>
+          </div>
+          <div className="p-[22px]">
+            <DemoPanel
+              canEdit={canEdit}
+              scenarios={DEMO_SCENARIOS.map((s) => ({
+                id: s.id,
+                label: s.label,
+                pitch: s.pitch,
+              }))}
+            />
+          </div>
+        </div>
+      )}
 
       {CONNECTOR_CATALOG.map((group) => (
         <section key={group.title} className="mb-7">

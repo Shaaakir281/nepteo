@@ -195,7 +195,7 @@ export default async function TodayPage() {
           {!hasRevenue &&
             (canEdit ? (
               <Link
-                href="/entreprise?onglet=agent"
+                href="/entreprise?onglet=connecteurs"
                 className="mt-2.5 inline-block text-[12px] font-semibold text-violet hover:underline"
               >
                 Essayer avec une entreprise fictive →

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { EVENT_LABELS, type JournalEntry } from "@/lib/journal";
 import { JournalRow } from "./_components/journal-row";
+import { PreparedOutbox } from "./_components/prepared-outbox";
 
 const PAGE_SIZE = 50;
 
@@ -82,6 +83,8 @@ export default async function JournalPage({
           modifie : c&apos;est votre trace de confiance.
         </p>
       </div>
+
+      <PreparedOutbox />
 
       {/* Filtres */}
       <form method="GET" className="mb-4 flex flex-wrap items-center gap-2.5">

@@ -88,7 +88,7 @@ export function ValidationQueue({
             <p className="mx-auto mt-3 max-w-sm text-[12px] leading-relaxed text-faint">
               Pas encore d&apos;outil à brancher ?{" "}
               <Link
-                href="/entreprise?onglet=agent"
+                href="/entreprise?onglet=connecteurs"
                 className="font-semibold text-violet hover:underline"
               >
                 Chargez une entreprise de démonstration

@@ -6,17 +6,28 @@ import { setAutonomyLevel } from "../actions";
 const OPTIONS = [
   {
     value: "suggest",
-    label: "Proposer seulement",
+    label: "Propose seulement",
     desc: "L'agent détecte et propose. Aucune exécution, même sur une action validée.",
   },
   {
     value: "prepare",
-    label: "Préparer sous validation",
+    label: "Prépare",
     desc: "Les actions que vous validez sont préparées en mode sûr (aucun envoi externe).",
   },
 ] as const;
 
-/** Sélecteur du niveau d'autonomie de l'agent (Phase 3, garde-fous). */
+/**
+ * Troisième cran, purement visuel — l'info reprend l'ancienne carte
+ * « Mode d'exécution » (retirée, C5). La base reste `suggest|prepare`
+ * (`lib/execution-rules.ts`, non modifié par ce chantier) : ce cran ne
+ * déclenche jamais `setAutonomyLevel`.
+ */
+const COMING_SOON = {
+  label: "Envoie",
+  desc: "Enverra réellement les messages préparés, derrière ces mêmes garde-fous et une configuration SMTP explicite.",
+};
+
+/** Curseur à trois crans (Phase 3, garde-fous) : les deux premiers sont actifs, le troisième est désactivé (« Bientôt »). */
 export function AutonomySelector({
   level,
   canEdit,
@@ -75,6 +86,24 @@ export function AutonomySelector({
           </button>
         );
       })}
+
+      <div
+        aria-disabled="true"
+        className="block w-full cursor-not-allowed rounded-[12px] border border-line bg-tint-soft/30 px-4 py-3 text-left opacity-70"
+      >
+        <span className="flex items-center gap-2.5">
+          <span className="grid h-4 w-4 flex-none place-items-center rounded-full border-2 border-line" />
+          <span className="text-[13.5px] font-semibold text-muted">
+            {COMING_SOON.label}
+          </span>
+          <span className="ml-auto rounded-full bg-tint px-2 py-0.5 text-[10px] font-semibold text-faint">
+            Bientôt
+          </span>
+        </span>
+        <span className="mt-1 block pl-[26px] text-[12.5px] leading-relaxed text-faint">
+          {COMING_SOON.desc}
+        </span>
+      </div>
     </div>
   );
 }
