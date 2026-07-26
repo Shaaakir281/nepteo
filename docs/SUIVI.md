@@ -20,11 +20,11 @@ Fonctionnel (build vert en local par Fathi ; `tsc` + `npm test` verts dans le sa
 - **Cockpit Phase 2** : file de validation avec **tiroir de raisonnement** (Aujourd'hui), **Décisions récentes** (Reporter/Reprendre + historique validées/refusées), vue **Prospects funnel + kanban** avec **repère de priorité** par carte (statut + complétude, sans score inventé).
 - **Observabilité** : `telemetryForTask` (`functionId` par tâche, champ `telemetry` de l'AI SDK 7) + hook Langfuse **v7** (`lib/observability.ts` = `NodeSDK` + `LangfuseSpanProcessor` + `registerTelemetry(LangfuseVercelAiSdkIntegration)`) — **activé et validé** (2026-07-22, trace `recommend_action` reçue, `gen_ai.agent.name = recommend_action`, tokens/coût OK). Paquets `@langfuse/otel` + `@langfuse/vercel-ai-sdk` + `@opentelemetry/sdk-node` **installés et dans `package.json`** ; dev sur **Node 22.23.1** ✓.
 
-Environnement : Supabase `hrqnzorapjnosjphftur`, repo GitHub `Shaaakir281/nepteo` (branche `main`), dev local **port 3001 figé dans le script** (`next dev -p 3001`), **Node 22.23.1 local ✓**. Production Azure déployée le 2026-07-26 dans `francecentral` : resource group `nepteo-prod-rg`, ACR `nepteoacr27de3b`, Container App `nepteo-prod`, révision `nepteo-prod--0000001`, image du commit `49b410a`, URL `https://nepteo-prod.bravedune-81efb6a5.francecentral.azurecontainerapps.io`. GitHub `production` + OIDC opérationnels ; `/api/health` répond 200.
+Environnement : Supabase `hrqnzorapjnosjphftur`, repo GitHub `Shaaakir281/nepteo` (branche `main`), dev local **port 3001 figé dans le script** (`next dev -p 3001`), **Node 22.23.1 local ✓**. Production Azure déployée le 2026-07-26 dans `francecentral` : resource group `nepteo-prod-rg`, ACR `nepteoacr27de3b`, Container App `nepteo-prod`, révision `nepteo-prod--0000001`, image du commit `49b410a`. Domaine principal : `https://nepteo.bogasolution.com` avec certificat Azure managé ; le FQDN `azurecontainerapps.io` reste l’adresse technique. GitHub `production` + OIDC opérationnels ; `/api/health` répond 200 sur le domaine principal.
 
 ## Prochaines étapes (dans l'ordre)
 
-1. **Production (manuel)** : ajouter l’URL Azure dans Supabase Auth (`Site URL` + redirect `/auth/confirm`), puis dérouler inscription → confirmation → onboarding → scénario démo → analyse → `GET /api/llm/status` avec une session authentifiée. Ajouter aussi les callbacks Google/Notion de production avant de tester ces connecteurs.
+1. **Production (manuel)** : ajouter `https://nepteo.bogasolution.com` dans Supabase Auth (`Site URL` + redirect `/auth/confirm`), puis dérouler inscription → confirmation → onboarding → scénario démo → analyse → `GET /api/llm/status` avec une session authentifiée. Ajouter aussi les callbacks Google/Notion sur ce domaine avant de tester ces connecteurs.
 2. **Fathi (manuel)** : ~~connecter Notion~~ **fait**. Dérouler le parcours §3 dans l'app (3 propositions + badges de priorité + dédup), et **tester le nouvel écran de correspondance de colonnes** (config connecteur → bloc « Correspondance des colonnes » → pré-remplissage auto, corriger un champ, Enregistrer, resync). ~~Backlog : écran de correspondance de colonnes~~ **construit (2026-07-22)**.
 3. ~~Activer Langfuse~~ **fait et validé (2026-07-22)** : paquets installés, clés en place, trace `recommend_action` reçue dans Langfuse. Optionnel plus tard : enrichir les traces (`propagateAttributes`/`observe`) pour grouper par org/client, et confirmer que le mojibake d'accents est bien limité à l'export CSV (pas l'UI).
 4. ~~Priorisation des prospects (Phase 2)~~ — **fait (2026-07-21)** : signal transparent (statut + complétude) dans le kanban + proposition « relancer en priorité », sans score inventé. Reste à Fathi : le voir dans le parcours §3 (désormais **3 propositions**) et confirmer les badges kanban.
@@ -53,6 +53,14 @@ Environnement : Supabase `hrqnzorapjnosjphftur`, repo GitHub `Shaaakir281/nepteo
 - **Coût de la recherche web OpenAI** : le prix affiché (10 $ / 1 000 appels d'outil) n'est **que la moitié de la facture** — les *search content tokens* sont facturés au tarif du modèle et dominent le total (~0,06 $ par recherche avec `gpt-5.5`). Toujours chiffrer les deux parts, et se rappeler que `MAX_RESEARCH_PER_DAY` compte des appels `runResearch`, **pas** des `web_search_call`.
 
 ## Historique des sessions
+
+### 2026-07-26 (16) — Codex — **Domaine personnalisé et HTTPS activés**
+
+**DNS validé** : `nepteo.bogasolution.com` pointe par CNAME vers `nepteo-prod.bravedune-81efb6a5.francecentral.azurecontainerapps.io` ; `asuid.nepteo` contient le code de vérification de la Container App. Les deux enregistrements ont été confirmés depuis les résolveurs publics Cloudflare et Google.
+
+**Azure** : le domaine a été ajouté à `nepteo-prod`. Azure a émis le certificat managé `mc-nepteo-prod-en-nepteo-bogasolut-3930` par validation CNAME, puis la liaison SNI a été activée. Contrôle externe sans contournement TLS : `https://nepteo.bogasolution.com/api/health` renvoie HTTP 200 avec `{"status":"ok","service":"nepteo"}`, et `/login` renvoie HTTP 200.
+
+**Reste manuel** : utiliser exclusivement `https://nepteo.bogasolution.com` comme Site URL Supabase, ajouter `https://nepteo.bogasolution.com/auth/confirm` aux redirects, puis déclarer les callbacks Google Sheets et Notion sur ce même domaine. Le certificat Azure est renouvelé automatiquement tant que le CNAME reste en place.
 
 ### 2026-07-26 (15) — Codex — **Nepteo déployé en production sur Azure Container Apps**
 
