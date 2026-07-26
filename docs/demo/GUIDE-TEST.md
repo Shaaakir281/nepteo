@@ -17,8 +17,9 @@ Trois questions à garder en tête pendant le test :
 
 1. Créer un compte, confirmer l'email.
 2. **Onboarding** : nom de l'entreprise, ce que vous vendez, et le champ **« Votre philosophie »** — écrivez-y votre façon de travailler, ce à quoi vous tenez. C'est ce qui donne sa voix à l'agent.
-3. **Vous arrivez sur « Aujourd'hui ». Arrêtez-vous là une minute avant de charger quoi que ce soit** : sans aucune donnée branchée, l'écran d'accueil affiche un **diagnostic de départ** — deux ou trois canaux conseillés à partir de votre seule fiche entreprise, avec le premier geste, ce qu'il vaut mieux éviter, et trois actions pour la semaine. C'est le moment où l'agent doit déjà paraître compétent, avant tout connecteur. (Le même diagnostic est visible sur « Plan du mois ».)
-4. Aller sur **« Agent & garde-fous »** → section **« Mode démonstration »** → choisir un scénario :
+3. **Un écran facultatif peut s'intercaler** : si la recherche web est activée, l'agent lit votre site et **propose une fiche d'identité** (ce que vous vendez, vos offres, votre ton, ce que vous faites déjà en communication) que vous corrigez avant de valider — chaque affirmation porte ses sources, cliquez-les. « Passer cette étape » entre directement au cockpit. Sans clé de recherche, cet écran n'apparaît pas du tout.
+4. **Vous arrivez sur « Aujourd'hui ». Arrêtez-vous là une minute avant de charger quoi que ce soit** : sans aucune donnée branchée, l'écran d'accueil affiche un **diagnostic de départ** — deux ou trois canaux conseillés à partir de votre seule fiche entreprise, avec le premier geste, ce qu'il vaut mieux éviter, et trois actions pour la semaine. C'est le moment où l'agent doit déjà paraître compétent, avant tout connecteur. (Le même diagnostic est visible sur « Plan du mois ».)
+5. Aller sur **« Agent & garde-fous »** → section **« Mode démonstration »** → choisir un scénario :
 
 | Scénario | Profil | Ce qu'il montre |
 |---|---|---|
@@ -94,7 +95,7 @@ Autant le dire avant que vous le cherchiez :
 
 - **Aucun envoi réel.** Le transport SMTP est la prochaine étape, derrière les mêmes garde-fous.
 - **Le lancement réel de campagne** n'est pas branché (c'est l'action la plus engageante : elle attend des plafonds de budget côté serveur).
-- **La recherche web** dans l'onboarding (lire votre site pour pré-remplir votre identité) est construite mais nécessite une clé d'API ; elle peut être absente de votre version.
+- **La recherche web** dans l'onboarding (lire votre site pour pré-remplir votre identité) nécessite une clé d'API — OpenAI ou Perplexity. Si votre version n'en a pas, l'étape est simplement sautée ; rien ne casse. Quand elle est active, chaque recherche est **facturée** : le résultat est donc mis en cache 30 jours et plafonné par jour.
 - **Les connecteurs réels** (Google Sheets, Notion) fonctionnent, mais le mode démonstration évite d'avoir à les brancher pour ce test.
 
 ## Vos retours

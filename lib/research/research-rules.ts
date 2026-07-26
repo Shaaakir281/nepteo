@@ -1,11 +1,13 @@
 /**
- * Recherche web (Perplexity) — parties pures (aucun import, testable node:test).
- * Construction des requêtes, clé de cache, garde-fous et lecture de la réponse.
- * L'appel HTTP vit dans lib/research/perplexity.ts, l'orchestration (cache,
- * journal, plafonds en base) dans lib/research/research.ts.
+ * Recherche web — parties pures (aucun import, testable node:test).
+ * Construction des requêtes, clé de cache, garde-fous et lecture des réponses.
+ * Les appels HTTP vivent dans lib/research/perplexity.ts et
+ * lib/research/openai-search.ts, le choix du fournisseur dans
+ * lib/research/provider.ts, l'orchestration (cache, journal, plafonds en base)
+ * dans lib/research/research.ts.
  *
- * Principe : Perplexity COLLECTE des faits sourcés ; la couche LLM existante
- * les met en forme. Deux rôles distincts, deux modules.
+ * Principe : le fournisseur de recherche COLLECTE des faits sourcés ; la couche
+ * LLM existante les met en forme. Deux rôles distincts, deux modules.
  */
 
 /** Types de recherche du produit. Un type = une requête et un cache dédiés. */
@@ -245,6 +247,103 @@ export function parseResearchResponse(payload: unknown): ResearchAnswer {
   }
 
   return { text: chunks.join("\n\n").slice(0, MAX_ANSWER_CHARS), sources };
+}
+
+/**
+ * Profondeur de contexte web côté OpenAI (`search_context_size`) — le levier de
+ * coût le plus direct de l'outil `web_search`.
+ *
+ * `ResearchPreset` reste la notion PRODUIT (calée sur Perplexity) : on ne la
+ * remplace pas, on la traduit au bord. L'identité de l'entreprise du client
+ * mérite plus de contexte qu'une fiche société de prospect, qui se contente
+ * d'un survol.
+ */
+export function openaiSearchContext(kind: ResearchKind): "low" | "medium" | "high" {
+  return kind === "company_profile" ? "medium" : "low";
+}
+
+/**
+ * Lit la réponse de la Responses API OpenAI avec l'outil `web_search`.
+ *
+ * Forme attendue (`output[]`) :
+ * - items `web_search_call` : `action.sources[]` = TOUTES les URL consultées
+ *   (présentes seulement si la requête portait
+ *   `include: ["web_search_call.action.sources"]`) ;
+ * - items `message` : `content[].text` pour le texte, et
+ *   `content[].annotations[]` de type `url_citation` pour les sources citées.
+ *
+ * Les citations passent AVANT la liste exhaustive : ce sont les sources
+ * réellement utilisées, et `MAX_SOURCES` tronque le reste.
+ *
+ * ⚠️ Fonction distincte de `parseResearchResponse` (forme Perplexity) à dessein :
+ * les deux formes se ressemblent assez (`output[]`, `type: "message"`,
+ * `content[].text`) pour qu'un parseur « unifié » extraie le texte OpenAI mais
+ * perde ses sources, silencieusement. Ne lève jamais.
+ */
+export function parseOpenAiSearchResponse(payload: unknown): ResearchAnswer {
+  const empty: ResearchAnswer = { text: "", sources: [] };
+  if (!payload || typeof payload !== "object") return empty;
+  const root = payload as Record<string, unknown>;
+  if (!Array.isArray(root.output)) return empty;
+
+  const chunks: string[] = [];
+  const sources: ResearchSource[] = [];
+  const seen = new Set<string>();
+
+  // 1) Texte + citations (`url_citation`) : les sources qui portent la réponse.
+  for (const item of root.output) {
+    if (!item || typeof item !== "object") continue;
+    const node = item as Record<string, unknown>;
+    if (node.type !== "message" || !Array.isArray(node.content)) continue;
+    for (const part of node.content) {
+      if (!part || typeof part !== "object") continue;
+      const p = part as Record<string, unknown>;
+      if (typeof p.text === "string" && p.text.trim()) chunks.push(p.text.trim());
+      if (!Array.isArray(p.annotations)) continue;
+      for (const annotation of p.annotations) {
+        if (!annotation || typeof annotation !== "object") continue;
+        if ((annotation as Record<string, unknown>).type !== "url_citation") continue;
+        pushSource(sources, seen, annotation);
+      }
+    }
+  }
+
+  // 2) Complément : les pages consultées mais non citées.
+  for (const item of root.output) {
+    if (!item || typeof item !== "object") continue;
+    const node = item as Record<string, unknown>;
+    if (node.type !== "web_search_call") continue;
+    const action = node.action;
+    if (!action || typeof action !== "object") continue;
+    const list = (action as Record<string, unknown>).sources;
+    if (!Array.isArray(list)) continue;
+    for (const source of list) {
+      pushSource(sources, seen, typeof source === "string" ? { url: source } : source);
+    }
+  }
+
+  return { text: chunks.join("\n\n").slice(0, MAX_ANSWER_CHARS), sources };
+}
+
+/**
+ * Nombre de recherches web réellement effectuées dans une réponse OpenAI.
+ *
+ * Une requête ≠ une recherche facturée : en mode agentique, le modèle peut
+ * enchaîner plusieurs `web_search_call` dans un seul appel, chacun facturé
+ * (10 $ / 1 000 appels d'outil, doc vérifiée le 2026-07-26). `MAX_RESEARCH_PER_DAY`
+ * compte des appels `runResearch`, pas des recherches — ce compteur est le seul
+ * moyen de savoir ce qu'on paie vraiment. Il finit au journal.
+ */
+export function countWebSearchCalls(payload: unknown): number {
+  if (!payload || typeof payload !== "object") return 0;
+  const root = payload as Record<string, unknown>;
+  if (!Array.isArray(root.output)) return 0;
+  let count = 0;
+  for (const item of root.output) {
+    if (!item || typeof item !== "object") continue;
+    if ((item as Record<string, unknown>).type === "web_search_call") count += 1;
+  }
+  return count;
 }
 
 /** Rend une recherche lisible dans un prompt. Vide si rien trouvé (prompt inchangé). */

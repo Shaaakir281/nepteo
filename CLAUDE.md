@@ -27,6 +27,7 @@ Copilote marketing IA pour PME, solopreneurs et petites équipes. L'agent compre
 - Next.js 16 (App Router, TypeScript strict) + Tailwind 4
 - Supabase (Postgres + Auth + RLS, hébergement EU)
 - IA : Vercel AI SDK multi-fournisseurs — `lib/llm.ts`, `getModel("light" | "standard" | "premium")`, modèles par env (`LLM_MODEL*`, format `provider:model`). Test : GET/POST `/api/llm/status`.
+- Recherche web (hors `lib/llm.ts` — chercher ≠ rédiger) : **deux fournisseurs** derrière `lib/research/provider.ts`, `fetch` natif, aucune dépendance. OpenAI `web_search` (Responses API, modèle par défaut surchargeable via `RESEARCH_OPENAI_MODEL`) ou Perplexity Agent API. `RESEARCH_PROVIDER` (`openai` | `perplexity`) tranche ; à défaut, le premier fournisseur dont la clé existe ; aucune clé ⇒ recherche désactivée proprement. Toujours passer par `runResearch` (cache, journal AVANT, plafonds).
 - Zod pour la validation des entrées/sorties
 - File de jobs async : à trancher (voir docs/DECISIONS.md)
 

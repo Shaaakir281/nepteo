@@ -5,7 +5,7 @@ import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { normalizePhilosophy } from "@/lib/memory";
-import { researchConfigured } from "@/lib/research/perplexity";
+import { researchConfigured } from "@/lib/research/provider";
 
 const orgSchema = z.object({
   name: z.string().trim().min(2).max(80),

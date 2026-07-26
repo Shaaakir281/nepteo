@@ -1,9 +1,12 @@
 import type { createAdminClient } from "@/lib/supabase/admin";
-import { askPerplexity, researchConfigured } from "@/lib/research/perplexity";
+import {
+  askResearch,
+  researchConfigured,
+  researchProvider,
+} from "@/lib/research/provider";
 import {
   guardResearch,
   isFresh,
-  RESEARCH_PRESETS,
   subjectKey,
   type ResearchAnswer,
   type ResearchKind,
@@ -107,18 +110,16 @@ export async function runResearch(
   }
 
   // 3. Journal AVANT l'appel externe (non négociable, cf. CLAUDE.md).
+  const provider = researchProvider();
   await admin.from("journal").insert({
     organization_id: args.orgId,
     event: "research_started",
     actor: "agent",
     actor_id: args.actorId,
-    payload: { kind: args.kind, subject: args.subject, subject_key: key },
+    payload: { kind: args.kind, subject: args.subject, subject_key: key, provider },
   });
 
-  const result = await askPerplexity({
-    query: args.query,
-    preset: RESEARCH_PRESETS[args.kind],
-  });
+  const result = await askResearch({ kind: args.kind, query: args.query });
 
   // 4. Trace du résultat + cache (échec compris : il compte dans le plafond,
   //    sinon une clé invalide permettrait de boucler indéfiniment).
@@ -142,9 +143,18 @@ export async function runResearch(
     event: result.ok ? "research_succeeded" : "research_failed",
     actor: "agent",
     actor_id: args.actorId,
+    // `searches` = nombre de recherches réellement facturées par l'appel (chez
+    // OpenAI, une requête peut en enchaîner plusieurs). Le plafond quotidien
+    // compte des appels `runResearch` : sans ce chiffre au journal, il mentirait.
     payload: result.ok
-      ? { kind: args.kind, subject: args.subject, sources: result.sources.length }
-      : { kind: args.kind, subject: args.subject, reason: result.reason },
+      ? {
+          kind: args.kind,
+          subject: args.subject,
+          sources: result.sources.length,
+          provider,
+          ...(typeof result.searches === "number" ? { searches: result.searches } : {}),
+        }
+      : { kind: args.kind, subject: args.subject, reason: result.reason, provider },
   });
 
   if (!result.ok) return { ok: false, reason: result.reason };

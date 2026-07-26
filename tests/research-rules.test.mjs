@@ -1,7 +1,7 @@
 /**
- * Tests de la recherche web (Perplexity) — parties pures uniquement.
+ * Tests de la recherche web (Perplexity et OpenAI) — parties pures uniquement.
  * Runner : node:test. Node ≥ 22. Aucun appel réseau : on teste les requêtes,
- * la clé de cache, les garde-fous et la lecture de la réponse.
+ * la clé de cache, les garde-fous et la lecture des réponses.
  */
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -9,10 +9,13 @@ import {
   buildCompanyQuery,
   buildProspectCompanyQuery,
   cleanWebsite,
+  countWebSearchCalls,
   guardResearch,
   isFresh,
   MAX_RESEARCH_PER_DAY,
   MAX_SOURCES,
+  openaiSearchContext,
+  parseOpenAiSearchResponse,
   parseResearchResponse,
   renderResearch,
   subjectKey,
@@ -164,6 +167,170 @@ test("parseResearchResponse — ne lève jamais sur une réponse inattendue", ()
     text: "",
     sources: [],
   });
+});
+
+/** Réponse OpenAI type : un `web_search_call` sourcé + un `message` annoté. */
+function openAiPayload() {
+  return {
+    output: [
+      {
+        type: "web_search_call",
+        id: "ws_1",
+        status: "completed",
+        action: {
+          type: "search",
+          query: "Menuiseries Dupré",
+          sources: [
+            { type: "url", url: "https://dupre.fr" },
+            { type: "url", url: "https://annuaire.fr/dupre" },
+          ],
+        },
+      },
+      {
+        type: "message",
+        status: "completed",
+        role: "assistant",
+        content: [
+          {
+            type: "output_text",
+            text: "Dupré fabrique des fenêtres sur mesure à Chartres.",
+            annotations: [
+              {
+                type: "url_citation",
+                start_index: 0,
+                end_index: 12,
+                url: "https://dupre.fr",
+                title: "Site officiel",
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  };
+}
+
+test("parseOpenAiSearchResponse — texte, citations et pages consultées", () => {
+  const answer = parseOpenAiSearchResponse(openAiPayload());
+  assert.equal(answer.text, "Dupré fabrique des fenêtres sur mesure à Chartres.");
+  // Sources vides = régression silencieuse : au moins une doit remonter.
+  assert.ok(answer.sources.length >= 1);
+  // La citation passe avant la liste exhaustive, et garde son titre.
+  assert.deepEqual(answer.sources[0], {
+    title: "Site officiel",
+    url: "https://dupre.fr",
+  });
+  // L'URL consultée mais non citée complète, sans doublonner la citée.
+  assert.equal(answer.sources.length, 2);
+  assert.equal(answer.sources[1].url, "https://annuaire.fr/dupre");
+  assert.equal(answer.sources[1].title, "https://annuaire.fr/dupre");
+  // Les accents reviennent intacts (UTF-8, requêtes en français).
+  assert.ok(answer.text.includes("fenêtres"));
+});
+
+test("parseOpenAiSearchResponse — sans `include`, le texte survit et les sources se réduisent aux citations", () => {
+  const payload = openAiPayload();
+  delete payload.output[0].action.sources;
+  const answer = parseOpenAiSearchResponse(payload);
+  assert.ok(answer.text);
+  assert.equal(answer.sources.length, 1);
+});
+
+test("parseOpenAiSearchResponse — bornage à MAX_SOURCES et dédoublonnage", () => {
+  const answer = parseOpenAiSearchResponse({
+    output: [
+      {
+        type: "web_search_call",
+        action: {
+          type: "search",
+          // Chaînes nues tolérées, et un doublon de la citation.
+          sources: [
+            "https://cite.fr",
+            ...Array.from({ length: MAX_SOURCES + 4 }, (_, i) => ({
+              url: `https://s${i}.fr`,
+            })),
+          ],
+        },
+      },
+      {
+        type: "message",
+        content: [
+          {
+            type: "output_text",
+            text: "Texte.",
+            annotations: [{ type: "url_citation", url: "https://cite.fr", title: "Cité" }],
+          },
+        ],
+      },
+    ],
+  });
+  assert.equal(answer.sources.length, MAX_SOURCES);
+  assert.equal(answer.sources[0].url, "https://cite.fr");
+  assert.equal(
+    answer.sources.filter((s) => s.url === "https://cite.fr").length,
+    1,
+    "une URL citée ET consultée ne compte qu'une fois",
+  );
+});
+
+test("parseOpenAiSearchResponse — ne lève jamais, et n'annexe pas la forme Perplexity", () => {
+  assert.deepEqual(parseOpenAiSearchResponse(null), { text: "", sources: [] });
+  assert.deepEqual(parseOpenAiSearchResponse("oops"), { text: "", sources: [] });
+  assert.deepEqual(parseOpenAiSearchResponse({}), { text: "", sources: [] });
+  assert.deepEqual(parseOpenAiSearchResponse({ output: "pas un tableau" }), {
+    text: "",
+    sources: [],
+  });
+  // Annotations d'un autre type : ignorées, pas de source inventée.
+  assert.deepEqual(
+    parseOpenAiSearchResponse({
+      output: [
+        {
+          type: "message",
+          content: [
+            { type: "output_text", text: "T.", annotations: [{ type: "file_citation" }] },
+          ],
+        },
+      ],
+    }),
+    { text: "T.", sources: [] },
+  );
+});
+
+test("les deux parseurs restent étanches (une forme ne se lit pas avec l'autre)", () => {
+  const openAi = openAiPayload();
+  // Le parseur Perplexity extrairait le TEXTE d'une réponse OpenAI mais pas ses
+  // sources : c'est exactement la régression silencieuse qu'on veut éviter.
+  assert.equal(parseResearchResponse(openAi).sources.length, 0);
+
+  const perplexity = {
+    output: [
+      { type: "search_results", results: [{ title: "S", url: "https://p.fr" }] },
+      { type: "message", content: [{ text: "Réponse." }] },
+    ],
+  };
+  assert.equal(parseOpenAiSearchResponse(perplexity).sources.length, 0);
+});
+
+test("countWebSearchCalls — une requête ≠ une recherche facturée", () => {
+  assert.equal(countWebSearchCalls(openAiPayload()), 1);
+  assert.equal(
+    countWebSearchCalls({
+      output: [
+        { type: "web_search_call" },
+        { type: "web_search_call" },
+        { type: "message", content: [] },
+      ],
+    }),
+    2,
+  );
+  assert.equal(countWebSearchCalls(null), 0);
+  assert.equal(countWebSearchCalls({ output: "nope" }), 0);
+});
+
+test("openaiSearchContext — profondeur bornée, la fiche prospect coûte le moins", () => {
+  assert.equal(openaiSearchContext("company_profile"), "medium");
+  assert.equal(openaiSearchContext("prospect_company"), "low");
 });
 
 test("renderResearch — vide sans résultat (prompt inchangé), sinon texte + sources", () => {

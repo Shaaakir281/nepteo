@@ -12,7 +12,8 @@ import {
   type LlmTask,
   type LlmTier,
 } from "@/lib/llm";
-import { researchConfigured } from "@/lib/research/perplexity";
+import { researchProvider } from "@/lib/research/provider";
+import { openAiSearchConfigured } from "@/lib/research/openai-search";
 
 async function requireMember() {
   const supabase = await createClient();
@@ -44,7 +45,13 @@ export async function GET() {
       (Object.keys(LLM_TASKS) as LlmTask[]).map((t) => [t, resolveTaskSpec(t)]),
     ),
     keys: providerKeyStatus(),
-    research: { perplexity: researchConfigured() },
+    // Présence des clés, jamais leur valeur. `provider` = celui qui serait
+    // réellement appelé (null = recherche désactivée, l'onboarding saute l'étape).
+    research: {
+      provider: researchProvider(),
+      openai: openAiSearchConfigured(),
+      perplexity: Boolean(process.env.PERPLEXITY_API_KEY),
+    },
   });
 }
 

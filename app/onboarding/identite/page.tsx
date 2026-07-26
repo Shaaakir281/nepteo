@@ -5,7 +5,7 @@ import {
   AUDIENCE_OPTIONS,
   CHANNEL_OPTIONS,
 } from "@/lib/memory";
-import { researchConfigured } from "@/lib/research/perplexity";
+import { researchConfigured } from "@/lib/research/provider";
 import { IdentityWizard } from "./_components/identity-wizard";
 
 /**

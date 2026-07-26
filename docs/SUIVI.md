@@ -38,7 +38,10 @@ Environnement : Supabase `hrqnzorapjnosjphftur`, repo GitHub `Shaaakir281/nepteo
 - La table `journal` refuse UPDATE/DELETE (trigger) — c'est voulu.
 - Design : ne rien inventer, copier les patterns de `docs/maquettes/` (tokens dans `globals.css`).
 - **Copie produit** : ne PAS définir le lexique marketing standard (prospect, lead, funnel…). CLAUDE.md corrigé en ce sens (retour de Fathi 2026-07-21).
-- **Recherche web (Perplexity)** : appel **facturé à la requête**. Toujours passer par `runResearch` (garde-fous + journal + cache) — ne jamais appeler `askPerplexity` directement depuis une action. Les échecs sont mis en cache **volontairement** (une clé invalide ne doit pas boucler).
+- **Recherche web (OpenAI ou Perplexity)** : appel **facturé**. Toujours passer par `runResearch` (garde-fous + journal + cache) — ne jamais appeler `askPerplexity` / `askOpenAiSearch` / `askResearch` directement depuis une action. Les échecs sont mis en cache **volontairement** (une clé invalide ne doit pas boucler).
+- **Chez OpenAI, une requête ≠ une recherche facturée** : le modèle peut enchaîner plusieurs `web_search_call` dans un même appel, à ~1 centime pièce. `MAX_RESEARCH_PER_DAY` compte des appels `runResearch`, **pas** des recherches. Deux conséquences : `reasoning.effort` reste à `"low"` dans `lib/research/openai-search.ts` (ne pas monter sans revoir les plafonds), et le nombre réel est écrit au journal (`searches`). Ne pas « simplifier » l'un ou l'autre.
+- **Deux parseurs de recherche, volontairement séparés** : `parseResearchResponse` (Perplexity) et `parseOpenAiSearchResponse` (OpenAI). Les deux formes se ressemblent assez (`output[]`, `type: "message"`, `content[].text`) pour qu'un parseur « unifié » extraie le texte OpenAI **mais perde ses sources**, silencieusement. Un test garde cette étanchéité — ne pas les fusionner.
+- **`researchConfigured()` vit dans `lib/research/provider.ts`**, pas dans `perplexity.ts` (déménagé le 26/07, sans ré-export : deux chemins pour la même question = dette).
 - **Fichiers purs testés par node:test** : aucun import, même relatif, y compris vers `lib/memory.ts`. Quand une logique pure a besoin de constantes d'ailleurs (options de mémoire), on les **injecte en paramètre** (cf. `profile-rules.ts`).
 - **`headCacheNode in null` après une déconnexion** : le cache du routeur client gardait l'arbre du cockpit ; la requête RSC suivante était redirigée vers `/login` par `proxy.ts` et l'arbre devenait nul. Corrigé par `revalidatePath("/", "layout")` **avant** le `redirect` dans `login` et `logout` (`app/(auth)/actions.ts`). Toute action qui change de session doit purger le cache.
 - **Vérif tsc dans le sandbox Cowork** : le sandbox tue les process longs (~44 s) et laisse un log **vide** → « log vide » ≠ « vert ». Ne conclure au vert que sur un `tsc` **terminé** (exit 0 explicite) ; au besoin `pkill node` puis relancer sur sandbox non contendu. `next build` non exécutable (SWC win32 only) → build côté Fathi. `npm test` requiert **Node ≥ 22**. Mesure du 25/07 (C1) : `tsc --noEmit` complet passe en **~42 s** → lancer avec `timeout 43`, pas 40 ; `eslint` et `git status`, eux, **ne bouclent pas** sur le montage Windows.
@@ -46,6 +49,49 @@ Environnement : Supabase `hrqnzorapjnosjphftur`, repo GitHub `Shaaakir281/nepteo
 - **Fichiers purs vs I/O** : `lib/memory.ts` est pur (zéro import) ; la lecture Supabase de la mémoire vit à côté, dans **`lib/memory-store.ts`** (`readMemory(client, sections?, orgId?)`). Ne pas les refusionner.
 
 ## Historique des sessions
+
+### 2026-07-26 (4) — Claude (Cowork) — **R1 « La recherche web sans compte Perplexity »** (docs/projets/recherche-web-openai.md)
+
+**But atteint** : la recherche web fonctionne avec la clé OpenAI déjà en place. **Perplexity n'a pas bougé** — deux fournisseurs coexistent, `RESEARCH_PROVIDER` tranche. Aucune migration, aucune dépendance npm, aucune table.
+
+**Doc OpenAI revérifiée le jour même** (pas de code de mémoire) :
+- `web_search` sur la Responses API, **modèle recommandé pour cette intégration : `gpt-5.5`** (défaut en dur, surchargeable par `RESEARCH_OPENAI_MODEL`). `gpt-4o*-search-preview` confirmés **arrêtés depuis le 2026-07-23** ; `web_search_preview` legacy (ni `filters`, ni `return_token_budget`).
+- **Tarification des outils intégrés : 10 $ / 1 000 appels d'outil** + les *search content tokens* facturés au tarif du modèle. Soit **~1 centime par recherche**, et le décompte se fait **par `web_search_call`, pas par requête**.
+- `search_context_size` va **dans l'objet outil** ; `reasoning.effort` au niveau racine. `minimal` n'est pas supporté avec `web_search`.
+
+**1. Parseur dédié** (`lib/research/research-rules.ts`, **additif seulement**) : `parseOpenAiSearchResponse` lit les items `message` (texte + annotations `url_citation`) puis les items `web_search_call` (`action.sources[]`, chaînes nues tolérées). **Les citations passent avant la liste exhaustive** : ce sont les sources qui portent la réponse, et `MAX_SOURCES` tronque le reste. `pushSource` et `MAX_ANSWER_CHARS` réutilisés. `parseResearchResponse` **non modifié**. Ajouts : `openaiSearchContext` (`company_profile` → `medium`, `prospect_company` → `low`) et `countWebSearchCalls`.
+
+**2. Adaptateur** `lib/research/openai-search.ts` (nouveau) : `POST /v1/responses`, `fetch` natif, timeout 45 s, `cache: "no-store"`, ne lève jamais, **statut seul** en cas d'erreur HTTP, même vocabulaire de `reason` que Perplexity (`no_key`, `empty_query`, `empty_answer`, `timeout`, `network_error`). `include: ["web_search_call.action.sources"]`, `store: false`, `return_token_budget` laissé au défaut.
+
+**3. Sélecteur** `lib/research/provider.ts` (nouveau) : `researchProvider()`, `researchConfigured()` (**déménagé** de `perplexity.ts`, **aucun ré-export de compatibilité**), `askResearch({ kind, query })`. Les **4 imports** ont été suivis : `lib/research/research.ts`, `app/onboarding/actions.ts`, `app/onboarding/identite/page.tsx`, `app/api/llm/status/route.ts` — grep de contrôle : plus aucun import de `researchConfigured` depuis `perplexity.ts`.
+
+**4. Branchement** (`lib/research/research.ts`) : **une seule substitution** (`askPerplexity` → `askResearch`) + le fournisseur dans les payloads du journal. Ordre cache → garde-fous → journal AVANT → appel → upsert, plafonds, mise en cache des échecs : **inchangés**. Aucun nouvel événement de journal.
+
+**5. Observabilité** : `GET /api/llm/status` → `research: { provider, openai, perplexity }` (présence des clés, jamais leur valeur ; `provider: null` = recherche désactivée).
+
+**Décisions de mise en œuvre (les trois sont dans DECISIONS.md)** :
+- **`reasoning: { effort: "low" }` en dur.** C'est LE garde-fou de coût. `search_context_size` borne le contexte injecté, **pas le nombre de recherches** : seul un effort bas empêche la recherche agentique d'enchaîner les `web_search_call`. Commentaire d'avertissement dans le fichier : ne pas monter cette valeur sans revoir les plafonds serveur.
+- **Le nombre de recherches facturées finit au journal** (`searches` dans `research_succeeded`). Le chantier demandait de mesurer ce nombre ou de dire qu'il n'est pas maîtrisable. Réponse honnête : il est **bornable mais pas garanti** par l'API — donc on le **mesure en production** plutôt que de laisser `MAX_RESEARCH_PER_DAY` (qui compte des appels `runResearch`) faire croire à une protection budgétaire qu'il n'offre plus. **Le chiffre sur un appel réel reste à relever par Fathi** (voir « Reste »), le sandbox n'a pas de clé.
+- **`RESEARCH_PROVIDER` explicite sans clé ⇒ `null`, pas de repli** sur l'autre fournisseur. Dépenser chez un fournisseur non choisi est pire qu'une recherche désactivée — et ça satisfait le critère « `RESEARCH_PROVIDER=perplexity` sans clé ⇒ `no_key`, aucun écran cassé ».
+
+**Écarts au périmètre, signalés (règle 2)** :
+- **Le fichier de tests s'appelle `tests/research-rules.test.mjs`**, pas `tests/research.test.mjs` comme l'annonçait le §8 du chantier. C'est bien le fichier de la recherche, aucun autre n'a été touché.
+- **`countWebSearchCalls` est un troisième export** ajouté à `research-rules.ts` (le §8 n'en annonçait que deux). Il est **pur** et sans lui le critère d'acceptation n°8 (« nombre de `web_search_call` mesuré et consigné ») est intenable en production.
+- **`.env.example` n'a PAS été touché** (hors liste du §8) : il documente `PERPLEXITY_API_KEY` et `PERPLEXITY_PRESET` mais **ignore `RESEARCH_PROVIDER` et `RESEARCH_OPENAI_MODEL`**. Deux lignes à ajouter quand tu veux — c'est le seul endroit où la nouvelle configuration n'est pas documentée.
+
+**Tests** : +7 dans `tests/research-rules.test.mjs` — parseur OpenAI (texte + citations + pages consultées, accents intacts), absence d'`include` (le texte survit, les sources se réduisent aux citations), bornage `MAX_SOURCES` + dédoublonnage citation/source, robustesse (`null`, non-tableau, annotation d'un autre type), **étanchéité des deux parseurs** (une réponse OpenAI lue par `parseResearchResponse` perd ses sources — la régression silencieuse qu'on voulait rendre impossible), `countWebSearchCalls`, `openaiSearchContext`. **Total : 129 → 136.**
+
+**Vérif** : `npm test` **136/136, exit 0** ; `npx tsc --noEmit` **complet, exit 0 explicite — deux fois** (24 s puis 40 s).
+
+**Constat sur l'outillage (hors périmètre, noté)** : le montage Windows a été **bien plus lent que les 42 s de référence** pendant une bonne partie de la session. Mesures utiles pour la prochaine fois : `find lib app components -name '*.ts*'` (107 fichiers) a pris **20 s à froid, 3,6 s à chaud** ; un `find node_modules -maxdepth 3` n'a listé que **516 entrées en 30 s** ; `cp -a node_modules` copie **5,9 Mo / 264 fichiers en 38 s** (copier le repo en local est donc hors de portée). **Le cache de pages ne survit pas d'un appel bash à l'autre** — relire les `.d.ts` de `next`+`react` a coûté 38 s, puis 30 s, puis encore plus. Ce qui a fini par marcher : **relancer, simplement** (le complet est passé au 11e essai, puis de nouveau au 13e). Un `tsc --noEmit` sur un fichier trivial coûte déjà **9 s** de démarrage ; la recette du `tsconfig` réduit (`extends`, `incremental: false`, `include` limité) reste valable — **8,9 s** pour `lib/research/**`, **18,8 s** pour les 8 fichiers du chantier et leur fermeture transitive — mais ce n'est **pas** un substitut au complet, et le fichier temporaire a bien été supprimé. À noter aussi : **`rm` est refusé** sur le montage sans autorisation explicite côté Cowork.
+
+**Reste (Fathi)** :
+1. **`git push`** — six commits locaux (docs session 5, C1, cadrage R1, C2, C3, R1).
+2. `npm run build` (SWC Windows).
+3. **Relever le coût réel, c'est le point le plus important de ce chantier** : dérouler `signup → philosophie → écran identité` sur un compte neuf avec une vraie entreprise, puis regarder l'entrée `research_succeeded` du journal → champ **`searches`**. À 1 centime la recherche, `MAX_RESEARCH_PER_DAY = 30` plafonne à ~0,30 € **si** `searches = 1`, mais à ~3 € si le modèle en enchaîne 10. Si le chiffre dépasse 3, dis-le : le plafond doit alors compter des **recherches**, pas des appels (ça demande un champ de plus dans `research_runs`, donc une migration — hors périmètre ici).
+4. Vérifier `GET /api/llm/status` → `research.provider = "openai"` (la forme a changé : `provider` + `openai` + `perplexity`).
+5. **Parcours de contrôle** : l'écran d'identité doit afficher un texte **et des sources cliquables** ; relancer la même recherche ne doit créer **aucun** second `research_started` (cache) ; mettre l'org en pause doit donner `research_blocked` / `paused`. Puis, sans aucune clé de recherche en env, vérifier que l'onboarding saute l'étape comme avant.
+6. Si tu ouvres finalement un compte Perplexity : `RESEARCH_PROVIDER=perplexity` suffit, rien à recoder.
 
 ### 2026-07-26 (3) — Claude (Cowork) — **C3 « Vocabulaire : deux acronymes, pas quatre »** — **phase A terminée**
 

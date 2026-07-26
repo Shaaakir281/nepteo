@@ -10,6 +10,10 @@ import {
  *
  * Ne lève JAMAIS : un échec de recherche ne doit pas casser un onboarding ni un
  * brouillon. Toute erreur ressort en `{ ok: false, reason }`, l'appelant décide.
+ *
+ * L'un des deux fournisseurs de recherche. Le choix se fait dans
+ * lib/research/provider.ts (`researchConfigured` y vit désormais) — pas ici, pour
+ * ne pas avoir deux chemins pour la même question.
  */
 
 const ENDPOINT = "https://api.perplexity.ai/v1/agent";
@@ -18,11 +22,6 @@ const TIMEOUT_MS = 45_000;
 export type PerplexityResult =
   | ({ ok: true } & ResearchAnswer)
   | { ok: false; reason: string };
-
-/** La recherche est-elle configurée ? (présence de la clé, jamais sa valeur) */
-export function researchConfigured(): boolean {
-  return Boolean(process.env.PERPLEXITY_API_KEY);
-}
 
 /** Preset effectif : surcharge par env (`PERPLEXITY_PRESET`) sinon celui du type. */
 export function resolvePreset(fallback: ResearchPreset): ResearchPreset {
