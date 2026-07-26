@@ -105,8 +105,11 @@ Environnement : Supabase `hrqnzorapjnosjphftur`, repo GitHub `Shaaakir281/nepteo
 - Le repo n'était donc **pas propre avant de lancer** (§0 de la roadmap). Signalé, pas arbitré ici.
 - `CLAUDE.md` § Structure ne mentionne toujours ni les onglets ni la nav à 5 (relevé par C4, C5, C6) — toujours hors périmètre.
 
+**Suite immédiate — commit `2891ec8`, « dire POURQUOI le retrait a échoué »** : Fathi a déclenché le message d'échec dès le premier essai. Le message était honnête mais **muet sur la cause** — il ne distinguait même pas une session expirée d'une erreur de base. Trois corrections : `DemoResult` porte désormais un `detail` (message technique, borné à 300 caractères) remonté de l'action serveur jusqu'au panneau, qui l'affiche sous le message en petit ; `reason: "forbidden"` a son propre texte (« votre session a peut-être expiré… reconnectez-vous ») au lieu du générique ; et **`entryDetail` affiche enfin `payload.error`** (`lib/journal.ts`) — la raison était écrite au journal depuis toujours et n'était rendue nulle part, ce qui vaut aussi pour `connector_sync_failed`. **Cause du dysfonctionnement non identifiée à ce stade** : le schéma ne l'explique pas (aucune clé étrangère bloquante sur `prospects`, `activity` nullable, toutes les tables visées existent en migrations 0001-0009) et le sandbox n'a pas d'accès base. Le prochain essai donnera la ligne « Détail : … » — c'est elle qu'il faut me rapporter.
+
 **Reste (Fathi)** :
-1. **Commiter `docs/SUIVI.md`** (il porte l'entrée Codex n°10 **et** celle-ci) et le reste du chantier Codex, une fois celui-ci revu.
+0. **Refaire un retrait et relever la ligne « Détail : … »** (ou l'entrée « Retrait des données de démonstration échoué » dans `/journal`, qui affiche désormais la raison). Sans ce message, la cause reste une devinette.
+1. ~~Commiter `docs/SUIVI.md`~~ — **fait**, embarqué par les commits Azure `80b6a10`/`5e67427` arrivés entre-temps. L'arbre est propre.
 2. **`git push`** — les commits locaux s'accumulent (dix à ce jour, plus B1).
 3. `npm run lint` et `npm run build` en local (non concluants / impossibles dans le sandbox).
 4. **Parcours d'acceptation, dans cet ordre** : remplir la fiche (au moins nom + activité, idéalement une ou deux sections) → charger le scénario A → vérifier que `/entreprise?onglet=identite` montre bien l'identité du scénario → charger le scénario B → **« Retirer les données de démonstration »** → la fiche d'origine doit être revenue **à l'identique**, nom de l'entreprise compris, et **pas** celle du scénario A.
