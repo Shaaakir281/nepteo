@@ -7,6 +7,46 @@
 
 ---
 
+## 0. Prompt de lancement
+
+**Avant de coller** — trois choses à vérifier côté Fathi, sinon le chantier ne peut pas s'auto-vérifier :
+
+- [ ] `OPENAI_API_KEY` présente dans `.env.local` (elle l'est déjà).
+- [ ] Repo propre et **poussé** (le chantier précédent est commité).
+- [ ] Accepter qu'**une poignée d'appels facturés** seront faits pendant les tests (quelques centimes) — c'est le seul moyen de vérifier que les sources remontent vraiment.
+
+À coller tel quel dans une nouvelle session :
+
+```
+Tu travailles sur le repo Nepteo (C:\dev\agent_marketing).
+
+1. Lis CLAUDE.md et docs/SUIVI.md.
+2. Lis docs/projets/roadmap-beta.md §2 (« Règles pour tout chantier —
+   anti-erreurs IA ») : elles s'appliquent intégralement.
+3. Exécute UNIQUEMENT le chantier décrit dans
+   docs/projets/recherche-web-openai.md, en respectant à la lettre ses
+   sections « Interdits » (§6), « Pièges spécifiques » (§7) et
+   « Fichiers autorisés » (§8).
+4. Vérifie la doc OpenAI en ligne AVANT de coder (§2 du chantier donne
+   l'URL) : le nom du modèle à utiliser avec `web_search` et la
+   tarification des outils intégrés ont pu changer. Ne code pas de
+   mémoire.
+5. À la fin : npm test + npx tsc --noEmit TERMINÉS (exit 0 explicite —
+   un log vide n'est pas un vert ; sur ce montage `tsc` frôle les 43 s,
+   relance plutôt que de conclure), entrée dans docs/SUIVI.md, commit,
+   liste « Reste (Fathi) ».
+
+Ne touche à rien hors du périmètre du chantier. Si quelque chose te
+semble nécessaire hors périmètre, note-le dans SUIVI, ne le fais pas.
+En particulier : ne supprime pas Perplexity, ne modifie pas
+l'orchestration de runResearch, et ne fais entrer la recherche ni dans
+lib/llm.ts ni dans une dépendance npm.
+```
+
+**Modèle conseillé : Opus 5** (cf. en-tête). Si le chantier est confié à Sonnet 5 et n'est pas vert après deux allers-retours, revenir au dernier commit propre et le relancer entier avec Opus 5 (règle d'escalade, `roadmap-beta.md` §1).
+
+---
+
 ## 1. But
 
 Rendre la recherche web **fonctionnelle avec la clé OpenAI déjà en place**, sans rien changer à la discipline qui l'entoure (cache, journal avant l'appel, plafonds serveur, RGPD).
