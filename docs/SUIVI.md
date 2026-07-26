@@ -53,6 +53,37 @@ Environnement : Supabase `hrqnzorapjnosjphftur`, repo GitHub `Shaaakir281/nepteo
 
 ## Historique des sessions
 
+### 2026-07-26 (13) — Codex — **B2 « Une action validée doit pouvoir être supprimée »** (hors roadmap, docs/projets/demo-isolation.md)
+
+**Défaut bloquant corrigé dans le dépôt** : après une exécution en mode sûr, `lib/execution.ts` écrit `journal.action_id`. Or la FK de `0001_init.sql` était en `on delete set null`, tandis que le trigger volontaire `journal_no_update` refuse tout UPDATE/DELETE. La suppression de l'action demandait donc un UPDATE du journal et échouait avec « journal is append-only ». Comme `loadDemoScenario` et `clearDemoData` appellent tous deux `resetCockpitState`, les deux parcours étaient bloqués.
+
+**Ordre de mission écrit avant le code** : nouvelle section « Chantier B2 » dans `docs/projets/demo-isolation.md`, avec les mêmes rubriques que B1 et application intégrale des règles anti-erreurs de `roadmap-beta.md` §2.
+
+**Grep complet et décision** :
+
+1. Les six écritures applicatives de `action_id` sont toutes dans `lib/execution.ts`. Aucun code applicatif ne le lit ni ne déréférence une ligne d'`actions`.
+2. Les deux affichages du journal (`/` et `/journal`) sélectionnent `id, event, actor, actor_id, payload, created_at` et rendent l'entrée seule : une action disparue ne nuit pas à la lisibilité.
+3. La seule suppression directe de `actions` dans le repo est `resetCockpitState` (`lib/demo/seed.ts`). `outbox_messages` est supprimée juste avant ; sa FK `action_id on delete cascade` est correcte et reste intacte.
+4. **Correction retenue** : migration nouvelle `0011_drop_journal_action_fk.sql`, qui retire uniquement `journal_action_id_fkey` et garde la colonne `journal.action_id`. Le journal conserve ainsi l'identifiant historique, volontairement orphelin si l'entité opérationnelle est supprimée. L'alternative « archiver et filtrer les actions partout » est plus large et ne répond pas au besoin de remise à zéro.
+
+**Invariants respectés** : aucune modification de `journal_no_update` ni de `forbid_journal_mutation` ; aucun recul sur les `ensureOk` ou la remontée d'erreur B1 ; aucune modification de migration existante, de l'outbox, des données de démonstration ou de `lib/memory.ts` ; aucune dépendance, variable d'environnement ou table.
+
+**Vérification des parcours** : la lecture des deux chemins confirme que `loadDemoScenario` et `clearDemoData` ne rencontraient qu'un même bloqueur, le `delete` de `actions`. Après `0011`, le journal n'est plus une relation entrante contraignante ; la suppression préalable de l'outbox puis celle des actions peut aboutir, et `clearDemoData` poursuit vers `restoreMemory` sans modification de l'invariant B1. La recette réelle Supabase ne peut être faite avant l'application manuelle de la migration ; aucun `psql`/CLI Supabase n'est installé ici et le moteur Docker local n'est pas lancé. Aucune réussite UI n'est donc inventée.
+
+**Test de régression** : `tests/journal-action-deletion.test.mjs` vérifie le diagnostic de `0001`, conserve la cascade de `0006`, exige le retrait de la seule FK dans `0011`, et interdit dans cette migration toute suppression/désactivation du trigger, de la colonne, de l'outbox ou création de table. Total **145 → 146**.
+
+**Vérifs terminées** : test ciblé **1/1, exit 0** ; `npm test` **146/146, `NPM_TEST_EXIT:0`** ; `npx tsc --noEmit` **complet, `TSC_EXIT:0`** ; `git diff --check` **exit 0**. `npm run build` reste côté Fathi (SWC Windows).
+
+**Constat hors périmètre — noté, pas corrigé** : supprimer une organisation qui possède déjà des entrées de journal demanderait aussi un DELETE en cascade sur `journal`, que le trigger append-only refuserait. Aucun flux courant ne fait cela : le seul `organizations.delete()` applicatif est le rollback d'onboarding, avant l'écriture du journal. La stratégie future de suppression de compte/RGPD devra traiter explicitement cet invariant.
+
+**Jalon 0** : `0010_research.sql` est **déjà passée** d'après la vérification consignée le 2026-07-26 dans ce fichier ; elle n'est plus en attente.
+
+**Reste (Fathi)** :
+1. **Passer manuellement `supabase/migrations/0011_drop_journal_action_fk.sql` dans Supabase.**
+2. Recette, dans cet ordre : conserver une fiche entreprise d'origine → valider puis exécuter une action (mode sûr, messages préparés) → charger un scénario → vérifier que les anciennes entrées du journal restent lisibles → « Retirer les données de démonstration » → confirmer que la fiche d'origine revient à l'identique.
+3. `npm run build` sous Windows.
+4. **`git push`** du commit B2.
+
 ### 2026-07-26 (12) — Codex — **Azure provisionné et GitHub Actions relié par OIDC**
 
 **Cible confirmée** : compte `fathimetalsi@gmail.com`, tenant `10dc421f-ab69-471c-8d9c-9e52a35e60b9`, souscription `Abonnement 1` (`22045923-e995-4df0-8001-27de3b66290f`). L’ancien abonnement `Cabinet-DrAbdelkader-Prod` reste mémorisé dans la CLI mais n’est plus la cible par défaut et n’a reçu aucune modification.
