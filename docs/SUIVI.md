@@ -47,6 +47,28 @@ Environnement : Supabase `hrqnzorapjnosjphftur`, repo GitHub `Shaaakir281/nepteo
 
 ## Historique des sessions
 
+### 2026-07-26 — Claude (Cowork) — cadrage **R1 : recherche web via OpenAI** (aucun code)
+
+Suite immédiate de la session C1, **hors périmètre C1 et volontairement sans code** (règle « un chantier = une session »).
+
+**Déclencheur (Fathi)** : la clé OpenAI est déjà ouverte, le compte Perplexity API reste à créer. Constat vérifié dans le code : **OpenAI ne fait aucune recherche internet aujourd'hui** — `lib/research/perplexity.ts` est le seul chemin de recherche, et `lib/llm.ts` n'expose aucun outil de navigation. Mettre `LLM_MODEL*=openai:*` configure **le rédacteur**, pas le chercheur. Sans `PERPLEXITY_API_KEY`, `researchConfigured()` est faux → le 2e écran d'onboarding est sauté (dégradation propre, rien ne casse) — c'est la 2e branche du jalon 0, donc l'état actuel est cohérent pour la démo.
+
+**Doc OpenAI vérifiée le jour même** (<https://developers.openai.com/api/docs/guides/tools-web-search>) : outil `web_search` sur la **Responses API**, sources structurées via `include: ["web_search_call.action.sources"]`, coût bornable par `search_context_size`, filtrage par domaine possible. **`gpt-4o-search-preview` est arrêté depuis le 2026-07-23** et `web_search_preview` est legacy — à ne pas utiliser.
+
+**Livré** : `docs/projets/recherche-web-openai.md` — ordre de mission complet (but, fichiers autorisés, interdits, pièges, variables d'env, 9 critères d'acceptation), + entrée ADR dans `docs/DECISIONS.md`.
+
+**Décisions de cadrage** :
+- **Ajouter un fournisseur, pas en remplacer un.** Perplexity reste ; `RESEARCH_PROVIDER` tranche, à défaut la présence d'une clé. Le choix redevient réversible en une variable d'env.
+- `runResearch` (cache → garde-fous → journal AVANT → appel), les plafonds et la table `research_runs` **ne bougent pas**. C'est le dividende de la décision du 25/07 « la recherche vit hors de `lib/llm.ts` ».
+- `researchConfigured()` **déménage** de `perplexity.ts` vers un nouveau `lib/research/provider.ts` — 4 imports à suivre, listés dans l'ordre de mission. Pas de ré-export de compatibilité (deux chemins pour une même question = dette).
+- **Parseur dédié**, `parseResearchResponse` non modifié : les deux formes se ressemblent assez pour qu'un parseur « unifié » extraie le texte OpenAI **mais perde ses sources**, silencieusement.
+
+**Risque principal identifié** : chez OpenAI, **une requête ≠ une recherche facturée** — un modèle de raisonnement peut enchaîner plusieurs dizaines de recherches par appel. `MAX_RESEARCH_PER_DAY` compte des appels `runResearch` : le plafond ne protège donc plus le budget comme avec Perplexity. Le chantier doit **mesurer** le nombre de `web_search_call` par requête et le consigner, ou dire qu'il n'est pas maîtrisable — pas laisser le plafond mentir.
+
+**Hors périmètre, noté** : la **génération d'images** (playground OpenAI) évoquée par Fathi relève de `docs/projets/generation-creative-ia.md` (Phase 4), pas de ce chantier — garde-fous et modèle de validation différents.
+
+**Reste (Fathi)** : décider quand lancer R1 (avant la démo si tu veux montrer l'assistant d'identité ; sinon après, la démo tient par les scénarios fictifs) et le lancer en **session dédiée** avec le prompt du §0 de `roadmap-beta.md`, en remplaçant `CX` par `R1 (docs/projets/recherche-web-openai.md)`.
+
 ### 2026-07-25 (6) — Claude (Cowork) — **C1 « Nettoyage invisible »** (roadmap-beta, phase A)
 
 Chantier **C1** exécuté seul, périmètre strict. **Aucun changement visible** hors les deux boutons de démo retirés. Aucune migration, aucune dépendance, aucune variable d'env.
