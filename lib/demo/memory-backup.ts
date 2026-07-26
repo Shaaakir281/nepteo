@@ -1,6 +1,7 @@
 import {
   DEMO_BACKUP_SECTION,
   buildDemoBackup,
+  legacyOriginalOrgName,
   parseDemoBackup,
   planMemoryRestore,
   type MemoryRow,
@@ -136,5 +137,58 @@ export async function restoreMemory(admin: Admin, orgId: string): Promise<boolea
     .eq("section", DEMO_BACKUP_SECTION);
   ensureOk(dropError, "retrait de la sauvegarde");
 
+  return true;
+}
+
+/**
+ * Cas de transition : un scénario a pu être chargé avant B1, donc avant que
+ * `__demo_backup` existe. Les sections et l'activité d'origine ne sont plus
+ * reconstructibles, mais le journal append-only porte encore le nom saisi à la
+ * création. La règle pure refuse toute restauration si le nom courant ne
+ * correspond pas exactement au dernier scénario chargé.
+ */
+export async function restoreLegacyOrganizationName(
+  admin: Admin,
+  orgId: string,
+): Promise<boolean> {
+  const { data: org, error: orgError } = await admin
+    .from("organizations")
+    .select("name")
+    .eq("id", orgId)
+    .maybeSingle();
+  ensureOk(orgError, "lecture du nom actuel de l'entreprise");
+
+  const { data: created, error: createdError } = await admin
+    .from("journal")
+    .select("payload")
+    .eq("organization_id", orgId)
+    .eq("event", "organization_created")
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  ensureOk(createdError, "lecture du nom d'origine de l'entreprise");
+
+  const { data: loaded, error: loadedError } = await admin
+    .from("journal")
+    .select("payload")
+    .eq("organization_id", orgId)
+    .eq("event", "demo_scenario_loaded")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  ensureOk(loadedError, "lecture du dernier scénario de démonstration");
+
+  const original = legacyOriginalOrgName(
+    org?.name,
+    created?.payload,
+    loaded?.payload,
+  );
+  if (!original) return false;
+
+  const { error } = await admin
+    .from("organizations")
+    .update({ name: original })
+    .eq("id", orgId);
+  ensureOk(error, "restauration du nom historique de l'entreprise");
   return true;
 }

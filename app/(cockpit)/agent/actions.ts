@@ -38,6 +38,10 @@ export async function setAutonomyLevel(level: string): Promise<void> {
 /** Toutes les vues qui dépendent des données de démo. `/agent` et `/plan` ne
  *  sont plus des écrans : ce sont des redirections (onglet Agent, Aujourd'hui). */
 function revalidateCockpit(): void {
+  // Le nom d'organisation vit dans le layout du cockpit (sidebar), pas dans
+  // les pages ci-dessous. Sans cette invalidation, charger/retirer un scénario
+  // peut laisser l'ancien nom visible malgré une base correctement mise à jour.
+  revalidatePath("/", "layout");
   for (const p of ["/", "/prospects", "/campagnes", "/contenu", "/entreprise"]) {
     revalidatePath(p);
   }

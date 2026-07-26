@@ -53,6 +53,29 @@ Environnement : Supabase `hrqnzorapjnosjphftur`, repo GitHub `Shaaakir281/nepteo
 
 ## Historique des sessions
 
+### 2026-07-26 (14) — Codex — **Retour de recette B1/B2 + recherche web rendue accessible**
+
+**B2 validé sur la base réelle après passage de `0011` par Fathi** : le dernier retrait ne produit plus « journal is append-only ». Contrôle Supabase en lecture seule : `actions = 0`, `outbox_messages = 0`, tandis que **2 entrées historiques** `execution_started` / `execution_succeeded` gardent leur `action_id` orphelin et restent lisibles. C'est exactement l'invariant visé par B2.
+
+**Retour B1 — nom resté « Atelier Northwind ». Cause confirmée dans la base, pas un simple cache** : aucun `__demo_backup` n'existe et les deux derniers `demo_scenario_cleared` portent `restored:false`. Le scénario Northwind avait été chargé le **2026-07-25**, avant la livraison de B1 le 26 : au moment où la sauvegarde a été introduite, la fiche d'origine était déjà écrasée. Le journal append-only conserve toutefois `organization_created.payload.name = "Fathi Solution"`.
+
+**Correction de transition, volontairement prudente** :
+
+1. Si aucune sauvegarde B1 n'existe, `restoreLegacyOrganizationName` relit le nom de création et le dernier nom de scénario dans le journal.
+2. Le nom historique n'est rendu **que si le nom courant correspond encore exactement au dernier scénario chargé**. Si l'utilisateur l'a modifié depuis, le secours ne touche rien.
+3. Le succès spécifique est ajouté au payload du retrait (`legacy_name_restored`) sans prétendre que les anciennes sections ont été retrouvées.
+4. `revalidatePath("/", "layout")` invalide maintenant le layout du cockpit : le nom de la sidebar suit immédiatement le chargement/retrait au lieu de pouvoir rester en cache.
+
+**Limite honnête du cas pré-B1** : le journal de 2026-07-19 contient le nom initial mais pas `organizations.activity` ni le contenu des sections. Ces valeurs antérieures au premier scénario ne sont donc pas reconstructibles automatiquement. Les scénarios chargés depuis B1 restent, eux, entièrement protégés par `__demo_backup`.
+
+**Recherche web — backend présent, accès permanent manquant** : la recherche multi-fournisseurs, le cache, le journal-avant, la synthèse d'identité et le wizard `/onboarding/identite` étaient bien implémentés. Mais seule la fin du premier onboarding menait au wizard ; la carte permanente « Documents & sources » affichait encore « votre site pourra être lu… à l'arrivée des connecteurs », ce qui était faux et rendait la fonctionnalité introuvable après onboarding. La carte explique désormais la recherche réelle et expose **« Analyser mon site »**, vers le wizard existant. « Ajouter un document » reste honnêtement marqué « bientôt ».
+
+**Fichiers** : `lib/demo/memory-backup-rules.ts`, `lib/demo/memory-backup.ts`, `lib/demo/seed.ts`, `app/(cockpit)/agent/actions.ts`, `app/(cockpit)/entreprise/_components/{identity-panel,side-cards}.tsx`, tests B1.
+
+**Vérifs** : tests ciblés **11/11, exit 0** ; `npm test` **148/148, `NPM_TEST_EXIT:0`** ; `npx tsc --noEmit` **`TSC_EXIT:0`** ; `npm run build` (Turbopack + TypeScript + 23 pages) **`BUILD_EXIT:0`** ; `git diff --check` **exit 0**.
+
+**Reste (Fathi)** : dans l'app locale déjà ouverte, cliquer une fois encore sur « Retirer les données de démonstration » (le serveur dev tourne et prend le correctif à chaud) : la sidebar doit afficher **Fathi Solution**. Puis ouvrir Mon entreprise → Identité → Documents & sources → **Analyser mon site**. Codex contrôle ensuite la base et le journal.
+
 ### 2026-07-26 (13) — Codex — **B2 « Une action validée doit pouvoir être supprimée »** (hors roadmap, docs/projets/demo-isolation.md)
 
 **Défaut bloquant corrigé dans le dépôt** : après une exécution en mode sûr, `lib/execution.ts` écrit `journal.action_id`. Or la FK de `0001_init.sql` était en `on delete set null`, tandis que le trigger volontaire `journal_no_update` refuse tout UPDATE/DELETE. La suppression de l'action demandait donc un UPDATE du journal et échouait avec « journal is append-only ». Comme `loadDemoScenario` et `clearDemoData` appellent tous deux `resetCockpitState`, les deux parcours étaient bloqués.

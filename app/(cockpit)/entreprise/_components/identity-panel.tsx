@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { icons } from "@/components/icons";
 import { type MemoryContent } from "@/lib/memory";
 import { readMemory } from "@/lib/memory-store";
+import { researchConfigured } from "@/lib/research/provider";
 import { IdentityCard } from "./identity-card";
 import { OffersCard } from "./offers-card";
 import { DocumentsCard, LearningsCard } from "./side-cards";
@@ -59,7 +60,10 @@ export async function IdentityPanel({
           />
         </div>
         <div className="space-y-4">
-          <DocumentsCard />
+          <DocumentsCard
+            canEdit={canEdit}
+            researchEnabled={researchConfigured()}
+          />
           <LearningsCard />
         </div>
       </div>

@@ -4,7 +4,11 @@ import {
   buildDemoRevenue,
 } from "@/lib/demo/demo-rules";
 import { findScenario, type DemoScenario } from "@/lib/demo/scenarios";
-import { backupMemoryOnce, restoreMemory } from "@/lib/demo/memory-backup";
+import {
+  backupMemoryOnce,
+  restoreLegacyOrganizationName,
+  restoreMemory,
+} from "@/lib/demo/memory-backup";
 import { ensureOk, type Admin } from "@/lib/demo/db";
 
 /**
@@ -306,12 +310,15 @@ export async function clearDemoData(
 
   await resetCockpitState(admin, args.orgId);
   const restored = await restoreMemory(admin, args.orgId);
+  const legacyNameRestored = restored
+    ? false
+    : await restoreLegacyOrganizationName(admin, args.orgId);
 
   await admin.from("journal").insert({
     organization_id: args.orgId,
     event: "demo_scenario_cleared",
     actor: "user",
     actor_id: args.actorId,
-    payload: { restored },
+    payload: { restored, legacy_name_restored: legacyNameRestored },
   });
 }

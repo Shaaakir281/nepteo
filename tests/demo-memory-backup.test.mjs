@@ -12,6 +12,7 @@ import {
   DEMO_BACKUP_SECTION,
   buildDemoBackup,
   isReservedSection,
+  legacyOriginalOrgName,
   parseDemoBackup,
   planMemoryRestore,
 } from "../lib/demo/memory-backup-rules.ts";
@@ -144,4 +145,30 @@ test("plan de restauration — pas de doublon dans les suppressions", () => {
   const backup = buildDemoBackup([], ORG, AT);
   const plan = planMemoryRestore(backup, ["ton", "ton", "canaux"]);
   assert.deepEqual(plan.deletes, ["ton", "canaux"]);
+});
+
+test("ancien scénario sans sauvegarde — retrouve le nom de création", () => {
+  assert.equal(
+    legacyOriginalOrgName(
+      "Atelier Northwind",
+      { name: "Fathi Solution" },
+      { name: "Atelier Northwind", scenario: "agence" },
+    ),
+    "Fathi Solution",
+  );
+});
+
+test("ancien scénario sans sauvegarde — préserve un nom modifié ensuite", () => {
+  assert.equal(
+    legacyOriginalOrgName(
+      "Nouveau nom choisi",
+      { name: "Fathi Solution" },
+      { name: "Atelier Northwind" },
+    ),
+    null,
+  );
+  assert.equal(
+    legacyOriginalOrgName("Atelier Northwind", {}, { name: "Atelier Northwind" }),
+    null,
+  );
 });
