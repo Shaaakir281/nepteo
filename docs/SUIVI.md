@@ -65,7 +65,9 @@ Environnement : Supabase `hrqnzorapjnosjphftur`, repo GitHub `Shaaakir281/nepteo
 
 **Correctif avant publication** : la vérification de région du workflow normalise désormais `France Central` et `francecentral`, car les deux CLI Azure ne rendent pas la même forme.
 
-**Reste** : publier la branche de préparation, fusionner après revue, lancer manuellement le workflow avec l’ID de souscription confirmé, approuver `production`, régler Supabase Site URL + redirect URL sur le FQDN final, puis dérouler le smoke test complet. Le cron reste désactivé.
+**Publication** : commit `80b6a10` poussé sur `agent/azure-container-apps-deployment`, draft PR GitHub **#1** ouverte et CI GitHub verte.
+
+**Reste** : fusionner la PR #1 après accord de Fathi, lancer manuellement le workflow avec l’ID de souscription confirmé, approuver `production`, régler Supabase Site URL + redirect URL sur le FQDN final, puis dérouler le smoke test complet. Le cron reste désactivé.
 
 ### 2026-07-26 (11) — Claude (Cowork) — **B1 « La démonstration ne doit jamais détruire la vraie fiche »** (hors roadmap, docs/projets/demo-isolation.md)
 
