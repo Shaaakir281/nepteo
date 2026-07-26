@@ -20,7 +20,7 @@ Fonctionnel (build vert en local par Fathi ; `tsc` + `npm test` verts dans le sa
 - **Cockpit Phase 2** : file de validation avec **tiroir de raisonnement** (Aujourd'hui), **Décisions récentes** (Reporter/Reprendre + historique validées/refusées), vue **Prospects funnel + kanban** avec **repère de priorité** par carte (statut + complétude, sans score inventé).
 - **Observabilité** : `telemetryForTask` (`functionId` par tâche, champ `telemetry` de l'AI SDK 7) + hook Langfuse **v7** (`lib/observability.ts` = `NodeSDK` + `LangfuseSpanProcessor` + `registerTelemetry(LangfuseVercelAiSdkIntegration)`) — **activé et validé** (2026-07-22, trace `recommend_action` reçue, `gen_ai.agent.name = recommend_action`, tokens/coût OK). Paquets `@langfuse/otel` + `@langfuse/vercel-ai-sdk` + `@opentelemetry/sdk-node` **installés et dans `package.json`** ; dev sur **Node 22.23.1** ✓.
 
-Environnement : Supabase `hrqnzorapjnosjphftur`, repo GitHub `Shaaakir281/nepteo` (branche `main`), dev local **port 3001 figé dans le script** (`next dev -p 3001`), **Node 22.23.1 local ✓**. Production Azure déployée le 2026-07-26 dans `francecentral` : resource group `nepteo-prod-rg`, ACR `nepteoacr27de3b`, Container App `nepteo-prod`, révision `nepteo-prod--0000001`, image du commit `49b410a`. Domaine principal : `https://nepteo.bogasolution.com` avec certificat Azure managé ; le FQDN `azurecontainerapps.io` reste l’adresse technique. GitHub `production` + OIDC opérationnels ; `/api/health` répond 200 sur le domaine principal.
+Environnement : Supabase `hrqnzorapjnosjphftur`, repo GitHub `Shaaakir281/nepteo` (branche `main`), dev local **port 3001 figé dans le script** (`next dev -p 3001`), **Node 22.23.1 local ✓**. Production Azure déployée le 2026-07-26 dans `francecentral` : resource group `nepteo-prod-rg`, ACR `nepteoacr27de3b`, Container App `nepteo-prod`, révision active `nepteo-prod--0000002`, image du commit `49b410a`. Domaine principal : `https://nepteo.bogasolution.com` avec certificat Azure managé ; le FQDN `azurecontainerapps.io` reste l’adresse technique. GitHub `production` + OIDC opérationnels ; `/api/health` répond 200 sur le domaine principal. La recherche web utilise `gpt-5.4-mini` via `RESEARCH_OPENAI_MODEL` pour tenir la latence interactive ; les modèles de synthèse `LLM_MODEL*` restent inchangés.
 
 ## Prochaines étapes (dans l'ordre)
 
@@ -53,6 +53,16 @@ Environnement : Supabase `hrqnzorapjnosjphftur`, repo GitHub `Shaaakir281/nepteo
 - **Coût de la recherche web OpenAI** : le prix affiché (10 $ / 1 000 appels d'outil) n'est **que la moitié de la facture** — les *search content tokens* sont facturés au tarif du modèle et dominent le total (~0,06 $ par recherche avec `gpt-5.5`). Toujours chiffrer les deux parts, et se rappeler que `MAX_RESEARCH_PER_DAY` compte des appels `runResearch`, **pas** des `web_search_call`.
 
 ## Historique des sessions
+
+### 2026-07-26 (17) — Codex — **Timeout de recherche web diagnostiqué et modèle interactif corrigé**
+
+**Incident reproduit en production** : deux clics sur « Analyser mon site » avec `https://www.bogasolution.com/` ont produit deux couples `research_started` / `research_failed` espacés d’exactement 45 secondes, avec `reason: timeout` et `provider: openai`. Le site lui-même répond en environ 0,5 seconde depuis l’extérieur ; il n’est pas la cause. Le délai venait de `AbortSignal.timeout(45_000)` autour de la Responses API avec le modèle de recherche par défaut `gpt-5.5`.
+
+**Correction d’exploitation, sans changer la synthèse** : `RESEARCH_OPENAI_MODEL=gpt-5.4-mini` a été ajouté aux variables de l’environnement GitHub `production` et au runtime Container Apps. Ce modèle conserve Web Search mais vise une latence et un coût inférieurs pour ce parcours interactif. `LLM_MODEL`, `LLM_MODEL_LIGHT` et `LLM_MODEL_PREMIUM` restent inchangés.
+
+**Azure** : la révision `nepteo-prod--0000002` est `Healthy`, reçoit 100 % du trafic et expose bien l’override. `https://nepteo.bogasolution.com/api/health` répond toujours HTTP 200. La ligne `research_runs` en échec n’empêche pas une nouvelle tentative : seul un cache `status = ok` est relu.
+
+**Reste** : Fathi doit recliquer « Analyser mon site » dans sa session authentifiée ; Codex contrôlera immédiatement la nouvelle trace et la proposition générée.
 
 ### 2026-07-26 (16) — Codex — **Domaine personnalisé et HTTPS activés**
 
