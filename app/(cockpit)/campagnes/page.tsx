@@ -230,7 +230,9 @@ export default async function CampagnesPage({
                     <th className="px-3 py-2.5 text-right font-semibold">ROAS</th>
                     <th className="px-3 py-2.5 text-right font-semibold">Conv.</th>
                     <th className="px-3 py-2.5 text-right font-semibold">CAC</th>
-                    <th className="px-[22px] py-2.5 text-right font-semibold">CTR</th>
+                    <th className="whitespace-nowrap px-[22px] py-2.5 text-right font-semibold">
+                      Taux de clic
+                    </th>
                   </tr>
                 </thead>
                 <tbody>

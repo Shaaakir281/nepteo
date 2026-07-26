@@ -47,6 +47,27 @@ Environnement : Supabase `hrqnzorapjnosjphftur`, repo GitHub `Shaaakir281/nepteo
 
 ## Historique des sessions
 
+### 2026-07-26 (3) — Claude (Cowork) — **C3 « Vocabulaire : deux acronymes, pas quatre »** — **phase A terminée**
+
+Chantier volontairement minuscule, et il l'était encore plus que prévu.
+
+**Fait** : un seul libellé changé — l'en-tête de colonne `CTR` du tableau « Campagnes en cours » (`app/(cockpit)/campagnes/page.tsx`) devient **« Taux de clic »**, avec `whitespace-nowrap` pour que l'en-tête ne se coupe pas en deux (le tableau est déjà en `overflow-x-auto`, les largeurs tiennent).
+
+**Constat qui vaut d'être noté** : la roadmap annonçait « en-têtes de tableau **et cartes KPI** ». En réalité, après grep exhaustif sur `app/` et `components/` :
+- **`CTR` n'était affiché qu'à un seul endroit** (les cartes KPI de `/campagnes` montrent dépense, revenu, ROAS, CAC — pas le taux de clic) ;
+- **`CVR` n'a jamais été affiché nulle part.** Il est calculé par `deriveKpis` et testé, mais aucune vue ne le rend. Rien à renommer, donc — et surtout, **rien à supprimer** : `deriveKpis` reste inchangé (interdit du chantier), la valeur servira le jour où une vue l'affichera.
+
+**Non touché, conformément aux interdits** : les clés de code (`c.ctr`, `deriveKpis`, types, payloads), les moteurs purs (`lib/ads/metrics-rules.ts`), **ROAS et CAC** (lexique standard assumé par CLAUDE.md — la cible est « à l'aise avec leads, CAC, ROAS, funnel »), et `tests/ads-metrics.test.mjs` dont le nom de test cite CVR/CTR comme clés de calcul, pas comme libellés.
+
+**Vérif** : grep `CVR|CTR` sur `app/` + `components/` → **0 résultat** ; `npm test` **129/129, exit 0** ; `npx tsc --noEmit` **complet, exit 0** (trois tentatives : le montage reste le facteur limitant, cf. entrée précédente).
+
+**Reste (Fathi)** :
+1. **`git push`** — cinq commits locaux (docs session 5, C1, cadrage R1, C2, C3).
+2. `npm run build`.
+3. Coup d'œil sur `/campagnes` avec un scénario chargé : la dernière colonne du tableau doit afficher « Taux de clic » sans casser la mise en page.
+
+**État de la roadmap** : **phase A terminée côté code** (C1 · C2 · C3). Il ne reste que le **jalon 0** (§3 de `roadmap-beta.md`) avant la démo Charly — et il est en grande partie fait : migration 0010 passée, tests et `tsc` verts. Restent le **push**, le **build**, et **dérouler `docs/demo/GUIDE-TEST.md` de bout en bout toi-même** sur les trois scénarios (y compris le changement de scénario). Après la démo : C4 (structure), qui demande l'accord de Charly.
+
 ### 2026-07-26 (2) — Claude (Cowork) — **C2 « Le premier écran dit la vérité »** (roadmap-beta, phase A)
 
 **But atteint** : un nouvel utilisateur (ou Charly) qui arrive sur `/` avec une base vide voit désormais le **diagnostic de départ** au lieu de quatre tirets et d'une consigne d'onboarding gravée à vie.
