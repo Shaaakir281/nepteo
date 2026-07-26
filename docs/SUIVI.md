@@ -72,7 +72,7 @@ Environnement : Supabase `hrqnzorapjnosjphftur`, repo GitHub `Shaaakir281/nepteo
 
 **Test de régression** : `tests/journal-action-deletion.test.mjs` vérifie le diagnostic de `0001`, conserve la cascade de `0006`, exige le retrait de la seule FK dans `0011`, et interdit dans cette migration toute suppression/désactivation du trigger, de la colonne, de l'outbox ou création de table. Total **145 → 146**.
 
-**Vérifs terminées** : test ciblé **1/1, exit 0** ; `npm test` **146/146, `NPM_TEST_EXIT:0`** ; `npx tsc --noEmit` **complet, `TSC_EXIT:0`** ; `git diff --check` **exit 0**. `npm run build` reste côté Fathi (SWC Windows).
+**Vérifs terminées** : test ciblé **1/1, exit 0** ; `npm test` **146/146, `NPM_TEST_EXIT:0`** ; `npx tsc --noEmit` **complet, `TSC_EXIT:0`** ; `git diff --check` **exit 0**. Après autorisation de Fathi, `npm run build` a aussi terminé sous Windows : compilation Turbopack, TypeScript, génération des **23 pages**, `BUILD_EXIT:0`.
 
 **Constat hors périmètre — noté, pas corrigé** : supprimer une organisation qui possède déjà des entrées de journal demanderait aussi un DELETE en cascade sur `journal`, que le trigger append-only refuserait. Aucun flux courant ne fait cela : le seul `organizations.delete()` applicatif est le rollback d'onboarding, avant l'écriture du journal. La stratégie future de suppression de compte/RGPD devra traiter explicitement cet invariant.
 
@@ -80,9 +80,9 @@ Environnement : Supabase `hrqnzorapjnosjphftur`, repo GitHub `Shaaakir281/nepteo
 
 **Reste (Fathi)** :
 1. **Passer manuellement `supabase/migrations/0011_drop_journal_action_fk.sql` dans Supabase.**
-2. Recette, dans cet ordre : conserver une fiche entreprise d'origine → valider puis exécuter une action (mode sûr, messages préparés) → charger un scénario → vérifier que les anciennes entrées du journal restent lisibles → « Retirer les données de démonstration » → confirmer que la fiche d'origine revient à l'identique.
-3. `npm run build` sous Windows.
-4. **`git push`** du commit B2.
+2. Dire à Codex que la migration est passée. **Codex prend ensuite en charge la recette réelle**, dans cet ordre : conserver une fiche entreprise d'origine → valider puis exécuter une action (mode sûr, messages préparés) → charger un scénario → vérifier que les anciennes entrées du journal restent lisibles → « Retirer les données de démonstration » → confirmer que la fiche d'origine revient à l'identique.
+
+**Publication** : commit B2 `012d506` poussé sur `agent/azure-container-apps-deployment` (`PUSH_EXIT:0`) ; la PR GitHub existante est la **#1**.
 
 ### 2026-07-26 (12) — Codex — **Azure provisionné et GitHub Actions relié par OIDC**
 
