@@ -47,8 +47,32 @@ Environnement : Supabase `hrqnzorapjnosjphftur`, repo GitHub `Shaaakir281/nepteo
 - **Vérif tsc dans le sandbox Cowork** : le sandbox tue les process longs (~44 s) et laisse un log **vide** → « log vide » ≠ « vert ». Ne conclure au vert que sur un `tsc` **terminé** (exit 0 explicite) ; au besoin `pkill node` puis relancer sur sandbox non contendu. `next build` non exécutable (SWC win32 only) → build côté Fathi. `npm test` requiert **Node ≥ 22**. Mesure du 25/07 (C1) : `tsc --noEmit` complet passe en **~42 s** → lancer avec `timeout 43`, pas 40 ; `eslint` et `git status`, eux, **ne bouclent pas** sur le montage Windows.
 - **Libellés de journal d'événements disparus** (`lib/journal.ts`) : quand un geste est retiré du produit, **garder son libellé**. La table `journal` refuse UPDATE/DELETE (trigger volontaire) — les entrées passées existent toujours et doivent rester lisibles. Cas vécu : `ads_demo_loaded` / `revenue_demo_loaded` conservés après C1.
 - **Fichiers purs vs I/O** : `lib/memory.ts` est pur (zéro import) ; la lecture Supabase de la mémoire vit à côté, dans **`lib/memory-store.ts`** (`readMemory(client, sections?, orgId?)`). Ne pas les refusionner.
+- **Coût de la recherche web OpenAI** : le prix affiché (10 $ / 1 000 appels d'outil) n'est **que la moitié de la facture** — les *search content tokens* sont facturés au tarif du modèle et dominent le total (~0,06 $ par recherche avec `gpt-5.5`). Toujours chiffrer les deux parts, et se rappeler que `MAX_RESEARCH_PER_DAY` compte des appels `runResearch`, **pas** des `web_search_call`.
 
 ## Historique des sessions
+
+### 2026-07-26 (5) — Claude (Cowork) — relecture de R1 : correction du chiffrage + `.env.example`
+
+Passe de contrôle sur le commit `579fcfb` (R1), **sans toucher au code livré**.
+
+**Vérifié et conforme** : 13 fichiers, tous dans la liste autorisée (§8 de l'ordre de mission) ; `package.json` **intact** (aucune dépendance) ; aucune migration ; les 4 points d'import de `researchConfigured` traités (3 déplacés vers `provider.ts`, plus `/api/llm/status` qui passe à la forme `{ provider, openai, perplexity }`). Le refus de repli silencieux quand `RESEARCH_PROVIDER` est explicite mais sans clé est le bon comportement.
+
+**⚠️ Correction — le coût annoncé par R1 était sous-estimé d'environ 6×.** L'entrée précédente conclut « ~1 centime par recherche » en ne retenant que les 10 $/1 000 appels d'outil. La page tarifaire ajoute **« + Search content tokens billed at model rates »**, et c'est cette part qui domine. Avec `gpt-5.5` (**2,50 $/M en entrée, 15 $/M en sortie**), une recherche qui injecte ~15 k tokens de contexte web coûte en ordre de grandeur :
+
+| Poste | Coût |
+|---|---|
+| Appel d'outil | 0,01 $ |
+| Tokens de contenu web (~15 k en entrée) | ~0,04 $ |
+| Tokens de sortie (~800) | ~0,01 $ |
+| **Total par recherche** | **~0,06 $** |
+
+Donc `MAX_RESEARCH_PER_DAY = 30` plafonne autour de **1,50–2 €/jour et par organisation** si `searches = 1` — pas 0,30 €. Et toujours ×10 si une requête enchaîne dix `web_search_call`. La conclusion de R1 reste juste (relever `searches` sur un appel réel est le geste décisif), seul l'ordre de grandeur change.
+
+**Piste à tester : `gpt-5.5` est probablement un défaut trop cher.** La doc le désigne pour la recherche *agentique* et la deep research, mais la grille tarifaire dit « Web search (**all models**) » : l'outil n'impose pas ce modèle. Or ici l'agent **collecte des faits sourcés**, il ne rédige pas (c'est `LLM_TASKS` qui rédige). `gpt-5.4` est à moitié prix (1,25 $/7,50 $), `gpt-5.4-mini` à 0,375 $/2,25 $. `RESEARCH_OPENAI_MODEL` rend l'essai gratuit : même recherche sur les deux, comparer la qualité du texte et le **nombre de sources**. Contrainte : garder un modèle **raisonnant**, `reasoning.effort` étant figé à `"low"` dans `openai-search.ts` (sinon rejet API → `http_400` propre au journal).
+
+**Fait** : `.env.example` documente enfin `RESEARCH_PROVIDER` et `RESEARCH_OPENAI_MODEL` (R1 les avait signalés sans les faire — à raison, le fichier était hors de sa liste autorisée), avec l'avertissement de coût ci-dessus. Le bloc Perplexity devient un bloc « Recherche web » à deux fournisseurs.
+
+**Reste (Fathi)** : inchangé par rapport à R1 — `git push`, `npm run build`, et surtout **relever `searches` dans `research_succeeded`** après un vrai parcours d'onboarding. Ajouter à ce test : comparer `gpt-5.5` et `gpt-5.4` sur la même entreprise.
 
 ### 2026-07-26 (4) — Claude (Cowork) — **R1 « La recherche web sans compte Perplexity »** (docs/projets/recherche-web-openai.md)
 
