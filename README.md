@@ -12,7 +12,7 @@ cp .env.example .env.local   # puis remplir les clés
 npm run dev
 ```
 
-Base de données : appliquer **toutes** les migrations de `supabase/migrations/` dans l'ordre, idéalement avec `supabase db push`. La vague `0012` à `0020` a été appliquée manuellement à la production Supabase le 2026-07-30 ; `app_schema_version = 20` y est enregistré depuis `2026-07-30T06:02:14Z`. Le lot local suivant ajoute `0021_atomic_csv_import.sql` et exige donc le schéma 21 avant déploiement. Ne pas déployer une version applicative sans ses migrations associées.
+Base de données : appliquer **toutes** les migrations de `supabase/migrations/` dans l'ordre, idéalement avec `supabase db push`. La vague `0012` à `0020` a été appliquée manuellement à la production Supabase le 2026-07-30 ; `0021_atomic_csv_import.sql` y a ensuite porté `app_schema_version` à `21` le même jour à `17:40:26Z`. Ne pas déployer une version applicative sans ses migrations associées.
 
 État fonctionnel déployé : R1A ajoute la preuve terrain structurée dans `value_events` et fige les cohortes de relance à l'approbation ; R1B limite « Aujourd'hui » aux cinq actions les plus proches de la valeur, avec une raison explicite. Le play R2 « prospects dormants » reste supervisé et ne déclenche aucun envoi externe.
 
@@ -20,7 +20,7 @@ Base de données : appliquer **toutes** les migrations de `supabase/migrations/`
 
 Deux voies de test sont possibles, mais jamais simultanément dans une organisation : **(A)** l'un des trois scénarios Nepteo V2 certifiés, seul cas affiché comme « données fictives » ; **(B)** des données autorisées apportées par le testeur via connecteur ou fichier CSV, affichées comme « environnement de test ». Il faut retirer le scénario avant tout import et les événements fictifs restent exclus des preuves terrain. Le CSV V1 exige UTF-8, accepte au plus 900 Ko et 5 000 lignes, détecte sans réutiliser une colonne les six champs utiles, ignore les autres colonnes, conserve des identifiants stables et remplace ou retire l'import dans une RPC PostgreSQL atomique, verrouillée et journalisée.
 
-Validation locale de ce lot : **359/359 tests**, typecheck, lint et build Next.js de production (24 pages/routes) verts. La migration `0021` doit encore être appliquée et recettée avant la promotion de l'application.
+Validation locale de ce lot : **359/359 tests**, typecheck, lint et build Next.js de production (24 pages/routes) verts. La migration `0021` est appliquée ; ses RPC doivent encore être recettées sur une organisation de test vide avant la promotion de l'application.
 
 Lot déployé : les lectures prospects partagent une cohorte complète, les conflits multi-source sont réconciliés prudemment et les snapshots de relance restent stables pendant les synchronisations. L'interface distingue les 24 contacts regroupés pour la lecture des 29 identités conservées par prudence pour les décisions. Validation de référence de cette release : **341/341 tests**, lint, typecheck et build de production (23 pages/routes) verts.
 

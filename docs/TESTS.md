@@ -48,7 +48,7 @@ Jeu de données : `docs/tests/prospects-test.csv` (24 prospects, 5 sans email, s
    (L'analyse utilise la tâche `recommend_action` → niveau premium, d'où les 3 lignes. Quand tu prendras une clé Anthropic : supprime les 3 lignes `LLM_MODEL*`, les défauts Claude reprennent.) Sans aucune clé, l'analyse fonctionne quand même avec des textes templates.
 4. Redémarrer `npm run dev` après toute modif d'env.
 
-> État au 30 juillet 2026 : les migrations `0012` à `0020` et l'application correspondante sont en production sur la révision Azure `nepteo-prod--0000007`, image `a2bbc34dcb97ab00951a3efa631c4f7c0a0428ca`. Le smoke applicatif authentifié en lecture est passé. Le contrat à deux voies, CSV V1 et `0021` décrits ci-dessous restent locaux : la migration doit être appliquée avant tout déploiement de ce lot.
+> État au 30 juillet 2026 : Supabase est à `app_schema_version = 21` depuis `2026-07-30T17:40:26Z`, tandis qu'Azure sert encore l'application précédente sur la révision `nepteo-prod--0000007`, image `a2bbc34dcb97ab00951a3efa631c4f7c0a0428ca`. Le contrat à deux voies et CSV V1 est poussé dans `b1f760d`. Avant son déploiement, jouer le smoke réel des RPC `0021` sur une organisation de test vide.
 
 ### Deux voies de données, jamais mélangées
 

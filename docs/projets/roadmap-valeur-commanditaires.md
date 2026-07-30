@@ -4,7 +4,7 @@
 >
 > Elle complète `docs/ROADMAP.md` et **remplace l'ordre d'exécution de la phase C** décrit historiquement dans `docs/projets/roadmap-beta.md`. Les fiches C1–C12 restent utiles comme historique et comme premières spécifications, mais ne valent ni autorisation d'envoi externe ni ordre de lancement.
 >
-> **Avancement de release** : R1A, R1B et R2 sont en production depuis le 2026-07-30. Les migrations `0012` à `0020` sont appliquées (`app_schema_version = 20`) et Azure sert l'image `a2bbc34dcb97ab00951a3efa631c4f7c0a0428ca`, révision `nepteo-prod--0000007`, avec 100 % du trafic. `/`, `/api/health` et `/api/ready` répondent HTTP 200. Le contrat local suivant distingue désormais scénario Nepteo V2 certifié et données autorisées du testeur ; il ajoute `0021` et ne peut être déployé qu'après passage du schéma à 21.
+> **Avancement de release** : R1A, R1B et R2 sont en production depuis le 2026-07-30. Supabase est passé à `app_schema_version = 21` à `2026-07-30T17:40:26Z`; Azure sert encore l'image précédente `a2bbc34dcb97ab00951a3efa631c4f7c0a0428ca`, révision `nepteo-prod--0000007`, avec 100 % du trafic. `/`, `/api/health` et `/api/ready` répondent HTTP 200. Le contrat scénario Nepteo V2/données autorisées du testeur est poussé dans `b1f760d` ; restent PR, smoke RPC, déploiement et recette.
 
 ## Cap produit
 
