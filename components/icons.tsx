@@ -17,25 +17,9 @@ export const icons = {
       <path d="M2 13c.5-2.3 2-3.5 4-3.5s3.5 1.2 4 3.5M11 6.5c1.2.2 2.3 1 2.8 2.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
     </svg>
   ),
-  pen: (
-    <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
-      <path d="M11 2.5l2.5 2.5L6 12.5H3.5V10L11 2.5z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
-      <path d="M3.5 14h9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-    </svg>
-  ),
   house: (
     <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
       <path d="M2.5 13.5V5.8L8 2l5.5 3.8v7.7M2.5 13.5h11M6 13.5V9.8h4v3.7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  ),
-  link: (
-    <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
-      <path d="M6.5 9.5l3-3M5 11l-1.2 1.2a2.5 2.5 0 01-3.5-3.5L2.5 7M11 5l1.2-1.2a2.5 2.5 0 013.5 3.5L13.5 9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-    </svg>
-  ),
-  shield: (
-    <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
-      <path d="M8 1.8l6 2.4v4.2c0 3.6-2.4 6.3-6 7.8-3.6-1.5-6-4.2-6-7.8V4.2l6-2.4z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
     </svg>
   ),
   journal: (

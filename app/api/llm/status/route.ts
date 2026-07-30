@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { generateText } from "ai";
-import { createClient } from "@/lib/supabase/server";
+import { getCurrentAuthContext } from "@/lib/auth/context";
 import {
   getModel,
   getModelForTask,
@@ -16,17 +16,9 @@ import { researchProvider } from "@/lib/research/provider";
 import { openAiSearchConfigured } from "@/lib/research/openai-search";
 
 async function requireMember() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { user, membership } = await getCurrentAuthContext();
   if (!user) return null;
-  const { data: membership } = await supabase
-    .from("memberships")
-    .select("role")
-    .limit(1)
-    .maybeSingle();
-  return membership ? { user, role: membership.role as string } : null;
+  return membership ? { user, role: membership.role } : null;
 }
 
 /** Configuration LLM (specs + présence des clés) — aucun appel facturé. */

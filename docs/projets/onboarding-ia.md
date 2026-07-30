@@ -1,6 +1,6 @@
 # Projet — Onboarding enrichi par IA (identité + première expertise)
 
-> **Statut** : cadré, non commencé. Idée de Fathi (2026-07-23).
+> **Statut** : étapes 1 à 3 livrées ; réseaux sociaux en backlog. État consolidé au 2026-07-29.
 > **Cible** : le **solopreneur** (seul, pas d'équipe).
 
 ## Pourquoi

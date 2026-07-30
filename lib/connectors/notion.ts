@@ -1,4 +1,5 @@
 import type { FieldMapping, NormalizedProspect } from "./common";
+import { normalizeContactDate } from "./date-rules.ts";
 
 /** Notion — OAuth intégration publique + lecture d'une base contacts. */
 
@@ -9,6 +10,8 @@ export interface NotionCreds {
 
 const NOTION = "https://api.notion.com/v1";
 const VERSION = "2022-06-28";
+const REQUEST_TIMEOUT_MS = 30_000;
+const MAX_DATABASE_PAGES = 50;
 
 export function notionAuthUrl(redirectUri: string, state: string): string {
   const p = new URLSearchParams({
@@ -30,6 +33,7 @@ export async function notionExchangeCode(
   ).toString("base64");
   const res = await fetch(`${NOTION}/oauth/token`, {
     method: "POST",
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     headers: {
       Authorization: `Basic ${basic}`,
       "Content-Type": "application/json",
@@ -61,6 +65,7 @@ export async function notionListDatabases(
 ): Promise<{ id: string; title: string }[]> {
   const res = await fetch(`${NOTION}/search`, {
     method: "POST",
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     headers: headers(token),
     body: JSON.stringify({
       filter: { property: "object", value: "database" },
@@ -86,6 +91,7 @@ type NotionProp = {
   email?: string | null;
   select?: { name?: string } | null;
   status?: { name?: string } | null;
+  date?: { start?: string | null } | null;
 };
 
 const plain = (arr?: { plain_text?: string }[]) =>
@@ -105,6 +111,8 @@ function readProp(prop?: NotionProp): string | null {
       return prop.select?.name ?? null;
     case "status":
       return prop.status?.name ?? null;
+    case "date":
+      return prop.date?.start ?? null;
     default:
       return null;
   }
@@ -122,6 +130,7 @@ export async function listNotionProperties(
 ): Promise<NotionProperty[]> {
   const res = await fetch(`${NOTION}/databases/${databaseId}`, {
     headers: headers(token),
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   });
   if (!res.ok) throw new Error(`Notion database: ${res.status}`);
   const d = (await res.json()) as {
@@ -147,6 +156,12 @@ export function autoDetectNotionMapping(props: NotionProperty[]): FieldMapping {
       byType("status") ??
       byKey(/statut|status|stage|[ée]tape/i, ["select", "status"]),
     notes: byKey(/notes?|remarque|commentaire|comment/i, ["rich_text", "select"]),
+    last_contact_at:
+      byKey(
+        /dernier.*contact|derni[eè]re.*relance|last.*contact|relance/i,
+        ["date", "rich_text"],
+      ) ??
+      byType("date"),
   };
 }
 
@@ -155,16 +170,40 @@ export async function fetchNotionProspects(
   databaseId: string,
   mapping?: FieldMapping,
 ): Promise<NormalizedProspect[]> {
-  const res = await fetch(`${NOTION}/databases/${databaseId}/query`, {
-    method: "POST",
-    headers: headers(token),
-    body: JSON.stringify({ page_size: 100 }),
-  });
-  if (!res.ok) throw new Error(`Notion query: ${res.status}`);
-  const d = (await res.json()) as {
+  type NotionPage = {
     results?: { id: string; properties?: Record<string, NotionProp> }[];
+    has_more?: boolean;
+    next_cursor?: string | null;
   };
-  const results = d.results ?? [];
+  const results: NonNullable<NotionPage["results"]> = [];
+  let cursor: string | undefined;
+
+  for (let page = 0; page < MAX_DATABASE_PAGES; page++) {
+    const res = await fetch(`${NOTION}/databases/${databaseId}/query`, {
+      method: "POST",
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      headers: headers(token),
+      body: JSON.stringify({
+        page_size: 100,
+        ...(cursor ? { start_cursor: cursor } : {}),
+      }),
+    });
+    if (!res.ok) throw new Error(`Notion query: ${res.status}`);
+    const data = (await res.json()) as NotionPage;
+    results.push(...(data.results ?? []));
+    if (!data.has_more) break;
+    if (!data.next_cursor || data.next_cursor === cursor) {
+      throw new Error("Notion query: pagination invalide");
+    }
+    cursor = data.next_cursor;
+
+    if (page === MAX_DATABASE_PAGES - 1) {
+      throw new Error(
+        `Notion query: plus de ${MAX_DATABASE_PAGES * 100} lignes, synchronisation interrompue`,
+      );
+    }
+  }
+
   if (results.length === 0) return [];
 
   const schema: NotionProperty[] = Object.entries(
@@ -183,6 +222,7 @@ export async function fetchNotionProspects(
       company: val(map.company),
       stage: val(map.stage),
       notes: val(map.notes),
+      last_contact_at: normalizeContactDate(val(map.last_contact_at)),
       raw: props as Record<string, unknown>,
     };
   });

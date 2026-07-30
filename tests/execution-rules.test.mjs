@@ -5,10 +5,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  classifyExecutionClaimFailure,
   guardExecution,
   planRecipients,
   dedupeByEmail,
   dedupeContacts,
+  normalizedEmailKey,
+  readExecutionClaim,
   MAX_PER_RUN,
   MAX_PER_DAY,
 } from "../lib/execution-rules.ts";
@@ -53,6 +56,72 @@ test("guardExecution — autonomie 'suggest' bloque l'exécution (proposer seule
 test("guardExecution — la pause prime sur l'autonomie", () => {
   const r = guardExecution({ status: "approved", paused: true, autonomy: "suggest" });
   assert.equal(r.reason, "blocked_paused");
+});
+
+test("claim atomique — le perdant échoue fermé et distingue la reprise", () => {
+  assert.equal(
+    classifyExecutionClaimFailure({ exists: false }),
+    "not_found",
+  );
+  assert.equal(
+    classifyExecutionClaimFailure({
+      exists: true,
+      status: "executed",
+      idempotencyKey: "exec:a",
+    }),
+    "already_executed",
+  );
+  assert.equal(
+    classifyExecutionClaimFailure({
+      exists: true,
+      status: "rejected",
+      idempotencyKey: null,
+    }),
+    "not_approved",
+  );
+  assert.equal(
+    classifyExecutionClaimFailure({
+      exists: true,
+      status: "approved",
+      idempotencyKey: "exec:a",
+    }),
+    "claim_held_recovery_required",
+  );
+  assert.equal(
+    classifyExecutionClaimFailure({
+      exists: true,
+      status: "approved",
+      idempotencyKey: null,
+    }),
+    "claim_conflict_retry_required",
+  );
+});
+
+test("claim RPC — valide strictement gagnant, perdant et réponse ambiguë", () => {
+  assert.deepEqual(
+    readExecutionClaim({
+      claimed: true,
+      action: { kind: "relaunch_priority", payload: { stage: "Nouveau" } },
+    }),
+    {
+      claimed: true,
+      action: { kind: "relaunch_priority", payload: { stage: "Nouveau" } },
+    },
+  );
+  assert.deepEqual(
+    readExecutionClaim({ claimed: false, reason: "blocked_paused" }),
+    { claimed: false, reason: "blocked_paused" },
+  );
+  for (const value of [
+    null,
+    [],
+    {},
+    { claimed: false },
+    { claimed: true },
+    { claimed: true, action: { kind: "" } },
+  ]) {
+    assert.equal(readExecutionClaim(value), null);
+  }
 });
 
 const mk = (n) =>
@@ -106,6 +175,12 @@ test("dedupeByEmail — une seule fois par email (casse/espaces ignorées)", () 
   const out = dedupeByEmail(rows);
   assert.equal(out.length, 2);
   assert.equal(out[0].name, "Julie (Sheets)"); // 1re occurrence gardée
+});
+
+test("normalizedEmailKey — produit une clé stable ou null", () => {
+  assert.equal(normalizedEmailKey(" JULIE@Example.COM "), "julie@example.com");
+  assert.equal(normalizedEmailKey("   "), null);
+  assert.equal(normalizedEmailKey(null), null);
 });
 
 test("dedupeByEmail — garde les lignes sans email", () => {

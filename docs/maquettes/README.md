@@ -1,10 +1,8 @@
-# Maquettes — référence design
+# Maquettes — références historiques de design
 
-Déposer ici les démos HTML autonomes (non buildées avec l'app) :
+Fichiers disponibles :
 
-- `onboarding.html` — prototype onboarding interactif
-- `nepteo-growth-cockpit-v2.html` — cockpit V2 de Charly (source des patterns)
-- `cockpit-demo.html` — démo cockpit complète (7 vues)
-- `roadmap.html` — roadmap stylée
+- `nepteo-onboarding-interactif.html` — prototype onboarding interactif
+- `nepteo-cockpit.html` — cockpit historique
 
-Elles servent de référence visuelle et fonctionnelle pour le développement. Ouvrir directement dans le navigateur.
+Ils restent utiles pour les tokens et les patterns visuels, mais ne décrivent plus exactement la navigation. La structure fonctionnelle actuelle est la navigation à cinq entrées consignée dans `docs/DECISIONS.md` ; le code de l'application fait foi pour l'état livré.

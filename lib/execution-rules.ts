@@ -32,10 +32,81 @@ export function guardExecution(input: {
   return { ok: true };
 }
 
+export type ExecutionClaimFailureReason =
+  | "not_found"
+  | "already_executed"
+  | "not_approved"
+  | "claim_held_recovery_required"
+  | "claim_conflict_retry_required";
+
+/**
+ * Explique l'échec d'un claim atomique après relecture de l'action.
+ *
+ * Un claim non nul peut appartenir à une exécution encore active comme à une
+ * exécution interrompue. Sans bail horodaté, une reprise automatique ne peut
+ * pas être prouvée sûre : on échoue donc fermé et on exige une vérification
+ * explicite du journal/de l'outbox avant toute remise à zéro.
+ */
+export function classifyExecutionClaimFailure(input: {
+  exists: boolean;
+  status?: string | null;
+  idempotencyKey?: string | null;
+}): ExecutionClaimFailureReason {
+  if (!input.exists) return "not_found";
+  if (input.status === "executed") return "already_executed";
+  if (input.status !== "approved") return "not_approved";
+  if (input.idempotencyKey) return "claim_held_recovery_required";
+  return "claim_conflict_retry_required";
+}
+
+export type ExecutionClaimResult =
+  | {
+      claimed: true;
+      action: { kind: string; payload: unknown };
+    }
+  | {
+      claimed: false;
+      reason: string;
+    };
+
+/** Valide strictement le JSON renvoyé par la RPC de claim transactionnelle. */
+export function readExecutionClaim(raw: unknown): ExecutionClaimResult | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const value = raw as Record<string, unknown>;
+
+  if (value.claimed === false) {
+    return typeof value.reason === "string" && value.reason.length > 0
+      ? { claimed: false, reason: value.reason }
+      : null;
+  }
+  if (value.claimed !== true) return null;
+  if (
+    !value.action ||
+    typeof value.action !== "object" ||
+    Array.isArray(value.action)
+  ) {
+    return null;
+  }
+
+  const action = value.action as Record<string, unknown>;
+  if (typeof action.kind !== "string" || action.kind.length === 0) return null;
+  return {
+    claimed: true,
+    action: { kind: action.kind, payload: action.payload },
+  };
+}
+
 export interface Recipient {
   id: string;
   email: string | null;
   name: string | null;
+}
+
+export function normalizedEmailKey(
+  email: string | null | undefined,
+): string | null {
+  const key = (email ?? "").trim().toLowerCase();
+  return key || null;
 }
 
 /**
@@ -50,7 +121,7 @@ export function dedupeByEmail<T extends { email: string | null }>(
   const seen = new Set<string>();
   const out: T[] = [];
   for (const r of rows) {
-    const key = (r.email ?? "").trim().toLowerCase();
+    const key = normalizedEmailKey(r.email);
     if (key && seen.has(key)) continue;
     if (key) seen.add(key);
     out.push(r);

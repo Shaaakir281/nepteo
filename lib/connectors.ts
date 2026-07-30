@@ -79,10 +79,6 @@ export const CONNECTOR_CATALOG: CatalogGroup[] = [
   },
 ];
 
-export const ALL_PROVIDERS = CONNECTOR_CATALOG.flatMap((g) =>
-  g.tools.map((t) => t.provider),
-);
-
 export function findTool(provider: string): CatalogTool | undefined {
   for (const g of CONNECTOR_CATALOG) {
     const t = g.tools.find((x) => x.provider === provider);

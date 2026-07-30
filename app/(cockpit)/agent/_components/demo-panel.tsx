@@ -35,7 +35,13 @@ const STEP_MS = 700;
  */
 function failureMessage(id: string, reason?: string): string {
   if (reason === "forbidden") {
-    return "Action refusée : votre session a peut-être expiré, ou votre rôle ne permet pas cette action. Reconnectez-vous, puis réessayez.";
+    return "Action refusée : le mode démonstration est réservé aux administrateurs.";
+  }
+  if (reason === "unsafe_existing_data") {
+    return "Chargement refusé pour protéger vos données existantes. Utilisez une organisation de test vide.";
+  }
+  if (reason === "busy") {
+    return "Une autre opération de démonstration est en cours. Attendez sa fin, puis réessayez.";
   }
   return id === "clear"
     ? "Le retrait n'a pas abouti — des données de démonstration sont peut-être encore là, et votre fiche entreprise n'a pas été restaurée. Réessayez."
@@ -44,10 +50,10 @@ function failureMessage(id: string, reason?: string): string {
 
 export function DemoPanel({
   scenarios,
-  canEdit,
+  canManageDemo,
 }: {
   scenarios: ScenarioChoice[];
-  canEdit: boolean;
+  canManageDemo: boolean;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
@@ -106,10 +112,11 @@ export function DemoPanel({
     }
   }
 
-  if (!canEdit) {
+  if (!canManageDemo) {
     return (
       <p className="text-[13px] text-muted">
-        Votre rôle ne permet pas de charger des données de démonstration.
+        Le chargement et le retrait des données de démonstration sont réservés
+        aux administrateurs.
       </p>
     );
   }
@@ -118,7 +125,8 @@ export function DemoPanel({
     <div>
       <p className="mb-3 rounded-[10px] bg-tint-soft px-3.5 py-2.5 text-[12.5px] leading-relaxed text-body">
         Votre fiche entreprise sera remplacée le temps de la démonstration, puis
-        restaurée quand vous retirerez les données.
+        restaurée quand vous retirerez les données. Le chargement est refusé si
+        l&apos;organisation contient déjà des données ou connecteurs réels.
       </p>
       <div className="grid gap-3 sm:grid-cols-3">
         {scenarios.map((s) => (
@@ -168,10 +176,9 @@ export function DemoPanel({
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-line-soft pt-3">
         <p className="max-w-xl text-[11.5px] leading-relaxed text-faint">
-          Entreprises fictives. Charger un scénario <b>remet le cockpit à zéro</b>{" "}
-          (identité, propositions, briefing, messages préparés) puis lance
-          l&apos;analyse — de quoi enchaîner les cas sans mélange. Vos prospects
-          issus de vrais connecteurs ne sont pas touchés.
+          Entreprises fictives. Utilisez une organisation de test dédiée et
+          vide. Changer de scénario retire uniquement l&apos;état marqué comme
+          démonstration, puis relance l&apos;analyse.
         </p>
         <button
           type="button"

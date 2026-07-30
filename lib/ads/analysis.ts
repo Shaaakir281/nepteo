@@ -17,14 +17,25 @@ export async function runAdsAnalysis(
   admin: Admin,
   orgId: string,
   actorId: string | null,
+  options?: {
+    campaignIdPrefix?: string;
+    demo?: boolean;
+  },
 ): Promise<number> {
   // Historique complet : on a besoin des dates pour distinguer une campagne
   // en cours d'une campagne arrêtée (qu'il serait absurde de proposer à couper).
-  const { data: rows } = await admin
+  let metricQuery = admin
     .from("ad_metrics")
     .select("campaign_id, campaign_name, date, impressions, clicks, spend, conversions, revenue")
     .eq("organization_id", orgId)
     .eq("provider", "meta_ads");
+  if (options?.campaignIdPrefix) {
+    metricQuery = metricQuery.like(
+      "campaign_id",
+      `${options.campaignIdPrefix}%`,
+    );
+  }
+  const { data: rows } = await metricQuery;
   if (!rows || rows.length === 0) return 0;
 
   const metrics = rows.map((r) => ({
@@ -58,7 +69,7 @@ export async function runAdsAnalysis(
       confidence: p.confidence,
       risk: p.risk,
       status: "proposed",
-      payload: p.payload,
+      payload: options?.demo ? { ...p.payload, demo: true } : p.payload,
     })),
   );
   if (error) throw new Error(error.message);

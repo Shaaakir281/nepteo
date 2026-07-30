@@ -3,12 +3,17 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
+import { getCurrentAuthContext } from "@/lib/auth/context";
+import { isDemoModeOrMutationActive } from "@/lib/demo/isolation";
+import {
+  DemoBusyError,
+  DemoDataMutationBlockedError,
+  withRealDataMutationLock,
+} from "@/lib/demo/lock";
 import {
   ACTIVITY_OPTIONS,
   AUDIENCE_OPTIONS,
   CHANNEL_OPTIONS,
-  EDIT_ROLES,
   MAX_OBJECTIVES,
   normalizePhilosophy,
   OBJECTIVE_OPTIONS,
@@ -23,24 +28,27 @@ function fail(message: string): never {
   redirect(`/entreprise?error=${encodeURIComponent(message)}`);
 }
 
+class MemoryMutationInputError extends Error {}
+
 /** Garde-fou serveur : session + rôle éditeur, jamais l'UI seule. */
 async function requireEditor() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { user, membership } = await getCurrentAuthContext();
   if (!user) redirect("/login");
-
-  const { data: membership } = await supabase
-    .from("memberships")
-    .select("organization_id, role")
-    .limit(1)
-    .maybeSingle();
   if (!membership) redirect("/onboarding");
-  if (!EDIT_ROLES.includes(membership.role)) {
+  if (!membership.canEdit) {
     fail("Votre rôle ne permet pas de modifier la mémoire de l'entreprise.");
   }
-  return { userId: user.id, orgId: membership.organization_id as string };
+  if (
+    await isDemoModeOrMutationActive(
+      createAdminClient(),
+      membership.organizationId,
+    )
+  ) {
+    fail(
+      "Retirez d'abord les données de démonstration avant de modifier la mémoire.",
+    );
+  }
+  return { userId: user.id, orgId: membership.organizationId };
 }
 
 /** Upsert d'une section + entrée journal, puis retour à la page. */
@@ -48,39 +56,64 @@ async function persist(
   orgId: string,
   userId: string,
   section: MemorySection,
-  content: Record<string, unknown>,
+  content:
+    | Record<string, unknown>
+    | ((
+        admin: ReturnType<typeof createAdminClient>,
+      ) => Promise<Record<string, unknown>>),
 ): Promise<never> {
   const admin = createAdminClient();
-  const { error } = await admin.from("company_memory").upsert(
-    {
-      organization_id: orgId,
-      section,
-      content,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "organization_id,section" },
-  );
-  if (error) fail("Enregistrement impossible. Réessayez dans un instant.");
+  try {
+    await withRealDataMutationLock(admin, orgId, async () => {
+      const resolved =
+        typeof content === "function" ? await content(admin) : content;
+      const { error } = await admin.from("company_memory").upsert(
+        {
+          organization_id: orgId,
+          section,
+          content: resolved,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "organization_id,section" },
+      );
+      if (error) throw new Error(error.message);
 
-  await admin.from("journal").insert({
-    organization_id: orgId,
-    event: "memory_updated",
-    actor: "user",
-    actor_id: userId,
-    payload: { section },
-  });
+      const journal = await admin.from("journal").insert({
+        organization_id: orgId,
+        event: "memory_updated",
+        actor: "user",
+        actor_id: userId,
+        payload: { section },
+      });
+      if (journal.error) throw new Error(journal.error.message);
+    });
+  } catch (error) {
+    if (error instanceof MemoryMutationInputError) fail(error.message);
+    if (error instanceof DemoDataMutationBlockedError) {
+      fail(
+        "Retirez d'abord les données de démonstration avant de modifier la mémoire.",
+      );
+    }
+    if (error instanceof DemoBusyError) {
+      fail("Une autre opération est en cours. Réessayez dans un instant.");
+    }
+    fail("Enregistrement impossible. Réessayez dans un instant.");
+  }
 
   redirect(`/entreprise?saved=${section}`);
 }
 
-async function readOffers(orgId: string): Promise<Offer[]> {
-  const admin = createAdminClient();
-  const { data } = await admin
+async function readOffers(
+  admin: ReturnType<typeof createAdminClient>,
+  orgId: string,
+): Promise<Offer[]> {
+  const { data, error } = await admin
     .from("company_memory")
     .select("content")
     .eq("organization_id", orgId)
     .eq("section", "offres")
     .maybeSingle();
+  if (error) throw new Error(error.message);
   const items = (data?.content as { items?: Offer[] } | null)?.items;
   return Array.isArray(items) ? items : [];
 }
@@ -227,23 +260,31 @@ export async function saveOffer(formData: FormData) {
     fail("Le nom de l'offre est requis (2 à 80 caractères).");
   }
 
-  const items = await readOffers(orgId);
   const rawIndex = String(formData.get("index") ?? "new");
-  if (rawIndex === "new") {
-    items.push(parsed.data);
-  } else {
-    const i = Number(rawIndex);
-    if (!Number.isInteger(i) || i < 0 || i >= items.length) fail("Offre introuvable.");
-    items[i] = parsed.data;
-  }
-  await persist(orgId, userId, "offres", { items });
+  await persist(orgId, userId, "offres", async (admin) => {
+    const items = await readOffers(admin, orgId);
+    if (rawIndex === "new") {
+      items.push(parsed.data);
+    } else {
+      const i = Number(rawIndex);
+      if (!Number.isInteger(i) || i < 0 || i >= items.length) {
+        throw new MemoryMutationInputError("Offre introuvable.");
+      }
+      items[i] = parsed.data;
+    }
+    return { items };
+  });
 }
 
 export async function deleteOffer(formData: FormData) {
   const { userId, orgId } = await requireEditor();
-  const items = await readOffers(orgId);
   const i = Number(String(formData.get("index")));
-  if (!Number.isInteger(i) || i < 0 || i >= items.length) fail("Offre introuvable.");
-  items.splice(i, 1);
-  await persist(orgId, userId, "offres", { items });
+  await persist(orgId, userId, "offres", async (admin) => {
+    const items = await readOffers(admin, orgId);
+    if (!Number.isInteger(i) || i < 0 || i >= items.length) {
+      throw new MemoryMutationInputError("Offre introuvable.");
+    }
+    items.splice(i, 1);
+    return { items };
+  });
 }

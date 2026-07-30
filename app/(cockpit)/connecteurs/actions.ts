@@ -2,9 +2,13 @@
 
 import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
+import { getCurrentAuthContext } from "@/lib/auth/context";
 import { findTool } from "@/lib/connectors";
-import { EDIT_ROLES } from "@/lib/memory";
+import {
+  DemoBusyError,
+  DemoDataMutationBlockedError,
+  withRealDataMutationLock,
+} from "@/lib/demo/lock";
 
 /** Les connecteurs sont un onglet de « Mon entreprise » depuis C4 — on y
  *  revient directement plutôt que de passer par la redirection de
@@ -21,19 +25,10 @@ function fail(message: string): never {
  * le branchement réel arrivera connecteur par connecteur.
  */
 export async function requestConnector(formData: FormData) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { user, membership } = await getCurrentAuthContext();
   if (!user) redirect("/login");
-
-  const { data: membership } = await supabase
-    .from("memberships")
-    .select("organization_id, role")
-    .limit(1)
-    .maybeSingle();
   if (!membership) redirect("/onboarding");
-  if (!EDIT_ROLES.includes(membership.role)) {
+  if (!membership.canEdit) {
     fail("Votre rôle ne permet pas de gérer les connecteurs.");
   }
 
@@ -42,25 +37,42 @@ export async function requestConnector(formData: FormData) {
   if (!tool) fail("Connecteur inconnu.");
 
   const admin = createAdminClient();
-  const { error } = await admin.from("connectors").upsert(
-    {
-      organization_id: membership.organization_id,
-      type: tool.type,
-      provider: tool.provider,
-      status: "disconnected",
-      config: { requested: true, requested_at: new Date().toISOString() },
-    },
-    { onConflict: "organization_id,provider" },
-  );
-  if (error) fail("Demande impossible. Réessayez dans un instant.");
+  try {
+    await withRealDataMutationLock(
+      admin,
+      membership.organizationId,
+      async () => {
+        const { error } = await admin.from("connectors").upsert(
+          {
+            organization_id: membership.organizationId,
+            type: tool.type,
+            provider: tool.provider,
+            status: "disconnected",
+            config: { requested: true, requested_at: new Date().toISOString() },
+          },
+          { onConflict: "organization_id,provider" },
+        );
+        if (error) throw new Error(error.message);
 
-  await admin.from("journal").insert({
-    organization_id: membership.organization_id,
-    event: "connector_requested",
-    actor: "user",
-    actor_id: user.id,
-    payload: { provider: tool.provider, name: tool.name },
-  });
+        const journal = await admin.from("journal").insert({
+          organization_id: membership.organizationId,
+          event: "connector_requested",
+          actor: "user",
+          actor_id: user.id,
+          payload: { provider: tool.provider, name: tool.name },
+        });
+        if (journal.error) throw new Error(journal.error.message);
+      },
+    );
+  } catch (error) {
+    if (error instanceof DemoDataMutationBlockedError) {
+      fail("Retirez d'abord la démonstration avant de gérer un connecteur.");
+    }
+    if (error instanceof DemoBusyError) {
+      fail("Une autre opération est en cours. Réessayez dans un instant.");
+    }
+    fail("Demande impossible. Réessayez dans un instant.");
+  }
 
   redirect(`${CONNECTORS_TAB}&saved=${tool.provider}`);
 }

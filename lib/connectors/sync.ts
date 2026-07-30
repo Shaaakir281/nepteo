@@ -8,6 +8,7 @@ import {
 } from "./google-sheets";
 import { fetchNotionProspects, type NotionCreds } from "./notion";
 import type { FieldMapping } from "./common";
+import { withRealDataMutationLock } from "@/lib/demo/lock";
 
 type Admin = ReturnType<typeof createAdminClient>;
 
@@ -32,7 +33,7 @@ export function isSyncable(c: ConnectorRow): boolean {
 }
 
 /** Sync d'un connecteur : lecture → upsert prospects → journal. Retourne le nombre lu. */
-export async function syncConnectorRow(
+async function syncConnectorRowUnlocked(
   admin: Admin,
   c: ConnectorRow,
   actor: "user" | "agent",
@@ -103,4 +104,32 @@ export async function syncConnectorRow(
   });
 
   return prospects.length;
+}
+
+/**
+ * La lecture de configuration, les appels fournisseur et toutes les écritures
+ * restent dans la même section critique. Le cron et le bouton manuel passent
+ * ainsi par exactement la même frontière anti-TOCTOU.
+ */
+export async function syncConnectorRow(
+  admin: Admin,
+  c: ConnectorRow,
+  actor: "user" | "agent",
+  actorId: string | null,
+): Promise<number> {
+  return withRealDataMutationLock(admin, c.organization_id, async () => {
+    const { data, error } = await admin
+      .from("connectors")
+      .select(CONNECTOR_SELECT)
+      .eq("organization_id", c.organization_id)
+      .eq("id", c.id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+
+    const fresh = data as ConnectorRow | null;
+    if (!fresh || !isSyncable(fresh)) {
+      throw new Error("Connecteur non connecté ou incomplet.");
+    }
+    return syncConnectorRowUnlocked(admin, fresh, actor, actorId);
+  });
 }

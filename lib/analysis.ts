@@ -17,17 +17,29 @@ export async function runAnalysis(
   admin: Admin,
   orgId: string,
   actorId: string | null,
+  options?: {
+    prospectSource?: string;
+    demo?: boolean;
+  },
 ): Promise<number> {
-  const { data: prospects } = await admin
+  let prospectQuery = admin
     .from("prospects")
-    .select("email, stage, source, company, name")
+    .select("email, stage, source, company, name, last_contact_at")
     .eq("organization_id", orgId);
+  if (options?.prospectSource) {
+    prospectQuery = prospectQuery.eq("source", options.prospectSource);
+  }
+  const { data: prospects } = await prospectQuery;
 
   // Briefing rafraîchi à chaque analyse (insight lecture seule), même si aucune
   // proposition ne se déclenche ensuite.
-  await refreshBriefing(admin, orgId, actorId);
+  await refreshBriefing(admin, orgId, actorId, {
+    prospectSource: options?.prospectSource,
+    demo: options?.demo,
+  });
 
-  const findings = buildFindings((prospects ?? []) as RuleProspect[]);
+  const today = new Date().toISOString().slice(0, 10);
+  const findings = buildFindings((prospects ?? []) as RuleProspect[], today);
   if (findings.length === 0) return 0;
 
   // Dédupe : ne pas reproposer un kind déjà en file
@@ -86,7 +98,7 @@ export async function runAnalysis(
       confidence: f.confidence,
       risk: f.risk,
       status: "proposed",
-      payload: f.payload,
+      payload: options?.demo ? { ...f.payload, demo: true } : f.payload,
     })),
   );
   if (error) throw new Error(error.message);

@@ -14,6 +14,7 @@ export interface DemoProspect {
   company: string | null;
   stage: string;
   notes: string | null;
+  last_contact_at: string | null;
 }
 
 export interface DemoCampaignProfile {
@@ -125,6 +126,11 @@ export function buildDemoProspects(
     // 1 fiche sur 5 porte une note personnelle (matière à personnalisation).
     const notes = i % 5 === 2 ? pick(pool.notes, i * 13 + 5) : null;
 
+    // Le temps fait partie du scénario : contacts récents à laisser tranquilles,
+    // relances ordinaires et silences de plus de 21 jours. `null` représente une
+    // source qui ne connaît pas cette information.
+    const contactDaysAgo = [2, 10, 24, 45, null, 14][i % 6];
+
     out.push({
       external_id: `${prefix}-${String(i + 1).padStart(3, "0")}`,
       name,
@@ -132,6 +138,8 @@ export function buildDemoProspects(
       company,
       stage,
       notes,
+      last_contact_at:
+        contactDaysAgo === null ? null : isoDaysAgo(contactDaysAgo),
     });
   }
 

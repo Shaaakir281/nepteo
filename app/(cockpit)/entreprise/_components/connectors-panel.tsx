@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { icons } from "@/components/icons";
 import { CONNECTOR_CATALOG } from "@/lib/connectors";
 import { DEMO_SCENARIOS } from "@/lib/demo/scenarios";
@@ -18,21 +19,39 @@ import {
  */
 export async function ConnectorsPanel({
   canEdit,
+  canViewConnectorConfig,
+  canManageDemo,
+  orgId,
   saved,
 }: {
   canEdit: boolean;
+  canViewConnectorConfig: boolean;
+  canManageDemo: boolean;
+  orgId: string;
   saved?: string;
 }) {
-  const supabase = await createClient();
-  const { data: rows } = await supabase
-    .from("connectors")
-    .select("provider, status, config");
+  const rows = canViewConnectorConfig
+    ? (
+        await createAdminClient()
+          .from("connectors")
+          .select("provider, status, config")
+          .eq("organization_id", orgId)
+      ).data
+    : (
+        await (await createClient())
+          .from("connectors")
+          .select("provider, status")
+          .eq("organization_id", orgId)
+      ).data;
 
   const statusOf = (provider: string): ConnectorStatus => {
     const row = rows?.find((r) => r.provider === provider);
     if (!row) return "available";
     if (row.status === "connected") return "connected";
-    if ((row.config as { requested?: boolean } | null)?.requested)
+    if (
+      "config" in row &&
+      (row.config as { requested?: boolean } | null)?.requested
+    )
       return "requested";
     return "available";
   };
@@ -44,6 +63,7 @@ export async function ConnectorsPanel({
   const hasConnected = (rows ?? []).some(
     (r) => r.status === "connected" && r.provider !== DEMO_PROVIDER,
   );
+  const hasDemo = (rows ?? []).some((r) => r.provider === DEMO_PROVIDER);
 
   return (
     <>
@@ -70,7 +90,7 @@ export async function ConnectorsPanel({
           </div>
           <div className="p-[22px]">
             <DemoPanel
-              canEdit={canEdit}
+              canManageDemo={canManageDemo}
               scenarios={DEMO_SCENARIOS.map((s) => ({
                 id: s.id,
                 label: s.label,
@@ -79,6 +99,12 @@ export async function ConnectorsPanel({
             />
           </div>
         </div>
+      )}
+
+      {hasDemo && (
+        <p className="mb-4 rounded-[10px] bg-amber-tint px-4 py-2.5 text-[12.5px] text-body">
+          Retirez la démonstration avant de connecter un outil réel.
+        </p>
       )}
 
       {CONNECTOR_CATALOG.map((group) => (
@@ -95,7 +121,7 @@ export async function ConnectorsPanel({
                 key={tool.provider}
                 tool={tool}
                 status={statusOf(tool.provider)}
-                canEdit={canEdit}
+                canEdit={canEdit && !hasDemo}
                 justRequested={saved === tool.provider}
               />
             ))}

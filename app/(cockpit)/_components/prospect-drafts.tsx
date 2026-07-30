@@ -7,11 +7,7 @@ import {
   saveProspectNote,
   type TargetProspect,
 } from "../actions";
-
-interface Draft {
-  subject: string;
-  body: string;
-}
+import type { Draft } from "@/lib/draft-template";
 
 /**
  * Personnalisation par prospect (Phase 2) — liste les contacts ciblés par une

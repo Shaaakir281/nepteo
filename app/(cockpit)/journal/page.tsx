@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { getCurrentAuthContext } from "@/lib/auth/context";
 import { EVENT_LABELS, type JournalEntry } from "@/lib/journal";
 import { JournalRow } from "./_components/journal-row";
 import { PreparedOutbox } from "./_components/prepared-outbox";
@@ -35,10 +35,7 @@ export default async function JournalPage({
   const event = params.event && EVENT_LABELS[params.event] ? params.event : undefined;
   const page = Math.max(1, Number(params.page) || 1);
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getCurrentAuthContext();
   if (!user) redirect("/login");
 
   let query = supabase

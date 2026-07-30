@@ -7,6 +7,7 @@ export interface BoardProspect {
   email: string | null;
   company: string | null;
   stage: string | null;
+  last_contact_at: string | null;
 }
 
 export interface StageGroup {
@@ -44,9 +45,11 @@ function initials(p: BoardProspect): string {
 export function ProspectsBoard({
   groups,
   total,
+  today,
 }: {
   groups: StageGroup[];
   total: number;
+  today: string;
 }) {
   // Résumé de priorité, calculé sur toute la base (statut + complétude).
   const tierCounts: Record<PriorityTier, number> = {
@@ -55,7 +58,7 @@ export function ProspectsBoard({
     paused: 0,
   };
   for (const g of groups)
-    for (const p of g.prospects) tierCounts[prospectPriority(p).tier]++;
+    for (const p of g.prospects) tierCounts[prospectPriority(p, today).tier]++;
 
   return (
     <>
@@ -100,9 +103,17 @@ export function ProspectsBoard({
       <div className="flex gap-3 overflow-x-auto pb-2">
         {groups.map((g) => {
           const ordered = [...g.prospects].sort(
-            (a, b) =>
-              TIER_RANK[prospectPriority(a).tier] -
-              TIER_RANK[prospectPriority(b).tier],
+            (a, b) => {
+              const aPriority = prospectPriority(a, today);
+              const bPriority = prospectPriority(b, today);
+              const tierDiff =
+                TIER_RANK[aPriority.tier] - TIER_RANK[bPriority.tier];
+              if (tierDiff !== 0) return tierDiff;
+              return (
+                (bPriority.daysSinceContact ?? -1) -
+                (aPriority.daysSinceContact ?? -1)
+              );
+            },
           );
           return (
             <div
@@ -117,7 +128,7 @@ export function ProspectsBoard({
               </div>
               <div className="space-y-2">
                 {ordered.slice(0, CARDS_PER_COLUMN).map((p) => {
-                  const pr = prospectPriority(p);
+                  const pr = prospectPriority(p, today);
                   return (
                     <div
                       key={p.id}
@@ -144,6 +155,14 @@ export function ProspectsBoard({
                         >
                           {pr.label}
                         </span>
+                        {pr.daysSinceContact !== undefined && (
+                          <p className="mt-1 text-[10.5px] text-faint">
+                            Dernier contact{" "}
+                            {pr.daysSinceContact === 0
+                              ? "aujourd’hui"
+                              : `il y a ${pr.daysSinceContact} jour${pr.daysSinceContact > 1 ? "s" : ""}`}
+                          </p>
+                        )}
                       </div>
                     </div>
                   );
@@ -161,9 +180,10 @@ export function ProspectsBoard({
       </div>
 
       <p className="mt-3 max-w-2xl text-[11.5px] leading-relaxed text-faint">
-        « À relancer en priorité » se calcule à partir du statut et de la
-        complétude de la fiche (email, entreprise) — aucun score, uniquement vos
-        données.
+        « À relancer en priorité » se calcule à partir du statut, de la
+        complétude et, quand elle est disponible, de la date du dernier contact.
+        Aucun score : un contact de moins de 7 jours reste au repos, un silence
+        de 21 jours ou plus remonte dans la liste.
       </p>
     </>
   );

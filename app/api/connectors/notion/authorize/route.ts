@@ -1,7 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { randomUUID } from "node:crypto";
-import { getEditorContext } from "@/lib/connectors/common";
+import { getEditorContext } from "@/lib/auth/context";
 import { notionAuthUrl } from "@/lib/connectors/notion";
+import { assertConnectorFlowAllowed } from "@/lib/connectors/store";
 
 export async function GET(request: NextRequest) {
   const ctx = await getEditorContext();
@@ -10,6 +11,16 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(
       new URL(
         `/entreprise?onglet=connecteurs&error=${encodeURIComponent("Rôle insuffisant.")}`,
+        request.url,
+      ),
+    );
+  }
+  try {
+    await assertConnectorFlowAllowed(ctx.orgId);
+  } catch {
+    return NextResponse.redirect(
+      new URL(
+        `/entreprise?onglet=connecteurs&error=${encodeURIComponent("Connexion indisponible pendant la démonstration ou une opération en cours.")}`,
         request.url,
       ),
     );

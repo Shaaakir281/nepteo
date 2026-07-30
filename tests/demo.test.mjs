@@ -86,6 +86,13 @@ test("prospects — défauts volontaires présents (matière pour l'agent)", () 
   const avecNotes = list.filter((p) => p.notes);
   assert.ok(avecNotes.length >= 3, "des notes pour la personnalisation");
 
+  const dates = list.map((p) => p.last_contact_at).filter(Boolean);
+  assert.ok(dates.length >= 12, "des dates de dernier contact pour prioriser");
+  assert.ok(
+    list.some((p) => p.last_contact_at === null),
+    "certaines sources ne connaissent pas le dernier contact",
+  );
+
   const emails = list.map((p) => p.email).filter(Boolean);
   assert.ok(
     new Set(emails).size < emails.length,

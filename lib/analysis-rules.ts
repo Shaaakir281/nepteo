@@ -11,6 +11,7 @@ export interface RuleProspect {
   source: string | null;
   company: string | null;
   name: string | null;
+  last_contact_at?: string | null;
 }
 
 export interface Finding {
@@ -39,16 +40,141 @@ export interface ProspectPriority {
   tier: PriorityTier;
   label: string;
   reason: string;
+  daysSinceContact?: number;
 }
+
+export const RECENT_CONTACT_DAYS = 7;
+export const STALE_CONTACT_DAYS = 21;
+export const DORMANT_COHORT_LIMIT = 50;
+export const DORMANT_SILENCE_THRESHOLDS = [30, 45] as const;
+export type DormantSilenceDays =
+  (typeof DORMANT_SILENCE_THRESHOLDS)[number];
+const DAY_MS = 86_400_000;
 
 /** Statuts terminaux (gagné / client / perdu / désabonné…), normalisés sans accents. */
 const TERMINAL_TOKENS = [
   "client", "gagne", "signe", "conclu", "won", "perdu", "lost",
   "desabonne", "unsubscribed", "refus", "clos", "closed", "annul", "inactif",
+  "opposition", "oppose", "ne pas contacter", "do not contact", "dnc",
+  "opt-out", "opt out", "optout",
 ];
 
 const normStage = (s: string) =>
   s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+
+/** Âge d'un dernier contact, en jours UTC. Dates invalides → information absente. */
+export function daysSinceContact(
+  lastContactAt: string | null | undefined,
+  today: string | undefined,
+): number | null {
+  if (!lastContactAt || !today) return null;
+  const last = isoDateMs(lastContactAt);
+  const now = isoDateMs(today);
+  if (last === null || now === null) return null;
+  // Une date future est incohérente pour un « dernier contact ». On la traite
+  // prudemment comme un contact du jour afin de ne pas déclencher de relance.
+  return Math.max(0, Math.floor((now - last) / DAY_MS));
+}
+
+function isoDateMs(value: string): number | null {
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const timestamp = Date.UTC(year, month - 1, day);
+  const date = new Date(timestamp);
+  if (
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month - 1 ||
+    date.getUTCDate() !== day
+  ) {
+    return null;
+  }
+  return timestamp;
+}
+
+function isDormantSilenceDays(value: unknown): value is DormantSilenceDays {
+  return value === 30 || value === 45;
+}
+
+interface DormantProspect {
+  email: string | null;
+  stage: string | null;
+  last_contact_at?: string | null;
+}
+
+function isDormantProspect(
+  prospect: DormantProspect,
+  today: string | undefined,
+  minSilenceDays: unknown,
+): boolean {
+  if (!isDormantSilenceDays(minSilenceDays)) return false;
+  if (!(prospect.email ?? "").trim()) return false;
+
+  const stage = (prospect.stage ?? "").trim();
+  if (!stage || isTerminalStage(stage)) return false;
+
+  const silenceDays = daysSinceContact(prospect.last_contact_at, today);
+  return silenceDays !== null && silenceDays >= minSilenceDays;
+}
+
+/**
+ * Sélectionne une cohorte dormante sans inventer de date ni de score.
+ *
+ * Le choix du seuil reste explicite (30 ou 45 jours). Les dates absentes,
+ * invalides ou futures ne peuvent donc jamais déclencher une relance. Le tri
+ * place les silences les plus anciens en premier et conserve l'ordre d'entrée
+ * en cas d'égalité, sans modifier le tableau fourni.
+ */
+export function selectDormantProspects<T extends DormantProspect>(
+  prospects: readonly T[],
+  today: string | undefined,
+  minSilenceDays: number,
+): T[] {
+  if (!isDormantSilenceDays(minSilenceDays) || isoDateMs(today ?? "") === null) {
+    return [];
+  }
+
+  return prospects
+    .map((prospect, inputIndex) => ({
+      prospect,
+      inputIndex,
+      lastContactMs: isoDateMs(prospect.last_contact_at ?? ""),
+    }))
+    .filter(
+      (
+        candidate,
+      ): candidate is {
+        prospect: T;
+        inputIndex: number;
+        lastContactMs: number;
+      } =>
+        candidate.lastContactMs !== null &&
+        isDormantProspect(candidate.prospect, today, minSilenceDays),
+    )
+    .sort(
+      (a, b) =>
+        a.lastContactMs - b.lastContactMs ||
+        a.inputIndex - b.inputIndex,
+    )
+    .slice(0, DORMANT_COHORT_LIMIT)
+    .map(({ prospect }) => prospect);
+}
+
+export function wasContactedRecently(
+  p: { last_contact_at?: string | null },
+  today: string | undefined,
+): boolean {
+  const days = daysSinceContact(p.last_contact_at, today);
+  return days !== null && days < RECENT_CONTACT_DAYS;
+}
+
+function contactAgeText(days: number): string {
+  if (days === 0) return "aujourd'hui";
+  if (days === 1) return "il y a 1 jour";
+  return `il y a ${days} jours`;
+}
 
 /** Un statut renseigné et non terminal = « actif » (encore dans le parcours de vente). */
 export function isTerminalStage(stage: string | null): boolean {
@@ -67,7 +193,8 @@ export function prospectPriority(p: {
   email: string | null;
   stage: string | null;
   company: string | null;
-}): ProspectPriority {
+  last_contact_at?: string | null;
+}, today?: string): ProspectPriority {
   const reachable = (p.email ?? "").trim() !== "";
   const stage = (p.stage ?? "").trim();
 
@@ -90,14 +217,73 @@ export function prospectPriority(p: {
       reason: `Statut « ${stage} » — dossier clos, pas de relance.`,
     };
 
+  const contactAge = daysSinceContact(p.last_contact_at, today);
+  if (contactAge !== null && contactAge < RECENT_CONTACT_DAYS) {
+    return {
+      tier: "paused",
+      label: "Contact récent",
+      reason: `Dernier contact ${contactAgeText(contactAge)} — aucune relance avant ${RECENT_CONTACT_DAYS} jours.`,
+      daysSinceContact: contactAge,
+    };
+  }
+
   const complete = (p.company ?? "").trim() !== "";
+  if (contactAge !== null && contactAge >= STALE_CONTACT_DAYS) {
+    return {
+      tier: "priority",
+      label: `Sans nouvelle depuis ${contactAge} jours`,
+      reason: `Joignable, statut actif « ${stage} », dernier contact ${contactAgeText(contactAge)}.`,
+      daysSinceContact: contactAge,
+    };
+  }
   return {
     tier: "priority",
     label: "À relancer en priorité",
-    reason: complete
-      ? `Joignable, statut actif « ${stage} », fiche complète.`
-      : `Joignable, statut actif « ${stage} » (entreprise à compléter).`,
+    reason:
+      contactAge !== null
+        ? `Joignable, statut actif « ${stage} », dernier contact ${contactAgeText(contactAge)}.`
+        : complete
+          ? `Joignable, statut actif « ${stage} », fiche complète.`
+          : `Joignable, statut actif « ${stage} » (entreprise à compléter).`,
+    ...(contactAge !== null ? { daysSinceContact: contactAge } : {}),
   };
+}
+
+/**
+ * Indique si un prospect appartient à la cible d'une action de relance.
+ * Cette règle pure est destinée à rester identique entre l'aperçu présenté à
+ * l'utilisateur et la préparation effective des messages.
+ */
+export function matchesRelaunchTarget(
+  kind: string,
+  payload: Record<string, unknown>,
+  prospect: {
+    email: string | null;
+    stage: string | null;
+    company: string | null;
+    last_contact_at?: string | null;
+  },
+  today?: string,
+): boolean {
+  if (kind === "relaunch_dormant") {
+    return isDormantProspect(
+      prospect,
+      today,
+      payload.min_silence_days,
+    );
+  }
+  if (kind === "relaunch_priority") {
+    return prospectPriority(prospect, today).tier === "priority";
+  }
+  if (kind.startsWith("relaunch_stage_")) {
+    // Une ancienne action par statut peut survivre à une évolution de la fiche.
+    // On revalide donc les mêmes garanties que pour `relaunch_priority` au
+    // moment de préparer la cible : joignable, statut actif et contact non récent.
+    if (prospectPriority(prospect, today).tier !== "priority") return false;
+    const stage = ((payload.stage as string | undefined) ?? "").trim();
+    return (prospect.stage ?? "").trim() === stage;
+  }
+  return false;
 }
 
 /* ---------- Statistiques de funnel (briefing, Phase 2) ----------
@@ -108,6 +294,7 @@ export interface BriefingProspect {
   email: string | null;
   stage: string | null;
   company: string | null;
+  last_contact_at?: string | null;
 }
 
 export interface FunnelStats {
@@ -118,7 +305,10 @@ export interface FunnelStats {
   topStage: { stage: string; count: number } | null;
 }
 
-export function computeFunnelStats(prospects: BriefingProspect[]): FunnelStats {
+export function computeFunnelStats(
+  prospects: BriefingProspect[],
+  today?: string,
+): FunnelStats {
   const total = prospects.length;
   let priority = 0;
   let noEmail = 0;
@@ -126,7 +316,7 @@ export function computeFunnelStats(prospects: BriefingProspect[]): FunnelStats {
   const byStage = new Map<string, number>();
 
   for (const p of prospects) {
-    if (prospectPriority(p).tier === "priority") priority++;
+    if (prospectPriority(p, today).tier === "priority") priority++;
     if (!(p.email ?? "").trim()) noEmail++;
     const s = (p.stage ?? "").trim();
     if (!s) noStage++;
@@ -144,7 +334,7 @@ export function computeFunnelStats(prospects: BriefingProspect[]): FunnelStats {
 }
 
 /** Toutes les propositions déclenchées par l'état actuel de la base. */
-export function buildFindings(all: RuleProspect[]): Finding[] {
+export function buildFindings(all: RuleProspect[], today?: string): Finding[] {
   const findings: Finding[] = [];
   const total = all.length;
   if (total === 0) return findings;
@@ -173,7 +363,18 @@ export function buildFindings(all: RuleProspect[]): Finding[] {
   const byStage = new Map<string, number>();
   for (const p of all) {
     const s = (p.stage ?? "").trim();
-    if (s) byStage.set(s, (byStage.get(s) ?? 0) + 1);
+    // Une relance proposée doit compter uniquement des prospects réellement
+    // joignables et encore actifs. Le volume brut reste traité par les règles
+    // de qualité de données, pas transformé en fausse opportunité commerciale.
+    if (
+      !(p.email ?? "").trim() ||
+      !s ||
+      isTerminalStage(s) ||
+      wasContactedRecently(p, today)
+    ) {
+      continue;
+    }
+    byStage.set(s, (byStage.get(s) ?? 0) + 1);
   }
   const top = [...byStage.entries()].sort((a, b) => b[1] - a[1])[0];
   if (top && top[1] >= 2) {
@@ -195,19 +396,36 @@ export function buildFindings(all: RuleProspect[]): Finding[] {
   // Règle 2 bis — relancer en priorité : joignables ET statut actif. Même signal
   // que le kanban (prospectPriority). Distincte de la règle 2 : pas le plus gros
   // groupe, mais les contacts les plus prêts à recontacter, tous statuts confondus.
-  const ready = all.filter((p) => prospectPriority(p).tier === "priority").length;
+  const readyProspects = all.filter(
+    (p) => prospectPriority(p, today).tier === "priority",
+  );
+  const ready = readyProspects.length;
   if (ready >= 2) {
+    const staleAges = readyProspects
+      .map((p) => daysSinceContact(p.last_contact_at, today))
+      .filter((days): days is number => days !== null && days >= STALE_CONTACT_DAYS);
+    const oldestContactDays =
+      staleAges.length > 0 ? Math.max(...staleAges) : null;
+    const staleDetail =
+      staleAges.length > 0
+        ? ` ${staleAges.length} ${staleAges.length > 1 ? "sont sans nouvelle" : "est sans nouvelle"} depuis au moins ${STALE_CONTACT_DAYS} jours${oldestContactDays ? ` (jusqu'à ${oldestContactDays} jours)` : ""}.`
+        : "";
     findings.push({
       kind: "relaunch_priority",
       title: `Relancer en priorité ${ready} prospect${plural(ready)} prêt${plural(ready)}`,
-      finding: `${ready} prospect${plural(ready)} sur ${total} ${ready > 1 ? "sont joignables" : "est joignable"} et à un statut encore actif — ${ready > 1 ? "les plus prêts" : "le plus prêt"} à être recontacté${plural(ready)}.`,
+      finding: `${ready} prospect${plural(ready)} sur ${total} ${ready > 1 ? "sont joignables" : "est joignable"} et à un statut encore actif — ${ready > 1 ? "les plus prêts" : "le plus prêt"} à être recontacté${plural(ready)}.${staleDetail}`,
       rationale:
         "Ces contacts réunissent les deux conditions d'une relance utile : une adresse valide et un statut encore ouvert. Les traiter d'abord concentre l'effort là où il peut aboutir, sans attendre de compléter le reste de la base.",
       data_sources: src,
       expected_impact: `${ready} relance${plural(ready)} adressée${plural(ready)} d'abord aux contacts les plus actionnables`,
       confidence: 0.75,
       risk: "low",
-      payload: { count: ready, total },
+      payload: {
+        count: ready,
+        total,
+        stale_count: staleAges.length,
+        oldest_contact_days: oldestContactDays,
+      },
     });
   }
 

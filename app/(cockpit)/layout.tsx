@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { getCurrentAuthContext } from "@/lib/auth/context";
 import { icons } from "@/components/icons";
 import { Sidebar } from "./_components/sidebar";
+import { MobileCockpitNav } from "./_components/nav";
 
 const ROLE_LABELS: Record<string, string> = {
   admin: "Admin",
@@ -14,22 +15,10 @@ const ROLE_LABELS: Record<string, string> = {
 export default async function CockpitLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { user, membership } = await getCurrentAuthContext();
   if (!user) redirect("/login");
-
-  const { data: membership } = await supabase
-    .from("memberships")
-    .select("role, organizations(name)")
-    .limit(1)
-    .maybeSingle();
   if (!membership) redirect("/onboarding");
 
-  const org = Array.isArray(membership.organizations)
-    ? membership.organizations[0]
-    : membership.organizations;
   const initial = (user.email ?? "?").charAt(0).toUpperCase();
   const raw = new Intl.DateTimeFormat("fr-FR", {
     weekday: "long",
@@ -41,10 +30,11 @@ export default async function CockpitLayout({
   return (
     <div className="grid min-h-screen grid-cols-[248px_1fr] max-lg:grid-cols-1">
       <Sidebar
-        orgName={org?.name ?? "Mon entreprise"}
+        orgName={membership.organizationName ?? "Mon entreprise"}
         email={user.email ?? ""}
         roleLabel={ROLE_LABELS[membership.role] ?? membership.role}
         initial={initial}
+        canViewFinancials={membership.canViewFinancials}
       />
 
       <div className="min-w-0">
@@ -63,8 +53,13 @@ export default async function CockpitLayout({
             </span>
           </div>
         </div>
-        <main className="mx-auto max-w-[1060px] px-7 py-8">{children}</main>
+        <main className="mx-auto max-w-[1060px] px-4 pb-28 pt-6 sm:px-7 sm:pt-8 lg:pb-8">
+          {children}
+        </main>
       </div>
+      <MobileCockpitNav
+        canViewFinancials={membership.canViewFinancials}
+      />
     </div>
   );
 }

@@ -1,10 +1,38 @@
 # Chantier B1 — La démonstration ne doit jamais détruire la vraie fiche
 
-> **Statut** : exécuté le 2026-07-26 (voir `docs/SUIVI.md`).
+> **Statut** : B1/B2 exécutés le 2026-07-26 ; durcissement B3 implémenté
+> localement le 2026-07-29, non déployé (voir `docs/SUIVI.md`).
 > **Origine** : ce chantier ne figure pas dans `docs/projets/roadmap-beta.md`. C'est une
 > **correction de défaut relevée à l'usage** le 2026-07-26, décidée par Fathi hors roadmap.
 > Les « Règles pour tout chantier — anti-erreurs IA » (§2 de la roadmap) s'appliquent
 > intégralement.
+
+## Extension B3 — isolation d'une organisation réelle
+
+Le mode démonstration est désormais réservé au rôle `admin` et refuse de se
+charger dans une organisation qui contient déjà un connecteur, prospect,
+campagne, vente, action, message préparé ou briefing réel. Les artefacts
+courants portent des marqueurs explicites (`demo:` ou `payload.demo`) ; les
+anciens identifiants ne sont nettoyables que lorsqu'une démo active les rend
+fiables. Un retrait sans démo active est un no-op.
+
+Chargement, retrait, analyses, propositions de campagne et mutations de données
+réelles partagent un verrou distribué `__demo_lock` typé (`demo`, `analysis`,
+`campaign`, `data`). Le token et l'identifiant de ligne empêchent une
+libération par un autre propriétaire. Après un crash, le verrou n'est jamais
+repris automatiquement : sans fencing distribué, une ligne orpheline exige une
+récupération manuelle après vérification que son propriétaire ne travaille plus.
+Les écritures de mémoire, onboarding, configuration OAuth/connecteurs et sync
+prennent `data`, contrôlent le mode démo puis lisent et écrivent sous le même
+verrou : aucune donnée réelle ne peut apparaître entre le contrôle et la
+mutation. Un ancien verrou sans type reste volontairement fail-closed. Les
+analyses en démo sont scopées aux données fictives et l'enrichissement web
+payant y est désactivé. Une sauvegarde `__demo_backup` existante est analysée
+avant tout reset/seed ; si elle est corrompue, le chargement s'arrête.
+
+Ce durcissement n'ajoute ni table ni migration. Il rend la démo adaptée à une
+organisation de test vide ; il ne transforme pas une organisation cliente
+existante en bac à sable.
 
 ---
 

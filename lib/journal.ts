@@ -19,6 +19,7 @@ export const EVENT_LABELS: Record<string, string> = {
   connector_disconnected: "Connecteur déconnecté",
   connector_sync_failed: "Synchronisation échouée",
   analysis_run: "Analyse lancée",
+  dormant_play_proposed: "Relance dormante proposée",
   action_proposed: "Action proposée",
   action_approved: "Action validée",
   action_rejected: "Action refusée",
@@ -44,6 +45,7 @@ export const EVENT_LABELS: Record<string, string> = {
   demo_scenario_loaded: "Scénario de démonstration chargé",
   demo_scenario_cleared: "Données de démonstration retirées",
   demo_scenario_clear_failed: "Retrait des données de démonstration échoué",
+  value_event_recorded: "Retour terrain enregistré",
 };
 
 const SECTION_LABELS: Record<string, string> = {

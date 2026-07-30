@@ -6,6 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { normalizePhilosophy } from "@/lib/memory";
 import { researchConfigured } from "@/lib/research/provider";
+import { resolveSingleMembership } from "@/lib/auth/membership-rules";
 
 const orgSchema = z.object({
   name: z.string().trim().min(2).max(80),
@@ -35,12 +36,21 @@ export async function createOrganization(formData: FormData) {
   // Idempotence : si une organisation existe déjà pour cet utilisateur (double
   // soumission, retour arrière), on entre dans le cockpit au lieu d'en créer
   // une seconde.
-  const { data: existing } = await admin
-    .from("memberships")
-    .select("organization_id")
-    .eq("user_id", user.id)
-    .limit(1)
-    .maybeSingle();
+  const { data: existingMemberships, error: existingMembershipError } =
+    await admin
+      .from("memberships")
+      .select("organization_id")
+      .eq("user_id", user.id)
+      .order("organization_id", { ascending: true })
+      .limit(2);
+
+  if (existingMembershipError) {
+    redirect(
+      `/onboarding?error=${encodeURIComponent("Vérification impossible. Réessaie dans un instant.")}`,
+    );
+  }
+
+  const existing = resolveSingleMembership(existingMemberships ?? []);
   if (existing) redirect("/");
 
   const { data: org, error: orgError } = await admin
@@ -64,6 +74,27 @@ export async function createOrganization(formData: FormData) {
     // bloqué sur l'onboarding à chaque tentative. On nettoie pour que réessayer
     // ait une chance d'aboutir.
     await admin.from("organizations").delete().eq("id", org.id);
+
+    // Une double soumission strictement concurrente peut avoir créé le
+    // membership dans l'autre requête entre le préflight et cet insert. La
+    // contrainte 0013 protège l'intégrité ; on traite alors la requête perdante
+    // comme idempotente au lieu d'afficher une fausse erreur.
+    if (memberError.code === "23505") {
+      const { data: concurrentMemberships, error: concurrentMembershipError } =
+        await admin
+          .from("memberships")
+          .select("organization_id")
+          .eq("user_id", user.id)
+          .order("organization_id", { ascending: true })
+          .limit(2);
+      if (
+        !concurrentMembershipError &&
+        resolveSingleMembership(concurrentMemberships ?? [])
+      ) {
+        redirect("/");
+      }
+    }
+
     redirect(
       `/onboarding?error=${encodeURIComponent("Création impossible. Réessaie dans un instant.")}`,
     );

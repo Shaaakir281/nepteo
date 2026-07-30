@@ -255,6 +255,36 @@ jobs:
 
           echo "Azure target verified: $actual_subscription_name / $AZURE_LOCATION / $RESOURCE_GROUP"
 
+      - name: Verify production database schema readiness
+        shell: bash
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          REQUIRED_SCHEMA_VERSION: "20"
+        run: |
+          set -euo pipefail
+
+          if ! schema_response="$(
+            curl --fail --silent --show-error \
+              --retry 3 --retry-delay 2 --retry-all-errors \
+              --max-time 10 \
+              --header "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+              --header "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+              --header "Accept: application/json" \
+              "$NEXT_PUBLIC_SUPABASE_URL/rest/v1/app_schema_version?id=eq.1&version=gte.$REQUIRED_SCHEMA_VERSION&select=version"
+          )"; then
+            echo "::error::Production database is unreachable or its schema readiness contract is unavailable."
+            exit 1
+          fi
+
+          if ! jq -e \
+            --argjson required "$REQUIRED_SCHEMA_VERSION" \
+            'type == "array" and length == 1 and .[0].version >= $required' \
+            > /dev/null <<< "$schema_response"; then
+            echo "::error::Production database does not satisfy the required schema version."
+            exit 1
+          fi
+
       - name: Build and push the immutable image to ACR
         shell: bash
         env:
@@ -431,7 +461,7 @@ jobs:
             --replace-env-vars "${runtime_env[@]}" \
             --output none
 
-      - name: Public smoke check
+      - name: Public liveness and readiness checks
         shell: bash
         run: |
           set -euo pipefail
@@ -450,7 +480,13 @@ jobs:
 
           curl --fail --silent --show-error \
             --retry 12 --retry-delay 5 --retry-all-errors \
+            --max-time 10 \
             "$app_url/api/health" > /dev/null
+
+          curl --fail --silent --show-error \
+            --retry 12 --retry-delay 5 --retry-all-errors \
+            --max-time 10 \
+            "$app_url/api/ready" > /dev/null
 
           {
             echo "### Azure Container Apps deployment"
@@ -459,6 +495,7 @@ jobs:
             echo "- Region: \`$AZURE_LOCATION\`"
             echo "- Revision: \`$revision\`"
             echo "- URL: $app_url"
-            echo "- Public smoke check: OK"
+            echo "- Public liveness check: OK"
+            echo "- Database/schema readiness check: OK"
             echo "- Manual product smoke test remains required (signup → confirmation → onboarding → demo → analysis → GET /api/llm/status)."
           } >> "$GITHUB_STEP_SUMMARY"

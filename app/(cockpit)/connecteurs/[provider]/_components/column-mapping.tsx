@@ -13,6 +13,7 @@ const FIELD_LABELS: Record<(typeof PROSPECT_FIELDS)[number], string> = {
   company: "Entreprise",
   stage: "Statut",
   notes: "Notes",
+  last_contact_at: "Dernier contact",
 };
 
 const SELECT =

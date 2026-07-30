@@ -1,20 +1,22 @@
 # Roadmap d'exécution — Bêta solide
 
-> **Statut** : prêt à exécuter. Issu de l'audit contradictoire du plan de simplification et de l'évaluation valeur (2026-07-25).
+> **Statut** : historique d'exécution C1–C12 et spécifications initiales. Issu de l'audit contradictoire du plan de simplification et de l'évaluation valeur (2026-07-25), amendé le 2026-07-29.
 > **Objectif n°1** : une démonstration **solide** à Charly (rien ne casse, l'écran d'accueil dit la vérité).
 > **Objectif n°2** : une bêta qui **prouve sa valeur** (l'agent envoie réellement, mesure le résultat, et le montre).
 >
 > Ce fichier remplace l'ordre du plan `simplification.md` (lots amendés par l'audit) et y ajoute les chantiers valeur. Les moteurs, conventions et non-négociables de `CLAUDE.md` restent la loi.
+>
+> **Amendement de priorité** : la [roadmap valeur — tests commanditaires](roadmap-valeur-commanditaires.md) gouverne désormais l'ordre de la phase C. Elle place la preuve manuelle C9A et le Top 5 avant tout nouveau connecteur ou C7.
 
 ---
 
 ## 0. Mode d'emploi
 
-**Un chantier = une session d'agent = au moins un commit.** Ne jamais mélanger deux chantiers dans une session.
+**Un chantier = un périmètre explicite et une validation identifiable.** Un commit peut intégrer plusieurs contributions disjointes après revue ; ne pas imposer un commit intermédiaire par agent si plusieurs agents partagent le même arbre.
 
-**Une seule session à la fois sur le repo.** Il n'y a pas de branches : deux agents en parallèle écrivent dans le même arbre de travail et se marchent dessus. Enchaîner les chantiers, ne pas les paralléliser — sauf mention « parallélisable » explicite (périmètres de fichiers disjoints), et même là, préférer la séquence si le doute existe.
+**Parallélisation limitée.** Deux travaux peuvent avancer en parallèle uniquement si leurs fichiers, migrations et contrats sont disjoints. Un intégrateur unique relit le lot complet, résout les recouvrements et exécute la validation finale. Toute mutation de l'outbox, de l'auth/RLS ou d'une même migration reste séquentielle.
 
-**Repo propre avant de lancer** : le chantier précédent est commité (le push peut attendre).
+**État du repo connu avant de lancer** : inventorier les modifications existantes, préserver celles de l'utilisateur et attribuer les fichiers avant toute écriture. Le push peut attendre.
 
 **Prompt de lancement** (à coller tel quel dans une nouvelle session, en remplaçant `CX`) :
 
@@ -85,6 +87,8 @@ Les erreurs ci-dessous ont soit déjà eu lieu sur ce repo, soit sont les plus f
 ## 3. Jalon 0 — checklist avant la démo (Fathi, à la main)
 
 À faire **avant** de lancer le moindre chantier, et à revérifier la veille de la démo :
+
+> **Note au 2026-07-29** : cette checklist décrit le jalon historique de juillet. Pour le lot actuel, la recette de référence est désormais `0012` → `0019`, `app_schema_version = 19`, puis les smokes auth/RLS/OAuth/C8 définis dans la roadmap valeur.
 
 - [ ] **Migration `0010_research.sql`** passée dans Supabase — « la seule en attente » dans les quatre entrées SUIVI du 25/07. Sans elle, si `PERPLEXITY_API_KEY` est active, l'assistant d'identité échoue **au premier contact** d'un nouveau compte.
 - [ ] Sinon : retirer `PERPLEXITY_API_KEY` de l'env de démo (la recherche se désactive proprement, l'onboarding saute l'étape).
@@ -216,11 +220,13 @@ Ordre : **C4 → C5**, C6 quand on veut. Ne rien commencer de la phase B avant l
 
 # Phase C — la valeur : une bêta qui prouve
 
-C'est ici que le produit cesse d'être une promesse. Ordre : **C7 d'abord** (tout le reste s'y branche), puis C8, puis C9/C10 ; C11 indépendant ; C12 en destination.
+C'est ici que le produit cesse d'être une promesse. **L'ordre ci-dessous est historique.** Depuis le 2026-07-29, l'ordre opérationnel est : recette du lot local → C9A preuve manuelle + Top 5 → play dormant supervisé → éventuel connecteur de contexte unique → C7 conditionnel → C9B. Voir la [roadmap valeur — tests commanditaires](roadmap-valeur-commanditaires.md).
 
 ## C7 — Étape B : l'envoi réel
 
 **Modèle : Opus 5 · Effort : 2–3 jours · LA priorité de la phase. Validation explicite de Fathi requise avant le premier envoi réel.**
+
+> **Spécification initiale partiellement supplantée.** C7 n'est plus « la priorité » automatique et l'estimation de 2–3 jours ne couvre pas les gates actuels. Le worker final doit notamment réserver le budget global et les messages atomiquement, gérer `sending | sent | failed | unknown`, réconcilier les timeouts ambigus, respecter une suppression-list et passer un self-test/allowlist. Les critères et l'effort de référence sont ceux de la roadmap valeur.
 
 **But** : une relance validée puis exécutée **part réellement**. Toute l'architecture non négociable (journal, idempotence, outbox, plafonds) s'amortit ce jour-là.
 
@@ -243,11 +249,13 @@ C'est ici que le produit cesse d'être une promesse. Ordre : **C7 d'abord** (tou
 
 **Modèle : Opus 5 · Effort : 1–2 jours · Indépendant de C7 (mais C9 veut les deux).**
 
+**Statut : implémenté localement le 2026-07-29, non déployé. La migration `0012_prospect_last_contact.sql` reste à appliquer et le parcours Sheets/Notion à recetter.**
+
 **But** : combler le trou n°1 du produit — la relance ignore **depuis quand** un prospect attend. Le temps fabrique aussi de la nouveauté : chaque semaine, des prospects franchissent les seuils, l'agent a du neuf à dire.
 
 **À faire**
 1. Migration (prochain numéro libre) : `prospects.last_contact_at date` (nullable).
-2. `FieldMapping` (`lib/connectors/common.ts`) : 5e champ optionnel « Dernier contact » — détection auto par mots-clés (« dernier contact », « relance », « date ») pour Sheets (colonne) et Notion (propriété de type date en priorité) ; parsing tolérant (ISO et `jj/mm/aaaa`), invalide ⇒ `null`, jamais d'erreur de sync. Écran de correspondance : une ligne de plus.
+2. `FieldMapping` (`lib/connectors/common.ts`) : champ optionnel « Dernier contact » — détection auto par mots-clés (« dernier contact », « relance », « date ») pour Sheets (colonne) et Notion (propriété de type date en priorité) ; parsing tolérant (ISO et `jj/mm/aaaa`), invalide ⇒ `null`, jamais d'erreur de sync. Écran de correspondance : une ligne de plus.
 3. Règles (`analysis-rules.ts`, additif) : `prospectPriority` accepte un `lastContactAt?` optionnel — nouveau motif « sans nouvelle depuis N jours » (N = 21) qui renforce la priorité, et garde-fou anti-spam : **ne pas proposer de relancer un prospect contacté il y a moins de 7 jours**. Signature existante préservée (le kanban partage cette fonction) : paramètre optionnel, comportement strictement identique quand la donnée est absente.
 4. Après C7 : chaque envoi réel met à jour `last_contact_at` du prospect (dans la même transaction logique que le passage à `sent`).
 5. UI : les cartes kanban et les propositions de relance affichent « depuis X jours » quand la donnée existe.
@@ -261,6 +269,8 @@ C'est ici que le produit cesse d'être une promesse. Ordre : **C7 d'abord** (tou
 ## C9 — Le compteur de valeur
 
 **Modèle : Sonnet 5 · Effort : 1 journée · Après C7 (la partie « € coupés » peut se faire avant).**
+
+> **Amendement C9A/C9B.** C9A passe **avant C7** et mesure les évaluations, retouches, envois manuels et résultats déclarés avec leur source explicite. C9B vient après C7 pour les statuts observés par le fournisseur. Un envoi manuel déclaré ne doit jamais faire passer un message d'outbox à `sent`.
 
 **But** : l'écran d'accueil répond à « pourquoi je paie » — *« Ce mois-ci : 12 relances envoyées, 3 réponses, ~180 € de dépense en perte coupés. »*
 
@@ -305,6 +315,8 @@ La promesse finale en une phrase : **« plus aucun prospect oublié »** — J0,
 
 # Récapitulatif — ordre et dépendances
 
+> Diagramme historique conservé pour retracer C1–C12. Il ne définit plus l'ordre de la phase C ; voir la [roadmap valeur — tests commanditaires](roadmap-valeur-commanditaires.md).
+
 ```
 Jalon 0 (checklist Fathi)
    │
@@ -324,7 +336,7 @@ Jalon 0 (checklist Fathi)
 
 **Définition de « solide » pour la démo** : build vert local, tests verts, `tsc` exit 0, migration 0010 passée, push fait, GUIDE-TEST déroulé de bout en bout par Fathi sur les trois scénarios, zéro écran cassé en parcours nominal, et aucun texte qui promet un envoi réel qui n'existe pas.
 
-**Définition de « bêta qui prouve »** (sortie de phase C) : un pilote réel branché, au moins une relance réellement envoyée et une réponse enregistrée, le compteur de valeur non nul, le brief du lundi reçu deux semaines de suite.
+**Définition initiale de « bêta qui prouve »** : un pilote réel branché, au moins une relance réellement envoyée et une réponse enregistrée, le compteur de valeur non nul, le brief du lundi reçu deux semaines de suite. **Définition actuelle** : franchir d'abord le checkpoint terrain et la décision produit de la roadmap valeur ; l'envoi fournisseur et le brief deviennent des étapes conditionnelles, pas des prérequis pour apprendre du pilote supervisé.
 
 ---
 
@@ -338,5 +350,5 @@ Jalon 0 (checklist Fathi)
 - **2026-07-26** — **C3 terminé. PHASE A TERMINÉE.** Un seul libellé à changer en réalité : `CTR` → « Taux de clic » (en-tête de tableau `/campagnes`). **`CVR` n'était affiché nulle part** — calculé par `deriveKpis`, jamais rendu ; rien renommé, rien supprimé. ROAS/CAC intacts (lexique standard). Tests **129**, `tsc` exit 0. Prochain geste : **jalon 0** (push, build, dérouler le GUIDE-TEST), puis la **démo Charly** et ses 6 décisions à fermer.
 - **2026-07-26** — **C5 terminé** (détail dans `docs/SUIVI.md`). Onglet Agent réduit à deux notions : curseur à trois crans (Propose seulement · Prépare · Envoie — ce dernier désactivé, purement visuel) + bouton d'arrêt, plafonds en note sous le curseur. « Mode démonstration » déplacé vers l'état vide de l'onglet Connecteurs ; « Envois préparés » déplacé en tête de `/journal`. Trois CTA « entreprise fictive » corrigés vers `onglet=connecteurs`. `execution-rules.ts`, `execution.ts` et `autonomy_level` (`suggest|prepare`) **non touchés**, aucune migration. Tests **136 inchangés**, `tsc` exit 0. **Phase B : reste C6** (mémoire en 3 blocs, parallélisable).
 - **2026-07-26** — **C6 terminé. PHASE B TERMINÉE.** (détail dans `docs/SUIVI.md`). Les sept lignes de `entreprise/_components/identity-card.tsx` regroupées sous trois intertitres : **Ce que je vends** (activité, zone) · **Comment je parle** (ton, philosophie) · **Ce que je fais déjà** (canaux, communication, objectifs). Un seul fichier touché, `MemGroup` local et purement visuel : **la sauvegarde reste par section** (un `<form>` par ligne, aucun formulaire fusionné) — `lib/memory.ts` et les actions non touchés, aucune migration. Écart assumé : « offres » n'est pas déplacé dans le 1er bloc (c'est `OffersCard`, une carte séparée hors périmètre) — le sous-titre du bloc y renvoie. Tests **136 inchangés**, `tsc` exit 0. **Non commité en fin de session** : `.git/index.lock` bloquait le dépôt (probable git de C5 tué) — décision de Fathi de ne pas y toucher, commande de commit dans `docs/SUIVI.md` § Reste. Prochain geste : **jalon 0 / démo Charly**, puis **C7** (envoi réel), la priorité de la phase C.
-
-
+- **2026-07-29** — **C8 implémenté localement, non déployé** pendant l'audit global. Migration `0012`, mapping Sheets/Notion, parsing de dates, seuils 7/21, affichage et déduplication datée sont couverts. Pagination Notion et timeouts connecteurs ajoutés. Vérification : **160 tests**, typecheck, lint et build verts. Prochain geste : appliquer `0012` en recette et tester les deux connecteurs ; C7 reste bloqué par les gates sécurité/exploitation et une décision explicite de Fathi.
+- **2026-07-29** — **Ordre de la phase C amendé après benchmark et audit croisé.** La roadmap valeur devient l'autorité opérationnelle : recette `0012`–`0019`, C9A + Top 5, play dormant supervisé, puis un seul connecteur Gmail ou Microsoft 365 si le manque de contexte est mesuré. C7 devient conditionnel à la preuve terrain et aux gates RGPD/outbox ; les spécifications C7/C9 ci-dessus restent conservées comme historique.

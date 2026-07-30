@@ -1,14 +1,18 @@
 import type { createAdminClient } from "@/lib/supabase/admin";
-import { prospectPriority } from "@/lib/analysis-rules";
+import {
+  matchesRelaunchTarget,
+  selectDormantProspects,
+} from "@/lib/analysis-rules";
 import { draftRelance, isRelanceKind } from "@/lib/draft";
 import { applyFirstName, type Draft } from "@/lib/draft-template";
 import { LLM_MEMORY_SECTIONS } from "@/lib/memory";
 import { readMemory } from "@/lib/memory-store";
 import {
   dedupeByEmail,
-  guardExecution,
   planRecipients,
+  readExecutionClaim,
 } from "@/lib/execution-rules";
+import { loadRelaunchProspects } from "@/lib/relaunch-prospect-loader";
 
 type Admin = ReturnType<typeof createAdminClient>;
 
@@ -21,34 +25,38 @@ export type ExecutionResult =
     }
   | { ok: false; reason: string };
 
-type ProspectRow = {
-  id: string;
-  name: string | null;
-  email: string | null;
-  company: string | null;
-  stage: string | null;
-};
-
-function isRecipient(
-  kind: string,
-  payload: Record<string, unknown>,
-  p: ProspectRow,
-): boolean {
-  if (kind === "relaunch_priority") {
-    return prospectPriority(p).tier === "priority";
-  }
-  if (kind.startsWith("relaunch_stage_")) {
-    const stage = ((payload.stage as string) ?? "").trim();
-    return (p.stage ?? "").trim() === stage;
-  }
-  return false;
-}
-
 /** Début du jour (UTC) — pour le plafond quotidien. */
 function startOfDayISO(): string {
   const d = new Date();
   d.setUTCHours(0, 0, 0, 0);
   return d.toISOString();
+}
+
+/** Finalise le claim et son journal de résultat dans la même transaction. */
+async function finishExecution(
+  admin: Admin,
+  orgId: string,
+  actorId: string,
+  actionId: string,
+  idempotencyKey: string,
+  outcome: "succeeded" | "failed",
+  payload: Record<string, unknown>,
+): Promise<boolean> {
+  const { data, error } = await admin.rpc("finish_action_execution", {
+    p_organization_id: orgId,
+    p_action_id: actionId,
+    p_actor_id: actorId,
+    p_idempotency_key: idempotencyKey,
+    p_outcome: outcome,
+    p_payload: payload,
+  });
+  return (
+    !error &&
+    Boolean(data) &&
+    typeof data === "object" &&
+    !Array.isArray(data) &&
+    (data as Record<string, unknown>).finished === true
+  );
 }
 
 /**
@@ -64,95 +72,160 @@ export async function executeApprovedAction(
   actorId: string | null,
   actionId: string,
 ): Promise<ExecutionResult> {
-  const { data: action } = await admin
-    .from("actions")
-    .select("id, kind, status, payload")
-    .eq("id", actionId)
-    .eq("organization_id", orgId)
-    .maybeSingle();
-  if (!action) return { ok: false, reason: "not_found" };
-  const adsPause = action.kind.startsWith("ads_pause_");
-  if (!isRelanceKind(action.kind) && !adsPause) {
-    return { ok: false, reason: "not_executable" };
-  }
+  if (!actorId) return { ok: false, reason: "actor_required" };
 
-  const { data: org } = await admin
-    .from("organizations")
-    .select("execution_paused, autonomy_level")
-    .eq("id", orgId)
-    .maybeSingle();
-
-  const guard = guardExecution({
-    status: action.status,
-    paused: Boolean(org?.execution_paused),
-    autonomy: (org?.autonomy_level as string | undefined) ?? "prepare",
-  });
-  if (!guard.ok) {
-    await admin.from("journal").insert({
-      organization_id: orgId,
-      action_id: actionId,
-      event: "execution_blocked",
-      actor: "user",
-      actor_id: actorId,
-      payload: { reason: guard.reason },
-    });
-    return { ok: false, reason: guard.reason };
-  }
-
-  // Idempotence + journal AVANT toute préparation (non négociable).
+  // La RPC verrouille l'organisation, vérifie pause + autonomie, revendique
+  // l'action et journalise le départ dans une seule transaction.
   const idem = `exec:${actionId}`;
-  await admin.from("actions").update({ idempotency_key: idem }).eq("id", actionId);
-  await admin.from("journal").insert({
-    organization_id: orgId,
-    action_id: actionId,
-    event: "execution_started",
-    actor: "user",
-    actor_id: actorId,
-    payload: { idempotency_key: idem },
-  });
+  const { data: claimData, error: claimError } = await admin.rpc(
+    "claim_action_execution",
+    {
+      p_organization_id: orgId,
+      p_action_id: actionId,
+      p_actor_id: actorId,
+      p_idempotency_key: idem,
+    },
+  );
+
+  if (claimError) {
+    return { ok: false, reason: "claim_failed_recovery_required" };
+  }
+  const claim = readExecutionClaim(claimData);
+  if (!claim) {
+    return { ok: false, reason: "claim_state_unavailable_recovery_required" };
+  }
+  if (!claim.claimed) return { ok: false, reason: claim.reason };
 
   try {
-    const payload = (action.payload ?? {}) as Record<string, unknown>;
+    const claimedAction = claim.action;
+    const adsPause = claimedAction.kind.startsWith("ads_pause_");
+    if (!isRelanceKind(claimedAction.kind) && !adsPause) {
+      return { ok: false, reason: "not_executable" };
+    }
+    const payload = (claimedAction.payload ?? {}) as Record<string, unknown>;
 
     // Action ads (couper une campagne) — mode sûr : on ENREGISTRE le changement
     // voulu (journalisé), AUCUN appel externe. L'API Meta réelle viendra ici.
     if (adsPause) {
-      await admin.from("actions").update({ status: "executed" }).eq("id", actionId);
-      await admin.from("journal").insert({
-        organization_id: orgId,
-        action_id: actionId,
-        event: "execution_succeeded",
-        actor: "user",
-        actor_id: actorId,
-        payload: {
+      const finished = await finishExecution(
+        admin,
+        orgId,
+        actorId,
+        actionId,
+        idem,
+        "succeeded",
+        {
           intended: "pause_campaign",
           campaign_name: payload.campaign_name ?? null,
           provider: payload.provider ?? "meta_ads",
           note: "mode sûr — changement préparé, non appliqué",
         },
-      });
+      );
+      if (!finished) {
+        return {
+          ok: false,
+          reason: "execution_finalize_failed_recovery_required",
+        };
+      }
       return { ok: true, prepared: 1, skippedNoEmail: 0, capped: false };
     }
 
-    const { data: rows } = await admin
-      .from("prospects")
-      .select("id, name, email, company, stage")
-      .eq("organization_id", orgId);
-    // Dédup par email : deux connecteurs sur la même base ne doublent pas l'envoi.
-    const targeted = dedupeByEmail(
-      ((rows ?? []) as ProspectRow[]).filter((p) =>
-        isRecipient(action.kind, payload, p),
-      ),
+    const loadedProspects = await loadRelaunchProspects(
+      admin,
+      orgId,
+      payload.demo === true,
     );
+    if (!loadedProspects.ok) {
+      return {
+        ok: false,
+        reason:
+          loadedProspects.reason === "base_too_large"
+            ? "prospects_base_too_large_recovery_required"
+            : "prospects_read_failed_recovery_required",
+      };
+    }
+    const today = new Date().toISOString().slice(0, 10);
+    // Le snapshot doit être appliqué avant le cap et la déduplication.
+    let currentCohortRows = loadedProspects.prospects;
 
-    const { count: sentToday } = await admin
+    // Depuis 0020, l'approbation fige la cohorte. L'exécution préparatoire ne
+    // peut viser que son intersection avec les faits encore sûrs aujourd'hui :
+    // ni dérive vers un nouveau prospect, ni contournement d'un statut terminal.
+    const { data: targetSnapshot, error: targetSnapshotError } = await admin
+      .from("action_target_snapshots")
+      .select("action_id")
+      .eq("organization_id", orgId)
+      .eq("action_id", actionId)
+      .maybeSingle();
+    if (targetSnapshotError) {
+      return {
+        ok: false,
+        reason: "target_snapshot_read_failed_recovery_required",
+      };
+    }
+    if (!targetSnapshot && claimedAction.kind === "relaunch_dormant") {
+      return {
+        ok: false,
+        reason: "target_snapshot_missing_recovery_required",
+      };
+    }
+
+    if (targetSnapshot) {
+      const { data: targetMembers, error: targetMembersError } = await admin
+        .from("action_target_snapshot_members")
+        .select("prospect_id")
+        .eq("organization_id", orgId)
+        .eq("action_id", actionId)
+        .limit(50);
+      if (targetMembersError || !targetMembers) {
+        return {
+          ok: false,
+          reason: "target_snapshot_members_read_failed_recovery_required",
+        };
+      }
+      const memberIds = new Set(
+        targetMembers.map((member) => member.prospect_id as string),
+      );
+      currentCohortRows = currentCohortRows.filter((prospect) =>
+        memberIds.has(prospect.id),
+      );
+    }
+
+    // Dans la cohorte validée, garder la fiche au contact le plus récent évite
+    // qu'un doublon ancien contourne les garde-fous temporels.
+    const uniqueCurrentContacts = dedupeByEmail(currentCohortRows);
+    const targeted =
+      claimedAction.kind === "relaunch_dormant"
+        ? selectDormantProspects(
+            uniqueCurrentContacts,
+            today,
+            typeof payload.min_silence_days === "number"
+              ? payload.min_silence_days
+              : Number.NaN,
+          )
+        : uniqueCurrentContacts.filter((prospect) =>
+            matchesRelaunchTarget(
+              claimedAction.kind,
+              payload,
+              prospect,
+              today,
+            ),
+          );
+
+    const { count: sentToday, error: countError } = await admin
       .from("outbox_messages")
       .select("id", { count: "exact", head: true })
       .eq("organization_id", orgId)
       .gte("created_at", startOfDayISO());
+    if (countError || sentToday === null) {
+      return {
+        ok: false,
+        reason: "outbox_count_failed_recovery_required",
+      };
+    }
 
     const { recipients, skippedNoEmail, capped } = planRecipients(targeted, {
-      sentToday: sentToday ?? 0,
+      sentToday,
     });
 
     // Brouillon de base (groupe) : réutilisé, généré une fois si absent.
@@ -193,27 +266,43 @@ export async function executeApprovedAction(
       if (error) throw new Error(error.message);
     }
 
-    await admin.from("actions").update({ status: "executed" }).eq("id", actionId);
-    await admin.from("journal").insert({
-      organization_id: orgId,
-      action_id: actionId,
-      event: "execution_succeeded",
-      actor: "user",
-      actor_id: actorId,
-      payload: { prepared: messages.length, skipped_no_email: skippedNoEmail, capped },
-    });
+    const finished = await finishExecution(
+      admin,
+      orgId,
+      actorId,
+      actionId,
+      idem,
+      "succeeded",
+      {
+        prepared: messages.length,
+        skipped_no_email: skippedNoEmail,
+        capped,
+      },
+    );
+    if (!finished) {
+      return {
+        ok: false,
+        reason: "execution_finalize_failed_recovery_required",
+      };
+    }
 
     return { ok: true, prepared: messages.length, skippedNoEmail, capped };
   } catch (e) {
-    await admin.from("actions").update({ status: "failed" }).eq("id", actionId);
-    await admin.from("journal").insert({
-      organization_id: orgId,
-      action_id: actionId,
-      event: "execution_failed",
-      actor: "user",
-      actor_id: actorId,
-      payload: { message: e instanceof Error ? e.message : String(e) },
-    });
+    const failureRecorded = await finishExecution(
+      admin,
+      orgId,
+      actorId,
+      actionId,
+      idem,
+      "failed",
+      { message: e instanceof Error ? e.message : String(e) },
+    );
+    if (!failureRecorded) {
+      return {
+        ok: false,
+        reason: "execution_failure_record_failed_recovery_required",
+      };
+    }
     return { ok: false, reason: "execution_failed" };
   }
 }

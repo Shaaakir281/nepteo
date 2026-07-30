@@ -1,6 +1,6 @@
 import { icons } from "@/components/icons";
 import { logout } from "@/app/(auth)/actions";
-import { CockpitNav, type NavItem } from "./nav";
+import { CockpitNav } from "./nav";
 
 /**
  * Cinq entrées, pas neuf. « Plan du mois » a rejoint Aujourd'hui (bandeau de
@@ -9,24 +9,18 @@ import { CockpitNav, type NavItem } from "./nav";
  * mois et depuis Campagnes — plus une entrée de menu. Toutes les anciennes
  * URLs redirigent. Voir docs/DECISIONS.md (ADR « navigation à cinq entrées »).
  */
-const NAV: NavItem[] = [
-  { label: "Aujourd'hui", href: "/", icon: icons.star },
-  { label: "Prospects", href: "/prospects", icon: icons.people },
-  { label: "Campagnes", href: "/campagnes", icon: icons.send },
-  { label: "Mon entreprise", href: "/entreprise", icon: icons.house },
-  { label: "Journal", href: "/journal", icon: icons.journal },
-];
-
 export function Sidebar({
   orgName,
   email,
   roleLabel,
   initial,
+  canViewFinancials,
 }: {
   orgName: string;
   email: string;
   roleLabel: string;
   initial: string;
+  canViewFinancials: boolean;
 }) {
   return (
     <aside className="sticky top-0 flex h-screen flex-col overflow-y-auto border-r border-line-soft bg-white max-lg:hidden">
@@ -41,7 +35,7 @@ export function Sidebar({
       </div>
 
       <div className="pt-2" />
-      <CockpitNav items={NAV} />
+      <CockpitNav canViewFinancials={canViewFinancials} />
 
       <div className="min-h-4 flex-1" />
 

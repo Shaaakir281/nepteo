@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { getCurrentAuthContext } from "@/lib/auth/context";
 import { PHILOSOPHY_MAX } from "@/lib/memory";
 import { logout } from "@/app/(auth)/actions";
 import { createOrganization } from "./actions";
@@ -13,18 +13,8 @@ export default async function OnboardingPage({
   searchParams: Promise<{ error?: string }>;
 }) {
   const { error } = await searchParams;
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { user, membership } = await getCurrentAuthContext();
   if (!user) redirect("/login");
-
-  const { data: membership } = await supabase
-    .from("memberships")
-    .select("organization_id")
-    .limit(1)
-    .maybeSingle();
   if (membership) redirect("/");
 
   return (

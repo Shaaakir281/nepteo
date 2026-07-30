@@ -26,7 +26,7 @@ export const RESEARCH_PRESETS: Record<ResearchKind, ResearchPreset> = {
   prospect_company: "fast",
 };
 
-/** Garde-fou serveur : plafond de recherches facturées par organisation et par jour. */
+/** Plafond atomique des appels facturés par organisation et par jour UTC. */
 export const MAX_RESEARCH_PER_DAY = 30;
 
 /** Une réponse ne retient qu'une poignée de sources — au-delà c'est illisible. */
@@ -143,25 +143,54 @@ export function buildProspectCompanyQuery(input: {
 
 export type ResearchGuard =
   | { ok: true }
-  | { ok: false; reason: "no_key" | "paused" | "daily_cap" | "no_subject" };
+  | { ok: false; reason: "no_key" | "no_subject" };
 
 /**
- * Garde-fous serveur, dans l'ordre de priorité : pas de clé > bouton d'arrêt >
- * sujet vide > plafond quotidien. Jamais uniquement en UI (cf. CLAUDE.md).
+ * Garde-fous serveur sans accès aux données : clé puis sujet. Pause et plafond
+ * sont décidés ensemble par la réservation PostgreSQL, sous verrou organisation.
  */
 export function guardResearch(input: {
   hasKey: boolean;
-  paused: boolean;
   subject: string;
-  usedToday: number;
-  maxPerDay?: number;
 }): ResearchGuard {
   if (!input.hasKey) return { ok: false, reason: "no_key" };
-  if (input.paused) return { ok: false, reason: "paused" };
   if (!subjectKey(input.subject)) return { ok: false, reason: "no_subject" };
-  const max = input.maxPerDay ?? MAX_RESEARCH_PER_DAY;
-  if (input.usedToday >= max) return { ok: false, reason: "daily_cap" };
   return { ok: true };
+}
+
+export type ResearchQuotaReservation =
+  | { allowed: true; reason: null; used: number }
+  | {
+      allowed: false;
+      reason: "paused" | "daily_cap";
+      used: number;
+    };
+
+/** Valide la réponse JSON de la RPC avant d'autoriser une dépense externe. */
+export function readQuotaReservation(
+  raw: unknown,
+): ResearchQuotaReservation | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const value = raw as Record<string, unknown>;
+  if (typeof value.allowed !== "boolean") return null;
+  if (typeof value.used !== "number" || !Number.isInteger(value.used)) {
+    return null;
+  }
+  if (value.allowed) {
+    if (value.reason !== null || value.used < 1) return null;
+    return { allowed: true, reason: null, used: value.used };
+  }
+  if (
+    (value.reason !== "paused" && value.reason !== "daily_cap") ||
+    value.used < 0
+  ) {
+    return null;
+  }
+  return {
+    allowed: false,
+    reason: value.reason,
+    used: value.used,
+  };
 }
 
 /** Une entrée de cache est-elle encore valable ? (dates invalides = périmée) */
