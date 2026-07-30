@@ -123,5 +123,3 @@ export function philosophyBlock(ctx: Record<string, unknown>): string {
     `et ce qu'elle refuse de promettre :\n${text}\n\n`
   );
 }
-
-export const EDIT_ROLES = ["admin", "marketing", "direction"];

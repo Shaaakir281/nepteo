@@ -1,7 +1,7 @@
 # Chantier R1 — La recherche web sans compte Perplexity
 
-> **Statut** : cadré, prêt à exécuter. Aucun code écrit.
-> **Origine** : décision de Fathi (2026-07-26) — la clé OpenAI est déjà active, le compte Perplexity API reste à créer. La recherche web est aujourd'hui **désactivée** en pratique (`PERPLEXITY_API_KEY` absente), ce qui éteint le 2e écran d'onboarding — le premier « waouh » du parcours.
+> **Statut** : R1 livré le 2026-07-26. OpenAI et Perplexity sont disponibles derrière le même fournisseur logique ; le modèle OpenAI interactif de production est `gpt-5.4-mini`.
+> **Origine** : décision de Fathi (2026-07-26) — rendre la recherche disponible avec la clé OpenAI existante sans supprimer Perplexity.
 > **Modèle conseillé : Opus 5.** Appel externe **facturé**, avec un risque d'emballement propre à OpenAI (voir « Pièges »). Ce n'est pas un simple adaptateur.
 > **Effort : 1 journée.** Indépendant des chantiers C1–C12 ; peut se faire avant ou après la démo. À faire **avant C7** si on veut que l'enrichissement de prospect soit démontrable.
 

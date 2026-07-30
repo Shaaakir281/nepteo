@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { getCurrentAuthContext } from "@/lib/auth/context";
 import { memoText } from "@/lib/draft-template";
 import {
   computeFunnelStats,
@@ -37,7 +37,8 @@ const CHANNEL_CLS: Record<string, string> = {
 };
 
 export async function PlanBanner() {
-  const supabase = await createClient();
+  const { supabase, membership } = await getCurrentAuthContext();
+  const canViewFinancials = membership?.canViewFinancials ?? false;
 
   const memCtx = await readMemory(supabase);
   const offre = memoText(memCtx, "offres") || memoText(memCtx, "activite");
@@ -47,13 +48,15 @@ export async function PlanBanner() {
     .select("email, stage, company");
   const stats = computeFunnelStats((prospectRows ?? []) as BriefingProspect[]);
 
-  const { data: adRows } = await supabase
-    .from("ad_metrics")
-    .select(
-      "campaign_id, campaign_name, impressions, clicks, spend, conversions, revenue",
-    )
-    .eq("provider", "meta_ads")
-    .gte("date", windowBounds().currentFrom);
+  const { data: adRows } = canViewFinancials
+    ? await supabase
+        .from("ad_metrics")
+        .select(
+          "campaign_id, campaign_name, impressions, clicks, spend, conversions, revenue",
+        )
+        .eq("provider", "meta_ads")
+        .gte("date", windowBounds().currentFrom)
+    : { data: [] };
   const campaigns = rollupByCampaign(
     (adRows ?? []).map((r) => ({
       ...r,
@@ -81,7 +84,9 @@ export async function PlanBanner() {
     year: "numeric",
   }).format(new Date());
 
-  const moves = plan.moves.slice(0, MAX_MOVES);
+  const moves = plan.moves
+    .filter((move) => canViewFinancials || move.channel !== "Publicité")
+    .slice(0, MAX_MOVES);
 
   return (
     <div className="mb-5 rounded-[18px] border border-line-soft bg-gradient-to-br from-tint-soft to-white p-5 shadow-card">
@@ -94,7 +99,7 @@ export async function PlanBanner() {
         </span>
       </div>
       <p className="text-[14px] leading-relaxed text-ink">{plan.intro}</p>
-      {plan.budgetIndicatif > 0 && (
+      {canViewFinancials && plan.budgetIndicatif > 0 && (
         <p className="mt-1.5 text-[12.5px] text-muted">
           Budget publicitaire indicatif : {plan.budgetIndicatif} € · rien
           n&apos;est engagé sans votre validation.
@@ -111,8 +116,9 @@ export async function PlanBanner() {
 
       <p className="mt-3 text-[11.5px] text-faint">
         Des conseils, pas des actions à valider : rien ne s&apos;exécute
-        d&apos;ici. Construit à partir de votre funnel, de vos campagnes et de
-        votre mémoire d&apos;entreprise.
+        d&apos;ici. Construit à partir de votre funnel
+        {canViewFinancials ? ", de vos campagnes" : ""} et de votre mémoire
+        d&apos;entreprise.
       </p>
     </div>
   );

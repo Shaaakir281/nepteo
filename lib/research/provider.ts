@@ -52,7 +52,7 @@ export type ResearchProviderResult =
 
 /**
  * Une recherche facturée, chez le fournisseur retenu. L'appelant doit avoir
- * passé les garde-fous (`guardResearch`) et écrit au journal AVANT.
+ * passé les garde-fous, réservé atomiquement le quota et écrit au journal AVANT.
  * Passer par `runResearch`, jamais directement.
  */
 export async function askResearch(args: {

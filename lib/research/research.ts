@@ -1,12 +1,10 @@
 import type { createAdminClient } from "@/lib/supabase/admin";
-import {
-  askResearch,
-  researchConfigured,
-  researchProvider,
-} from "@/lib/research/provider";
+import { askResearch, researchProvider } from "@/lib/research/provider";
 import {
   guardResearch,
   isFresh,
+  MAX_RESEARCH_PER_DAY,
+  readQuotaReservation,
   subjectKey,
   type ResearchAnswer,
   type ResearchKind,
@@ -26,15 +24,33 @@ export type ResearchResult =
   | ({ ok: true; cached: boolean } & ResearchAnswer)
   | { ok: false; reason: string };
 
-/** Début du jour (UTC) — fenêtre du plafond quotidien, comme l'exécution. */
-function startOfDayISO(): string {
-  const d = new Date();
-  d.setUTCHours(0, 0, 0, 0);
-  return d.toISOString();
-}
-
 function readSources(raw: unknown): ResearchSource[] {
   return Array.isArray(raw) ? (raw as ResearchSource[]) : [];
+}
+
+async function recordBlocked(
+  admin: Admin,
+  args: {
+    orgId: string;
+    actorId: string | null;
+    kind: ResearchKind;
+    subject: string;
+    force?: boolean;
+  },
+  reason: string,
+): Promise<void> {
+  await admin.from("journal").insert({
+    organization_id: args.orgId,
+    event: "research_blocked",
+    actor: "agent",
+    actor_id: args.actorId,
+    payload: {
+      kind: args.kind,
+      subject: args.subject,
+      reason,
+      force: Boolean(args.force),
+    },
+  });
 }
 
 /**
@@ -57,13 +73,17 @@ export async function runResearch(
 
   // 1. Cache — aucun appel, aucune dépense.
   if (key && !args.force) {
-    const { data: cached } = await admin
+    const { data: cached, error: cacheError } = await admin
       .from("research_runs")
       .select("answer, sources, status, created_at")
       .eq("organization_id", args.orgId)
       .eq("kind", args.kind)
       .eq("subject_key", key)
       .maybeSingle();
+    if (cacheError) {
+      await recordBlocked(admin, args, "cache_unavailable");
+      return { ok: false, reason: "cache_unavailable" };
+    }
     if (
       cached &&
       cached.status === "ok" &&
@@ -79,49 +99,62 @@ export async function runResearch(
     }
   }
 
-  // 2. Garde-fous serveur : clé, bouton d'arrêt, sujet, plafond du jour.
-  const { data: org } = await admin
-    .from("organizations")
-    .select("execution_paused")
-    .eq("id", args.orgId)
-    .maybeSingle();
-
-  const { count } = await admin
-    .from("research_runs")
-    .select("id", { count: "exact", head: true })
-    .eq("organization_id", args.orgId)
-    .gte("created_at", startOfDayISO());
-
+  // 2. Garde-fous purs sans dépense : fournisseur configuré et sujet.
+  const provider = researchProvider();
   const guard = guardResearch({
-    hasKey: researchConfigured(),
-    paused: Boolean(org?.execution_paused),
+    hasKey: provider !== null,
     subject: args.subject,
-    usedToday: count ?? 0,
   });
   if (!guard.ok) {
-    await admin.from("journal").insert({
-      organization_id: args.orgId,
-      event: "research_blocked",
-      actor: "agent",
-      actor_id: args.actorId,
-      payload: { kind: args.kind, subject: args.subject, reason: guard.reason },
-    });
+    await recordBlocked(admin, args, guard.reason);
     return { ok: false, reason: guard.reason };
   }
+  if (!provider) {
+    await recordBlocked(admin, args, "no_key");
+    return { ok: false, reason: "no_key" };
+  }
 
-  // 3. Journal AVANT l'appel externe (non négociable, cf. CLAUDE.md).
-  const provider = researchProvider();
-  await admin.from("journal").insert({
+  // 3. Réservation atomique AVANT l'appel. Le compteur d'usage est distinct du
+  // cache : un `force` et un échec fournisseur consomment eux aussi un créneau.
+  const { data: quotaData, error: quotaError } = await admin.rpc(
+    "reserve_research_call",
+    {
+      p_organization_id: args.orgId,
+      p_daily_limit: MAX_RESEARCH_PER_DAY,
+    },
+  );
+  const quota = readQuotaReservation(quotaData);
+  if (quotaError || !quota) {
+    await recordBlocked(admin, args, "quota_unavailable");
+    return { ok: false, reason: "quota_unavailable" };
+  }
+  if (!quota.allowed) {
+    await recordBlocked(admin, args, quota.reason);
+    return { ok: false, reason: quota.reason };
+  }
+
+  // 4. Journal AVANT l'appel externe (non négociable, cf. CLAUDE.md).
+  const { error: journalError } = await admin.from("journal").insert({
     organization_id: args.orgId,
     event: "research_started",
     actor: "agent",
     actor_id: args.actorId,
-    payload: { kind: args.kind, subject: args.subject, subject_key: key, provider },
+    payload: {
+      kind: args.kind,
+      subject: args.subject,
+      subject_key: key,
+      provider,
+      force: Boolean(args.force),
+      quota_used: quota.used,
+    },
   });
+  if (journalError) {
+    return { ok: false, reason: "journal_unavailable" };
+  }
 
   const result = await askResearch({ kind: args.kind, query: args.query });
 
-  // 4. Trace du résultat + cache (échec compris : il compte dans le plafond,
+  // 5. Trace du résultat + cache (échec compris : il compte dans le plafond,
   //    sinon une clé invalide permettrait de boucler indéfiniment).
   await admin.from("research_runs").upsert(
     {

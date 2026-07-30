@@ -1,6 +1,7 @@
 import {
   DEMO_BACKUP_SECTION,
   buildDemoBackup,
+  inspectStoredDemoBackup,
   legacyOriginalOrgName,
   parseDemoBackup,
   planMemoryRestore,
@@ -43,7 +44,13 @@ async function readMemoryRows(admin: Admin, orgId: string): Promise<MemoryRow[]>
  */
 export async function backupMemoryOnce(admin: Admin, orgId: string): Promise<void> {
   const rows = await readMemoryRows(admin, orgId);
-  if (rows.some((row) => row.section === DEMO_BACKUP_SECTION)) return;
+  const stored = inspectStoredDemoBackup(rows);
+  if (stored.state === "invalid") {
+    throw new Error(
+      "sauvegarde de la fiche entreprise illisible — chargement refusé",
+    );
+  }
+  if (stored.state === "valid") return;
 
   const { data: org, error: orgError } = await admin
     .from("organizations")

@@ -101,7 +101,15 @@ export function getModelForTask(task: LlmTask): LanguageModel {
  * n'ont plus de champ `metadata` — le regroupement se fait par `functionId`.
  */
 export function telemetryForTask(task: LlmTask) {
-  return { isEnabled: true, functionId: task };
+  return {
+    isEnabled: true,
+    functionId: task,
+    // Les prompts contiennent la mémoire d'entreprise et parfois des notes de
+    // prospects. On conserve les métriques techniques sans recopier ces données
+    // métier dans le backend d'observabilité.
+    recordInputs: false,
+    recordOutputs: false,
+  };
 }
 
 /** Présence des clés API par fournisseur (jamais les valeurs). */

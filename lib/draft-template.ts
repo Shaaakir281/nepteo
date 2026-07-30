@@ -12,7 +12,11 @@ export interface Draft {
 
 /** Types d'action « relance » qui méritent un message prêt à envoyer. */
 export function isRelanceKind(kind: string): boolean {
-  return kind === "relaunch_priority" || kind.startsWith("relaunch_stage_");
+  return (
+    kind === "relaunch_priority" ||
+    kind === "relaunch_dormant" ||
+    kind.startsWith("relaunch_stage_")
+  );
 }
 
 /** Première valeur non vide d'une section de mémoire (contenu jsonb libre). */

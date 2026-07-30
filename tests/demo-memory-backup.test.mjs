@@ -8,9 +8,11 @@
  */
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import {
   DEMO_BACKUP_SECTION,
   buildDemoBackup,
+  inspectStoredDemoBackup,
   isReservedSection,
   legacyOriginalOrgName,
   parseDemoBackup,
@@ -132,6 +134,39 @@ test("relecture — une sauvegarde illisible n'est pas restaurée à moitié", (
   assert.equal(parseDemoBackup({ v: 2, sections: {} }), null, "version inconnue");
   assert.equal(parseDemoBackup({ v: 1 }), null, "pas de sections");
   assert.equal(parseDemoBackup({ v: 1, sections: [] }), null, "sections mal formées");
+});
+
+test("chargement — distingue sauvegarde absente, valide et corrompue", () => {
+  assert.deepEqual(inspectStoredDemoBackup(realRows), { state: "absent" });
+  assert.deepEqual(
+    inspectStoredDemoBackup([
+      ...realRows,
+      { section: DEMO_BACKUP_SECTION, content: { v: 2, sections: {} } },
+    ]),
+    { state: "invalid" },
+  );
+
+  const backup = buildDemoBackup(realRows, ORG, AT);
+  assert.deepEqual(
+    inspectStoredDemoBackup([
+      { section: DEMO_BACKUP_SECTION, content: backup },
+    ]),
+    { state: "valid", backup },
+  );
+});
+
+test("contrat I/O — valide la sauvegarde existante avant de lire puis semer", async () => {
+  const source = await readFile(
+    new URL("../lib/demo/memory-backup.ts", import.meta.url),
+    "utf8",
+  );
+  const inspectAt = source.indexOf("inspectStoredDemoBackup(rows)");
+  const orgReadAt = source.indexOf('.from("organizations")', inspectAt);
+
+  assert.ok(inspectAt >= 0);
+  assert.ok(orgReadAt > inspectAt, "validation avant toute préparation du seed");
+  assert.match(source, /if \(stored\.state === "invalid"\) \{\s*throw new Error/s);
+  assert.match(source, /if \(stored\.state === "valid"\) return;/);
 });
 
 test("relecture — tolère une sauvegarde partielle sans inventer", () => {

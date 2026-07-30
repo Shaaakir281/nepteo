@@ -1,7 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { getEditorContext } from "@/lib/connectors/common";
+import { getEditorContext } from "@/lib/auth/context";
 import { notionExchangeCode } from "@/lib/connectors/notion";
-import { storeConnection } from "@/lib/connectors/store";
+import {
+  assertConnectorFlowAllowed,
+  storeConnection,
+} from "@/lib/connectors/store";
 
 export async function GET(request: NextRequest) {
   const fail = (msg: string) =>
@@ -24,6 +27,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    await assertConnectorFlowAllowed(ctx.orgId);
     const redirectUri = new URL(
       "/api/connectors/notion/callback",
       request.url,

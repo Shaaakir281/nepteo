@@ -63,8 +63,8 @@ export function resolveSearchModel(): string {
 }
 
 /**
- * Une recherche facturée. L'appelant doit avoir passé les garde-fous
- * (`guardResearch`) et écrit au journal AVANT — c'est un appel externe payant.
+ * Une recherche facturée. L'appelant doit avoir passé les garde-fous, réservé
+ * atomiquement le quota et écrit au journal AVANT — c'est un appel externe payant.
  */
 export async function askOpenAiSearch(args: {
   kind: ResearchKind;

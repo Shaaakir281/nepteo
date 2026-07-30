@@ -14,7 +14,7 @@ import {
  * Tâche LLM `draft_post`, repli déterministe. Ne lance rien.
  */
 
-function templateVariants(brief: CampaignBrief, offre: string): [string, string] {
+function templateVariants(offre: string): [string, string] {
   const o = offre || "notre offre";
   return [
     `Une PME a gagné du temps grâce à ${o}. Voici comment — et ce que ça peut changer pour vous.`,
@@ -31,7 +31,7 @@ export async function generateCampaignVariants(args: {
   const activite = memoText(args.ctx, "activite");
   const offre = memoText(args.ctx, "offres") || activite;
   const ton = memoText(args.ctx, "ton");
-  const fallback = templateVariants(args.brief, offre);
+  const fallback = templateVariants(offre);
 
   try {
     const variants = await withLlmTrace(

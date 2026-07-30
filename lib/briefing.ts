@@ -61,13 +61,22 @@ export async function refreshBriefing(
   admin: Admin,
   orgId: string,
   actorId: string | null,
+  options?: { prospectSource?: string; demo?: boolean },
 ): Promise<void> {
   try {
-    const { data: prospects } = await admin
+    let prospectQuery = admin
       .from("prospects")
-      .select("email, stage, company")
+      .select("email, stage, company, last_contact_at")
       .eq("organization_id", orgId);
-    const stats = computeFunnelStats((prospects ?? []) as BriefingProspect[]);
+    if (options?.prospectSource) {
+      prospectQuery = prospectQuery.eq("source", options.prospectSource);
+    }
+    const { data: prospects } = await prospectQuery;
+    const today = new Date().toISOString().slice(0, 10);
+    const stats = computeFunnelStats(
+      (prospects ?? []) as BriefingProspect[],
+      today,
+    );
 
     const memCtx = await readMemory(
       admin,
@@ -81,7 +90,7 @@ export async function refreshBriefing(
       {
         organization_id: orgId,
         content,
-        stats,
+        stats: options?.demo ? { ...stats, demo: true } : stats,
         created_at: new Date().toISOString(),
       },
       { onConflict: "organization_id" },

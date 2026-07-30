@@ -12,6 +12,7 @@ export interface DedupProspect {
   email: string | null;
   company: string | null;
   stage: string | null;
+  last_contact_at?: string | null;
 }
 
 const norm = (s: string | null) =>
@@ -59,6 +60,13 @@ export function dedupeByEmail<T extends DedupProspect>(rows: T[]): T[] {
       existing.name ??= p.name;
       existing.company ??= p.company;
       existing.stage ??= p.stage;
+      if (
+        p.last_contact_at &&
+        (!existing.last_contact_at ||
+          p.last_contact_at > existing.last_contact_at)
+      ) {
+        existing.last_contact_at = p.last_contact_at;
+      }
     }
   }
   return out;

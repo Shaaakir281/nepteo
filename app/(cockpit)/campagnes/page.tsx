@@ -1,7 +1,6 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { getCurrentAuthContext } from "@/lib/auth/context";
 import { redirect } from "next/navigation";
-import { EDIT_ROLES } from "@/lib/memory";
 import {
   aggregate,
   ANALYSIS_WINDOW_DAYS,
@@ -39,18 +38,11 @@ export default async function CampagnesPage({
   searchParams: Promise<{ proposed?: string }>;
 }) {
   const { proposed } = await searchParams;
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user, membership } = await getCurrentAuthContext();
   if (!user) redirect("/login");
-  const { data: membership } = await supabase
-    .from("memberships")
-    .select("role")
-    .limit(1)
-    .maybeSingle();
   if (!membership) redirect("/onboarding");
-  const canEdit = EDIT_ROLES.includes(membership.role);
+  if (!membership.canViewFinancials) redirect("/");
+  const canEdit = membership.canEdit;
 
   const { data: rows } = await supabase
     .from("ad_metrics")

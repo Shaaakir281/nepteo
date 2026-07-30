@@ -29,6 +29,7 @@ test("renderProspectContext — le contexte société est additif (absent = inch
 
 test("isRelanceKind — cible les relances, pas les autres", () => {
   assert.equal(isRelanceKind("relaunch_priority"), true);
+  assert.equal(isRelanceKind("relaunch_dormant"), true);
   assert.equal(isRelanceKind("relaunch_stage_nouveau"), true);
   assert.equal(isRelanceKind("complete_missing_emails"), false);
   assert.equal(isRelanceKind("dedupe_emails"), false);

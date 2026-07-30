@@ -54,3 +54,13 @@ test("ne mute pas l'entrée d'origine", () => {
   dedupeByEmail(rows);
   assert.equal(rows[0].company, null);
 });
+
+test("conserve le dernier contact le plus récent entre deux sources", () => {
+  const rows = [
+    { ...p("1", "Marie", "a@x.fr", "Luce", "Nouveau"), last_contact_at: "2026-06-15" },
+    { ...p("2", "Marie", "a@x.fr", "Luce", "Nouveau"), last_contact_at: "2026-07-28" },
+  ];
+  const out = dedupeByEmail(rows);
+  assert.equal(out.length, 1);
+  assert.equal(out[0].last_contact_at, "2026-07-28");
+});

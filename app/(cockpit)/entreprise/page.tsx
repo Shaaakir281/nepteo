@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
-import { EDIT_ROLES } from "@/lib/memory";
+import { getCurrentAuthContext } from "@/lib/auth/context";
 import {
   EntrepriseTabs,
   resolveTab,
@@ -27,20 +26,11 @@ export default async function EntreprisePage({
   searchParams: Promise<{ onglet?: string; saved?: string; error?: string }>;
 }) {
   const { onglet, saved, error } = await searchParams;
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { user, membership } = await getCurrentAuthContext();
   if (!user) redirect("/login");
-
-  const { data: membership } = await supabase
-    .from("memberships")
-    .select("role")
-    .limit(1)
-    .maybeSingle();
   if (!membership) redirect("/onboarding");
-  const canEdit = EDIT_ROLES.includes(membership.role);
+  const canEdit = membership.canEdit;
+  const canManageDemo = membership.role === "admin";
 
   const tab = resolveTab(onglet);
 
@@ -67,7 +57,13 @@ export default async function EntreprisePage({
 
       {tab === "identite" && <IdentityPanel canEdit={canEdit} saved={saved} />}
       {tab === "connecteurs" && (
-        <ConnectorsPanel canEdit={canEdit} saved={saved} />
+        <ConnectorsPanel
+          canEdit={canEdit}
+          canViewConnectorConfig={membership.canViewFinancials}
+          canManageDemo={canManageDemo}
+          orgId={membership.organizationId}
+          saved={saved}
+        />
       )}
       {tab === "agent" && <AgentPanel canEdit={canEdit} />}
     </>

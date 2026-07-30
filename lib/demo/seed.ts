@@ -3,13 +3,29 @@ import {
   buildDemoProspects,
   buildDemoRevenue,
 } from "@/lib/demo/demo-rules";
-import { findScenario, type DemoScenario } from "@/lib/demo/scenarios";
+import {
+  DEMO_SCENARIOS,
+  findScenario,
+  type DemoScenario,
+} from "@/lib/demo/scenarios";
 import {
   backupMemoryOnce,
   restoreLegacyOrganizationName,
   restoreMemory,
 } from "@/lib/demo/memory-backup";
 import { ensureOk, type Admin } from "@/lib/demo/db";
+import {
+  DEMO_CAMPAIGN_PREFIX,
+  DEMO_PROVIDER,
+  DEMO_REVENUE_PREFIX,
+  demoCampaignId,
+  demoRevenueId,
+  isDemoAction,
+} from "@/lib/demo/isolation-rules";
+import {
+  assertDemoLoadIsSafe,
+  readDemoModeMarkers,
+} from "@/lib/demo/isolation";
 
 /**
  * Charge un scénario de démo complet : identité, prospects, campagnes, ventes.
@@ -31,7 +47,14 @@ export interface DemoLoadResult {
 
 /** Provider réservé aux données de démo — jamais un vrai connecteur. Exporté
  *  pour que l'UI puisse l'exclure des comptages "connecteur réel branché". */
-export const DEMO_PROVIDER = "demo";
+export { DEMO_PROVIDER } from "@/lib/demo/isolation-rules";
+
+const LEGACY_CAMPAIGN_IDS = DEMO_SCENARIOS.flatMap((scenario) =>
+  scenario.campaigns.map((campaign) => campaign.id),
+);
+const LEGACY_REVENUE_PATTERNS = DEMO_SCENARIOS.map(
+  (scenario) => `${scenario.id}-sale-%`,
+);
 
 /**
  * Remet le cockpit à zéro entre deux scénarios : propositions, briefing et
@@ -41,21 +64,105 @@ export const DEMO_PROVIDER = "demo";
  * de la menuiserie en regardant l'e-commerce, ce qui n'a aucun sens et donne
  * l'impression que l'agent délire.
  */
-async function resetCockpitState(admin: Admin, orgId: string): Promise<void> {
-  const outbox = await admin
-    .from("outbox_messages")
-    .delete()
+async function resetCockpitState(
+  admin: Admin,
+  orgId: string,
+  legacy: boolean,
+): Promise<void> {
+  const { data: rows, error: readError } = await admin
+    .from("actions")
+    .select("id, payload, data_sources")
     .eq("organization_id", orgId);
-  ensureOk(outbox.error, "envois préparés");
+  ensureOk(readError, "lecture des propositions de démonstration");
 
-  const actions = await admin.from("actions").delete().eq("organization_id", orgId);
-  ensureOk(actions.error, "propositions");
+  const actionIds = (rows ?? [])
+    .filter((row) => isDemoAction(row))
+    .map((row) => row.id as string);
+  if (actionIds.length > 0) {
+    const outbox = await admin
+      .from("outbox_messages")
+      .delete()
+      .eq("organization_id", orgId)
+      .in("action_id", actionIds);
+    ensureOk(outbox.error, "envois préparés de démonstration");
 
-  const briefings = await admin
+    const actions = await admin
+      .from("actions")
+      .delete()
+      .eq("organization_id", orgId)
+      .in("id", actionIds);
+    ensureOk(actions.error, "propositions de démonstration");
+  }
+
+  const { data: briefing, error: briefingError } = await admin
     .from("briefings")
+    .select("stats")
+    .eq("organization_id", orgId)
+    .maybeSingle();
+  ensureOk(briefingError, "lecture du briefing de démonstration");
+  const stats =
+    briefing?.stats &&
+    typeof briefing.stats === "object" &&
+    !Array.isArray(briefing.stats)
+      ? (briefing.stats as Record<string, unknown>)
+      : {};
+  if (briefing && (stats.demo === true || legacy)) {
+    const deleted = await admin
+      .from("briefings")
+      .delete()
+      .eq("organization_id", orgId);
+    ensureOk(deleted.error, "briefing de démonstration");
+  }
+}
+
+async function deleteDemoCampaigns(
+  admin: Admin,
+  orgId: string,
+  legacy: boolean,
+): Promise<void> {
+  const namespaced = await admin
+    .from("ad_metrics")
     .delete()
-    .eq("organization_id", orgId);
-  ensureOk(briefings.error, "briefings");
+    .eq("organization_id", orgId)
+    .eq("provider", "meta_ads")
+    .like("campaign_id", `${DEMO_CAMPAIGN_PREFIX}%`);
+  ensureOk(namespaced.error, "campagnes de démonstration");
+
+  if (legacy) {
+    const oldRows = await admin
+      .from("ad_metrics")
+      .delete()
+      .eq("organization_id", orgId)
+      .eq("provider", "meta_ads")
+      .in("campaign_id", LEGACY_CAMPAIGN_IDS);
+    ensureOk(oldRows.error, "anciennes campagnes de démonstration");
+  }
+}
+
+async function deleteDemoRevenue(
+  admin: Admin,
+  orgId: string,
+  legacy: boolean,
+): Promise<void> {
+  const namespaced = await admin
+    .from("revenue_events")
+    .delete()
+    .eq("organization_id", orgId)
+    .eq("source", "stripe")
+    .like("external_id", `${DEMO_REVENUE_PREFIX}%`);
+  ensureOk(namespaced.error, "ventes de démonstration");
+
+  if (legacy) {
+    for (const pattern of LEGACY_REVENUE_PATTERNS) {
+      const oldRows = await admin
+        .from("revenue_events")
+        .delete()
+        .eq("organization_id", orgId)
+        .eq("source", "stripe")
+        .like("external_id", pattern);
+      ensureOk(oldRows.error, "anciennes ventes de démonstration");
+    }
+  }
 }
 
 /**
@@ -160,13 +267,14 @@ async function seedMemory(
     .eq("id", orgId);
   ensureOk(orgError, "nom de l'entreprise fictive");
 
-  await admin.from("journal").insert({
+  const journal = await admin.from("journal").insert({
     organization_id: orgId,
     event: "memory_updated",
     actor: "user",
     actor_id: userId,
     payload: { section: "demo", scenario: scenario.id },
   });
+  ensureOk(journal.error, "journal de l'identité de démonstration");
 }
 
 export async function loadDemoScenario(
@@ -177,11 +285,13 @@ export async function loadDemoScenario(
   if (!scenario) throw new Error("Scénario inconnu.");
   const { orgId, actorId } = args;
 
+  const isolation = await assertDemoLoadIsSafe(admin, orgId);
+  // Avant toute suppression : la vraie fiche est mise à l'abri. Le préflight
+  // a déjà refusé une organisation portant un état opérationnel réel.
+  await backupMemoryOnce(admin, orgId);
   // On repart d'un cockpit propre : les propositions du scénario précédent
   // parleraient de campagnes et de prospects qui n'existent plus.
-  await resetCockpitState(admin, orgId);
-  // AVANT d'écraser quoi que ce soit : la vraie fiche est mise à l'abri.
-  await backupMemoryOnce(admin, orgId);
+  await resetCockpitState(admin, orgId, isolation.legacy);
   await seedMemory(admin, orgId, actorId, scenario);
 
   // --- Prospects (sous le connecteur de démo) ---
@@ -199,6 +309,7 @@ export async function loadDemoScenario(
       company: p.company,
       stage: p.stage || null,
       notes: p.notes,
+      last_contact_at: p.last_contact_at,
       source: DEMO_PROVIDER,
       raw: { demo: true, scenario: scenario.id },
       synced_at: now,
@@ -208,17 +319,13 @@ export async function loadDemoScenario(
   if (pErr) throw new Error(pErr.message);
 
   // --- Campagnes ---
-  await admin
-    .from("ad_metrics")
-    .delete()
-    .eq("organization_id", orgId)
-    .eq("provider", "meta_ads");
+  await deleteDemoCampaigns(admin, orgId, isolation.legacy);
   const campaignRows = buildDemoCampaigns(scenario.campaigns);
   const { error: cErr } = await admin.from("ad_metrics").upsert(
     campaignRows.map((r) => ({
       organization_id: orgId,
       provider: "meta_ads",
-      campaign_id: r.campaign_id,
+      campaign_id: demoCampaignId(r.campaign_id),
       campaign_name: r.campaign_name,
       date: r.date,
       impressions: r.impressions,
@@ -233,17 +340,13 @@ export async function loadDemoScenario(
   if (cErr) throw new Error(cErr.message);
 
   // --- Ventes ---
-  await admin
-    .from("revenue_events")
-    .delete()
-    .eq("organization_id", orgId)
-    .eq("source", "stripe");
+  await deleteDemoRevenue(admin, orgId, isolation.legacy);
   const sales = buildDemoRevenue(scenario.products, scenario.id);
   const { error: rErr } = await admin.from("revenue_events").upsert(
     sales.map((s) => ({
       organization_id: orgId,
       source: "stripe",
-      external_id: s.external_id,
+      external_id: demoRevenueId(s.external_id),
       label: s.label,
       amount: s.amount,
       occurred_on: s.occurred_on,
@@ -253,7 +356,7 @@ export async function loadDemoScenario(
   );
   if (rErr) throw new Error(rErr.message);
 
-  await admin.from("journal").insert({
+  const journal = await admin.from("journal").insert({
     organization_id: orgId,
     event: "demo_scenario_loaded",
     actor: "user",
@@ -266,6 +369,7 @@ export async function loadDemoScenario(
       sales: sales.length,
     },
   });
+  ensureOk(journal.error, "journal du chargement de démonstration");
 
   return {
     scenario: scenario.id,
@@ -287,38 +391,31 @@ export async function clearDemoData(
   admin: Admin,
   args: { orgId: string; actorId: string | null },
 ): Promise<void> {
+  const markers = await readDemoModeMarkers(admin, args.orgId);
+  if (!markers.active) return;
+
   const ids = await demoConnectorIds(admin, args.orgId);
   await deleteDemoProspects(admin, ids);
-  if (ids.length > 1) {
-    const { error } = await admin.from("connectors").delete().in("id", ids.slice(1));
-    ensureOk(error, "connecteurs de démonstration en double");
+  if (ids.length > 0) {
+    const { error } = await admin.from("connectors").delete().in("id", ids);
+    ensureOk(error, "connecteurs de démonstration");
   }
 
-  const ads = await admin
-    .from("ad_metrics")
-    .delete()
-    .eq("organization_id", args.orgId)
-    .eq("provider", "meta_ads");
-  ensureOk(ads.error, "campagnes de démonstration");
+  await deleteDemoCampaigns(admin, args.orgId, markers.legacy);
+  await deleteDemoRevenue(admin, args.orgId, markers.legacy);
 
-  const revenue = await admin
-    .from("revenue_events")
-    .delete()
-    .eq("organization_id", args.orgId)
-    .eq("source", "stripe");
-  ensureOk(revenue.error, "ventes de démonstration");
-
-  await resetCockpitState(admin, args.orgId);
+  await resetCockpitState(admin, args.orgId, markers.legacy);
   const restored = await restoreMemory(admin, args.orgId);
   const legacyNameRestored = restored
     ? false
     : await restoreLegacyOrganizationName(admin, args.orgId);
 
-  await admin.from("journal").insert({
+  const journal = await admin.from("journal").insert({
     organization_id: args.orgId,
     event: "demo_scenario_cleared",
     actor: "user",
     actor_id: args.actorId,
     payload: { restored, legacy_name_restored: legacyNameRestored },
   });
+  ensureOk(journal.error, "journal du retrait de démonstration");
 }

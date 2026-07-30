@@ -3,9 +3,19 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getEditorContext } from "@/lib/connectors/common";
+import { getEditorContext } from "@/lib/auth/context";
+import { changeExecutionControl } from "@/lib/execution-controls";
 import { clearDemoData, loadDemoScenario } from "@/lib/demo/seed";
 import { DEMO_SCENARIO_IDS } from "@/lib/demo/scenarios";
+import {
+  DEMO_CAMPAIGN_PREFIX,
+  DEMO_PROVIDER,
+} from "@/lib/demo/isolation-rules";
+import { DemoIsolationError } from "@/lib/demo/isolation";
+import {
+  DemoBusyError,
+  withDemoMutationLock,
+} from "@/lib/demo/lock";
 import { runAnalysis } from "@/lib/analysis";
 import { runAdsAnalysis } from "@/lib/ads/analysis";
 
@@ -19,17 +29,13 @@ export async function setAutonomyLevel(level: string): Promise<void> {
     redirect("/entreprise?onglet=agent");
 
   const admin = createAdminClient();
-  await admin
-    .from("organizations")
-    .update({ autonomy_level: level })
-    .eq("id", ctx.orgId);
-  await admin.from("journal").insert({
-    organization_id: ctx.orgId,
-    event: "autonomy_changed",
-    actor: "user",
-    actor_id: ctx.userId,
-    payload: { level },
-  });
+  await changeExecutionControl(
+    admin,
+    ctx.orgId,
+    ctx.userId,
+    "autonomy",
+    level,
+  );
   // L'onglet Agent vit désormais sous /entreprise (C4).
   revalidatePath("/entreprise");
   revalidatePath("/");
@@ -69,37 +75,62 @@ function detailOf(err: unknown): string {
  */
 export async function loadDemoScenarioAction(scenarioId: string): Promise<DemoResult> {
   const ctx = await getEditorContext();
-  if (!ctx || !ctx.canEdit) return { ok: false, reason: "forbidden" };
+  if (!ctx || ctx.role !== "admin") {
+    return { ok: false, reason: "forbidden" };
+  }
   if (!DEMO_SCENARIO_IDS.includes(scenarioId)) {
     return { ok: false, reason: "unknown_scenario" };
   }
 
   const admin = createAdminClient();
   try {
-    const result = await loadDemoScenario(admin, {
-      orgId: ctx.orgId,
-      actorId: ctx.userId,
-      scenarioId,
-    });
+    const { result, created } = await withDemoMutationLock(
+      admin,
+      ctx.orgId,
+      "demo",
+      async () => {
+        const result = await loadDemoScenario(admin, {
+          orgId: ctx.orgId,
+          actorId: ctx.userId,
+          scenarioId,
+        });
 
-    // On enchaîne l'analyse : le cockpit est immédiatement vivant (briefing +
-    // propositions), sans avoir à naviguer puis relancer à la main. Un échec
-    // d'analyse ne doit pas faire échouer le chargement des données.
-    let created = 0;
-    try {
-      created = await runAnalysis(admin, ctx.orgId, ctx.userId);
-    } catch {
-      /* ignoré volontairement */
-    }
-    try {
-      created += await runAdsAnalysis(admin, ctx.orgId, ctx.userId);
-    } catch {
-      /* ignoré volontairement */
-    }
+        // Le scope explicite interdit à l'analyse de mélanger un prospect ou
+        // une campagne réelle apparus pendant le chargement.
+        let created = 0;
+        try {
+          created = await runAnalysis(admin, ctx.orgId, ctx.userId, {
+            prospectSource: DEMO_PROVIDER,
+            demo: true,
+          });
+        } catch {
+          /* ignoré volontairement */
+        }
+        try {
+          created += await runAdsAnalysis(admin, ctx.orgId, ctx.userId, {
+            campaignIdPrefix: DEMO_CAMPAIGN_PREFIX,
+            demo: true,
+          });
+        } catch {
+          /* ignoré volontairement */
+        }
+        return { result, created };
+      },
+    );
 
     revalidateCockpit();
     return { ok: true, prospects: result.prospects, created };
   } catch (err) {
+    if (err instanceof DemoIsolationError) {
+      return {
+        ok: false,
+        reason: "unsafe_existing_data",
+        detail: detailOf(err),
+      };
+    }
+    if (err instanceof DemoBusyError) {
+      return { ok: false, reason: "busy", detail: detailOf(err) };
+    }
     return { ok: false, reason: "failed", detail: detailOf(err) };
   }
 }
@@ -112,16 +143,23 @@ export async function loadDemoScenarioAction(scenarioId: string): Promise<DemoRe
  */
 export async function clearDemoAction(): Promise<DemoResult> {
   const ctx = await getEditorContext();
-  if (!ctx || !ctx.canEdit) return { ok: false, reason: "forbidden" };
+  if (!ctx || ctx.role !== "admin") {
+    return { ok: false, reason: "forbidden" };
+  }
   const admin = createAdminClient();
   try {
-    await clearDemoData(admin, {
-      orgId: ctx.orgId,
-      actorId: ctx.userId,
-    });
+    await withDemoMutationLock(admin, ctx.orgId, "demo", () =>
+      clearDemoData(admin, {
+        orgId: ctx.orgId,
+        actorId: ctx.userId,
+      }),
+    );
     revalidateCockpit();
     return { ok: true, prospects: 0, created: 0 };
   } catch (err) {
+    if (err instanceof DemoBusyError) {
+      return { ok: false, reason: "busy", detail: detailOf(err) };
+    }
     const detail = detailOf(err);
     await admin.from("journal").insert({
       organization_id: ctx.orgId,

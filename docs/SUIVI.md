@@ -5,31 +5,45 @@
 > 2. À la fin de ta session : ajouter une entrée en haut de l'« Historique des sessions » (date, ce qui a été fait, décisions prises, ce qui reste), et mettre à jour « État actuel » si besoin.
 > 3. Ne jamais construire en avance des phases suivantes (voir docs/ROADMAP.md). Vérifier `npm run typecheck` + `npm run build` avant de conclure.
 
-> **Kit de test prêt** : `docs/TESTS.md` (procédure complète connecteurs + parcours Phase 2) et `docs/tests/prospects-test.csv` (fausse base). **Tests en cours (2026-07-20 soir)** : app OAuth Google « Nepteo (dev) » créée par Fathi (écran de consentement configuré, email testeur ajouté après un 403 access_denied, ID client + secret dans `.env.local`). Tests LLM avec **clé OpenAI** (`LLM_MODEL*=openai:gpt-5.4` en env — pas encore de clé Anthropic). Reste à dérouler : connexion Sheets → sync → analyse → décisions, puis Notion. En prod : 1 seule app Google/Notion pour tous les clients (validation Google à passer avant lancement — voir TESTS.md § production).
+> **Références de recette** : `docs/demo/GUIDE-TEST.md` pour le parcours, `docs/tests/SCORECARD-COMMANDITAIRE.md` pour mesurer la valeur, `docs/TESTS.md` pour les connecteurs et `docs/tests/SMOKE-AUTH-RLS.md` pour l'isolation Supabase. Au 2026-07-30, `/` et `/api/health` répondent HTTP 200 sur la révision Azure encore en service ; `/api/ready` répond HTTP 404 car cette ancienne version ne contient pas la route. Le smoke authentifié complet et les callbacks OAuth restent à valider après la release.
 
-## État actuel (2026-07-26)
+## État actuel (2026-07-30)
 
-**Phase 2 — Recommandations : bien avancée.** L'agent lit les données réelles, détecte et propose ; il n'exécute **jamais** (exécution = Phase 3).
+**Phase technique 3A et lot R2 codés localement ; porte terrain de la phase 2 encore ouverte.** L'agent lit, détecte, propose et prépare des messages dans l'outbox. Le lanceur R2, lui, crée uniquement une proposition : il n'écrit pas dans l'outbox et n'envoie **rien à l'extérieur**. La [roadmap valeur — tests commanditaires](projets/roadmap-valeur-commanditaires.md) gouverne désormais l'ordre des améliorations.
 
-Fonctionnel (build vert en local par Fathi ; `tsc` + `npm test` verts dans le sandbox) :
+État local, avec le niveau de validation précisé dans chaque lot :
 
-- **Socle Phase 1** (Auth, Cockpit shell, DB + RLS, couche LLM par tâche, Infra/CI) : inchangé, cf. sessions précédentes.
-- **Connecteurs (lecture seule)** : Google Sheets **et Notion testés** (24 prospects lus chacun ; mapping Notion par type de propriété + mots-clés, **OK du premier coup, aucun correctif**). OAuth chiffré (AES-256-GCM), sync manuelle + **cron quotidien** (`/api/cron/sync`, acteur agent, `mode: auto`). Table `prospects` (migration 0002, idempotence `connector_id+external_id`). **Dédup à l'affichage** par email dans la vue Prospects (`lib/dedupe-prospects.ts`, lecture seule) — deux connecteurs sur la même base ne comptent plus double.
-- **Correspondance de colonnes configurable** (2026-07-22) : écran dans la config connecteur qui relie colonnes/propriétés aux 4 champs Nepteo (`FieldMapping` dans `common.ts`, persisté dans `config.field_mapping`, appliqué au sync Sheets+Notion, **détection auto en défaut**). À valider par Fathi dans l'app.
-- **Moteur d'analyse** (`lib/analysis-rules.ts` + `lib/analysis.ts`) : 6 règles sur données réelles (emails manquants, relance du plus gros statut, **relancer en priorité** = joignables + statut actif, sans-statut, doublons d'email, entreprise manquante ≥ 40 %), habillage LLM avec repli templates. Tests `node:test` (`npm test`, 13/13, **Node ≥ 22**).
-- **Cockpit Phase 2** : file de validation avec **tiroir de raisonnement** (Aujourd'hui), **Décisions récentes** (Reporter/Reprendre + historique validées/refusées), vue **Prospects funnel + kanban** avec **repère de priorité** par carte (statut + complétude, sans score inventé).
-- **Observabilité** : `telemetryForTask` (`functionId` par tâche, champ `telemetry` de l'AI SDK 7) + hook Langfuse **v7** (`lib/observability.ts` = `NodeSDK` + `LangfuseSpanProcessor` + `registerTelemetry(LangfuseVercelAiSdkIntegration)`) — **activé et validé** (2026-07-22, trace `recommend_action` reçue, `gen_ai.agent.name = recommend_action`, tokens/coût OK). Paquets `@langfuse/otel` + `@langfuse/vercel-ai-sdk` + `@opentelemetry/sdk-node` **installés et dans `package.json`** ; dev sur **Node 22.23.1** ✓.
+- **Socle et produit** : auth, organisation/RLS de base, mémoire, journal, couche LLM, analyse, validation, funnel/kanban, onboarding enrichi, recherche web et navigation à cinq entrées.
+- **Connecteurs en lecture seule** : Google Sheets et Notion, OAuth chiffré, mapping configurable, sync manuelle et cron. La lecture Notion est désormais paginée ; les appels connecteurs ont un timeout. Les demandes, configurations, callbacks OAuth, déconnexions et synchronisations participent au verrou d'isolation démo.
+- **Exécution sûre** : idempotence, journal avant exécution, pause, plafonds serveur et messages au statut `prepared`. C7, l'envoi externe, n'est pas activé.
+- **C8 — temps dans la relance** : implémenté localement. Le champ facultatif `last_contact_at` est synchronisé depuis Sheets/Notion ; un contact de moins de 7 jours est exclu des relances et une attente d'au moins 21 jours renforce la priorité.
+- **R1A/C9A — preuve terrain structurée** : `0020` ajoute `value_events`, une saisie déclarative minimisée et append-only, les garde-fous de rôle/tenant, la séparation `manual`/fournisseur et le marqueur `is_demo`. À l'approbation d'une relance, sa cohorte non vide (50 prospects maximum) est figée avec la décision et son journal dans une transaction ; les suites terrain sont ensuite rattachées prospect par prospect. Rien n'est envoyé et aucun statut fournisseur n'est fabriqué.
+- **R1B — file « Aujourd'hui » utile** : jusqu'à 50 propositions autorisées sont examinées avant de retenir au plus cinq actions existantes. Le classement pur favorise les gestes proches d'un résultat, explique « Pourquoi maintenant », neutralise les données invalides et ne transforme pas le volume d'un payload en score.
+- **R2 — play supervisé « prospects dormants »** : seuil **30 ou 45 jours choisi explicitement**, sans valeur par défaut ; date valide obligatoire ; prospect actif et joignable ; tri déterministe du silence le plus ancien au plus récent et plafond de 50. Les membres des snapshots des vagues dormantes antérieures sont exclus. Le lanceur produit seulement une action à valider humainement, sans outbox ni envoi ; l'approbation revalide puis fige atomiquement la cohorte via `0020`. La scorecard dédiée au kind dormant exclut la démo, montre ses dénominateurs et sépare faits déclarés et faits fournisseur observés. Elle est strictement locale au tenant courant : le gate programme « 3 testeurs » se consolide manuellement et anonymement hors application.
+- **Confidentialité LLM** : les métriques techniques restent actives, mais prompts et réponses ne sont plus enregistrés par la télémétrie.
+- **Simplification locale** : contexte auth/organisation centralisé et fail-closed, ciblage des relances partagé, file « Aujourd'hui », fiche connecteur et façade Server Actions découpées, navigation mobile et dialogues clavier ajoutés. Aucun garde-fou métier n'a été retiré.
+- **Tenancy, rôles et RLS locaux** : `0013` impose une organisation au plus par utilisateur sans arbitrer les doublons ; `0014` retire l'écriture directe de `company_memory` ; `0015` centralise les capacités ; `0019` réapplique la frontière de façon additive. Le commercial ne lit aucun contenu libre/dérivé (mémoire, recherche, briefing, action, journal, outbox) et conserve uniquement les colonnes prospects expurgées, le nom d'organisation et les métadonnées non sensibles des connecteurs CRM/fichiers. `organizations.activity`, `connectors.config` et `connectors.encrypted_credentials` restent côté service role. Les rôles inconnus échouent fermés.
+- **Démonstration isolée** : réservée à l'admin d'une organisation de test vide, préflight des données réelles, identifiants fictifs namespacés, analyses scopées et enrichissement web désactivé. Le verrou distribué couvre aussi les mutations mémoire, onboarding, OAuth/connecteurs et sync dans une section critique complète ; une sauvegarde corrompue bloque tout seed. Sans fencing distribué, un verrou orphelin reste bloquant jusqu'à récupération manuelle vérifiée.
+- **Concurrence et coûts** : `0018` rend transactionnels décisions, reprises, claim, finalisation, pause/autonomie et leurs journaux ; un état ambigu exige une reprise manuelle. Le quota de recherche payante est réservé atomiquement par jour et organisation dans `0017`, séparément du cache et sous le même verrou d'organisation que la pause.
+- **Readiness de schéma dans la release en préparation** : `0016` introduit le marqueur privé après avoir prouvé les invariants critiques de `0012` à `0015`. `0019` contrôle les frontières finales et `0020` certifie la preuve terrain/cohorte ; la nouvelle route `/api/ready` échoue fermée si Supabase ou la version requise sont indisponibles, et le workflow exige la version 20 avant toute mutation Azure.
+- **Base de production migrée, application non promue** : les migrations `0012` à `0020` ont été appliquées manuellement le 2026-07-30 et `app_schema_version = 20` est enregistré depuis `2026-07-30T06:02:14Z`. Azure sert encore l'image `49b410a7`, révision `0000002` ; le HTTP 404 actuel de `/api/ready` vient de cet ancien code, pas d'une release déjà déployée qui aurait échoué à sa readiness.
+- **Qualité** : la référence complète avant R2 reste 261/261 tests, typecheck, lint et build de production (23 routes/pages) verts. R2 possède des validations ciblées sur la sélection 30/45, le tri/cap, la non-mutation, l'exclusion des snapshots, la proposition sans outbox et les agrégats de scorecard ; la suite complète, le typecheck, le lint et le build doivent être rejoués avant de déclarer le lot intégré.
+- **Gate C7 toujours ouvert** : il n'existe pas encore de suppression-list indépendante et non contournable. L'exclusion d'une opposition portée par le statut ne la remplace pas ; R2 impose donc la validation humaine et ne déverrouille aucun envoi externe.
 
-Environnement : Supabase `hrqnzorapjnosjphftur`, repo GitHub `Shaaakir281/nepteo` (branche `main`), dev local **port 3001 figé dans le script** (`next dev -p 3001`), **Node 22.23.1 local ✓**. Production Azure déployée le 2026-07-26 dans `francecentral` : resource group `nepteo-prod-rg`, ACR `nepteoacr27de3b`, Container App `nepteo-prod`, révision active `nepteo-prod--0000002`, image du commit `49b410a`. Domaine principal : `https://nepteo.bogasolution.com` avec certificat Azure managé ; le FQDN `azurecontainerapps.io` reste l’adresse technique. GitHub `production` + OIDC opérationnels ; `/api/health` répond 200 sur le domaine principal. La recherche web utilise `gpt-5.4-mini` via `RESEARCH_OPENAI_MODEL` pour tenir la latence interactive ; les modèles de synthèse `LLM_MODEL*` restent inchangés.
+Environnement : Supabase `hrqnzorapjnosjphftur`, repo GitHub `Shaaakir281/nepteo` (branche `main`), dev local port 3001, Node 22+. Production Azure dans `francecentral`, domaine `https://nepteo.bogasolution.com` et HTTPS opérationnels. Au 2026-07-30, la base de production est à la version 20, mais Azure sert toujours l'image `49b410a7`, révision `0000002` : `/` et `/api/health` répondent HTTP 200, `/api/ready` répond HTTP 404. La release du worktree complet est en préparation ; aucune nouvelle image ni révision applicative n'est encore déployée.
 
 ## Prochaines étapes (dans l'ordre)
 
-1. **Production (manuel)** : ajouter `https://nepteo.bogasolution.com` dans Supabase Auth (`Site URL` + redirect `/auth/confirm`), puis dérouler inscription → confirmation → onboarding → scénario démo → analyse → `GET /api/llm/status` avec une session authentifiée. Ajouter aussi les callbacks Google/Notion sur ce domaine avant de tester ces connecteurs.
-2. **Fathi (manuel)** : ~~connecter Notion~~ **fait**. Dérouler le parcours §3 dans l'app (3 propositions + badges de priorité + dédup), et **tester le nouvel écran de correspondance de colonnes** (config connecteur → bloc « Correspondance des colonnes » → pré-remplissage auto, corriger un champ, Enregistrer, resync). ~~Backlog : écran de correspondance de colonnes~~ **construit (2026-07-22)**.
-3. ~~Activer Langfuse~~ **fait et validé (2026-07-22)** : paquets installés, clés en place, trace `recommend_action` reçue dans Langfuse. Optionnel plus tard : enrichir les traces (`propagateAttributes`/`observe`) pour grouper par org/client, et confirmer que le mojibake d'accents est bien limité à l'export CSV (pas l'UI).
-4. ~~Priorisation des prospects (Phase 2)~~ — **fait (2026-07-21)** : signal transparent (statut + complétude) dans le kanban + proposition « relancer en priorité », sans score inventé. Reste à Fathi : le voir dans le parcours §3 (désormais **3 propositions**) et confirmer les badges kanban.
-5. **Porte Phase 2** : ≥ 1 recommandation pertinente/semaine jugée utile par le pilote (ROADMAP). Client pilote toujours à confirmer avec Charly.
-6. **Ne pas anticiper la Phase 3** (exécution réelle + garde-fous serveur).
+1. **Figer le worktree complet dans un commit de release** : vérifier le périmètre exact, créer le commit puis pousser la branche et ouvrir ou mettre à jour la PR.
+2. **Passer la CI et intégrer dans `main`** : attendre tests, lint, typecheck et build verts avant la fusion ; ne pas déployer directement depuis le worktree ou une branche de travail.
+3. **Déployer manuellement depuis `main`** : lancer le workflow protégé, confirmer que le préflight voit `app_schema_version = 20`, puis promouvoir l'image immutable après l'approbation production.
+4. **Faire le smoke de release** : vérifier que `/`, `/api/health` et `/api/ready` répondent HTTP 200 sur la nouvelle révision, puis exécuter le smoke authentifié/RLS et contrôler l'absence d'envoi externe.
+5. **Recetter C8, R1A, R1B et R2** : callbacks Google/Notion, compte neuf, rôles, isolation démo, dates Sheets/Notion, Top 5, seuils 30/45, sélection oldest-first, exclusion des vagues antérieures, verdicts/retouches, cohorte atomique, conservation de `action_kind` et scorecard locale non-démo/fail-closed.
+6. **Promouvoir sur un pilote dédié** : noter la version dans la scorecard et ne pas remplacer silencieusement l'environnement utilisé par les commanditaires.
+7. **Lancer le play dormant supervisé** : après R0 seulement, faire choisir le seuil au commanditaire et conserver la validation humaine ; réunir 3 testeurs/30 recommandations pour le checkpoint qualitatif, puis 50 recommandations/deux semaines pour la décision produit, avec consolidation programme pseudonymisée hors application et sans agrégation inter-tenant.
+8. **Décider du connecteur par la preuve** : cadrer Gmail **ou** Microsoft 365 en lecture seule seulement si au moins deux pilotes partagent l'écosystème et si le manque d'historique ou le temps de recherche manuelle franchit le gate documenté ; coder un seul écosystème après accord explicite de Fathi.
+9. **Apprendre des corrections** après 30 brouillons corrigés, avec règles et préférences explicites.
+10. **N'autoriser C7 qu'après les gates valeur, RGPD et exploitation** : suppression-list, fournisseur UE, budget/claim global atomique, états ambigus réconciliables, kill switch, self-test et décision explicite de Fathi.
 
 ## Pièges connus
 
@@ -39,7 +53,7 @@ Environnement : Supabase `hrqnzorapjnosjphftur`, repo GitHub `Shaaakir281/nepteo
 - La table `journal` refuse UPDATE/DELETE (trigger) — c'est voulu.
 - Design : ne rien inventer, copier les patterns de `docs/maquettes/` (tokens dans `globals.css`).
 - **Copie produit** : ne PAS définir le lexique marketing standard (prospect, lead, funnel…). CLAUDE.md corrigé en ce sens (retour de Fathi 2026-07-21).
-- **Recherche web (OpenAI ou Perplexity)** : appel **facturé**. Toujours passer par `runResearch` (garde-fous + journal + cache) — ne jamais appeler `askPerplexity` / `askOpenAiSearch` / `askResearch` directement depuis une action. Les échecs sont mis en cache **volontairement** (une clé invalide ne doit pas boucler).
+- **Recherche web (OpenAI ou Perplexity)** : appel **facturé**. Toujours passer par `runResearch` (garde-fous + journal + cache + réservation atomique) — ne jamais appeler `askPerplexity` / `askOpenAiSearch` / `askResearch` directement depuis une action. Seul un résultat `status = ok` est réutilisé comme réponse ; un échec reste tracé et consomme sa réservation quotidienne, sans décrément automatique.
 - **Chez OpenAI, une requête ≠ une recherche facturée** : le modèle peut enchaîner plusieurs `web_search_call` dans un même appel, à ~1 centime pièce. `MAX_RESEARCH_PER_DAY` compte des appels `runResearch`, **pas** des recherches. Deux conséquences : `reasoning.effort` reste à `"low"` dans `lib/research/openai-search.ts` (ne pas monter sans revoir les plafonds), et le nombre réel est écrit au journal (`searches`). Ne pas « simplifier » l'un ou l'autre.
 - **Deux parseurs de recherche, volontairement séparés** : `parseResearchResponse` (Perplexity) et `parseOpenAiSearchResponse` (OpenAI). Les deux formes se ressemblent assez (`output[]`, `type: "message"`, `content[].text`) pour qu'un parseur « unifié » extraie le texte OpenAI **mais perde ses sources**, silencieusement. Un test garde cette étanchéité — ne pas les fusionner.
 - **`researchConfigured()` vit dans `lib/research/provider.ts`**, pas dans `perplexity.ts` (déménagé le 26/07, sans ré-export : deux chemins pour la même question = dette).
@@ -53,6 +67,118 @@ Environnement : Supabase `hrqnzorapjnosjphftur`, repo GitHub `Shaaakir281/nepteo
 - **Coût de la recherche web OpenAI** : le prix affiché (10 $ / 1 000 appels d'outil) n'est **que la moitié de la facture** — les *search content tokens* sont facturés au tarif du modèle et dominent le total (~0,06 $ par recherche avec `gpt-5.5`). Toujours chiffrer les deux parts, et se rappeler que `MAX_RESEARCH_PER_DAY` compte des appels `runResearch`, **pas** des `web_search_call`.
 
 ## Historique des sessions
+
+### 2026-07-30 — Codex — **Incident de version en production et release en cours**
+
+**État vérifié** : les migrations Supabase `0012` à `0020` ont été appliquées manuellement en production le 2026-07-30. Le marqueur `app_schema_version = 20` est enregistré à `2026-07-30T06:02:14Z`.
+
+**Décalage applicatif** : Azure sert encore l'image `49b410a7`, révision `0000002`. `/` et `/api/health` répondent HTTP 200, tandis que `/api/ready` répond HTTP 404 parce que cette ancienne version ne contient pas la route. La base est donc en avance sur l'artefact applicatif actuellement servi.
+
+**Restriction pendant la fenêtre d'incident** : `0019` a retiré aux JWT la lecture de `connectors.config`, encore demandée par l'ancienne interface. Jusqu'à la nouvelle release, ne pas utiliser les écrans Connecteurs, « Charger et analyser » ni la recherche web. Le contrôle agrégé a confirmé un seul compte `admin`, aucun membership dupliqué, aucun connecteur réel actif, un connecteur démo et aucune recherche payante le jour de l'incident.
+
+**Release non terminée** : le worktree complet est en préparation pour la release, mais aucune nouvelle image ni révision applicative n'est déployée à ce stade. La suite est : commit de release → PR/CI → fusion dans `main` → déploiement manuel protégé → contrôles `/`, `/api/health`, `/api/ready` puis smoke authentifié/RLS et recette fonctionnelle. Aucun envoi externe ne doit être activé.
+
+### 2026-07-30 — Codex — **R2 local : play dormant supervisé et scorecard de valeur**
+
+**Play borné et explicite** : le lanceur oblige le testeur à choisir 30 ou 45 jours, sans seuil par défaut. La règle pure exige un prospect actif, un email présent et une date de dernier contact valide, exclut les statuts terminaux, classe les silences du plus ancien au plus récent et borne la vague à 50. Les prospects déjà présents dans le snapshot d'une vague dormante antérieure sont écartés.
+
+**Supervision conservée** : le geste crée uniquement une action `relaunch_dormant` au statut `proposed` et sa trace de journal. Il ne prépare aucune outbox et ne déclenche aucun envoi. La validation humaine reste le point de décision ; l'approbation réutilise la RPC de `0020` pour revalider puis figer atomiquement une cohorte non vide avec la décision et son journal.
+
+**Preuve lisible et cloisonnée** : la scorecard « Aujourd'hui » est limitée aux événements `action_kind = relaunch_dormant`, `is_demo = false` de l'organisation courante. Elle montre les numérateurs/dénominateurs, retient le dernier verdict et la dernière évaluation de brouillon par action, déduplique les suites par action/prospect et maintient deux colonnes distinctes pour le déclaré manuel et l'observé fournisseur. Le kind reste conservé dans `value_events` si l'action est supprimée et que `action_id` devient nul : l'historique demeure attribué au bon play sans réattribution artificielle.
+
+**Séparation local/programme** : aucun écran ni calcul R2 n'agrège plusieurs tenants. Le compteur local d'évaluateurs ne valide pas le gate programme « 3 testeurs ». Les 3 testeurs/30 recommandations, les deux pilotes d'un même écosystème et la décision longitudinale sont consolidés manuellement et anonymement hors application, avec des pseudonymes et uniquement les mesures nécessaires.
+
+**Signal connecteur documenté** : le motif `missing_context` est réservé au faux positif causé par un historique d'interactions réellement manquant. La scorecard affiche son numérateur sur tous les derniers verdicts rejetés ; **≥ 30 %** est un signal local de cadrage, jamais une autorisation automatique. Le gate programme exige deux pilotes du même écosystème et, comme alternative au taux de 30 %, une médiane de recherche supérieure à deux minutes, puis l'accord explicite de Fathi.
+
+**Garde-fous finaux du lot** : une action dormante active est dédupliquée ; les snapshots antérieurs et, lorsque disponible, l'email normalisé empêchent une nouvelle vague ; les scans bornés échouent fermés plutôt que de sélectionner une cohorte partielle. L'exécution est restreinte au snapshot puis revalide les faits courants ; l'absence de snapshot sur un play dormant impose une récupération manuelle et les résultats aval exigent la cohorte. Enfin, la scorecard est suspendue si sa lecture échoue ou dépasse 5 000 événements, au lieu d'afficher des taux partiels.
+
+**Vérification finale locale** : les tests ciblés couvrent les bornes 30/45, les dates invalides, le tri oldest-first/cap 50, la stabilité, la revalidation, l'exclusion des snapshots, l'absence d'écriture outbox et les calculs de scorecard. `npm test` **288/288**, `npm run typecheck`, `npm run lint`, `npm run build` (**23 routes/pages**) et `git diff --check` sont verts. Le build a notamment détecté puis fait corriger un export de type placé à tort sur la façade des Server Actions.
+
+**Reste avant pilote** : appliquer `0012` → `0020` hors production, obtenir readiness 20, jouer le smoke et les parcours C8/R1/R2. Le lot n'est ni migré, ni déployé, ni recetté. Les deux semaines de test, les 30 puis 50 recommandations et leurs résultats restent entièrement à observer. L'absence de suppression-list indépendante maintient C7 fermé et impose la validation humaine ; aucun envoi externe n'a été activé.
+
+### 2026-07-29 — Codex — **R1A preuve terrain et R1B Top 5 intégrés en parallèle**
+
+**Deux chantiers locaux disjoints puis intégrés** : R1A/C9A instrumente les verdicts, faux positifs, retouches, relances manuelles et résultats déclarés ; R1B transforme « Aujourd'hui » en file de cinq priorités maximum avec une explication factuelle. Le filtre de rôle précède le classement et aucune action n'est fabriquée pour remplir la file.
+
+**Preuve fiable et isolée** : la migration `0020_value_events.sql` porte le readiness à 20, réserve l'écriture au service role via des RPC étroites et la lecture à `admin`, `marketing` et `direction`. Les événements démo sont marqués côté base et exclus des gates terrain. Une relance ne peut être approuvée avec une cohorte vide ; jusqu'à 50 cibles sont figées avec l'approbation et son journal dans la même transaction. Les résultats aval exigent ensuite une action approuvée/exécutée et un prospect de cette cohorte. Les faits restent déclaratifs : aucune écriture dans l'outbox et aucun statut fournisseur `sent`.
+
+**Ciblage durci** : les relances par statut excluent désormais les prospects sans email, terminaux ou contactés depuis moins de sept jours, puis revalident la fiche avant préparation. Les anciennes propositions par statut restent déclassées dans le Top 5.
+
+**Vérification finale locale** : `npm test` **261/261**, `npm run typecheck`, `npm run lint`, `npm run build` (**23 routes/pages**) et `git diff --check` sont verts après revue croisée.
+
+**Reste avant terrain** : appliquer et recetter `0012` → `0020` hors production, jouer le smoke authentifié/RLS et les parcours OAuth/C8/R1A/R1B. Le play R2 devra sélectionner les 50 silences les plus anciens avant sa cohorte 30/45 jours. Aucun déploiement, changement de base distante, appel payant ni envoi externe n'a été effectué.
+
+### 2026-07-29 — Codex — **Roadmap valeur issue du benchmark**
+
+**Décision produit** : la faiblesse actuelle est la preuve terrain, pas le nombre de connecteurs. La boucle cible devient « signal fiable → priorité expliquée → action supervisée → résultat mesuré ». La phase 3A reste acquise techniquement, tandis que la porte de valeur de la phase 2 reste ouverte.
+
+**Ordre adopté** : recette `0012`–`0019` ; C9A de preuve manuelle et Top 5 en parallèle ; play « prospects dormants » ; puis un seul connecteur Gmail ou Microsoft 365 si les tests mesurent un manque de contexte. C7 n'est plus l'étape automatique suivante et C9 est séparé entre faits déclarés avant C7 et résultats fournisseur après C7.
+
+**Livrables documentaires** : création de `docs/projets/roadmap-valeur-commanditaires.md`, alignement de la roadmap générale, des décisions, de l'audit, de la scorecard, du plan bêta et de `CLAUDE.md`. Aucun code produit, déploiement, migration distante, appel payant ou envoi externe n'a été déclenché.
+
+### 2026-07-29 — Codex — **Troisième vague : frontières financières, démo isolée, readiness et concurrence**
+
+**Quatre chantiers parallèles intégrés puis relus en croisé** : rôles/RLS financiers, isolation du mode démonstration, contrat de readiness du schéma et primitives atomiques pour les coûts et les transitions. Le développement est resté en mode sûr : aucun envoi externe, appel de recherche payant, déploiement ou changement de base distante.
+
+**Rôles et données sensibles** : `lib/auth/roles.ts` devient la matrice de capacités unique. `0015_financial_role_boundaries.sql`, puis le rattrapage additif `0019`, appliquent une frontière simple : aucun contenu libre/dérivé n'est lisible par le commercial (mémoire, recherches, briefings, actions, journal, outbox), car une allowlist de type n'expurge pas un `payload`. Il conserve les colonnes prospects normalisées et les métadonnées des connecteurs CRM/fichiers ; `prospects.raw`/notes, `organizations.activity`, la configuration et les credentials des connecteurs restent côté serveur. `lecture` conserve la lecture financière sans mutation ; un rôle inconnu reçoit zéro capacité.
+
+**Démonstration sans mélange** : seul l'admin peut charger une démo dans une organisation sans donnée réelle. Campagnes et ventes utilisent le préfixe `demo:`, actions et briefings sont marqués, les anciennes clés ne sont nettoyées qu'avec un marqueur actif fiable. Un verrou distribué `__demo_lock`, typé `demo | analysis | campaign | data`, sérialise chargement, retrait, analyses et mutations réelles. Mémoire, onboarding, OAuth/connecteurs et sync effectuent le contrôle puis l'écriture dans la même section critique. Une sauvegarde existante corrompue bloque le seed. La reprise TTL a été supprimée : un verrou orphelin exige une récupération manuelle vérifiée ; les analyses restent scopées et l'enrichissement web est coupé.
+
+**Exploitation et coût** : `0016` prouve les prérequis critiques de `0012` à `0015` avant de créer le singleton privé `app_schema_version` et `/api/ready`; `0019` réapplique les frontières à une base déjà migrée et certifie les privilèges finaux. Le workflow refuse de muter Azure si la base n'atteint pas la version 19, puis vérifie `/api/health` et `/api/ready`. `0017` verrouille l'organisation, arbitre la pause et réserve atomiquement le quota quotidien avant journal et appel externe. Chaque future migration doit relever le marqueur, sous peine d'échec du test de contrat.
+
+**Concurrence fail-closed** : `0018` regroupe dans des RPC transactionnelles la décision et son journal, le verrouillage de l'organisation avec pause/autonomie puis le claim et son journal de départ, la finalisation `executed | failed` et sa trace, ainsi que les changements de pause/autonomie et leur audit. Toute ambiguïté conserve le claim et demande une reprise contrôlée au lieu d'inventer un état ou de recommencer.
+
+**Vérification finale locale** : `npm test` **231/231**, `npm run typecheck`, `npm run lint` et `npm run build` (23 pages/routes, `/api/ready` incluse) sont verts après la revue croisée. `git diff --check` est rejoué en clôture. Les migrations `0012` à `0019`, le smoke authentifié/RLS et les tests OAuth restent à jouer sur une recette dédiée avant tout déploiement.
+
+### 2026-07-29 — Codex — **Deuxième vague : façade serveur, tenancy fail-closed et smoke RLS**
+
+**Trois chantiers parallèles intégrés** : découpage des Server Actions, stratégie d'organisation bêta et smoke authentifié/RLS. Une revue sécurité croisée a ensuite vérifié le lot complet.
+
+**Code simplifié sans changer l'API publique** : `app/(cockpit)/actions.ts` passe de **468 à 99 lignes** et délègue à cinq modules (`decisions`, `prospects`, `action-drafts`, `execution`, `analysis`). Next 16/Turbopack refuse les réexports directs depuis une façade `"use server"` ; les exports publics restent donc des wrappers `async`, structure validée par le build.
+
+**Tenancy fail-closed** : `0013_single_organization_per_user.sql` refuse les doublons existants sans modifier une ligne, puis impose un `user_id` unique. Le contexte auth et l'onboarding lisent au plus deux memberships et refusent toute ambiguïté. La double soumission concurrente de l'onboarding est traitée comme idempotente lorsque la requête gagnante a déjà créé le membership.
+
+**RLS et rôles** : `0014_company_memory_service_writes.sql` remplace la policy `for all` par une lecture seule pour les membres. Les écritures restent dans les Server Actions au service role ; l'onboarding enrichi exige désormais `canEdit`. Des tests de contrat couvrent la migration et ce garde applicatif.
+
+**Smoke reproductible** : `npm run smoke:rls` vérifie authentification, membership `lecture`, lecture du tenant propre, invisibilité d'un autre tenant et refus PostgreSQL `42501` sur une écriture éphémère. Le mode complet exige un acquittement explicite, une organisation `E2E_RLS_*`, deux fixtures réelles et vérifie le nettoyage exact. Il n'a pas été exécuté à distance faute de fixtures dédiées.
+
+**Vérification finale locale** : `npm test` **179/179**, `npm run typecheck`, `npm run lint`, `npm run build` (**23 routes/pages**) et `git diff --check` sont verts.
+
+**Reste** : contrôler les doublons puis appliquer `0012` → `0013` → `0014` en recette, jouer le smoke et le parcours applicatif avec un rôle `lecture`. Aucun déploiement, aucune migration distante, aucun connecteur, aucune recherche payante et aucun envoi externe n'ont été déclenchés.
+
+### 2026-07-29 — Codex — **Simplification parallèle du code et fiabilisation des connecteurs**
+
+**Vague exécutée en tâches parallèles**, sur des périmètres disjoints : nettoyage mécanique, contexte auth/organisation, interface « Aujourd'hui », fiche connecteur, navigation mobile et accessibilité des dialogues. Les invariants essentiels — validation humaine, journal, idempotence, pause, plafonds et absence d'envoi externe — n'ont pas été simplifiés.
+
+**Nettoyage invisible** : suppression du client Supabase navigateur inutilisé, de `ALL_PROVIDERS` et de trois icônes mortes ; suppression d'un paramètre inutilisé ; types `Draft` locaux remplacés par la source commune ; `noUnusedLocals` et `noUnusedParameters` activés. La copie obsolète annonçant une future Phase 3 indique désormais correctement que la validation autorise une préparation sous garde-fous, sans envoi externe.
+
+**Frontières clarifiées** : `lib/auth/context.ts` devient la source unique du contexte serveur utilisateur/membership et de `getEditorContext`; l'auth ne vit plus dans `lib/connectors/common.ts`. Le choix implicite `.limit(1)` est volontairement conservé : le contexte d'organisation actif reste un risque P1 distinct, non masqué par ce refactor. `matchesRelaunchTarget` centralise la règle utilisée par l'aperçu et l'exécution, avec six cas de régression ; les deux déduplications restent distinctes parce qu'elles n'ont pas la même sémantique.
+
+**Interfaces découpées et fiabilisées** :
+
+- `validation-queue.tsx` passe de **499 à 91 lignes** ; tiroir, brouillon, campagne et intertitres vivent dans des composants bornés ;
+- `connecteurs/[provider]/page.tsx` passe de **347 à 181 lignes** ; credentials lus/déchiffrés une fois, états distants `success | empty | error` explicites ;
+- le bug Notion « bon identifiant, titre de la première base » est corrigé par un couple radio `[id, titre]` validé côté action, avec quatre tests ;
+- les cinq destinations existent une seule fois et alimentent sidebar desktop + barre mobile fixe, avec `aria-current` et safe-area ;
+- modale Campagnes et tiroir de validation partagent le même comportement clavier : dialogue nommé, Échap, focus initial, confinement et retour au déclencheur.
+
+**Vérification finale du worktree complet** : `npm test` **170/170**, `npm run typecheck`, `npm run lint` sans avertissement, `npm run build` (**23 routes/pages**) et contrôle local du serveur. Le navigateur sans session est correctement redirigé vers `/login`, sans erreur console ni débordement horizontal à 390 × 844 ; la recette visuelle authentifiée reste à faire avec le gate commanditaire.
+
+**Reste volontairement hors de ce lot** : découper la façade serveur `app/(cockpit)/actions.ts`, automatiser le smoke authentifié, décider le contexte d'organisation actif, et n'introduire un registre de providers qu'avant un troisième connecteur. Aucun déploiement, aucune migration distante et aucun envoi externe.
+
+### 2026-07-29 — Codex — **Audit valeur/architecture/qualité + C8 temps dans la relance**
+
+**Audit consolidé** dans `docs/AUDIT-2026-07-29.md` : potentiel produit **8/10**, démonstrabilité **7/10**, preuve terrain **3/10**. Le wedge recommandé est « ne plus oublier les prospects, savoir qui relancer et préparer le bon message ». La production publique répond HTTP 200 ; le smoke authentifié, les callbacks OAuth et la recherche sur compte neuf restent à recetter. Une scorecard commune aux commanditaires a été ajoutée dans `docs/tests/SCORECARD-COMMANDITAIRE.md`.
+
+**C8 implémenté localement, non déployé** : migration `0012_prospect_last_contact.sql`, champ facultatif `last_contact_at`, détection et parsing ISO/`jj/mm/aaaa` pour Sheets et Notion, mapping UI, affichage sur les cartes, conservation de la date la plus récente lors de la déduplication et scénarios démo datés. Les règles excluent une relance si le dernier contact date de moins de 7 jours et signalent une attente à partir de 21 jours ; sans date, le comportement précédent est conservé.
+
+**Durcissements faits dans le même passage d'audit** : pagination Notion au-delà de 100 lignes avec limite de sécurité, timeout sur les appels connecteurs, télémétrie LLM sans prompts ni réponses, et `npm test` ajouté à la CI.
+
+**Vérification finale** : `npm test` **160/160**, `npm run typecheck`, `npm run lint`, `npm run build` (**23 routes/pages**) et `git diff --check` terminés avec exit 0.
+
+**Décisions** : production figée pendant les tests commanditaires ; aucune activation C7 avant les gates rôles/RLS, tenancy, isolation démo, migrations/readiness, claim transactionnel et suppression-list ; outbound futur via outbox PostgreSQL et worker borné, pas dans une boucle synchrone. Une organisation neuve par testeur.
+
+**Reste** : appliquer `0012` sur un environnement de recette, dérouler Sheets + Notion + compte sans date, faire le smoke authentifié de production, puis trancher le fournisseur C7. Aucun email externe, aucune migration distante et aucun déploiement effectués pendant cette session.
 
 ### 2026-07-26 (17) — Codex — **Timeout de recherche web diagnostiqué et modèle interactif corrigé**
 

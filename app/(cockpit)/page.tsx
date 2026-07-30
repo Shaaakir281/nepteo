@@ -1,11 +1,10 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { getCurrentAuthContext } from "@/lib/auth/context";
 import {
   entryDetail,
   entryTitle,
   type JournalEntry,
 } from "@/lib/journal";
-import { EDIT_ROLES } from "@/lib/memory";
 import {
   ValidationQueue,
   type QueueAction,
@@ -26,9 +25,20 @@ import {
 } from "@/lib/diagnostic";
 import { readMemory } from "@/lib/memory-store";
 import { CoachBubble } from "@/components/ui/coach-bubble";
+import { isCommercialSafeActionKind } from "@/lib/auth/roles";
+import { prioritizeTodayActions } from "@/lib/today-priority-rules";
+import { DormantPlayLauncher } from "./_components/dormant-play-launcher";
+import {
+  buildValueScorecard,
+  type ValueEventForScorecard,
+} from "@/lib/value-scorecard-rules";
+import { ValueScorecard } from "./_components/value-scorecard";
+
+const VALUE_EVENT_PAGE_SIZE = 1000;
+const MAX_VALUE_SCORECARD_EVENTS = 5000;
 
 export default async function TodayPage() {
-  const supabase = await createClient();
+  const { supabase, membership } = await getCurrentAuthContext();
   const { data } = await supabase
     .from("journal")
     .select("id, event, actor, actor_id, payload, created_at")
@@ -36,30 +46,36 @@ export default async function TodayPage() {
     .limit(6);
   const journal = (data ?? []) as JournalEntry[];
 
-  const { data: membership } = await supabase
-    .from("memberships")
-    .select("role")
-    .limit(1)
-    .maybeSingle();
-  const canEdit = EDIT_ROLES.includes(membership?.role ?? "");
+  const canEdit = membership?.canEdit ?? false;
+  const canViewFinancials = membership?.canViewFinancials ?? false;
 
   const { data: queueRows } = await supabase
     .from("actions")
     .select(
-      "id, kind, title, finding, rationale, data_sources, expected_impact, confidence, risk, payload",
+      "id, kind, title, finding, rationale, data_sources, expected_impact, confidence, risk, payload, created_at",
     )
     .eq("status", "proposed")
     .order("created_at", { ascending: false })
-    .limit(5);
-  const queue = (queueRows ?? []) as QueueAction[];
+    .limit(50);
+  const authorizedQueue = (
+    (queueRows ?? []) as (QueueAction & { created_at: string })[]
+  ).filter(
+    (action) => canViewFinancials || isCommercialSafeActionKind(action.kind),
+  );
+  const queue = prioritizeTodayActions(
+    authorizedQueue,
+    new Date().toISOString(),
+  );
 
   const { data: decidedRows } = await supabase
     .from("actions")
     .select("id, kind, title, status, decided_at")
     .in("status", ["approved", "rejected", "postponed", "executed", "failed"])
     .order("decided_at", { ascending: false })
-    .limit(6);
-  const decided = (decidedRows ?? []) as DecidedAction[];
+    .limit(50);
+  const decided = ((decidedRows ?? []) as DecidedAction[]).filter(
+    (action) => canViewFinancials || isCommercialSafeActionKind(action.kind),
+  );
 
   const { data: org } = await supabase
     .from("organizations")
@@ -84,20 +100,24 @@ export default async function TodayPage() {
   const since = new Date();
   since.setUTCDate(since.getUTCDate() - 30);
   const sinceISO = since.toISOString().slice(0, 10);
-  const { data: revRows } = await supabase
-    .from("revenue_events")
-    .select("amount, occurred_on")
-    .gte("occurred_on", sinceISO);
+  const { data: revRows } = canViewFinancials
+    ? await supabase
+        .from("revenue_events")
+        .select("amount, occurred_on")
+        .gte("occurred_on", sinceISO)
+    : { data: [] };
   const rev = revenueStats(
     (revRows ?? []).map((r) => ({ amount: Number(r.amount), occurred_on: r.occurred_on })),
   );
   // Même fenêtre que le revenu : sans le filtre de date, ce KPI additionnait
   // TOUT l'historique et l'étiquette « 30 jours » était fausse.
-  const { data: adSpendRows } = await supabase
-    .from("ad_metrics")
-    .select("spend")
-    .eq("provider", "meta_ads")
-    .gte("date", sinceISO);
+  const { data: adSpendRows } = canViewFinancials
+    ? await supabase
+        .from("ad_metrics")
+        .select("spend")
+        .eq("provider", "meta_ads")
+        .gte("date", sinceISO)
+    : { data: [] };
   const adSpend = (adSpendRows ?? []).reduce((s, r) => s + Number(r.spend), 0);
   const { count: prospectCount } = await supabase
     .from("prospects")
@@ -107,7 +127,8 @@ export default async function TodayPage() {
   // départ — la première expertise de l'agent, avant tout connecteur (même
   // rendu que /plan). Dès qu'il y a des données, on retrouve les KPIs.
   const hasData =
-    (prospectCount ?? 0) > 0 || (adSpendRows ?? []).length > 0;
+    (prospectCount ?? 0) > 0 ||
+    (canViewFinancials && (adSpendRows ?? []).length > 0);
   const memCtx = hasData ? null : await readMemory(supabase);
   const diagnostic = memCtx
     ? buildStarterDiagnostic(
@@ -120,12 +141,80 @@ export default async function TodayPage() {
 
   const hasRevenue = rev.count > 0;
   const eur = (n: number) => `${Math.round(n).toLocaleString("fr-FR")} €`;
-  const kpis = [
-    { label: "Dépenses", value: adSpend > 0 ? eur(adSpend) : "—", hint: "publicité (Meta)" },
-    { label: "Prospects", value: (prospectCount ?? 0) > 0 ? String(prospectCount) : "—", hint: "dans votre base" },
-    { label: "Ventes", value: hasRevenue ? String(rev.count) : "—", hint: "30 derniers jours" },
-    { label: "Revenu", value: hasRevenue ? eur(rev.total) : "—", hint: "30 derniers jours" },
-  ];
+  const prospectKpi = {
+    label: "Prospects",
+    value: (prospectCount ?? 0) > 0 ? String(prospectCount) : "—",
+    hint: "dans votre base",
+  };
+  const kpis = canViewFinancials
+    ? [
+        {
+          label: "Dépenses",
+          value: adSpend > 0 ? eur(adSpend) : "—",
+          hint: "publicité (Meta)",
+        },
+        prospectKpi,
+        {
+          label: "Ventes",
+          value: hasRevenue ? String(rev.count) : "—",
+          hint: "30 derniers jours",
+        },
+        {
+          label: "Revenu",
+          value: hasRevenue ? eur(rev.total) : "—",
+          hint: "30 derniers jours",
+        },
+      ]
+    : [prospectKpi];
+
+  // `value_events` est volontairement invisible aux rôles commerciaux/lecture.
+  // En recette non migrée, ne pas transformer une erreur de table en scorecard
+  // artificiellement vide : null signifie « preuve indisponible », pas zéro.
+  let valueScorecard = null;
+  let valueScorecardIncomplete = false;
+  let valueScorecardReadFailed = false;
+  if (canEdit) {
+    const valueEventRows: ValueEventForScorecard[] = [];
+    let valueEventsReadFailed = false;
+
+    for (
+      let offset = 0;
+      offset <= MAX_VALUE_SCORECARD_EVENTS;
+      offset += VALUE_EVENT_PAGE_SIZE
+    ) {
+      const end = Math.min(
+        offset + VALUE_EVENT_PAGE_SIZE - 1,
+        MAX_VALUE_SCORECARD_EVENTS,
+      );
+      const { data: page, error: valueEventsError } = await supabase
+        .from("value_events")
+        .select(
+          "id, action_id, prospect_id, actor_id, event_type, source, is_demo, false_positive_reason, edit_level, occurred_at",
+        )
+        .eq("action_kind", "relaunch_dormant")
+        .eq("is_demo", false)
+        .order("occurred_at", { ascending: false })
+        .order("id", { ascending: false })
+        .range(offset, end);
+
+      if (valueEventsError || !page) {
+        valueEventsReadFailed = true;
+        valueScorecardReadFailed = true;
+        break;
+      }
+      if (offset === MAX_VALUE_SCORECARD_EVENTS) {
+        valueScorecardIncomplete = page.length > 0;
+        break;
+      }
+
+      valueEventRows.push(...(page as ValueEventForScorecard[]));
+      if (page.length < VALUE_EVENT_PAGE_SIZE) break;
+    }
+
+    if (!valueEventsReadFailed && !valueScorecardIncomplete) {
+      valueScorecard = buildValueScorecard(valueEventRows);
+    }
+  }
 
   return (
     <>
@@ -192,7 +281,8 @@ export default async function TodayPage() {
               </div>
             ))}
           </div>
-          {!hasRevenue &&
+          {canViewFinancials &&
+            !hasRevenue &&
             (canEdit ? (
               <Link
                 href="/entreprise?onglet=connecteurs"
@@ -215,6 +305,34 @@ export default async function TodayPage() {
       {!diagnostic && (
         <div className="mt-5">
           <PlanBanner />
+        </div>
+      )}
+
+      {!diagnostic && canEdit && (
+        <div className="mt-5">
+          <DormantPlayLauncher />
+        </div>
+      )}
+
+      {!diagnostic && canEdit && valueScorecard && (
+        <div className="mt-5">
+          <ValueScorecard scorecard={valueScorecard} />
+        </div>
+      )}
+
+      {!diagnostic && canEdit && valueScorecardIncomplete && (
+        <div className="mt-5 rounded-[18px] border border-line-soft bg-white p-5 text-[12.5px] text-muted shadow-card">
+          La scorecard est suspendue au-delà de 5 000 événements : une
+          agrégation complète est requise avant d&apos;afficher des taux ou de
+          conclure sur les gates.
+        </div>
+      )}
+
+      {!diagnostic && canEdit && valueScorecardReadFailed && (
+        <div className="mt-5 rounded-[18px] border border-line-soft bg-white p-5 text-[12.5px] text-muted shadow-card">
+          Scorecard indisponible : la lecture des événements terrain a échoué.
+          Aucun taux ni gate n&apos;est affiché tant que la migration et les
+          permissions ne sont pas vérifiées.
         </div>
       )}
 

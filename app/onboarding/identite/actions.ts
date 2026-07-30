@@ -3,7 +3,13 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
+import { getCurrentAuthContext } from "@/lib/auth/context";
+import { isDemoModeOrMutationActive } from "@/lib/demo/isolation";
+import {
+  DemoBusyError,
+  DemoDataMutationBlockedError,
+  withRealDataMutationLock,
+} from "@/lib/demo/lock";
 import {
   ACTIVITY_OPTIONS,
   AUDIENCE_OPTIONS,
@@ -30,28 +36,30 @@ export type ProposeResult =
     }
   | { ok: false; reason: string };
 
-/** Session + organisation de l'utilisateur (admin par construction ici). */
-async function requireMembership() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+/** Session + organisation avec droit d'édition, vérifié côté serveur. */
+async function requireEditorMembership() {
+  const { user, membership } = await getCurrentAuthContext();
   if (!user) redirect("/login");
-
-  const { data: membership } = await supabase
-    .from("memberships")
-    .select("organization_id")
-    .limit(1)
-    .maybeSingle();
   if (!membership) redirect("/onboarding");
-  return { userId: user.id, orgId: membership.organization_id as string };
+  if (!membership.canEdit) redirect("/");
+  if (
+    await isDemoModeOrMutationActive(
+      createAdminClient(),
+      membership.organizationId,
+    )
+  ) {
+    redirect(
+      "/entreprise?onglet=connecteurs&error=Retirez%20d'abord%20la%20d%C3%A9monstration.",
+    );
+  }
+  return { userId: user.id, orgId: membership.organizationId };
 }
 
 const urlSchema = z.string().trim().min(3).max(300);
 
 /** Lance la recherche. Retour direct (pas de redirect) : appelé depuis le client. */
 export async function proposeIdentity(website: string): Promise<ProposeResult> {
-  const { userId, orgId } = await requireMembership();
+  const { userId, orgId } = await requireEditorMembership();
   const parsed = urlSchema.safeParse(website);
   if (!parsed.success) return { ok: false, reason: "invalid_url" };
 
@@ -94,7 +102,7 @@ function readOffers(raw: FormDataEntryValue | null): Offer[] {
  * par du vide (le champ « philosophie » saisi à l'écran précédent est intact).
  */
 export async function applyIdentity(formData: FormData) {
-  const { userId, orgId } = await requireMembership();
+  const { userId, orgId } = await requireEditorMembership();
   const admin = createAdminClient();
 
   const text = (key: string, max: number): string => {
@@ -139,24 +147,36 @@ export async function applyIdentity(formData: FormData) {
   if (offres.length > 0) sections.push({ section: "offres", content: { items: offres } });
   if (presence.length > 0) sections.push({ section: "presence", content: { list: presence } });
 
-  for (const { section, content } of sections) {
-    const { error } = await admin.from("company_memory").upsert(
-      {
-        organization_id: orgId,
-        section,
-        content,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "organization_id,section" },
-    );
-    if (error) continue; // une section ratée ne doit pas bloquer les autres
-    await admin.from("journal").insert({
-      organization_id: orgId,
-      event: "memory_updated",
-      actor: "user",
-      actor_id: userId,
-      payload: { section, source: "onboarding_web" },
+  try {
+    await withRealDataMutationLock(admin, orgId, async () => {
+      for (const { section, content } of sections) {
+        const { error } = await admin.from("company_memory").upsert(
+          {
+            organization_id: orgId,
+            section,
+            content,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "organization_id,section" },
+        );
+        if (error) continue; // une section ratée ne doit pas bloquer les autres
+        await admin.from("journal").insert({
+          organization_id: orgId,
+          event: "memory_updated",
+          actor: "user",
+          actor_id: userId,
+          payload: { section, source: "onboarding_web" },
+        });
+      }
     });
+  } catch (error) {
+    const message =
+      error instanceof DemoDataMutationBlockedError
+        ? "Retirez d'abord la démonstration avant de modifier la mémoire."
+        : error instanceof DemoBusyError
+          ? "Une autre opération est en cours. Réessayez dans un instant."
+          : "Enregistrement impossible. Réessayez dans un instant.";
+    redirect(`/entreprise?error=${encodeURIComponent(message)}`);
   }
 
   redirect("/");
@@ -164,6 +184,6 @@ export async function applyIdentity(formData: FormData) {
 
 /** « Passer cette étape » — aucune écriture, on entre simplement dans le cockpit. */
 export async function skipIdentity() {
-  await requireMembership();
+  await requireEditorMembership();
   redirect("/");
 }

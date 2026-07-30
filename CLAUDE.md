@@ -27,9 +27,9 @@ Copilote marketing IA pour PME, solopreneurs et petites équipes. L'agent compre
 - Next.js 16 (App Router, TypeScript strict) + Tailwind 4
 - Supabase (Postgres + Auth + RLS, hébergement EU)
 - IA : Vercel AI SDK multi-fournisseurs — `lib/llm.ts`, `getModel("light" | "standard" | "premium")`, modèles par env (`LLM_MODEL*`, format `provider:model`). Test : GET/POST `/api/llm/status`.
-- Recherche web (hors `lib/llm.ts` — chercher ≠ rédiger) : **deux fournisseurs** derrière `lib/research/provider.ts`, `fetch` natif, aucune dépendance. OpenAI `web_search` (Responses API, modèle par défaut surchargeable via `RESEARCH_OPENAI_MODEL`) ou Perplexity Agent API. `RESEARCH_PROVIDER` (`openai` | `perplexity`) tranche ; à défaut, le premier fournisseur dont la clé existe ; aucune clé ⇒ recherche désactivée proprement. Toujours passer par `runResearch` (cache, journal AVANT, plafonds).
+- Recherche web (hors `lib/llm.ts` — chercher ≠ rédiger) : **deux fournisseurs** derrière `lib/research/provider.ts`, `fetch` natif, aucune dépendance. OpenAI `web_search` (Responses API, modèle par défaut surchargeable via `RESEARCH_OPENAI_MODEL`) ou Perplexity Agent API. `RESEARCH_PROVIDER` (`openai` | `perplexity`) tranche ; à défaut, le premier fournisseur dont la clé existe ; aucune clé ⇒ recherche désactivée proprement. Toujours passer par `runResearch` : cache de réponse réservé aux résultats `status = ok`, réservation atomique du quota quotidien sérialisée avec la pause, puis journal AVANT l'appel externe. Les appels forcés ou échoués après claim consomment le quota.
 - Zod pour la validation des entrées/sorties
-- File de jobs async : à trancher (voir docs/DECISIONS.md)
+- Jobs : sync par route de cron au volume actuel ; outbound futur via outbox PostgreSQL + claim atomique + worker borné (pas de boucle synchrone, pas de Redis sans besoin mesuré).
 
 ## Commandes
 
@@ -38,6 +38,7 @@ npm run dev        # serveur de dev
 npm run build      # build production
 npm run lint       # eslint
 npm run typecheck  # tsc --noEmit
+npm test           # contrats purs, RLS/migrations et orchestration
 ```
 
 ## Structure
@@ -52,7 +53,7 @@ docs/           architecture, roadmap, décisions, maquettes HTML
 
 ## Design
 
-- **Source de vérité UI : `docs/maquettes/`** (cockpit + onboarding validés). Toute nouvelle vue doit reprendre leurs patterns.
+- **Référence visuelle : `docs/maquettes/`** pour les tokens et patterns. Ces maquettes sont historiques ; la navigation fonctionnelle à cinq entrées est définie dans `docs/DECISIONS.md` et le code livré fait foi.
 - Tokens dans `app/globals.css` (violet #5a4fe0, ink #191731, tint, line…) exposés en classes Tailwind (`text-ink`, `bg-tint`, `border-line-soft`, `shadow-card`…).
 - Typo : Inter (corps) + Instrument Sans (titres, `font-display`). Rayons 18/13/10 px.
 - Textes produit : simples, français, **concis**. On s'adresse à des entrepreneurs : **ne pas définir** le lexique marketing standard (prospect, lead, funnel, relance…). Ne gloser brièvement que le jargon d'initié réellement obscur (cf. « Règle vocabulaire »). Pas de sous-titres explicatifs à rallonge.
@@ -62,6 +63,7 @@ docs/           architecture, roadmap, décisions, maquettes HTML
 - Session Supabase SSR rafraîchie dans `proxy.ts` ; routes publiques : `/login`, `/signup`, `/auth/*`, `/api/*` (auth propre).
 - Écritures sensibles via `createAdminClient()` (service-role, serveur uniquement) + entrée `journal` systématique.
 - Flux : signup → confirmation email (`/auth/confirm`) → `/onboarding` (création organisation, rôle admin) → `/`.
+- Capacités centralisées dans `lib/auth/roles.ts` : admin/marketing/direction éditent, voient les finances et gèrent les campagnes ; lecture voit les finances sans mutation ; commercial n'a aucune de ces capacités. Un rôle inconnu est refusé. `0015`, puis le rattrapage additif `0019`, imposent aussi la frontière côté RLS et privilèges de colonnes : aucun contenu libre/dérivé pour le commercial, seulement les colonnes prospects expurgées, le nom de l'organisation et les métadonnées non sensibles des connecteurs CRM/fichiers. `organizations.activity`, `connectors.config` et `connectors.encrypted_credentials` restent côté service role.
 
 ## Conventions
 
@@ -70,6 +72,9 @@ docs/           architecture, roadmap, décisions, maquettes HTML
 - Métriques privilégiées : vente et revenu (pas les métriques de vanité).
 - Chaque action proposée porte : constat, raison, données utilisées, impact estimé, confiance, risque.
 - Toute mutation passe par le serveur (route handler / server action) et écrit au journal.
+- Le mode démo est réservé à l'admin d'une organisation de test vide. Respecter le préflight, les marqueurs/scopes démo, le verrou distribué et le nettoyage sélectif ; ne jamais reconnaître ou supprimer une ligne réelle par ressemblance. Ne jamais reprendre automatiquement un `__demo_lock` ancien : sans fencing, une récupération doit être manuelle et vérifier que le propriétaire ne travaille plus.
+- Les décisions, réglages d'exécution, claims et finalisations passent par les RPC transactionnelles de `0018`. Ne pas contourner ces frontières ni effacer/réutiliser automatiquement un claim ambigu : retourner une reprise requise.
+- `/api/health` ne touche pas la base. `/api/ready` vérifie Supabase et `app_schema_version`. Depuis `0016`, chaque nouvelle migration de schéma doit faire progresser ce marqueur et rester alignée avec `REQUIRED_SCHEMA_VERSION` et le workflow de déploiement.
 
 ## Suivi inter-agents
 
@@ -77,4 +82,8 @@ docs/           architecture, roadmap, décisions, maquettes HTML
 
 ## Phase actuelle
 
-**Phase 3 — Première exécution réelle (étape A : mode sûr)** — décision de Fathi 2026-07-23. Les fondations Phase 2 sont en place (l'agent détecte, propose, prépare). On construit maintenant la **colonne vertébrale d'exécution** : idempotence + journal AVANT toute exécution, garde-fous **côté serveur** (plafonds run/jour), bouton d'arrêt (pause org). **Étape A = mode sûr** : une action validée prépare les messages dans `outbox_messages` (statut `prepared`), **AUCUN envoi externe**. **Étape B (à venir)** : brancher l'envoi réel **SMTP** derrière la même mécanique. Voir docs/ROADMAP.md et docs/SUIVI.md. Ne rien envoyer à l'extérieur tant que l'étape B + garde-fous ne sont pas explicitement validés.
+**Phase 3A livrée techniquement en local ; porte terrain de la phase 2 encore ouverte.** Les fondations permettent à l'agent de détecter, proposer et préparer. **Étape A = mode sûr** : une action validée prépare les messages dans `outbox_messages` (statut `prepared`), **AUCUN envoi externe**. R1A/C9A et R1B sont maintenant implémentés localement : preuve terrain structurée et déclarative dans `value_events`, cohortes de relance figées à l'approbation, puis Top 5 explicable dans « Aujourd'hui ». L'ordre opérationnel reste défini dans `docs/projets/roadmap-valeur-commanditaires.md` : recette de ce lot local, play dormant supervisé, puis connecteur ou C7 seulement si leurs gates sont franchis.
+
+Au 2026-07-29, la vague locale comprend les migrations `0012` à `0020` : temps dans la relance, mono-organisation bêta, écritures mémoire au service role, frontière financière par rôle, marqueur de readiness, quota de recherche atomique, transitions d'action transactionnelles, rattrapage additif des privilèges/RLS, événements de valeur append-only et snapshots immuables des cibles de relance. L'isolation démo protège aussi les mutations de données réelles avec le même verrou distribué. **Rien de cette vague n'est déployé et aucune de ces migrations n'est appliquée à la base distante.** Elles doivent être appliquées manuellement dans l'ordre avant tout déploiement ; la révision exige `app_schema_version >= 20`.
+
+Le prochain connecteur de contexte, s'il est justifié par les tests **et explicitement choisi par Fathi**, est **Google Workspace/Gmail ou Microsoft 365, jamais les deux dans le même cycle**, d'abord en lecture seule et avec données minimisées. Un envoi manuel déclaré n'est jamais un statut fournisseur `sent`. Avant C7 restent notamment à fermer la suppression-list, le quota/claim global atomique de l'outbox, les états ambigus et la chaîne outbound complète ; aucun envoi externe sans validation explicite de Fathi. La télémétrie LLM peut mesurer la technique, mais ne doit enregistrer ni prompts ni réponses par défaut.

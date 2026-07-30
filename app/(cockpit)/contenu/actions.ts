@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getEditorContext } from "@/lib/connectors/common";
+import { getEditorContext } from "@/lib/auth/context";
 import { generateCreativeBrief } from "@/lib/creative";
 import {
   CREATIVE_CHANNELS,

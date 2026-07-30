@@ -110,6 +110,27 @@ export function parseDemoBackup(content: unknown): DemoBackup | null {
   };
 }
 
+export type StoredDemoBackup =
+  | { state: "absent" }
+  | { state: "invalid" }
+  | { state: "valid"; backup: DemoBackup };
+
+/**
+ * Distingue explicitement l'absence d'une sauvegarde de sa corruption.
+ *
+ * Cette distinction est essentielle au chargement : une sauvegarde absente
+ * doit être créée, tandis qu'une ligne existante mais illisible doit bloquer
+ * avant la première mutation du scénario.
+ */
+export function inspectStoredDemoBackup(
+  rows: readonly MemoryRow[],
+): StoredDemoBackup {
+  const stored = rows.find((row) => row.section === DEMO_BACKUP_SECTION);
+  if (!stored) return { state: "absent" };
+  const backup = parseDemoBackup(stored.content);
+  return backup ? { state: "valid", backup } : { state: "invalid" };
+}
+
 function payloadName(payload: unknown): string | null {
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) return null;
   const name = (payload as Record<string, unknown>).name;

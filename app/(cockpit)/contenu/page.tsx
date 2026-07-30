@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
-import { EDIT_ROLES } from "@/lib/memory";
+import { getCurrentAuthContext } from "@/lib/auth/context";
 import { readMemory } from "@/lib/memory-store";
 import { memoText } from "@/lib/draft-template";
 import {
@@ -19,18 +18,10 @@ import { CreativeWorkspace } from "./_components/creative-workspace";
 import { CoachBubble } from "@/components/ui/coach-bubble";
 
 export default async function ContenuPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user, membership } = await getCurrentAuthContext();
   if (!user) redirect("/login");
-  const { data: membership } = await supabase
-    .from("memberships")
-    .select("role")
-    .limit(1)
-    .maybeSingle();
   if (!membership) redirect("/onboarding");
-  const canEdit = EDIT_ROLES.includes(membership.role);
+  const canEdit = membership.canEdit;
 
   // Idées proposées par l'agent, à partir de ce qu'il sait déjà.
   const memCtx = await readMemory(supabase, ["offres", "activite"]);
@@ -41,11 +32,15 @@ export default async function ContenuPage() {
     .select("email, stage, company");
   const stats = computeFunnelStats((prospectRows ?? []) as BriefingProspect[]);
 
-  const { data: adRows } = await supabase
-    .from("ad_metrics")
-    .select("campaign_id, campaign_name, impressions, clicks, spend, conversions, revenue")
-    .eq("provider", "meta_ads")
-    .gte("date", windowBounds().currentFrom);
+  const { data: adRows } = membership.canViewFinancials
+    ? await supabase
+        .from("ad_metrics")
+        .select(
+          "campaign_id, campaign_name, impressions, clicks, spend, conversions, revenue",
+        )
+        .eq("provider", "meta_ads")
+        .gte("date", windowBounds().currentFrom)
+    : { data: [] };
   const losingCampaigns = rollupByCampaign(
     (adRows ?? []).map((r) => ({
       ...r,

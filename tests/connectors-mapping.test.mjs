@@ -16,6 +16,7 @@ import {
   autoDetectNotionMapping,
   fetchNotionProspects,
 } from "../lib/connectors/notion.ts";
+import { normalizeContactDate } from "../lib/connectors/date-rules.ts";
 
 /** Installe un mock de fetch le temps d'un test, puis le restaure. */
 function withFetch(handler, fn) {
@@ -62,6 +63,16 @@ test("autoDetectSheetMapping — détecte une colonne Notes", () => {
   assert.equal(m2.notes, "Commentaire");
   const m3 = autoDetectSheetMapping(["Nom", "Email"]);
   assert.equal(m3.notes, null);
+});
+
+test("autoDetectSheetMapping — détecte la date du dernier contact", () => {
+  const m = autoDetectSheetMapping([
+    "Nom",
+    "Email",
+    "Date de création",
+    "Dernier contact",
+  ]);
+  assert.equal(m.last_contact_at, "Dernier contact");
 });
 
 test("autoDetectSheetMapping — en-têtes exotiques non reconnus → null", () => {
@@ -139,6 +150,25 @@ test("fetchSheetProspects — sans mapping, retombe sur la détection auto", asy
   });
 });
 
+test("fetchSheetProspects — normalise ISO et jj/mm/aaaa, invalide → null", async () => {
+  const headers = ["Nom", "Email", "Relance"];
+  const rows = [
+    ["Alex", "alex@x.fr", "2026-07-09T10:30:00Z"],
+    ["Zoé", "zoe@x.fr", "08/07/2026"],
+    ["Sam", "sam@x.fr", "31/02/2026"],
+  ];
+  await withFetch(sheetHandler(headers, rows), async () => {
+    const out = await fetchSheetProspects("tok", "sheet1", {
+      name: "Nom",
+      email: "Email",
+      last_contact_at: "Relance",
+    });
+    assert.equal(out[0].last_contact_at, "2026-07-09");
+    assert.equal(out[1].last_contact_at, "2026-07-08");
+    assert.equal(out[2].last_contact_at, null);
+  });
+});
+
 // ---------------------------------------------------------------------------
 // Notion — détection auto (non-régression)
 // ---------------------------------------------------------------------------
@@ -166,6 +196,16 @@ test("autoDetectNotionMapping — stage via select (clé reconnue) si pas de sta
   ];
   const m = autoDetectNotionMapping(props);
   assert.equal(m.stage, "Statut");
+});
+
+test("autoDetectNotionMapping — préfère la propriété date du dernier contact", () => {
+  const props = [
+    { key: "Nom", type: "title" },
+    { key: "Création", type: "date" },
+    { key: "Dernière relance", type: "date" },
+  ];
+  const m = autoDetectNotionMapping(props);
+  assert.equal(m.last_contact_at, "Dernière relance");
 });
 
 test("autoDetectNotionMapping — clé exotique non reconnue par l'auto → null (mapping explicite requis)", () => {
@@ -226,4 +266,66 @@ test("fetchNotionProspects — sans mapping, détection auto depuis le schéma",
     assert.equal(out[0].company, "ACME");
     assert.equal(out[0].stage, "Nouveau");
   });
+});
+
+test("fetchNotionProspects — lit une propriété date", async () => {
+  const page = {
+    id: "page1",
+    properties: {
+      Nom: { type: "title", title: [{ plain_text: "Alex" }] },
+      Email: { type: "email", email: "alex@x.fr" },
+      "Dernier contact": {
+        type: "date",
+        date: { start: "2026-07-01T09:00:00.000+02:00" },
+      },
+    },
+  };
+  await withFetch(async () => jsonRes({ results: [page] }), async () => {
+    const out = await fetchNotionProspects("tok", "db1");
+    assert.equal(out[0].last_contact_at, "2026-07-01");
+  });
+});
+
+test("fetchNotionProspects — suit la pagination au-delà de 100 lignes", async () => {
+  const page = (id) => ({
+    id,
+    properties: {
+      Nom: { type: "title", title: [{ plain_text: id }] },
+      Email: { type: "email", email: `${id}@x.fr` },
+    },
+  });
+  const bodies = [];
+  const handler = async (_url, init) => {
+    const body = JSON.parse(init.body);
+    bodies.push(body);
+    if (!body.start_cursor) {
+      return jsonRes({
+        results: [page("premier")],
+        has_more: true,
+        next_cursor: "cursor-2",
+      });
+    }
+    return jsonRes({
+      results: [page("second")],
+      has_more: false,
+      next_cursor: null,
+    });
+  };
+
+  await withFetch(handler, async () => {
+    const out = await fetchNotionProspects("tok", "db1");
+    assert.deepEqual(
+      out.map((p) => p.name),
+      ["premier", "second"],
+    );
+    assert.equal(bodies.length, 2);
+    assert.equal(bodies[1].start_cursor, "cursor-2");
+  });
+});
+
+test("normalizeContactDate — rejette les valeurs ambiguës ou impossibles", () => {
+  assert.equal(normalizeContactDate("2026-02-29"), null);
+  assert.equal(normalizeContactDate("29-07-2026"), null);
+  assert.equal(normalizeContactDate(""), null);
+  assert.equal(normalizeContactDate(null), null);
 });

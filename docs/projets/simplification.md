@@ -1,7 +1,23 @@
 # Projet — Simplification (usage + code)
 
-> **Statut** : cadré, non commencé. Demande de Fathi (2026-07-25) : « ça a l'air excellent mais je trouve ça légèrement compliqué ».
+> **Statut** : lots C1 à C6 terminés au 2026-07-26 ; vague de simplification technique S0 à S8 implémentée localement le 2026-07-29. Ce document conserve le diagnostic et le plan d'origine ; l'état d'exécution est dans `docs/SUIVI.md` et l'ordre produit courant dans `roadmap-valeur-commanditaires.md`. `roadmap-beta.md` conserve l'historique C1–C12.
 > **Axes retenus** : l'app pour l'utilisateur, et le code. Plan écrit d'abord, exécution ensuite, lot par lot.
+
+## Vague technique du 29 juillet 2026
+
+| Lot | Résultat local | Statut |
+|---|---|---|
+| S0 — nettoyage mécanique | code mort retiré, types communs réutilisés, contrôles `noUnused*` activés | Terminé |
+| S1 — contexte auth/organisation | source unique `lib/auth/context.ts`, ambiguïté refusée et invariant mono-org bêta dans `0013` | Terminé localement |
+| S2 — ciblage relance | même prédicat pur pour l'aperçu et l'exécution, cas 7 jours couverts | Terminé |
+| S3 — écrans concentrés | file de validation 499 → 91 lignes ; fiche connecteur 347 → 181 lignes | Terminé côté UI |
+| S4 — accessibilité/responsive | dialogues clavier partagés et navigation mobile à cinq destinations | Terminé |
+| S5 — façade Server Actions | façade publique 468 → 99 lignes ; cinq modules métier derrière des wrappers `async` compatibles Next 16 | Terminé |
+| S6 — preuve auth/RLS | écriture directe de la mémoire fermée par `0014`, garde éditeur renforcée et smoke RLS reproductible | Terminé localement, smoke distant à jouer |
+| S7 — rôles et données sensibles | matrice de capacités unique ; lectures financières, mémoire/offres, recherches, briefings, actions, journal, connecteurs et colonnes libres protégés par `0015` | Terminé localement |
+| S8 — concurrence et exploitation | isolation démo et mutations réelles sérialisées, readiness probante `0016`, quota recherche atomique `0017`, décisions/claims/finalisations/réglages transactionnels `0018`, rattrapage additif RLS/privilèges `0019` | Terminé localement |
+
+Les migrations `0012` à `0019` et le smoke authentifié restent à jouer sur un environnement de recette dédié. Un registre de providers ne devient utile qu'avant un troisième connecteur ; aucune hiérarchie de classes ou couche repository générique n'est introduite avec seulement Sheets et Notion.
 
 ## État constaté
 

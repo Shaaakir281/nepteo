@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { getCurrentAuthContext } from "@/lib/auth/context";
 import {
   ACTIVITY_OPTIONS,
   AUDIENCE_OPTIONS,
@@ -14,18 +14,10 @@ import { IdentityWizard } from "./_components/identity-wizard";
  * Rien n'est obligatoire : « Passer cette étape » entre directement au cockpit.
  */
 export default async function IdentitePage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { user, membership } = await getCurrentAuthContext();
   if (!user) redirect("/login");
-
-  const { data: membership } = await supabase
-    .from("memberships")
-    .select("organization_id")
-    .limit(1)
-    .maybeSingle();
   if (!membership) redirect("/onboarding");
+  if (!membership.canEdit) redirect("/");
   // Sans clé de recherche, cet écran n'aurait rien à proposer.
   if (!researchConfigured()) redirect("/");
 

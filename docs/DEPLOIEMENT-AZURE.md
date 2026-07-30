@@ -3,6 +3,10 @@
 Cette procédure prépare un déploiement Docker vers Azure Container Apps, avec
 images dans ACR, région UE et GitHub Actions en OIDC.
 
+> État au 29 juillet 2026 : la vague locale et les migrations `0012` à `0020`
+> ne sont ni déployées ni appliquées à la base distante. Le workflow ne lance
+> aucune migration : leur application manuelle est un préalable obligatoire.
+
 ## 1. Verrou absolu : identifier le bon compte Azure
 
 Ne jamais se fier au compte Azure « par défaut » de la machine. Avant toute
@@ -226,6 +230,24 @@ OAuth doivent utiliser le domaine principal.
 
 ## 6. Premier déploiement
 
+### Préalable Supabase
+
+Appliquer manuellement toutes les migrations dans l'ordre. Pour une base à jour
+jusqu'à `0011`, appliquer `0012` à `0020` sans en sauter. Contrôler ensuite avec
+le service role :
+
+```sql
+select version
+from public.app_schema_version
+where id = 1;
+```
+
+La valeur doit être au moins `20`. `0016` introduit ce marqueur et prouve les
+prérequis critiques ; `0017`, `0018`, le rattrapage additif `0019`, puis `0020`
+le font progresser à la version actuellement requise. `0020` crée les cohortes
+figées de relance et les événements de valeur structurés. Ne jamais modifier le
+marqueur à la main pour contourner une migration absente.
+
 Le workflow `.github/workflows/deploy.yml` est volontairement
 `workflow_dispatch` uniquement pour le premier déploiement :
 
@@ -238,11 +260,18 @@ Le job :
 
 1. compare la saisie à `AZURE_SUBSCRIPTION_ID` ;
 2. se connecte par OIDC ;
-3. revalide souscription, tenant et région ;
-4. construit l’image Node 22 dans ACR, taguée avec le SHA Git ;
-5. configure secrets et variables runtime ;
-6. déploie une révision Container Apps ;
-7. teste publiquement `/api/health`.
+3. revalide en lecture seule souscription, tenant et région ;
+4. vérifie que Supabase est joignable et que `app_schema_version >= 20` ;
+5. seulement alors, construit l’image Node 22 dans ACR, taguée avec le SHA Git ;
+6. configure secrets et variables runtime ;
+7. déploie une révision Container Apps ;
+8. teste publiquement `/api/health`, puis `/api/ready`.
+
+Le contrôle du schéma précède ainsi la première mutation Azure. `/api/health`
+est un contrôle de liveness du processus et ne touche pas la base ;
+`/api/ready` confirme après déploiement l'accès à Supabase et la compatibilité
+du schéma. Une réponse 200 de `/api/health` ne compense jamais un échec de
+`/api/ready`.
 
 Une fois le premier déploiement validé, on pourra ajouter le trigger
 `push: branches: [main]` tout en conservant les contrôles de cible. Le cron
@@ -255,13 +284,14 @@ l’environnement GitHub `production`).
 
 Le test public automatique ne remplace pas ce parcours authentifié :
 
-1. créer un nouvel utilisateur avec l’adresse de test de l’ami ;
-2. ouvrir l’e-mail de confirmation et vérifier l’arrivée sur
+1. vérifier que `GET /api/health` et `GET /api/ready` répondent tous deux 200 ;
+2. créer un nouvel utilisateur avec l’adresse de test de l’ami ;
+3. ouvrir l’e-mail de confirmation et vérifier l’arrivée sur
    `/auth/confirm`, puis dans l’app ;
-3. terminer l’onboarding ;
-4. charger un scénario de démonstration ;
-5. lancer **Analyser mes données maintenant** et vérifier les propositions ;
-6. dans la même session authentifiée, ouvrir `GET /api/llm/status` et vérifier :
+4. terminer l’onboarding dans une organisation de test neuve et vide ;
+5. avec le rôle admin, charger un scénario de démonstration ;
+6. lancer **Analyser mes données maintenant** et vérifier les propositions ;
+7. dans la même session authentifiée, ouvrir `GET /api/llm/status` et vérifier :
    - HTTP 200 ;
    - modèles `light`, `standard`, `premium` attendus ;
    - clé du fournisseur sélectionné à `true` ;
@@ -278,4 +308,6 @@ Ne lancer `POST /api/llm/status` que si un ping LLM facturé est souhaité.
 - aucun secret n’apparaît dans l’image, le dépôt ou les logs GitHub ;
 - la révision est en région `AZURE_LOCATION` ;
 - les URLs Supabase et OAuth utilisent exactement le domaine de production ;
-- `CONNECTOR_TOKEN_ENCRYPTION_KEY` est sauvegardée durablement.
+- `CONNECTOR_TOKEN_ENCRYPTION_KEY` est sauvegardée durablement ;
+- `app_schema_version.version >= 20` ;
+- `/api/health` et `/api/ready` répondent tous deux 200.

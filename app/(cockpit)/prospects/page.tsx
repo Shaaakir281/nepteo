@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { getCurrentAuthContext } from "@/lib/auth/context";
 import { dedupeByEmail } from "@/lib/dedupe-prospects";
 import {
   ProspectsBoard,
@@ -12,15 +12,14 @@ import { CoachBubble } from "@/components/ui/coach-bubble";
 const NO_STAGE = "Sans statut";
 
 export default async function ProspectsPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getCurrentAuthContext();
   if (!user) redirect("/login");
 
   const { data, count } = await supabase
     .from("prospects")
-    .select("id, name, email, company, stage", { count: "exact" })
+    .select("id, name, email, company, stage, last_contact_at", {
+      count: "exact",
+    })
     .order("synced_at", { ascending: false })
     .limit(500);
   // Dédup à l'affichage : une même personne lue par deux connecteurs (ex. Sheets
@@ -28,6 +27,7 @@ export default async function ProspectsPage() {
   const rawRows = (data ?? []) as BoardProspect[];
   const prospects = dedupeByEmail(rawRows);
   const maskedDupes = rawRows.length - prospects.length;
+  const today = new Date().toISOString().slice(0, 10);
 
   // Regroupement par statut, colonnes ordonnées par effectif décroissant.
   const byStage = new Map<string, BoardProspect[]>();
@@ -73,7 +73,11 @@ export default async function ProspectsPage() {
         </div>
       ) : (
         <>
-          <ProspectsBoard groups={groups} total={prospects.length} />
+          <ProspectsBoard
+            groups={groups}
+            total={prospects.length}
+            today={today}
+          />
           <p className="mt-3 text-[12px] text-faint">
             {prospects.length} prospect{prospects.length > 1 ? "s" : ""} au total
             {maskedDupes > 0 &&

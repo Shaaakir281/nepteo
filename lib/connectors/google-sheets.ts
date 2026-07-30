@@ -1,4 +1,5 @@
 import type { FieldMapping, NormalizedProspect } from "./common";
+import { normalizeContactDate } from "./date-rules.ts";
 
 /** Google Sheets — OAuth + lecture seule (scope spreadsheets.readonly). */
 
@@ -9,6 +10,7 @@ export interface GoogleCreds {
 }
 
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
+const REQUEST_TIMEOUT_MS = 30_000;
 
 export function googleAuthUrl(redirectUri: string, state: string): string {
   const p = new URLSearchParams({
@@ -29,6 +31,7 @@ export async function googleExchangeCode(
 ): Promise<GoogleCreds> {
   const res = await fetch(TOKEN_URL, {
     method: "POST",
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
       code,
@@ -61,6 +64,7 @@ export async function googleFreshToken(
   if (!creds.refresh_token) return { token: creds.access_token };
   const res = await fetch(TOKEN_URL, {
     method: "POST",
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
       refresh_token: creds.refresh_token,
@@ -105,6 +109,14 @@ export function autoDetectSheetMapping(headers: string[]): FieldMapping {
     company: matchHeader(headers, [/entreprise/i, /soci[eé]t[eé]/i, /company/i, /organisation/i]),
     stage: matchHeader(headers, [/statut/i, /status/i, /stage/i, /[ée]tape/i]),
     notes: matchHeader(headers, [/notes?/i, /remarque/i, /commentaire/i, /comment/i]),
+    last_contact_at: matchHeader(headers, [
+      /dernier\s+contact/i,
+      /derni[eè]re\s+relance/i,
+      /last\s+contact/i,
+      /date.*contact|contact.*date/i,
+      /relance/i,
+      /^date$/i,
+    ]),
   };
 }
 
@@ -116,7 +128,7 @@ async function readSheet(
   const auth = { Authorization: `Bearer ${token}` };
   const metaRes = await fetch(
     `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?fields=sheets.properties.title`,
-    { headers: auth },
+    { headers: auth, signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) },
   );
   if (!metaRes.ok) throw new Error(`Sheets meta: ${metaRes.status}`);
   const meta = (await metaRes.json()) as {
@@ -126,7 +138,7 @@ async function readSheet(
 
   const valRes = await fetch(
     `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(`${title}!A1:Z5000`)}`,
-    { headers: auth },
+    { headers: auth, signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) },
   );
   if (!valRes.ok) throw new Error(`Sheets values: ${valRes.status}`);
   const data = (await valRes.json()) as { values?: string[][] };
@@ -163,6 +175,7 @@ export async function fetchSheetProspects(
   const iCompany = indexOf(map.company);
   const iStage = indexOf(map.stage);
   const iNotes = indexOf(map.notes);
+  const iLastContact = indexOf(map.last_contact_at);
 
   return rows.flatMap((r, idx) => {
     const cell = (i: number) => (i >= 0 ? (r[i] ?? "").trim() || null : null);
@@ -181,6 +194,7 @@ export async function fetchSheetProspects(
         company: cell(iCompany),
         stage: cell(iStage),
         notes: cell(iNotes),
+        last_contact_at: normalizeContactDate(cell(iLastContact)),
         raw,
       },
     ];

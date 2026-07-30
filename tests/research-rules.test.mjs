@@ -12,11 +12,11 @@ import {
   countWebSearchCalls,
   guardResearch,
   isFresh,
-  MAX_RESEARCH_PER_DAY,
   MAX_SOURCES,
   openaiSearchContext,
   parseOpenAiSearchResponse,
   parseResearchResponse,
+  readQuotaReservation,
   renderResearch,
   subjectKey,
 } from "../lib/research/research-rules.ts";
@@ -70,37 +70,64 @@ test("buildProspectCompanyQuery — interdit explicitement les personnes (RGPD)"
 });
 
 test("guardResearch — ordre de priorité des garde-fous", () => {
-  const base = { hasKey: true, paused: false, subject: "acme", usedToday: 0 };
+  const base = { hasKey: true, subject: "acme" };
   assert.deepEqual(guardResearch(base), { ok: true });
 
-  // Pas de clé : prime sur tout le reste.
+  // Pas de clé : prime sur le sujet vide.
   assert.deepEqual(
-    guardResearch({ ...base, hasKey: false, paused: true, usedToday: 999 }),
+    guardResearch({ ...base, hasKey: false, subject: "" }),
     { ok: false, reason: "no_key" },
-  );
-  // Bouton d'arrêt : prime sur le sujet et le plafond.
-  assert.deepEqual(
-    guardResearch({ ...base, paused: true, subject: "", usedToday: 999 }),
-    { ok: false, reason: "paused" },
   );
   assert.deepEqual(guardResearch({ ...base, subject: "  " }), {
     ok: false,
     reason: "no_subject",
   });
+});
+
+test("readQuotaReservation — valide strictement le contrat de la RPC", () => {
   assert.deepEqual(
-    guardResearch({ ...base, usedToday: MAX_RESEARCH_PER_DAY }),
-    { ok: false, reason: "daily_cap" },
+    readQuotaReservation({ allowed: true, reason: null, used: 1 }),
+    {
+      allowed: true,
+      reason: null,
+      used: 1,
+    },
   );
-  // La dernière recherche sous le plafond passe encore.
   assert.deepEqual(
-    guardResearch({ ...base, usedToday: MAX_RESEARCH_PER_DAY - 1 }),
-    { ok: true },
+    readQuotaReservation({ allowed: false, reason: "paused", used: 0 }),
+    {
+      allowed: false,
+      reason: "paused",
+      used: 0,
+    },
   );
-  // Plafond abaissé pour un appelant particulier.
-  assert.deepEqual(guardResearch({ ...base, usedToday: 2, maxPerDay: 2 }), {
-    ok: false,
-    reason: "daily_cap",
-  });
+  assert.deepEqual(
+    readQuotaReservation({
+      allowed: false,
+      reason: "daily_cap",
+      used: 30,
+    }),
+    {
+      allowed: false,
+      reason: "daily_cap",
+      used: 30,
+    },
+  );
+  for (const value of [
+    null,
+    [],
+    { allowed: true, used: 1 },
+    { allowed: true, reason: "paused", used: 1 },
+    { allowed: true, reason: null, used: 0 },
+    { allowed: false, reason: null, used: 1 },
+    { allowed: false, reason: "unknown", used: 1 },
+    { allowed: false, reason: "paused", used: -1 },
+    { allowed: false, reason: "daily_cap", used: 1.5 },
+    { allowed: "true", reason: null, used: 1 },
+    { allowed: true, reason: null, used: "1" },
+  ]) {
+    assert.equal(readQuotaReservation(value), null);
+  }
 });
 
 test("isFresh — cache valable, périmé, ou date illisible", () => {

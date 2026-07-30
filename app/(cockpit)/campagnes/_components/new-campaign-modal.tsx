@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useDialogFocus } from "@/components/ui/use-dialog-focus";
 import {
   CAMPAIGN_OBJECTIVES,
   CAMPAIGN_CHANNELS,
@@ -23,6 +24,11 @@ export function NewCampaignModal() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(1);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const titleId = useId();
+  const contextId = useId();
 
   const [objectif, setObjectif] = useState<string>(CAMPAIGN_OBJECTIVES[0].value);
   const [canal, setCanal] = useState<string>(CAMPAIGN_CHANNELS[0].value);
@@ -35,17 +41,30 @@ export function NewCampaignModal() {
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
 
-  function reset() {
+  const reset = useCallback(() => {
     setStep(1);
     setPlan(null);
     setVariants([]);
     setBuildStep(0);
     setDone(false);
-  }
-  function close() {
+  }, []);
+
+  const close = useCallback(() => {
     setOpen(false);
     reset();
+  }, [reset]);
+
+  function show() {
+    setOpen(true);
   }
+
+  useDialogFocus({
+    open,
+    onClose: close,
+    dialogRef,
+    initialFocusRef: closeButtonRef,
+    returnFocusRef: triggerRef,
+  });
 
   async function build() {
     setStep(2);
@@ -91,8 +110,9 @@ export function NewCampaignModal() {
   return (
     <>
       <button
+        ref={triggerRef}
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={show}
         className="rounded-[10px] bg-violet px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-violet-deep"
       >
         + Nouvelle campagne
@@ -104,14 +124,24 @@ export function NewCampaignModal() {
           onClick={close}
         >
           <div
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={titleId}
+            aria-busy={step === 2 || submitting}
+            tabIndex={-1}
             className="w-full max-w-[640px] rounded-[18px] bg-white shadow-[0_30px_80px_rgba(25,23,49,.3)]"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-line-soft px-6 py-4">
-              <h3 className="font-display text-[16px] font-semibold">
+              <h3
+                id={titleId}
+                className="font-display text-[16px] font-semibold"
+              >
                 Nouvelle campagne — l&apos;agent construit, vous arbitrez
               </h3>
               <button
+                ref={closeButtonRef}
                 type="button"
                 onClick={close}
                 className="px-2 text-[15px] text-muted hover:text-ink"
@@ -122,10 +152,14 @@ export function NewCampaignModal() {
             </div>
 
             {/* Fil des étapes */}
-            <div className="flex gap-1.5 border-b border-line-soft px-6 py-2.5">
+            <ol
+              aria-label="Étapes de création de la campagne"
+              className="flex gap-1.5 border-b border-line-soft px-6 py-2.5"
+            >
               {STEPS.map((s, i) => (
-                <span
+                <li
                   key={s}
+                  aria-current={step === i + 1 ? "step" : undefined}
                   className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
                     step === i + 1
                       ? "bg-tint text-violet-ink"
@@ -135,9 +169,24 @@ export function NewCampaignModal() {
                   }`}
                 >
                   {i + 1} · {s}
-                </span>
+                </li>
               ))}
-            </div>
+            </ol>
+
+            <p
+              role="status"
+              aria-live="polite"
+              aria-atomic="true"
+              className="sr-only"
+            >
+              {done
+                ? "Campagne ajoutée à votre file."
+                : step === 2
+                  ? BUILD_STEPS[buildStep]
+                  : submitting
+                    ? "Ajout de la campagne à votre file."
+                    : ""}
+            </p>
 
             <div className="max-h-[62vh] overflow-y-auto px-6 py-5">
               {done ? (
@@ -170,10 +219,14 @@ export function NewCampaignModal() {
                     value={String(budgetJour)}
                     onPick={(v) => setBudgetJour(Number(v))}
                   />
-                  <p className="mb-1.5 mt-4 text-[11px] font-semibold uppercase tracking-[.08em] text-faint">
+                  <label
+                    htmlFor={contextId}
+                    className="mb-1.5 mt-4 block text-[11px] font-semibold uppercase tracking-[.08em] text-faint"
+                  >
                     Contexte pour l&apos;agent
-                  </p>
+                  </label>
                   <textarea
+                    id={contextId}
                     value={contexte}
                     onChange={(e) => setContexte(e.target.value)}
                     rows={3}
@@ -218,10 +271,17 @@ export function NewCampaignModal() {
                   <div className="space-y-2.5">
                     {variants.map((v, i) => (
                       <div key={i} className="flex items-start gap-2">
-                        <span className="mt-2 flex-none text-[12px] font-bold text-violet">
-                          {i === 0 ? "A" : "B"}
-                        </span>
+                        <label
+                          htmlFor={`${titleId}-variant-${i}`}
+                          className="mt-2 flex-none text-[12px] font-bold text-violet"
+                        >
+                          <span aria-hidden="true">{i === 0 ? "A" : "B"}</span>
+                          <span className="sr-only">
+                            Message {i === 0 ? "A" : "B"}
+                          </span>
+                        </label>
                         <textarea
+                          id={`${titleId}-variant-${i}`}
                           value={v}
                           onChange={(e) =>
                             setVariants((prev) =>
@@ -323,16 +383,17 @@ function Picks({
   onPick: (v: string) => void;
 }) {
   return (
-    <>
-      <p className="mb-1.5 mt-4 text-[11px] font-semibold uppercase tracking-[.08em] text-faint first:mt-0">
+    <fieldset className="mt-4 min-w-0 first:mt-0">
+      <legend className="mb-1.5 text-[11px] font-semibold uppercase tracking-[.08em] text-faint">
         {label}
-      </p>
+      </legend>
       <div className="flex flex-wrap gap-2">
         {options.map((o) => (
           <button
             key={o.v}
             type="button"
             onClick={() => onPick(o.v)}
+            aria-pressed={value === o.v}
             className={`rounded-full border px-3.5 py-2 text-[12.5px] font-medium transition ${
               value === o.v
                 ? "border-violet bg-tint-soft text-violet-ink"
@@ -343,7 +404,7 @@ function Picks({
           </button>
         ))}
       </div>
-    </>
+    </fieldset>
   );
 }
 
