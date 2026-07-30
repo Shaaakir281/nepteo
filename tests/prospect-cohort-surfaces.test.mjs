@@ -57,5 +57,9 @@ test("Prospects n'affiche un board que pour une cohorte complète et annonce les
   assert.match(page, /prospectCohort\.canonicalCount/);
   assert.match(page, /cohorte métier prudente/);
   assert.match(page, /il ne suppose pas que deux[\s\S]*homonymes/);
+  assert.match(
+    page,
+    /visualMissingEmailCount\.toLocaleString\("fr-FR"\)\}\{" "\}[\s\S]*sans email/,
+  );
   assert.doesNotMatch(page, /\.limit\(500\)/);
 });
