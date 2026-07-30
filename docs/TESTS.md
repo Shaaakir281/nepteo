@@ -114,9 +114,11 @@ Après application sur une base de recette, vérifier séparément :
 
 ## 3. Parcours de validation Phase 2
 
-1. Vue **Prospects** : 24 lignes, funnel par statut + **repère de priorité** — résumé en tête (À relancer en priorité **15** · Fiche à compléter **5** · En veille **4**) et un badge par carte (survol = la raison). Le signal se calcule sur le **statut + la complétude** (email, entreprise), sans score inventé.
-2. **Aujourd'hui** → « Analyser mes données maintenant » → **3 propositions** attendues (et jamais plus de cinq affichées) :
-   compléter 5 emails manquants + relancer le groupe « Nouveau » (9) + **relancer en priorité les 15 prospects prêts** (joignables ET à un statut actif — ni « Client » ni « Perdu »).
+1. Vue **Prospects** : avec le même CSV dans Sheets et Notion, **24 contacts regroupés pour la lecture** à partir de 48 lignes importées. Le résumé reste : À relancer en priorité **15** · Fiche à compléter **5** · En veille **4**. La note « Deux comptages, deux usages » doit expliquer que les lignes sans email sont regroupées visuellement, mais jamais fusionnées automatiquement pour décider d'une relance.
+2. **Aujourd'hui** → « Analyser mes données maintenant » :
+   - avec une seule source, **3 propositions** attendues : vérifier **5 fiches importées sans email**, préparer la relance de **7 contacts joignables « Nouveau »**, puis relancer en priorité les **15 prospects prêts** ;
+   - avec le même CSV dans les deux sources, la cohorte métier prudente compte **29 identités** : **10 fiches importées sans email**, **7 contacts joignables « Nouveau »** et **15 prospects prêts**. Une 4e proposition signale les **19 doublons d'email** dans les 48 lignes brutes.
+   L'écart avec les 24 contacts du tableau est volontaire : sans email, Nepteo ne suppose pas que deux homonymes provenant de sources différentes sont la même personne. Jamais plus de cinq propositions ne sont affichées.
 3. Vérifier la ligne « Pourquoi maintenant », puis examiner une action (constat/raison/impact/confiance/risque/sources) → déclarer si la suggestion est utile, pas utile ou un faux positif → **Valider** une, **Refuser** une, **Reporter** la troisième, puis la **Reprendre** depuis « Décisions récentes ».
 4. Pour la relance approuvée, ouvrir « Déclarer les suites terrain » et renseigner prospect par prospect une relance manuelle, une réponse, un rendez-vous ou une opportunité. Ces boutons enregistrent une déclaration structurée ; ils n'envoient aucun message et ne fabriquent aucun statut fournisseur.
 5. **Journal** : vérifier `connector_connected`, `connector_synced`, `action_proposed` (acteur agent), `action_approved/rejected` (acteur vous) et `value_event_recorded`.

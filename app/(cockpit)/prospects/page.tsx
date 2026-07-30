@@ -27,6 +27,19 @@ export default async function ProspectsPage() {
     prospectCohort.status === "complete"
       ? (prospectCohort.dedupedRows as BoardProspect[])
       : [];
+  const visualMissingEmailCount = prospects.filter(
+    (prospect) => !(prospect.email ?? "").trim(),
+  ).length;
+  const conservativeMissingEmailCount =
+    prospectCohort.status === "complete"
+      ? prospectCohort.canonicalRows.filter(
+          (prospect) => !(prospect.email ?? "").trim(),
+        ).length
+      : 0;
+  const explainConservativeCohort =
+    prospectCohort.status === "complete" &&
+    (prospectCohort.canonicalCount !== prospectCohort.dedupedCount ||
+      conservativeMissingEmailCount !== visualMissingEmailCount);
   const today = new Date().toISOString().slice(0, 10);
 
   // Regroupement uniquement sur une cohorte complète : aucun total partiel ne
@@ -86,6 +99,29 @@ export default async function ProspectsPage() {
         </div>
       ) : (
         <>
+          {explainConservativeCohort && (
+            <div
+              role="note"
+              className="mb-4 rounded-[13px] border border-line bg-tint-soft px-4 py-3 text-[12.5px] leading-relaxed text-body"
+            >
+              <p className="font-semibold text-ink">
+                Deux comptages, deux usages
+              </p>
+              <p className="mt-1">
+                Ce tableau regroupe{" "}
+                {prospectCohort.dedupedCount.toLocaleString("fr-FR")} contacts
+                pour la lecture, dont{" "}
+                {visualMissingEmailCount.toLocaleString("fr-FR")} sans email.
+                Pour sécuriser les relances, l&apos;agent conserve{" "}
+                {prospectCohort.canonicalCount.toLocaleString("fr-FR")} identités
+                dans sa cohorte métier prudente, dont{" "}
+                {conservativeMissingEmailCount.toLocaleString("fr-FR")} fiches
+                importées sans email. Sans email, il ne suppose pas que deux
+                homonymes issus de sources différentes sont la même personne :
+                les propositions peuvent donc afficher un total supérieur.
+              </p>
+            </div>
+          )}
           <ProspectsBoard
             groups={groups}
             total={prospects.length}

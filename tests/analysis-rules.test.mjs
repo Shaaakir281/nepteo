@@ -86,11 +86,16 @@ test("CSV de test (24 prospects) → exactement 3 propositions", () => {
   assert.ok(emails, "règle emails manquants déclenchée");
   assert.equal(emails.payload.count, 5);
   assert.equal(emails.payload.total, 24);
+  assert.match(emails.title, /Vérifier 5 fiches importées sans email/);
+  assert.match(emails.finding, /cohorte métier prudente de 24 identités/);
+  assert.match(emails.rationale, /éviter de fusionner des homonymes/);
 
   const relaunch = find(f, "relaunch_stage_nouveau");
   assert.ok(relaunch, "règle relance du plus gros statut déclenchée");
   assert.equal(relaunch.payload.stage, "Nouveau");
   assert.equal(relaunch.payload.count, 7);
+  assert.match(relaunch.title, /7 contacts joignables « Nouveau »/);
+  assert.match(relaunch.finding, /cohorte métier prudente \(24 identités\)/);
 
   // Relancer en priorité = joignable (email présent) ET statut actif
   // (ni « Client » ni « Perdu »). Sur le CSV : 15 des 24 prospects.
@@ -98,6 +103,7 @@ test("CSV de test (24 prospects) → exactement 3 propositions", () => {
   assert.ok(priority, "règle relancer en priorité déclenchée");
   assert.equal(priority.payload.count, 15);
   assert.equal(priority.payload.total, 24);
+  assert.match(priority.finding, /cohorte métier prudente de 24 identités/);
 
   // Les règles plus strictes ne doivent PAS se déclencher sur ce jeu propre.
   assert.equal(find(f, "classify_unlabeled"), undefined);
@@ -125,7 +131,10 @@ test("cohorte canonique : chiffres métier sur 24 fiches, doublons sur 48 lignes
   const relaunch = find(findings, "relaunch_stage_nouveau");
   assert.ok(relaunch);
   assert.equal(relaunch.payload.count, 7);
-  assert.match(relaunch.finding, /7 prospects sur 24/);
+  assert.match(
+    relaunch.finding,
+    /7 contacts de la cohorte métier prudente \(24 identités\)/,
+  );
 
   const priority = find(findings, "relaunch_priority");
   assert.ok(priority);
