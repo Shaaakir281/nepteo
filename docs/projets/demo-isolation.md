@@ -1,7 +1,7 @@
 # Chantier B1 — La démonstration ne doit jamais détruire la vraie fiche
 
 > **Statut** : B1/B2 exécutés le 2026-07-26 ; durcissement B3 implémenté
-> localement le 2026-07-29, non déployé (voir `docs/SUIVI.md`).
+> le 2026-07-29 et déployé en production le 2026-07-30 (voir `docs/SUIVI.md`).
 > **Origine** : ce chantier ne figure pas dans `docs/projets/roadmap-beta.md`. C'est une
 > **correction de défaut relevée à l'usage** le 2026-07-26, décidée par Fathi hors roadmap.
 > Les « Règles pour tout chantier — anti-erreurs IA » (§2 de la roadmap) s'appliquent

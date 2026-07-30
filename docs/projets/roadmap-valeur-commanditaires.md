@@ -4,7 +4,7 @@
 >
 > Elle complète `docs/ROADMAP.md` et **remplace l'ordre d'exécution de la phase C** décrit historiquement dans `docs/projets/roadmap-beta.md`. Les fiches C1–C12 restent utiles comme historique et comme premières spécifications, mais ne valent ni autorisation d'envoi externe ni ordre de lancement.
 >
-> **Avancement de release** : R1A, R1B et le lot R2 ont été promus en production le 2026-07-30. Les migrations `0012` à `0020` sont appliquées (`app_schema_version = 20`) et Azure sert l'image `73f7e79`, révision `nepteo-prod--0000003`, avec 100 % du trafic. `/`, `/api/health` et `/api/ready` répondent HTTP 200 ; le smoke applicatif authentifié en lecture est propre. Un lot local isole le connecteur démo orphelin, unifie les agrégats autour d'une cohorte complète, canonicalise conservatoirement les conflits multi-source et stabilise les snapshots de relance face aux synchronisations, mais il n'est pas encore publié. R0 reste ouvert pour la livraison/recette de ce lot, le smoke RLS dédié, les callbacks OAuth et la recette fonctionnelle.
+> **Avancement de release** : R1A, R1B et R2 sont en production depuis le 2026-07-30. Les migrations `0012` à `0020` sont appliquées (`app_schema_version = 20`) et Azure sert l'image `5d03f109e9d06c456781d72c2c0b5ab13eca1a4c`, révision `nepteo-prod--0000006`, avec 100 % du trafic. `/`, `/api/health` et `/api/ready` répondent HTTP 200 ; le smoke applicatif authentifié en lecture est propre. Les cohortes complètes, la canonicalisation conservatrice, la stabilité des snapshots et les explications UI sont livrées. R0 reste ouvert pour le smoke RLS dédié, les callbacks OAuth, le retrait contrôlé du marqueur démo orphelin et les parcours fonctionnels avec mutation.
 
 ## Cap produit
 
@@ -18,7 +18,7 @@ Le benchmark converge vers une boucle courte : **signal fiable → priorité exp
 
 - **Phase technique atteinte** : la phase 3A est déployée. Nepteo peut détecter, expliquer, faire décider et préparer une relance sans l'envoyer.
 - **Porte produit encore ouverte** : la phase 2 n'est pas prouvée sur le terrain. Il manque des recommandations évaluées sur des données réelles et des résultats aval observés.
-- **Schéma et application alignés** : les migrations `0012` à `0020` et l'application correspondante sont en production. C8, R1A, R1B, R2 et les durcissements associés restent à recetter sur session authentifiée avant le pilote.
+- **Schéma et application alignés** : les migrations `0012` à `0020` et l'application correspondante sont en production. Le smoke administrateur en lecture est acquis ; C8, R1A, R1B, R2, les rôles/RLS et les connecteurs restent à recetter avec leurs fixtures et mutations dédiées avant le pilote.
 - **C7 n'est plus l'étape automatique suivante** : l'envoi réel ne sera construit qu'après preuve de l'utilité du play de relance et fermeture de ses gates RGPD/exploitation.
 
 ## Définitions de mesure
@@ -44,7 +44,7 @@ Principes de preuve :
 
 | Vague | Incrément | Effort indicatif | Dépendance | Porte de sortie |
 |---:|---|---:|---|---|
-| R0 | Fin du smoke et recette du lot | 1 j d'exploitation | Artefact `73f7e79` déployé, readiness 20 | Smoke auth/RLS/OAuth/C8/R1/R2 vert |
+| R0 | Fin du smoke et recette contrôlée | 1 j d'exploitation | Artefact `5d03f10` déployé, readiness 20, lecture admin verte | Smoke RLS/OAuth/C8/R1/R2 avec fixtures vert |
 | R1A | Preuve manuelle structurée — C9A | 2–3 j | Modèle d'événements validé | Utilité, faux positif, retouche, envoi et résultat déclarés sans fabriquer de statut fournisseur |
 | R1B | « Aujourd'hui » : jusqu'à cinq priorités réelles | 1–2 j | Règles actuelles réutilisées | Jusqu'à cinq actions classées de façon déterministe avec « pourquoi maintenant » |
 | R2 | Play supervisé « prospects dormants » | 2–3 j + 2 semaines d'observation | R0 franchi, puis R1A + R1B promus sur l'environnement pilote | Cohorte bornée, validation humaine, snapshot atomique, scorecard exploitable et observations terrain suffisantes |
@@ -58,16 +58,16 @@ Les estimations sont des ordres de grandeur de développement, hors délais de c
 ## R0 — Recetter avant de promouvoir
 
 1. Conserver la preuve de l'acquis base : `0012` → `0020` appliquées manuellement et `app_schema_version.version = 20` à `2026-07-30T06:02:14Z`.
-2. Conserver la preuve de release : PR #5, CI de PR et de `main` vertes, image `73f7e79`, révision `nepteo-prod--0000003`.
-3. Vérifier sur session authentifiée le smoke RLS, les rôles et l'absence d'envoi externe.
-4. Livrer puis recetter le retrait sélectif du connecteur démo orphelin et la cohorte prospects complète partagée par les écrans, l'analyse et le briefing.
+2. Conserver la preuve de release : PR #7, #8 et #9, CI de PR et de `main` vertes, image `5d03f109e9d06c456781d72c2c0b5ab13eca1a4c`, révision `nepteo-prod--0000006`, workflow `30540910670`.
+3. Le smoke administrateur authentifié en lecture et l'absence d'envoi externe sont acquis. Jouer encore le smoke RLS/rôles sur les organisations `E2E_RLS_*` dédiées.
+4. Le retrait sélectif du connecteur démo orphelin et la cohorte prospects complète sont livrés. Autoriser puis recetter séparément le retrait du marqueur en production, sans supprimer aucune donnée réelle.
 5. Recetter la réconciliation conservatrice des statuts contradictoires d'un même contact entre plusieurs sources : un état terminal ou une opposition bloque la relance ; deux statuts actifs contradictoires suspendent la cible.
 6. Rejouer les callbacks Google Sheets/Notion, l'isolation de démonstration, C8, le Top 5, toute la boucle déclarative R1A et les garde-fous R2.
 7. Ne pas déclarer R0 entièrement franchi ni basculer le pilote tant que cette verticale n'est pas verte.
 
 R1A, R1B et R2 sont déployés et leur schéma de support est présent en production. R0 bloque encore leur promotion vers un pilote réel, pas leur recette sur la révision de production.
 
-Les tests techniques publics continuent sur la révision `nepteo-prod--0000003`. Après recette authentifiée, R1A, R1B puis R2 sont promus de façon supervisée sur un tenant pilote dédié, avec l'image et la révision notées dans la scorecard.
+Les tests techniques publics continuent sur la révision `nepteo-prod--0000006`. Après fermeture des fixtures R0, R1A, R1B puis R2 sont promus de façon supervisée sur un tenant pilote dédié, avec l'image et la révision notées dans la scorecard.
 
 ## R1A — Instrumenter la preuve avant l'envoi
 
@@ -101,7 +101,7 @@ Le classement est une fonction pure et déterministe. Le filtre de rôle est app
 
 ## R2 — Prouver le play « prospects dormants »
 
-> **Statut de release au 2026-07-30** : le lanceur, la scorecard et leur schéma de support sont déployés en production sur l'image `73f7e79`. `/api/ready` répond HTTP 200 et le smoke applicatif administrateur en lecture est vert. Le pilote reste interdit tant que le reliquat R0 — hotfix connecteurs, smoke RLS dédié, OAuth et recette des parcours — n'est pas vert.
+> **Statut de release au 2026-07-30** : le lanceur, la scorecard et leur schéma de support sont déployés en production sur l'image `5d03f109e9d06c456781d72c2c0b5ab13eca1a4c`. `/api/ready` répond HTTP 200 et le smoke applicatif administrateur en lecture est vert. Le pilote reste interdit tant que le reliquat R0 — retrait contrôlé du marqueur démo, smoke RLS dédié, OAuth et recette des parcours avec mutation — n'est pas vert.
 
 La cohorte implémentée est volontairement stricte :
 
@@ -230,7 +230,7 @@ R2 est maintenant déployé avec son schéma à 20, mais il attend encore la fin
 ## Dix prochains jours ouvrés
 
 1. **J1 — terminé** : commit du worktree complet, PR/CI, fusion dans `main`, déploiement manuel protégé et contrôles publics verts.
-2. **J2** : smoke authentifié/RLS, callbacks OAuth et parcours C8/R1A/R1B/R2.
+2. **J2 — lecture terminée, mutations ouvertes** : smoke administrateur authentifié vert ; restent smoke RLS dédié, callbacks OAuth, retrait contrôlé du marqueur démo et parcours C8/R1A/R1B/R2.
 3. **J3** : scorecard mise à jour et promotion supervisée vers l'environnement pilote si R0 est vert.
 4. **J4–J5** : recette du play dormant borné, de l'exclusion des vagues antérieures, du snapshot atomique et de la scorecard.
 5. **J6–J10** : premières sessions commanditaires, correction des blocages P0/P1 et collecte des 30 premières évaluations.

@@ -80,6 +80,6 @@ Un verrou distribué par organisation sérialise chargement, nettoyage, analyse,
 
 - Production Azure Container Apps en région EU, domaine HTTPS actif.
 - `/api/health` est un contrôle de liveness sans accès base ; `/api/ready` vérifie Supabase et le marqueur de compatibilité de schéma introduit par `0016`.
-- Le code local exige désormais une version de schéma au moins égale à `20`, portée par `0020`.
+- L'application exige une version de schéma au moins égale à `20`, portée par `0020`.
 - Les migrations `0012` à `0020` restent manuelles. Le workflow vérifie le marqueur avant toute mutation Azure, puis `/api/health` et `/api/ready` après déploiement.
-- Cette vague est uniquement locale : ni le code ni les migrations `0012` à `0020` ne sont déployés ou appliqués à la production.
+- Les migrations `0012` à `0020` et le code associé sont en production depuis le 2026-07-30. Azure sert l'image `5d03f109e9d06c456781d72c2c0b5ab13eca1a4c`, révision `nepteo-prod--0000006`.
