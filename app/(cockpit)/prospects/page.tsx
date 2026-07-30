@@ -111,7 +111,8 @@ export default async function ProspectsPage() {
                 Ce tableau regroupe{" "}
                 {prospectCohort.dedupedCount.toLocaleString("fr-FR")} contacts
                 pour la lecture, dont{" "}
-                {visualMissingEmailCount.toLocaleString("fr-FR")} sans email.
+                {visualMissingEmailCount.toLocaleString("fr-FR")}{" "}
+                sans email.
                 Pour sécuriser les relances, l&apos;agent conserve{" "}
                 {prospectCohort.canonicalCount.toLocaleString("fr-FR")} identités
                 dans sa cohorte métier prudente, dont{" "}
