@@ -54,4 +54,4 @@ Règles impératives :
 
 ## Aller plus loin : campagnes et ventes
 
-Les chiffres de publicité et de revenu ne s'importent pas encore par fichier — ils viennent des scénarios de démonstration ou, plus tard, des vrais connecteurs. Pour un test complet avec un métier sur mesure, le plus simple reste de charger le scénario de démonstration le plus proche, puis d'ajouter votre base de prospects par-dessus : l'agent croisera les deux.
+Les chiffres de publicité et de revenu ne s'importent pas encore par fichier — ils viennent des scénarios de démonstration ou, plus tard, des vrais connecteurs. Ne superposez pas un import Google Sheets à un scénario actif : l'isolation fail-closed l'interdit pour éviter tout mélange. Pour un métier sur mesure, utilisez une organisation de recette séparée pour la feuille fictive, ou faites évoluer le générateur vers un scénario complet dédié.

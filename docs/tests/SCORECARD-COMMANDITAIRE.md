@@ -20,10 +20,17 @@ Cette séparation est volontaire :
 |---|---|
 | Date / version testée | |
 | Testeur / rôle | |
-| Scénario | Démo / feuille réelle |
+| Parcours | Démonstration fictive / pilote réel |
 | Navigateur / appareil | |
 | Assistance donnée avant le test | Aucune / légère / guidée |
 | Écosystème de travail | Google Workspace / Microsoft 365 / autre |
+
+La démonstration et le pilote réel sont deux voies distinctes :
+
+- **démonstration** : évaluer compréhension, explicabilité, confiance et qualité des brouillons sur un scénario fictif stable ;
+- **pilote réel** : mesurer l'utilité terrain, les faux positifs et les résultats aval dans une autre organisation.
+
+Les observations qualitatives de démo sont conservées, mais ses événements et recommandations ne comptent jamais dans les gates chiffrés du pilote.
 
 ## Préflight
 
@@ -31,6 +38,7 @@ Cette séparation est volontaire :
 - [ ] L'organisation est neuve et ne contient aucune donnée d'un autre testeur.
 - [ ] Le testeur sait qu'aucun message ne sera envoyé par Nepteo ; tout envoi manuel reste son geste volontaire, hors du produit.
 - [ ] Pour une feuille réelle, les données utilisées sont autorisées et minimisées.
+- [ ] Le test utilise soit le tenant vitrine fictif, soit une organisation de pilote réel dédiée, jamais un mélange des deux.
 
 ## Parcours observé
 
@@ -93,7 +101,7 @@ Dans l'application, `value_events.action_kind` conserve le play d'origine même 
 
 ## Porte de décision
 
-Sur trois testeurs minimum **et 30 recommandations examinées**, le lot est candidat à la suite si :
+Sur trois testeurs minimum **et 30 recommandations réelles examinées hors démo**, le lot est candidat à la suite si :
 
 - au moins **2/3** atteignent une recommandation utile sans aide ;
 - au moins **2/3** jugent une recommandation utile pour leur activité ;

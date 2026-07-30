@@ -4,7 +4,7 @@
 >
 > Elle complète `docs/ROADMAP.md` et **remplace l'ordre d'exécution de la phase C** décrit historiquement dans `docs/projets/roadmap-beta.md`. Les fiches C1–C12 restent utiles comme historique et comme premières spécifications, mais ne valent ni autorisation d'envoi externe ni ordre de lancement.
 >
-> **Avancement de release** : R1A, R1B et R2 sont en production depuis le 2026-07-30. Les migrations `0012` à `0020` sont appliquées (`app_schema_version = 20`) et Azure sert l'image `5d03f109e9d06c456781d72c2c0b5ab13eca1a4c`, révision `nepteo-prod--0000006`, avec 100 % du trafic. `/`, `/api/health` et `/api/ready` répondent HTTP 200 ; le smoke applicatif authentifié en lecture est propre. Les cohortes complètes, la canonicalisation conservatrice, la stabilité des snapshots et les explications UI sont livrées. R0 reste ouvert pour le smoke RLS dédié, les callbacks OAuth, le retrait contrôlé du marqueur démo orphelin et les parcours fonctionnels avec mutation.
+> **Avancement de release** : R1A, R1B et R2 sont en production depuis le 2026-07-30. Les migrations `0012` à `0020` sont appliquées (`app_schema_version = 20`) et Azure sert l'image `5d03f109e9d06c456781d72c2c0b5ab13eca1a4c`, révision `nepteo-prod--0000006`, avec 100 % du trafic. `/`, `/api/health` et `/api/ready` répondent HTTP 200 ; le smoke applicatif authentifié en lecture est propre. Le tenant vitrine conserve volontairement ses données fictives pour montrer l'agent. R0 reste ouvert pour certifier ce scénario et son reset, puis pour le smoke RLS, les callbacks OAuth et les parcours fonctionnels avec mutation dans des organisations séparées.
 
 ## Cap produit
 
@@ -44,7 +44,7 @@ Principes de preuve :
 
 | Vague | Incrément | Effort indicatif | Dépendance | Porte de sortie |
 |---:|---|---:|---|---|
-| R0 | Fin du smoke et recette contrôlée | 1 j d'exploitation | Artefact `5d03f10` déployé, readiness 20, lecture admin verte | Smoke RLS/OAuth/C8/R1/R2 avec fixtures vert |
+| R0 | Vitrine certifiée, fin du smoke et recette contrôlée | 1–2 j d'exploitation | Artefact `5d03f10` déployé, readiness 20, lecture admin verte | Scénario démo reproductible puis smoke RLS/OAuth/C8/R1/R2 sur tenants séparés |
 | R1A | Preuve manuelle structurée — C9A | 2–3 j | Modèle d'événements validé | Utilité, faux positif, retouche, envoi et résultat déclarés sans fabriquer de statut fournisseur |
 | R1B | « Aujourd'hui » : jusqu'à cinq priorités réelles | 1–2 j | Règles actuelles réutilisées | Jusqu'à cinq actions classées de façon déterministe avec « pourquoi maintenant » |
 | R2 | Play supervisé « prospects dormants » | 2–3 j + 2 semaines d'observation | R0 franchi, puis R1A + R1B promus sur l'environnement pilote | Cohorte bornée, validation humaine, snapshot atomique, scorecard exploitable et observations terrain suffisantes |
@@ -60,7 +60,7 @@ Les estimations sont des ordres de grandeur de développement, hors délais de c
 1. Conserver la preuve de l'acquis base : `0012` → `0020` appliquées manuellement et `app_schema_version.version = 20` à `2026-07-30T06:02:14Z`.
 2. Conserver la preuve de release : PR #7, #8 et #9, CI de PR et de `main` vertes, image `5d03f109e9d06c456781d72c2c0b5ab13eca1a4c`, révision `nepteo-prod--0000006`, workflow `30540910670`.
 3. Le smoke administrateur authentifié en lecture et l'absence d'envoi externe sont acquis. Jouer encore le smoke RLS/rôles sur les organisations `E2E_RLS_*` dédiées.
-4. Le retrait sélectif du connecteur démo orphelin et la cohorte prospects complète sont livrés. Autoriser puis recetter séparément le retrait du marqueur en production, sans supprimer aucune donnée réelle.
+4. Conserver le tenant vitrine et certifier son jeu fictif : scénario identifiable et versionné, comptages/signaux attendus, bandeau permanent, puis cycle `reset → reseed` idempotent. Ne pas utiliser cette organisation pour OAuth ou pour une preuve terrain.
 5. Recetter la réconciliation conservatrice des statuts contradictoires d'un même contact entre plusieurs sources : un état terminal ou une opposition bloque la relance ; deux statuts actifs contradictoires suspendent la cible.
 6. Rejouer les callbacks Google Sheets/Notion, l'isolation de démonstration, C8, le Top 5, toute la boucle déclarative R1A et les garde-fous R2.
 7. Ne pas déclarer R0 entièrement franchi ni basculer le pilote tant que cette verticale n'est pas verte.
@@ -101,7 +101,7 @@ Le classement est une fonction pure et déterministe. Le filtre de rôle est app
 
 ## R2 — Prouver le play « prospects dormants »
 
-> **Statut de release au 2026-07-30** : le lanceur, la scorecard et leur schéma de support sont déployés en production sur l'image `5d03f109e9d06c456781d72c2c0b5ab13eca1a4c`. `/api/ready` répond HTTP 200 et le smoke applicatif administrateur en lecture est vert. Le pilote reste interdit tant que le reliquat R0 — retrait contrôlé du marqueur démo, smoke RLS dédié, OAuth et recette des parcours avec mutation — n'est pas vert.
+> **Statut de release au 2026-07-30** : le lanceur, la scorecard et leur schéma de support sont déployés en production sur l'image `5d03f109e9d06c456781d72c2c0b5ab13eca1a4c`. `/api/ready` répond HTTP 200 et le smoke applicatif administrateur en lecture est vert. La vitrine fictive sert à juger le raisonnement mais ne franchit aucun gate terrain. Le pilote reste interdit tant que le reliquat R0 — scénario démo reproductible, smoke RLS dédié, OAuth et recette des parcours avec mutation dans des tenants séparés — n'est pas vert.
 
 La cohorte implémentée est volontairement stricte :
 
@@ -230,7 +230,7 @@ R2 est maintenant déployé avec son schéma à 20, mais il attend encore la fin
 ## Dix prochains jours ouvrés
 
 1. **J1 — terminé** : commit du worktree complet, PR/CI, fusion dans `main`, déploiement manuel protégé et contrôles publics verts.
-2. **J2 — lecture terminée, mutations ouvertes** : smoke administrateur authentifié vert ; restent smoke RLS dédié, callbacks OAuth, retrait contrôlé du marqueur démo et parcours C8/R1A/R1B/R2.
+2. **J2 — lecture terminée, mutations ouvertes** : smoke administrateur authentifié vert ; restent certification/reset de la vitrine, smoke RLS dédié, callbacks OAuth et parcours C8/R1A/R1B/R2 sur organisations séparées.
 3. **J3** : scorecard mise à jour et promotion supervisée vers l'environnement pilote si R0 est vert.
 4. **J4–J5** : recette du play dormant borné, de l'exclusion des vagues antérieures, du snapshot atomique et de la scorecard.
 5. **J6–J10** : premières sessions commanditaires, correction des blocages P0/P1 et collecte des 30 premières évaluations.

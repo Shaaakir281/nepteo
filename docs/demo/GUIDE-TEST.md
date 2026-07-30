@@ -2,6 +2,7 @@
 
 > Pour tester Nepteo sans rien brancher. Compte ~25 minutes pour le parcours complet.
 > Toutes les données de démonstration sont **fictives**. En mode sûr, **aucun message ne part à l'extérieur** : l'agent prépare, il n'envoie pas.
+> Le scénario reste volontairement chargé pendant toute la démonstration. Ne le retirez pas entre deux étapes : il constitue la matière nécessaire pour juger le raisonnement de l'agent.
 
 ## Ce que Nepteo essaie d'être
 
@@ -37,11 +38,11 @@ Trois questions à garder en tête pendant le test :
 
 ### 1. Aujourd'hui — l'agent travaille
 
-Le diagnostic de départ a laissé la place aux **KPI réels** dès que le scénario est chargé : l'écran ne dit plus « voici par où commencer », il dit ce qui se passe.
+Le diagnostic de départ a laissé la place aux **KPI calculés sur le scénario** dès que celui-ci est chargé : l'écran ne dit plus « voici par où commencer », il montre ce qui se passe dans cette entreprise fictive.
 
 Cliquez sur **« Analyser »**. Observez les étapes qui défilent, puis :
 
-- le **bandeau « Le point de l'agent »** : deux ou trois phrases sur l'état réel du funnel, à partir de vos chiffres, sans invention ;
+- le **bandeau « Le point de l'agent »** : deux ou trois phrases sur l'état cohérent du funnel fictif, calculé à partir des données du scénario sans chiffre inventé par le modèle ;
 - le **bandeau « Cap du mois »** : quelques mouvements priorisés par levier — couper les pertes d'abord, réactiver les contacts chauds ensuite, alimenter le haut du funnel enfin. Chaque mouvement renvoie vers l'écran où agir. Ce sont des **conseils** : rien ne s'exécute depuis ce bandeau ;
 - les **propositions à valider** — le seul endroit où l'on décide.
 
@@ -87,7 +88,7 @@ Les plafonds (messages par exécution, par jour) sont indiqués en note sous le 
 
 Tout ce qui s'y trouve nourrit les messages, les briefs et les recommandations. Modifiez le **Ton** ou la **Philosophie**, puis régénérez une relance : la voix doit changer.
 
-L'onglet **Connecteurs**, à côté, gagne désormais la section **« Pas d'outil à brancher ? »** (mode démonstration) tant qu'aucun outil réel n'est connecté — c'est aussi là qu'on branche Google Sheets ou Notion.
+L'onglet **Connecteurs**, à côté, gagne désormais la section **« Pas d'outil à brancher ? »** pour choisir le scénario. Le tenant vitrine reste en démonstration ; Google Sheets et Notion se recettent dans une organisation séparée afin de ne jamais mélanger données fictives et réelles.
 
 ## Ce qui n'est pas encore là
 
@@ -96,7 +97,7 @@ Autant le dire avant que vous le cherchiez :
 - **Aucun envoi réel.** Le transport SMTP est la prochaine étape, derrière les mêmes garde-fous.
 - **Le lancement réel de campagne** n'est pas branché (c'est l'action la plus engageante : elle attend des plafonds de budget côté serveur).
 - **La recherche web** dans l'onboarding (lire votre site pour pré-remplir votre identité) nécessite une clé d'API — OpenAI ou Perplexity. Si votre version n'en a pas, l'étape est simplement sautée ; rien ne casse. Quand elle est active, chaque recherche est **facturée** : le résultat est donc mis en cache 30 jours et plafonné par jour.
-- **Les connecteurs réels** (Google Sheets, Notion) fonctionnent, mais le mode démonstration évite d'avoir à les brancher pour ce test.
+- **Les connecteurs réels** (Google Sheets, Notion) fonctionnent, mais ils sont volontairement désactivés dans le tenant vitrine. Leur recette utilise une organisation séparée.
 
 ## Vos retours
 

@@ -83,7 +83,7 @@ export function ConnectorCard({
           !canEdit &&
           blockedByDemo && (
             <span className="text-[12px] font-medium text-amber">
-              Retirez la démonstration pour reconnecter.
+              Aperçu démo — connexion réelle désactivée.
             </span>
           )}
         {status === "requested" && !isOauthProvider(tool.provider) && (
