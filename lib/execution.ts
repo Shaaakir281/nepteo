@@ -5,14 +5,19 @@ import {
 } from "@/lib/analysis-rules";
 import { draftRelance, isRelanceKind } from "@/lib/draft";
 import { applyFirstName, type Draft } from "@/lib/draft-template";
+import {
+  DemoBusyError,
+  withDemoMutationLock,
+} from "@/lib/demo/lock";
 import { LLM_MEMORY_SECTIONS } from "@/lib/memory";
 import { readMemory } from "@/lib/memory-store";
 import {
-  dedupeByEmail,
   planRecipients,
   readExecutionClaim,
 } from "@/lib/execution-rules";
+import { canonicalizeProspectCohort } from "@/lib/prospect-cohort-loader";
 import { loadRelaunchProspects } from "@/lib/relaunch-prospect-loader";
+import { restrictCanonicalCohortToSnapshot } from "@/lib/relaunch-snapshot";
 
 type Admin = ReturnType<typeof createAdminClient>;
 
@@ -66,14 +71,12 @@ async function finishExecution(
  * idempotence (clé + journal AVANT préparation, upsert anti-doublon), garde-fous
  * serveur (plafonds run/jour). L'envoi réel (SMTP) se branchera ici, étape B.
  */
-export async function executeApprovedAction(
+async function executeApprovedActionUnderLock(
   admin: Admin,
   orgId: string,
-  actorId: string | null,
+  actorId: string,
   actionId: string,
 ): Promise<ExecutionResult> {
-  if (!actorId) return { ok: false, reason: "actor_required" };
-
   // La RPC verrouille l'organisation, vérifie pause + autonomie, revendique
   // l'action et journalise le départ dans une seule transaction.
   const idem = `exec:${actionId}`;
@@ -145,8 +148,10 @@ export async function executeApprovedAction(
       };
     }
     const today = new Date().toISOString().slice(0, 10);
-    // Le snapshot doit être appliqué avant le cap et la déduplication.
-    let currentCohortRows = loadedProspects.prospects;
+    // Canonicaliser AVANT le snapshot conserve les signaux de sécurité portés
+    // par un autre doublon (DNC, terminal ou conflit de statuts actifs).
+    const rawProspectRows = loadedProspects.prospects;
+    let currentCohortRows = canonicalizeProspectCohort(rawProspectRows);
 
     // Depuis 0020, l'approbation fige la cohorte. L'exécution préparatoire ne
     // peut viser que son intersection avec les faits encore sûrs aujourd'hui :
@@ -186,24 +191,23 @@ export async function executeApprovedAction(
       const memberIds = new Set(
         targetMembers.map((member) => member.prospect_id as string),
       );
-      currentCohortRows = currentCohortRows.filter((prospect) =>
-        memberIds.has(prospect.id),
+      currentCohortRows = restrictCanonicalCohortToSnapshot(
+        currentCohortRows,
+        rawProspectRows,
+        memberIds,
       );
     }
 
-    // Dans la cohorte validée, garder la fiche au contact le plus récent évite
-    // qu'un doublon ancien contourne les garde-fous temporels.
-    const uniqueCurrentContacts = dedupeByEmail(currentCohortRows);
     const targeted =
       claimedAction.kind === "relaunch_dormant"
         ? selectDormantProspects(
-            uniqueCurrentContacts,
+            currentCohortRows,
             today,
             typeof payload.min_silence_days === "number"
               ? payload.min_silence_days
               : Number.NaN,
           )
-        : uniqueCurrentContacts.filter((prospect) =>
+        : currentCohortRows.filter((prospect) =>
             matchesRelaunchTarget(
               claimedAction.kind,
               payload,
@@ -304,5 +308,33 @@ export async function executeApprovedAction(
       };
     }
     return { ok: false, reason: "execution_failed" };
+  }
+}
+
+/**
+ * Le même verrou distribué que les synchronisations couvre le claim, toute la
+ * lecture paginée et la finalisation. Une sync ne peut donc pas déplacer une
+ * ligne entre deux pages pendant la décision de sécurité.
+ */
+export async function executeApprovedAction(
+  admin: Admin,
+  orgId: string,
+  actorId: string | null,
+  actionId: string,
+): Promise<ExecutionResult> {
+  if (!actorId) return { ok: false, reason: "actor_required" };
+
+  try {
+    return await withDemoMutationLock(admin, orgId, "data", () =>
+      executeApprovedActionUnderLock(admin, orgId, actorId, actionId),
+    );
+  } catch (error) {
+    return {
+      ok: false,
+      reason:
+        error instanceof DemoBusyError
+          ? "busy"
+          : "execution_lock_failed_recovery_required",
+    };
   }
 }

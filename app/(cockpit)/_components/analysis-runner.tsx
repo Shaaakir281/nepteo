@@ -19,6 +19,11 @@ const STEPS = [
 
 const STEP_MS = 800;
 
+type Feedback = {
+  tone: "success" | "warning" | "error";
+  message: string;
+};
+
 export function AnalysisRunner({
   variant = "primary",
 }: {
@@ -27,11 +32,13 @@ export function AnalysisRunner({
   const router = useRouter();
   const [running, setRunning] = useState(false);
   const [step, setStep] = useState(0);
+  const [feedback, setFeedback] = useState<Feedback | null>(null);
 
   async function run() {
     if (running) return;
     setRunning(true);
     setStep(0);
+    setFeedback(null);
 
     // Cadence visible des étapes (min. lisible), en parallèle de l'analyse réelle.
     let current = 0;
@@ -42,7 +49,40 @@ export function AnalysisRunner({
 
     const minDelay = new Promise((r) => setTimeout(r, STEPS.length * STEP_MS));
     try {
-      await Promise.all([analyzeNow(), minDelay]);
+      const [result] = await Promise.all([analyzeNow(), minDelay]);
+      if (result.ok) {
+        if (result.warning === "ads_failed") {
+          setFeedback({
+            tone: "warning",
+            message:
+              result.created > 0
+                ? `${result.created} nouvelle${result.created > 1 ? "s" : ""} proposition${result.created > 1 ? "s" : ""} préparée${result.created > 1 ? "s" : ""} côté prospects. Analyse publicitaire indisponible.`
+                : "Analyse prospects terminée sans nouvelle proposition. Analyse publicitaire indisponible.",
+          });
+        } else {
+          setFeedback({
+            tone: "success",
+            message:
+              result.created > 0
+                ? `${result.created} nouvelle${result.created > 1 ? "s" : ""} proposition${result.created > 1 ? "s" : ""} préparée${result.created > 1 ? "s" : ""}.`
+                : "Analyse terminée : aucune nouvelle proposition.",
+          });
+        }
+      } else {
+        const message =
+          result.reason === "busy"
+            ? "Une analyse est déjà en cours. Réessayez dans un instant."
+            : result.reason === "forbidden"
+              ? "Analyse non lancée : vos droits ne permettent pas cette action."
+              : "Analyse interrompue : aucune nouvelle proposition confirmée. Réessayez.";
+        setFeedback({ tone: "error", message });
+      }
+    } catch {
+      setFeedback({
+        tone: "error",
+        message:
+          "Analyse indisponible : aucune nouvelle proposition confirmée. Réessayez.",
+      });
     } finally {
       clearInterval(timer);
       setRunning(false);
@@ -59,8 +99,8 @@ export function AnalysisRunner({
     );
   }
 
-  if (variant === "link") {
-    return (
+  const button =
+    variant === "link" ? (
       <button
         type="button"
         onClick={run}
@@ -68,16 +108,34 @@ export function AnalysisRunner({
       >
         Relancer l&apos;analyse
       </button>
+    ) : (
+      <button
+        type="button"
+        onClick={run}
+        className="rounded-[10px] bg-tint px-4 py-2 text-[13px] font-semibold text-violet transition hover:bg-violet hover:text-white"
+      >
+        Analyser mes données maintenant
+      </button>
     );
-  }
 
   return (
-    <button
-      type="button"
-      onClick={run}
-      className="rounded-[10px] bg-tint px-4 py-2 text-[13px] font-semibold text-violet transition hover:bg-violet hover:text-white"
-    >
-      Analyser mes données maintenant
-    </button>
+    <div className="space-y-1.5">
+      {button}
+      {feedback && (
+        <p
+          role="status"
+          aria-live="polite"
+          className={`max-w-sm text-[11.5px] leading-relaxed ${
+            feedback.tone === "success"
+              ? "text-green"
+              : feedback.tone === "warning"
+                ? "text-amber"
+                : "text-red-600"
+          }`}
+        >
+          {feedback.message}
+        </p>
+      )}
+    </div>
   );
 }

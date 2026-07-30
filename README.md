@@ -16,7 +16,9 @@ Base de données : appliquer **toutes** les migrations de `supabase/migrations/`
 
 État fonctionnel déployé : R1A ajoute la preuve terrain structurée dans `value_events` et fige les cohortes de relance à l'approbation ; R1B limite « Aujourd'hui » aux cinq actions les plus proches de la valeur, avec une raison explicite. Le play R2 « prospects dormants » reste supervisé et ne déclenche aucun envoi externe.
 
-État de production au 2026-07-30 : la PR [#5](https://github.com/Shaaakir281/nepteo/pull/5) a été fusionnée dans `main` au commit `73f7e79`. Azure sert l'image immutable correspondante, révision `nepteo-prod--0000003`, avec 100 % du trafic. `/`, `/api/health` et `/api/ready` répondent HTTP 200. Le smoke public navigateur est propre ; le smoke authentifié/RLS et les callbacks OAuth restent à recetter.
+État de production au 2026-07-30 : la PR [#5](https://github.com/Shaaakir281/nepteo/pull/5) a été fusionnée dans `main` au commit `73f7e79`. Azure sert l'image immutable correspondante, révision `nepteo-prod--0000003`, avec 100 % du trafic. `/`, `/api/health` et `/api/ready` répondent HTTP 200. Le smoke applicatif authentifié en lecture est propre ; l'isolation RLS multi-rôles/tenants, les callbacks OAuth et les parcours avec mutation restent à recetter sur des fixtures dédiées.
+
+Lot local non publié : la branche `codex/authenticated-smoke-fixes` isole le connecteur démo orphelin, unifie les lectures prospects, réconcilie prudemment les doublons multi-source et stabilise les snapshots de relance pendant les synchronisations. Les homonymes sans email restent distincts dans les chiffres métier et les erreurs Ads remontent à l'interface. Validation locale : 340/340 tests, lint, typecheck et build de production (23 pages/routes) verts. Ce lot n'est ni fusionné ni déployé.
 
 ## Structure
 

@@ -9,16 +9,30 @@ import {
   DEMO_PROVIDER,
 } from "@/lib/demo/isolation-rules";
 import { isDemoModeActive } from "@/lib/demo/isolation";
-import { withDemoMutationLock } from "@/lib/demo/lock";
+import { DemoBusyError, withDemoMutationLock } from "@/lib/demo/lock";
+
+export type AnalyzeNowResult =
+  | {
+      ok: true;
+      created: number;
+      warning?: "ads_failed";
+    }
+  | {
+      ok: false;
+      created: 0;
+      reason: "forbidden" | "busy" | "analysis_failed";
+    };
 
 /**
  * Lance l'analyse à la demande et **retourne** le nombre de propositions créées
  * (le cron s'en chargera aussi à terme). Valeur de retour → appelée depuis le
  * runner animé (autonomie visible), qui rafraîchit ensuite la vue.
  */
-export async function analyzeNow(): Promise<{ ok: boolean; created: number }> {
+export async function analyzeNow(): Promise<AnalyzeNowResult> {
   const ctx = await getEditorContext();
-  if (!ctx || !ctx.canEdit) return { ok: false, created: 0 };
+  if (!ctx || !ctx.canEdit) {
+    return { ok: false, created: 0, reason: "forbidden" };
+  }
 
   const admin = createAdminClient();
   try {
@@ -37,6 +51,7 @@ export async function analyzeNow(): Promise<{ ok: boolean; created: number }> {
           ...(demo ? { prospectSource: DEMO_PROVIDER, demo: true } : {}),
         });
         let adsCreated = 0;
+        let adsFailed = false;
         if (ctx.canManageCampaigns) {
           try {
             adsCreated = await runAdsAnalysis(admin, ctx.orgId, ctx.userId, {
@@ -48,16 +63,27 @@ export async function analyzeNow(): Promise<{ ok: boolean; created: number }> {
                 : {}),
             });
           } catch {
-            // l'analyse ads ne doit pas casser l'analyse prospects
+            // L'analyse prospects reste acquise, mais l'interface doit annoncer
+            // explicitement que la passe publicitaire n'a pas abouti.
+            adsFailed = true;
           }
         }
-        return { ok: true, created: created + adsCreated };
+        return {
+          ok: true,
+          created: created + adsCreated,
+          ...(adsFailed ? { warning: "ads_failed" as const } : {}),
+        };
       } catch {
-        return { ok: false, created: 0 };
+        return { ok: false, created: 0, reason: "analysis_failed" };
       }
     });
-  } catch {
-    // Verrou occupé ou indisponible : pas d'analyse concurrente.
-    return { ok: false, created: 0 };
+  } catch (error) {
+    // Un verrou réellement occupé se distingue d'une panne de lecture/écriture :
+    // l'interface ne doit pas annoncer une concurrence qui n'existe pas.
+    return {
+      ok: false,
+      created: 0,
+      reason: error instanceof DemoBusyError ? "busy" : "analysis_failed",
+    };
   }
 }

@@ -228,7 +228,7 @@ test("exécution — les lectures de préparation échouent fermé", () => {
     prospectsRead,
   );
   const targeting = execution.indexOf(
-    "dedupeByEmail(currentCohortRows)",
+    "canonicalizeProspectCohort(",
     prospectsRead,
   );
   assert.ok(prospectsRead >= 0 && prospectsRead < prospectsGuard);

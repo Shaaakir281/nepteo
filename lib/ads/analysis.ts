@@ -4,7 +4,7 @@ import {
   rollupWithStatus,
   windowBounds,
   type DatedMetric,
-} from "@/lib/ads/metrics-rules";
+} from "./metrics-rules.ts";
 
 type Admin = ReturnType<typeof createAdminClient>;
 
@@ -35,7 +35,12 @@ export async function runAdsAnalysis(
       `${options.campaignIdPrefix}%`,
     );
   }
-  const { data: rows } = await metricQuery;
+  const { data: rows, error: metricsError } = await metricQuery;
+  if (metricsError) {
+    throw new Error(
+      `[ads-analysis] lecture ad_metrics: ${metricsError.message}`,
+    );
+  }
   if (!rows || rows.length === 0) return 0;
 
   const metrics = rows.map((r) => ({
@@ -48,16 +53,21 @@ export async function runAdsAnalysis(
   if (proposals.length === 0) return 0;
 
   // Dédupe : ne pas reproposer un kind déjà en file.
-  const { data: existing } = await admin
+  const { data: existing, error: existingError } = await admin
     .from("actions")
     .select("kind")
     .eq("organization_id", orgId)
     .eq("status", "proposed");
+  if (existingError) {
+    throw new Error(
+      `[ads-analysis] lecture actions existantes: ${existingError.message}`,
+    );
+  }
   const existingKinds = new Set((existing ?? []).map((a) => a.kind));
   const fresh = proposals.filter((p) => !existingKinds.has(p.kind));
   if (fresh.length === 0) return 0;
 
-  const { error } = await admin.from("actions").insert(
+  const { error: actionsError } = await admin.from("actions").insert(
     fresh.map((p) => ({
       organization_id: orgId,
       kind: p.kind,
@@ -72,16 +82,28 @@ export async function runAdsAnalysis(
       payload: options?.demo ? { ...p.payload, demo: true } : p.payload,
     })),
   );
-  if (error) throw new Error(error.message);
+  if (actionsError) {
+    throw new Error(
+      `[ads-analysis] insertion actions: ${actionsError.message}`,
+    );
+  }
 
-  for (const p of fresh) {
-    await admin.from("journal").insert({
+  // La trace `action_proposed` fait partie du contrat de l'analyse. Une erreur
+  // de journal ne doit donc jamais être transformée en succès silencieux. Le
+  // lot unique évite aussi un journal partiellement écrit entre propositions.
+  const { error: journalError } = await admin.from("journal").insert(
+    fresh.map((p) => ({
       organization_id: orgId,
       event: "action_proposed",
       actor: "agent",
       actor_id: actorId,
       payload: { kind: p.kind, title: p.title },
-    });
+    })),
+  );
+  if (journalError) {
+    throw new Error(
+      `[ads-analysis] insertion journal: ${journalError.message}`,
+    );
   }
   return fresh.length;
 }

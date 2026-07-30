@@ -33,6 +33,12 @@ import {
   type ValueEventForScorecard,
 } from "@/lib/value-scorecard-rules";
 import { ValueScorecard } from "./_components/value-scorecard";
+import { buildProspectKpi } from "@/lib/dedupe-prospects";
+import {
+  createSupabaseProspectReader,
+  DEFAULT_PROSPECT_MAX_ROWS,
+  loadProspectCohort,
+} from "@/lib/prospect-cohort-loader";
 
 const VALUE_EVENT_PAGE_SIZE = 1000;
 const MAX_VALUE_SCORECARD_EVENTS = 5000;
@@ -119,15 +125,28 @@ export default async function TodayPage() {
         .gte("date", sinceISO)
     : { data: [] };
   const adSpend = (adSpendRows ?? []).reduce((s, r) => s + Number(r.spend), 0);
-  const { count: prospectCount } = await supabase
-    .from("prospects")
-    .select("id", { count: "exact", head: true });
+  const prospectCohort = await loadProspectCohort(
+    createSupabaseProspectReader(supabase),
+    { maxRows: DEFAULT_PROSPECT_MAX_ROWS },
+  );
+  const prospectRows =
+    prospectCohort.status === "complete" ? prospectCohort.rawRows : [];
+  const importedProspectCount =
+    prospectCohort.status === "unavailable"
+      ? null
+      : prospectCohort.importedCount;
+  const prospectSummary = buildProspectKpi(
+    prospectRows,
+    importedProspectCount,
+    DEFAULT_PROSPECT_MAX_ROWS,
+  );
+  const today = new Date().toISOString().slice(0, 10);
 
   // Base vide : quatre tirets ne disent rien. On rend plutôt le diagnostic de
   // départ — la première expertise de l'agent, avant tout connecteur (même
   // rendu que /plan). Dès qu'il y a des données, on retrouve les KPIs.
   const hasData =
-    (prospectCount ?? 0) > 0 ||
+    prospectSummary.hasData ||
     (canViewFinancials && (adSpendRows ?? []).length > 0);
   const memCtx = hasData ? null : await readMemory(supabase);
   const diagnostic = memCtx
@@ -143,8 +162,8 @@ export default async function TodayPage() {
   const eur = (n: number) => `${Math.round(n).toLocaleString("fr-FR")} €`;
   const prospectKpi = {
     label: "Prospects",
-    value: (prospectCount ?? 0) > 0 ? String(prospectCount) : "—",
-    hint: "dans votre base",
+    value: prospectSummary.value,
+    hint: prospectSummary.hint,
   };
   const kpis = canViewFinancials
     ? [
@@ -304,7 +323,14 @@ export default async function TodayPage() {
           ci-dessus tient déjà ce rôle — un plan chiffré serait creux. */}
       {!diagnostic && (
         <div className="mt-5">
-          <PlanBanner />
+          <PlanBanner
+            prospectCohort={
+              prospectCohort.status === "complete"
+                ? prospectCohort.canonicalRows
+                : null
+            }
+            today={today}
+          />
         </div>
       )}
 

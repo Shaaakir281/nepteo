@@ -3,10 +3,7 @@ import Link from "next/link";
 import { getCurrentAuthContext } from "@/lib/auth/context";
 import { readMemory } from "@/lib/memory-store";
 import { memoText } from "@/lib/draft-template";
-import {
-  computeFunnelStats,
-  type BriefingProspect,
-} from "@/lib/analysis-rules";
+import { computeFunnelStats } from "@/lib/analysis-rules";
 import {
   deriveKpis,
   rollupByCampaign,
@@ -16,6 +13,11 @@ import {
 import { buildCreativeSuggestions } from "@/lib/creative-template";
 import { CreativeWorkspace } from "./_components/creative-workspace";
 import { CoachBubble } from "@/components/ui/coach-bubble";
+import {
+  createSupabaseProspectReader,
+  DEFAULT_PROSPECT_MAX_ROWS,
+  loadProspectCohort,
+} from "@/lib/prospect-cohort-loader";
 
 export default async function ContenuPage() {
   const { supabase, user, membership } = await getCurrentAuthContext();
@@ -27,10 +29,15 @@ export default async function ContenuPage() {
   const memCtx = await readMemory(supabase, ["offres", "activite"]);
   const offre = memoText(memCtx, "offres") || memoText(memCtx, "activite");
 
-  const { data: prospectRows } = await supabase
-    .from("prospects")
-    .select("email, stage, company");
-  const stats = computeFunnelStats((prospectRows ?? []) as BriefingProspect[]);
+  const today = new Date().toISOString().slice(0, 10);
+  const prospectCohort = await loadProspectCohort(
+    createSupabaseProspectReader(supabase),
+    { maxRows: DEFAULT_PROSPECT_MAX_ROWS },
+  );
+  const stats =
+    prospectCohort.status === "complete"
+      ? computeFunnelStats(prospectCohort.canonicalRows, today)
+      : null;
 
   const { data: adRows } = membership.canViewFinancials
     ? await supabase
@@ -54,7 +61,7 @@ export default async function ContenuPage() {
 
   const suggestions = buildCreativeSuggestions({
     offre,
-    priorityCount: stats.priority,
+    priorityCount: stats?.priority,
     losingCampaigns,
   });
 
@@ -72,6 +79,17 @@ export default async function ContenuPage() {
           dépense — juste du contenu que vous validez.
         </p>
       </div>
+
+      {prospectCohort.status !== "complete" && (
+        <div className="mb-4 rounded-[13px] border border-line-soft bg-tint-soft px-4 py-3 text-[12.5px] leading-relaxed text-muted">
+          Suggestions chiffrées liées aux prospects suspendues : la cohorte
+          dédoublonnée complète est indisponible
+          {prospectCohort.status === "partial"
+            ? ` au-delà de ${prospectCohort.maxRows.toLocaleString("fr-FR")} lignes importées`
+            : ""}
+          . Aucun total partiel n&apos;est utilisé.
+        </div>
+      )}
 
       <CreativeWorkspace canEdit={canEdit} suggestions={suggestions} />
     </>

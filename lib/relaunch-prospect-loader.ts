@@ -9,10 +9,11 @@ export type RelaunchProspectRow = {
   email: string | null;
   company: string | null;
   stage: string | null;
-  source: string | null;
+  source: string;
   notes: string | null;
   note_internal: string | null;
   last_contact_at: string | null;
+  synced_at: string;
 };
 
 export type RelaunchProspectLoadResult =
@@ -24,8 +25,9 @@ export const MAX_RELAUNCH_PROSPECT_SCAN = 20_000;
 
 /**
  * Lecture commune aux trois moments du play : proposition, approbation et
- * préparation. L'ordre récent → ancien rend la déduplication sûre ; la règle
- * métier trie ensuite les dormants ancien → récent. Une base au-delà de la
+ * préparation. L'ordre de synchronisation récent → ancien rend la
+ * canonicalisation déterministe ; la règle métier trie ensuite les dormants
+ * ancien → récent. Une base au-delà de la
  * borne échoue fermée plutôt que de présenter une cohorte partielle.
  */
 export async function loadRelaunchProspects(
@@ -43,16 +45,16 @@ export async function loadRelaunchProspects(
     let query = admin
       .from("prospects")
       .select(
-        "id, name, email, company, stage, source, notes, note_internal, last_contact_at",
+        "id, name, email, company, stage, source, notes, note_internal, last_contact_at, synced_at",
       )
       .eq("organization_id", organizationId)
-      .order("last_contact_at", { ascending: false, nullsFirst: false })
-      .order("id", { ascending: true })
+      .order("synced_at", { ascending: false })
+      .order("id", { ascending: false })
       .range(offset, offset + PROSPECT_PAGE_SIZE - 1);
 
     query = demo
       ? query.eq("source", DEMO_PROVIDER)
-      : query.or(`source.neq.${DEMO_PROVIDER},source.is.null`);
+      : query.neq("source", DEMO_PROVIDER);
 
     const { data, error } = await query;
     if (error || !data) return { ok: false, reason: "read_failed" };
@@ -66,15 +68,15 @@ export async function loadRelaunchProspects(
     .from("prospects")
     .select("id")
     .eq("organization_id", organizationId)
-    .order("last_contact_at", { ascending: false, nullsFirst: false })
-    .order("id", { ascending: true })
+    .order("synced_at", { ascending: false })
+    .order("id", { ascending: false })
     .range(
       MAX_RELAUNCH_PROSPECT_SCAN,
       MAX_RELAUNCH_PROSPECT_SCAN,
     );
   sentinel = demo
     ? sentinel.eq("source", DEMO_PROVIDER)
-    : sentinel.or(`source.neq.${DEMO_PROVIDER},source.is.null`);
+    : sentinel.neq("source", DEMO_PROVIDER);
   const { data: overflow, error: overflowError } = await sentinel;
   if (overflowError || !overflow) return { ok: false, reason: "read_failed" };
   return overflow.length === 0

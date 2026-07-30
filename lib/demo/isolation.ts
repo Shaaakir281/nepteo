@@ -5,8 +5,10 @@ import {
   DEMO_PROVIDER,
   DEMO_REVENUE_PREFIX,
   demoIsolationConflicts,
+  hasActiveDemoMarker,
   isDemoAction,
   isDemoMutationLock,
+  isTrustedDemoConnectorConfig,
   isTrustedDemoArtifact,
   legacyDemoCleanupAllowed,
   type DemoIsolationConflict,
@@ -64,13 +66,15 @@ function checkedRows<T>(
 export interface DemoModeMarkers {
   active: boolean;
   legacy: boolean;
+  seededProspects: number;
+  trustedDemoConnectors: number;
 }
 
 export async function readDemoModeMarkers(
   admin: Admin,
   orgId: string,
 ): Promise<DemoModeMarkers> {
-  const [backup, prospects] = await Promise.all([
+  const [backup, prospects, connector] = await Promise.all([
     admin
       .from("company_memory")
       .select("id", { count: "exact", head: true })
@@ -81,14 +85,35 @@ export async function readDemoModeMarkers(
       .select("id", { count: "exact", head: true })
       .eq("organization_id", orgId)
       .eq("source", DEMO_PROVIDER),
+    admin
+      .from("connectors")
+      .select("id", { count: "exact", head: true })
+      .eq("organization_id", orgId)
+      .eq("provider", DEMO_PROVIDER)
+      .contains("config", { demo: true }),
   ]);
   const backups = checkedCount(backup, "détection de la sauvegarde de démonstration");
   const seededProspects = checkedCount(
     prospects,
     "détection des prospects de démonstration",
   );
-  const active = backups > 0 || seededProspects > 0;
-  if (!active) return { active: false, legacy: false };
+  const trustedDemoConnectors = checkedCount(
+    connector,
+    "détection du connecteur de démonstration marqué",
+  );
+  const active = hasActiveDemoMarker({
+    backups,
+    seededProspects,
+    trustedDemoConnectors,
+  });
+  if (!active) {
+    return {
+      active: false,
+      legacy: false,
+      seededProspects,
+      trustedDemoConnectors,
+    };
+  }
 
   const [campaigns, ...revenues] = await Promise.all([
     admin
@@ -122,6 +147,8 @@ export async function readDemoModeMarkers(
       legacyCampaigns,
       legacyRevenue,
     ),
+    seededProspects,
+    trustedDemoConnectors,
   };
 }
 
@@ -210,6 +237,7 @@ export async function readDemoIsolation(
 
   const [
     connectors,
+    providerDemoConnectors,
     prospects,
     otherCampaignProviders,
     unknownCampaigns,
@@ -224,6 +252,11 @@ export async function readDemoIsolation(
       .select("id", { count: "exact", head: true })
       .eq("organization_id", orgId)
       .or(`provider.neq.${DEMO_PROVIDER},provider.is.null`),
+    admin
+      .from("connectors")
+      .select("config")
+      .eq("organization_id", orgId)
+      .eq("provider", DEMO_PROVIDER),
     admin
       .from("prospects")
       .select("id", { count: "exact", head: true })
@@ -257,6 +290,12 @@ export async function readDemoIsolation(
   ]);
 
   const actionRows = checkedRows(actions, "inventaire des propositions");
+  const untrustedDemoConnectors = checkedRows<{ config: unknown }>(
+    providerDemoConnectors,
+    "inventaire des connecteurs portant le provider réservé",
+  ).filter(
+    (connector) => !isTrustedDemoConnectorConfig(connector.config),
+  ).length;
   const demoActionIds = new Set(
     actionRows
       .filter((action) =>
@@ -277,7 +316,9 @@ export async function readDemoIsolation(
     active,
     legacy,
     inventory: {
-      realConnectors: checkedCount(connectors, "inventaire des connecteurs réels"),
+      realConnectors:
+        checkedCount(connectors, "inventaire des connecteurs réels") +
+        untrustedDemoConnectors,
       realProspects: checkedCount(prospects, "inventaire des prospects réels"),
       realCampaignRows:
         checkedCount(

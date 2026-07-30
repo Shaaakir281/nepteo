@@ -76,7 +76,7 @@ export function daysSinceContact(
   return Math.max(0, Math.floor((now - last) / DAY_MS));
 }
 
-function isoDateMs(value: string): number | null {
+export function isoDateMs(value: string): number | null {
   const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (!match) return null;
   const year = Number(match[1]);
@@ -333,17 +333,42 @@ export function computeFunnelStats(
   };
 }
 
-/** Toutes les propositions déclenchées par l'état actuel de la base. */
-export function buildFindings(all: RuleProspect[], today?: string): Finding[] {
+/**
+ * Toutes les propositions déclenchées par l'état actuel de la base.
+ *
+ * La cohorte canonique porte tous les chiffres métier. Les lignes brutes,
+ * lorsqu'elles sont fournies, ne servent qu'à signaler les doublons d'email et
+ * à restituer la liste complète des sources. La surcharge historique
+ * `buildFindings(prospects, today)` reste acceptée.
+ */
+export function buildFindings(
+  canonical: RuleProspect[],
+  today?: string,
+): Finding[];
+export function buildFindings(
+  canonical: RuleProspect[],
+  rawRows: RuleProspect[],
+  today?: string,
+): Finding[];
+export function buildFindings(
+  canonical: RuleProspect[],
+  rawRowsOrToday?: RuleProspect[] | string,
+  today?: string,
+): Finding[] {
+  const rawRows = Array.isArray(rawRowsOrToday) ? rawRowsOrToday : canonical;
+  const effectiveToday =
+    typeof rawRowsOrToday === "string" ? rawRowsOrToday : today;
   const findings: Finding[] = [];
-  const total = all.length;
+  const total = canonical.length;
   if (total === 0) return findings;
 
-  const sourceList = [...new Set(all.map((p) => p.source).filter(Boolean))].join(", ");
+  const sourceList = [
+    ...new Set(rawRows.map((p) => p.source).filter(Boolean)),
+  ].join(", ");
   const src = [`prospects (${sourceList})`];
 
   // Règle 1 — emails manquants (qualité de données)
-  const noEmail = all.filter((p) => !p.email).length;
+  const noEmail = canonical.filter((p) => !(p.email ?? "").trim()).length;
   if (noEmail > 0) {
     findings.push({
       kind: "complete_missing_emails",
@@ -361,7 +386,7 @@ export function buildFindings(all: RuleProspect[], today?: string): Finding[] {
 
   // Règle 2 — plus gros groupe par statut → relance ciblée
   const byStage = new Map<string, number>();
-  for (const p of all) {
+  for (const p of canonical) {
     const s = (p.stage ?? "").trim();
     // Une relance proposée doit compter uniquement des prospects réellement
     // joignables et encore actifs. Le volume brut reste traité par les règles
@@ -370,7 +395,7 @@ export function buildFindings(all: RuleProspect[], today?: string): Finding[] {
       !(p.email ?? "").trim() ||
       !s ||
       isTerminalStage(s) ||
-      wasContactedRecently(p, today)
+      wasContactedRecently(p, effectiveToday)
     ) {
       continue;
     }
@@ -396,13 +421,13 @@ export function buildFindings(all: RuleProspect[], today?: string): Finding[] {
   // Règle 2 bis — relancer en priorité : joignables ET statut actif. Même signal
   // que le kanban (prospectPriority). Distincte de la règle 2 : pas le plus gros
   // groupe, mais les contacts les plus prêts à recontacter, tous statuts confondus.
-  const readyProspects = all.filter(
-    (p) => prospectPriority(p, today).tier === "priority",
+  const readyProspects = canonical.filter(
+    (p) => prospectPriority(p, effectiveToday).tier === "priority",
   );
   const ready = readyProspects.length;
   if (ready >= 2) {
     const staleAges = readyProspects
-      .map((p) => daysSinceContact(p.last_contact_at, today))
+      .map((p) => daysSinceContact(p.last_contact_at, effectiveToday))
       .filter((days): days is number => days !== null && days >= STALE_CONTACT_DAYS);
     const oldestContactDays =
       staleAges.length > 0 ? Math.max(...staleAges) : null;
@@ -430,7 +455,7 @@ export function buildFindings(all: RuleProspect[], today?: string): Finding[] {
   }
 
   // Règle 3 — prospects sans statut → à classer (invisibles dans le funnel)
-  const noStage = all.filter((p) => !(p.stage ?? "").trim()).length;
+  const noStage = canonical.filter((p) => !(p.stage ?? "").trim()).length;
   if (noStage > 0 && noStage < total) {
     findings.push({
       kind: "classify_unlabeled",
@@ -448,7 +473,7 @@ export function buildFindings(all: RuleProspect[], today?: string): Finding[] {
 
   // Règle 4 — doublons d'email (hygiène de base)
   const emailCounts = new Map<string, number>();
-  for (const p of all) {
+  for (const p of rawRows) {
     const e = (p.email ?? "").trim().toLowerCase();
     if (e) emailCounts.set(e, (emailCounts.get(e) ?? 0) + 1);
   }
@@ -470,7 +495,7 @@ export function buildFindings(all: RuleProspect[], today?: string): Finding[] {
   }
 
   // Règle 5 — entreprise manquante en volume (segmentation)
-  const noCompany = all.filter((p) => !(p.company ?? "").trim()).length;
+  const noCompany = canonical.filter((p) => !(p.company ?? "").trim()).length;
   if (total >= 5 && noCompany / total >= 0.4) {
     findings.push({
       kind: "complete_missing_company",

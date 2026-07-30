@@ -8,10 +8,8 @@ import {
 import { getEditorContext } from "@/lib/auth/context";
 import { isDemoModeActive } from "@/lib/demo/isolation";
 import { DemoBusyError, withDemoMutationLock } from "@/lib/demo/lock";
-import {
-  dedupeByEmail,
-  normalizedEmailKey,
-} from "@/lib/execution-rules";
+import { normalizedEmailKey } from "@/lib/execution-rules";
+import { canonicalizeProspectCohort } from "@/lib/prospect-cohort-loader";
 import { loadRelaunchProspects } from "@/lib/relaunch-prospect-loader";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -165,15 +163,15 @@ export async function proposeDormantPlay(
             .map((prospect) => normalizedEmailKey(prospect.email))
             .filter((email): email is string => email !== null),
         );
-        const uniqueCurrentContacts = dedupeByEmail(loaded.prospects).filter(
-          (prospect) => {
-            const email = normalizedEmailKey(prospect.email);
-            return (
-              !priorTargets.ids.has(prospect.id) &&
-              (email === null || !priorEmails.has(email))
-            );
-          },
-        );
+        const uniqueCurrentContacts = canonicalizeProspectCohort(
+          loaded.prospects,
+        ).filter((prospect) => {
+          const email = normalizedEmailKey(prospect.email);
+          return (
+            !priorTargets.ids.has(prospect.id) &&
+            (email === null || !priorEmails.has(email))
+          );
+        });
         const targets = selectDormantProspects(
           uniqueCurrentContacts,
           today,

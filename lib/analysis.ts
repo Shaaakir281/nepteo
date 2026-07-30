@@ -1,10 +1,16 @@
 import { generateText } from "ai";
 import type { createAdminClient } from "@/lib/supabase/admin";
 import { getModelForTask, telemetryForTask } from "@/lib/llm";
-import { buildFindings, type RuleProspect } from "@/lib/analysis-rules";
+import { buildFindings } from "@/lib/analysis-rules";
 import { withLlmTrace } from "@/lib/observability";
 import { readMemory } from "@/lib/memory-store";
 import { refreshBriefing } from "@/lib/briefing";
+import {
+  createSupabaseProspectReader,
+  DEFAULT_PROSPECT_MAX_ROWS,
+  loadProspectCohort,
+} from "@/lib/prospect-cohort-loader";
+import { DEMO_PROVIDER } from "@/lib/demo/isolation-rules";
 
 type Admin = ReturnType<typeof createAdminClient>;
 
@@ -22,24 +28,33 @@ export async function runAnalysis(
     demo?: boolean;
   },
 ): Promise<number> {
-  let prospectQuery = admin
-    .from("prospects")
-    .select("email, stage, source, company, name, last_contact_at")
-    .eq("organization_id", orgId);
-  if (options?.prospectSource) {
-    prospectQuery = prospectQuery.eq("source", options.prospectSource);
+  const reader = createSupabaseProspectReader(admin, {
+    organizationId: orgId,
+    ...(options?.prospectSource
+      ? { source: options.prospectSource }
+      : { excludeSource: DEMO_PROVIDER }),
+  });
+  const cohort = await loadProspectCohort(reader, {
+    maxRows: DEFAULT_PROSPECT_MAX_ROWS,
+  });
+  if (cohort.status !== "complete") {
+    throw new Error(
+      `[analysis] cohorte prospects incomplète (${cohort.status}:${cohort.reason})`,
+    );
   }
-  const { data: prospects } = await prospectQuery;
 
   // Briefing rafraîchi à chaque analyse (insight lecture seule), même si aucune
   // proposition ne se déclenche ensuite.
-  await refreshBriefing(admin, orgId, actorId, {
-    prospectSource: options?.prospectSource,
+  await refreshBriefing(admin, orgId, actorId, cohort.canonicalRows, {
     demo: options?.demo,
   });
 
   const today = new Date().toISOString().slice(0, 10);
-  const findings = buildFindings((prospects ?? []) as RuleProspect[], today);
+  const findings = buildFindings(
+    cohort.canonicalRows,
+    cohort.rawRows,
+    today,
+  );
   if (findings.length === 0) return 0;
 
   // Dédupe : ne pas reproposer un kind déjà en file

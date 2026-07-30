@@ -15,13 +15,14 @@ test("computeFunnelStats — compte prioritaires, sans email, sans statut, top s
     p("b@x.fr", "Nouveau", null), // prioritaire (entreprise vide OK)
     p("c@x.fr", "Client", "Z"), // terminal → pas prioritaire
     p(null, "Nouveau", "Y"), // injoignable → pas prioritaire, noEmail
+    p("   ", "Nouveau", "Y2"), // blanc → également noEmail
     p("d@x.fr", "", "W"), // sans statut
   ]);
-  assert.equal(stats.total, 5);
+  assert.equal(stats.total, 6);
   assert.equal(stats.priority, 2);
-  assert.equal(stats.noEmail, 1);
+  assert.equal(stats.noEmail, 2);
   assert.equal(stats.noStage, 1);
-  assert.deepEqual(stats.topStage, { stage: "Nouveau", count: 3 });
+  assert.deepEqual(stats.topStage, { stage: "Nouveau", count: 4 });
 });
 
 test("computeFunnelStats — base vide", () => {

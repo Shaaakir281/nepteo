@@ -54,29 +54,19 @@ async function narrateBriefing(
 
 /**
  * Rafraîchit le briefing courant d'une organisation (upsert, un par org).
- * Lit les prospects, calcule les stats, habille, enregistre. Ne lève pas :
+ * Reçoit la cohorte canonique, calcule les stats, habille, enregistre. Ne lève pas :
  * un briefing raté ne doit pas casser l'analyse qui l'appelle.
  */
 export async function refreshBriefing(
   admin: Admin,
   orgId: string,
   actorId: string | null,
-  options?: { prospectSource?: string; demo?: boolean },
+  prospects: BriefingProspect[],
+  options?: { demo?: boolean },
 ): Promise<void> {
   try {
-    let prospectQuery = admin
-      .from("prospects")
-      .select("email, stage, company, last_contact_at")
-      .eq("organization_id", orgId);
-    if (options?.prospectSource) {
-      prospectQuery = prospectQuery.eq("source", options.prospectSource);
-    }
-    const { data: prospects } = await prospectQuery;
     const today = new Date().toISOString().slice(0, 10);
-    const stats = computeFunnelStats(
-      (prospects ?? []) as BriefingProspect[],
-      today,
-    );
+    const stats = computeFunnelStats(prospects, today);
 
     const memCtx = await readMemory(
       admin,
