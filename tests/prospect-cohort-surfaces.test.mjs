@@ -53,5 +53,9 @@ test("Prospects n'affiche un board que pour une cohorte complète et annonce les
   assert.match(page, /Aucun board, total ou taux partiel/);
   assert.match(page, /fiche[\s\S]*dédoublonnée/);
   assert.match(page, /doublon[\s\S]*masqué/);
+  assert.match(page, /Deux comptages, deux usages/);
+  assert.match(page, /prospectCohort\.canonicalCount/);
+  assert.match(page, /cohorte métier prudente/);
+  assert.match(page, /il ne suppose pas que deux[\s\S]*homonymes/);
   assert.doesNotMatch(page, /\.limit\(500\)/);
 });

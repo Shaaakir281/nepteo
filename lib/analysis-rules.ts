@@ -372,12 +372,12 @@ export function buildFindings(
   if (noEmail > 0) {
     findings.push({
       kind: "complete_missing_emails",
-      title: `Compléter ${noEmail} email${plural(noEmail)} manquant${plural(noEmail)}`,
-      finding: `${noEmail} prospect${plural(noEmail)} sur ${total} n'${noEmail > 1 ? "ont" : "a"} pas d'adresse email.`,
+      title: `Vérifier ${noEmail} fiche${plural(noEmail)} importée${plural(noEmail)} sans email`,
+      finding: `${noEmail} fiche${plural(noEmail)} importée${plural(noEmail)} sans email ${noEmail > 1 ? "restent distinctes" : "reste distincte"} dans la cohorte métier prudente de ${total} identité${plural(total)}.`,
       rationale:
-        "Sans email, aucune relance n'est possible — c'est la première fuite du funnel à colmater.",
+        "Sans email, deux fiches issues de sources différentes ne peuvent pas être rapprochées de façon sûre. L'agent les garde distinctes pour éviter de fusionner des homonymes, même si le tableau Prospects peut les regrouper pour la lecture.",
       data_sources: src,
-      expected_impact: `${noEmail} prospect${plural(noEmail)} de plus joignable${plural(noEmail)} pour les relances`,
+      expected_impact: `${noEmail} fiche${plural(noEmail)} importée${plural(noEmail)} clarifiée${plural(noEmail)} avant toute relance`,
       confidence: 0.9,
       risk: "low",
       payload: { count: noEmail, total },
@@ -406,12 +406,12 @@ export function buildFindings(
     const [stage, count] = top;
     findings.push({
       kind: `relaunch_stage_${stage.toLowerCase().replace(/\W+/g, "_")}`,
-      title: `Préparer la relance des ${count} prospects « ${stage} »`,
-      finding: `${count} prospects sur ${total} sont au statut « ${stage} » — le groupe le plus important de votre base.`,
+      title: `Préparer la relance de ${count} contact${plural(count)} joignable${plural(count)} « ${stage} »`,
+      finding: `${count} contact${plural(count)} de la cohorte métier prudente (${total} identité${plural(total)}) ${count > 1 ? "sont joignables" : "est joignable"}, encore actif${plural(count)} et au statut « ${stage} ».`,
       rationale:
         "Concentrer l'effort sur le groupe le plus fourni maximise le retour d'une seule action de relance.",
       data_sources: src,
-      expected_impact: `${count} prospects recontactés en une action`,
+      expected_impact: `${count} contact${plural(count)} joignable${plural(count)} recontacté${plural(count)} en une action`,
       confidence: 0.7,
       risk: "low",
       payload: { stage, count },
@@ -438,7 +438,7 @@ export function buildFindings(
     findings.push({
       kind: "relaunch_priority",
       title: `Relancer en priorité ${ready} prospect${plural(ready)} prêt${plural(ready)}`,
-      finding: `${ready} prospect${plural(ready)} sur ${total} ${ready > 1 ? "sont joignables" : "est joignable"} et à un statut encore actif — ${ready > 1 ? "les plus prêts" : "le plus prêt"} à être recontacté${plural(ready)}.${staleDetail}`,
+      finding: `Dans la cohorte métier prudente de ${total} identité${plural(total)}, ${ready} prospect${plural(ready)} ${ready > 1 ? "sont joignables" : "est joignable"} et à un statut encore actif — ${ready > 1 ? "les plus prêts" : "le plus prêt"} à être recontacté${plural(ready)}.${staleDetail}`,
       rationale:
         "Ces contacts réunissent les deux conditions d'une relance utile : une adresse valide et un statut encore ouvert. Les traiter d'abord concentre l'effort là où il peut aboutir, sans attendre de compléter le reste de la base.",
       data_sources: src,

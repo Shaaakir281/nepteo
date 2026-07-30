@@ -18,11 +18,13 @@ export function ConnectorCard({
   tool,
   status,
   canEdit,
+  blockedByDemo,
   justRequested,
 }: {
   tool: CatalogTool;
   status: ConnectorStatus;
   canEdit: boolean;
+  blockedByDemo?: boolean;
   justRequested?: boolean;
 }) {
   return (
@@ -76,6 +78,14 @@ export function ConnectorCard({
             Connecter
           </a>
         )}
+        {status === "available" &&
+          isOauthProvider(tool.provider) &&
+          !canEdit &&
+          blockedByDemo && (
+            <span className="text-[12px] font-medium text-amber">
+              Retirez la démonstration pour reconnecter.
+            </span>
+          )}
         {status === "requested" && !isOauthProvider(tool.provider) && (
           <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-amber">
             <i className="h-[7px] w-[7px] rounded-full bg-amber" />

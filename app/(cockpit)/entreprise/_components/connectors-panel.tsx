@@ -122,6 +122,7 @@ export async function ConnectorsPanel({
                 tool={tool}
                 status={statusOf(tool.provider)}
                 canEdit={canEdit && !hasDemo}
+                blockedByDemo={hasDemo}
                 justRequested={saved === tool.provider}
               />
             ))}
