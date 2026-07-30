@@ -4,7 +4,7 @@
 >
 > Elle complète `docs/ROADMAP.md` et **remplace l'ordre d'exécution de la phase C** décrit historiquement dans `docs/projets/roadmap-beta.md`. Les fiches C1–C12 restent utiles comme historique et comme premières spécifications, mais ne valent ni autorisation d'envoi externe ni ordre de lancement.
 >
-> **Avancement de release** : R1A, R1B et le lot R2 sont codés dans le worktree complet. Les migrations `0012` à `0020` ont été appliquées manuellement à la production Supabase le 2026-07-30 et `app_schema_version = 20` y est enregistré depuis `2026-07-30T06:02:14Z`. L'application correspondante n'est pas encore déployée ni recettée : Azure sert toujours l'image `49b410a7`, révision `0000002`, avec `/` et `/api/health` à HTTP 200 et `/api/ready` à HTTP 404 car l'ancien code ne contient pas la route. R0 reste la porte de promotion.
+> **Avancement de release** : R1A, R1B et le lot R2 ont été promus en production le 2026-07-30. Les migrations `0012` à `0020` sont appliquées (`app_schema_version = 20`) et Azure sert l'image `73f7e79`, révision `nepteo-prod--0000003`, avec 100 % du trafic. `/`, `/api/health` et `/api/ready` répondent HTTP 200 ; le smoke public navigateur est propre. R0 reste ouvert pour le smoke authentifié/RLS, les callbacks OAuth et la recette fonctionnelle.
 
 ## Cap produit
 
@@ -16,9 +16,9 @@ Le benchmark converge vers une boucle courte : **signal fiable → priorité exp
 
 ## État de départ et porte encore ouverte
 
-- **Phase technique atteinte** : la phase 3A existe localement. Nepteo peut détecter, expliquer, faire décider et préparer une relance sans l'envoyer.
+- **Phase technique atteinte** : la phase 3A est déployée. Nepteo peut détecter, expliquer, faire décider et préparer une relance sans l'envoyer.
 - **Porte produit encore ouverte** : la phase 2 n'est pas prouvée sur le terrain. Il manque des recommandations évaluées sur des données réelles et des résultats aval observés.
-- **Schéma de production en avance sur l'application** : les migrations `0012` à `0020` sont appliquées et le marqueur vaut 20, mais C8, R1A, R1B, R2 et les durcissements applicatifs associés restent à déployer puis à recetter. La release est en préparation, pas terminée.
+- **Schéma et application alignés** : les migrations `0012` à `0020` et l'application correspondante sont en production. C8, R1A, R1B, R2 et les durcissements associés restent à recetter sur session authentifiée avant le pilote.
 - **C7 n'est plus l'étape automatique suivante** : l'envoi réel ne sera construit qu'après preuve de l'utilité du play de relance et fermeture de ses gates RGPD/exploitation.
 
 ## Définitions de mesure
@@ -44,7 +44,7 @@ Principes de preuve :
 
 | Vague | Incrément | Effort indicatif | Dépendance | Porte de sortie |
 |---:|---|---:|---|---|
-| R0 | Release, smoke et recette du lot | 1–2 j d'exploitation | Schéma de production déjà à 20 | Artefact attendu déployé depuis `main`, readiness 20, smoke auth/RLS/OAuth/C8/R1/R2 vert |
+| R0 | Fin du smoke et recette du lot | 1 j d'exploitation | Artefact `73f7e79` déployé, readiness 20 | Smoke auth/RLS/OAuth/C8/R1/R2 vert |
 | R1A | Preuve manuelle structurée — C9A | 2–3 j | Modèle d'événements validé | Utilité, faux positif, retouche, envoi et résultat déclarés sans fabriquer de statut fournisseur |
 | R1B | « Aujourd'hui » : jusqu'à cinq priorités réelles | 1–2 j | Règles actuelles réutilisées | Jusqu'à cinq actions classées de façon déterministe avec « pourquoi maintenant » |
 | R2 | Play supervisé « prospects dormants » | 2–3 j + 2 semaines d'observation | R0 franchi, puis R1A + R1B promus sur l'environnement pilote | Cohorte bornée, validation humaine, snapshot atomique, scorecard exploitable et observations terrain suffisantes |
@@ -58,15 +58,14 @@ Les estimations sont des ordres de grandeur de développement, hors délais de c
 ## R0 — Recetter avant de promouvoir
 
 1. Conserver la preuve de l'acquis base : `0012` → `0020` appliquées manuellement et `app_schema_version.version = 20` à `2026-07-30T06:02:14Z`.
-2. Figer le worktree exact dans un commit de release, passer la PR/CI puis fusionner dans `main`.
-3. Déployer manuellement depuis `main` après le préflight de schéma et l'approbation production.
-4. Vérifier `/`, `/api/health`, `/api/ready`, le smoke RLS authentifié, les rôles et l'absence d'envoi externe sur la nouvelle révision.
-5. Rejouer les callbacks Google Sheets/Notion, l'isolation de démonstration, C8, le Top 5, toute la boucle déclarative R1A et les garde-fous R2.
-6. Ne pas déclarer la release terminée ni basculer le pilote tant que cette verticale n'est pas verte.
+2. Conserver la preuve de release : PR #5, CI de PR et de `main` vertes, image `73f7e79`, révision `nepteo-prod--0000003`.
+3. Vérifier sur session authentifiée le smoke RLS, les rôles et l'absence d'envoi externe.
+4. Rejouer les callbacks Google Sheets/Notion, l'isolation de démonstration, C8, le Top 5, toute la boucle déclarative R1A et les garde-fous R2.
+5. Ne pas déclarer R0 entièrement franchi ni basculer le pilote tant que cette verticale n'est pas verte.
 
-R1A, R1B et R2 sont prêts localement pour l'intégration, et leur schéma de support est présent en production. R0 bloque encore leur promotion et tout pilote réel, pas la préparation de la recette.
+R1A, R1B et R2 sont déployés et leur schéma de support est présent en production. R0 bloque encore leur promotion vers un pilote réel, pas leur recette sur la révision de production.
 
-Les tests de la version actuelle continuent sur l'ancienne révision applicative tant que la release n'a pas été déployée. Après intégration et recette, R1A, R1B puis R2 sont promus de façon supervisée sur un environnement ou tenant pilote dédié, avec la version notée dans la scorecard. Ils ne remplacent pas silencieusement l'application en cours de test.
+Les tests techniques publics continuent sur la révision `nepteo-prod--0000003`. Après recette authentifiée, R1A, R1B puis R2 sont promus de façon supervisée sur un tenant pilote dédié, avec l'image et la révision notées dans la scorecard.
 
 ## R1A — Instrumenter la preuve avant l'envoi
 
@@ -100,7 +99,7 @@ Le classement est une fonction pure et déterministe. Le filtre de rôle est app
 
 ## R2 — Prouver le play « prospects dormants »
 
-> **Statut de release au 2026-07-30** : le lanceur et la scorecard sont codés, et leur schéma de support est présent dans la base de production à la version 20. L'application n'est toutefois ni déployée ni recettée. Le pilote reste interdit tant que R0 — commit/CI, déploiement depuis `main`, `/api/ready` à HTTP 200 et smoke — n'est pas vert.
+> **Statut de release au 2026-07-30** : le lanceur, la scorecard et leur schéma de support sont déployés en production sur l'image `73f7e79`. `/api/ready` répond HTTP 200. Le pilote reste interdit tant que le reliquat R0 — smoke authentifié/RLS, OAuth et recette des parcours — n'est pas vert.
 
 La cohorte implémentée est volontairement stricte :
 
@@ -217,17 +216,17 @@ Les séquences C12 ne sont cadrées qu'après au moins **100 envois supervisés*
 
 | Piste | Peut avancer avec | Condition |
 |---|---|---|
-| R0 release et recette | R1A, R1B et R2 locaux | Aucun déploiement depuis les branches de travail |
+| R0 smoke authentifié et recette | Préparation des sessions R1A, R1B et R2 | Aucune mutation concurrente du schéma ou de l'outbox |
 | R1A instrumentation | R1B classement | Migrations/API d'un côté, fonction pure/UI de l'autre, un intégrateur final |
 | Cadrage connecteur | Fin du pilote R2 | Lecture de documentation et matrice de scopes seulement ; aucun code fournisseur avant le gate |
 | R4 apprentissage | R3 connecteur | Le seuil de 30 corrections est déjà atteint et les fichiers sont disjoints |
 
-R2 est maintenant codé localement et son schéma est à 20 en production, mais il attend encore la release, la recette R0 et la promotion supervisée de R1A/R1B avant tout pilote. R5 attend les gates valeur, RGPD et exploitation ; il ne se parallélise pas avec une autre mutation de l'outbox.
+R2 est maintenant déployé avec son schéma à 20, mais il attend encore la fin de la recette R0 et la promotion supervisée de R1A/R1B avant tout pilote. R5 attend les gates valeur, RGPD et exploitation ; il ne se parallélise pas avec une autre mutation de l'outbox.
 
 ## Dix prochains jours ouvrés
 
-1. **J1** : commit du worktree complet, PR/CI, fusion dans `main`, puis déploiement manuel protégé après validation.
-2. **J2** : contrôles `/`, `/api/health`, `/api/ready`, smoke authentifié/RLS et parcours C8/R1A/R1B/R2.
+1. **J1 — terminé** : commit du worktree complet, PR/CI, fusion dans `main`, déploiement manuel protégé et contrôles publics verts.
+2. **J2** : smoke authentifié/RLS, callbacks OAuth et parcours C8/R1A/R1B/R2.
 3. **J3** : scorecard mise à jour et promotion supervisée vers l'environnement pilote si R0 est vert.
 4. **J4–J5** : recette du play dormant borné, de l'exclusion des vagues antérieures, du snapshot atomique et de la scorecard.
 5. **J6–J10** : premières sessions commanditaires, correction des blocages P0/P1 et collecte des 30 premières évaluations.
