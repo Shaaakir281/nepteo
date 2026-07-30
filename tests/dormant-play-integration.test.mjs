@@ -15,6 +15,7 @@ const [
   execution,
   todayPage,
   relaunchLoader,
+  relaunchSnapshot,
 ] = await Promise.all([
   read("app/(cockpit)/_actions/dormant-play.ts"),
   read("app/(cockpit)/_components/dormant-play-launcher.tsx"),
@@ -25,6 +26,7 @@ const [
   read("lib/execution.ts"),
   read("app/(cockpit)/page.tsx"),
   read("lib/relaunch-prospect-loader.ts"),
+  read("lib/relaunch-snapshot.ts"),
 ]);
 
 function sqlFunction(source, name) {
@@ -83,8 +85,14 @@ test("play dormant - mutation serialisee, isolation demo et garde editeur", () =
   );
   assert.match(
     relaunchLoader,
-    /source\.neq\.\$\{DEMO_PROVIDER\},source\.is\.null/,
+    /\? query\.eq\("source",\s*DEMO_PROVIDER\)\s*:\s*query\.neq\("source",\s*DEMO_PROVIDER\)/,
   );
+  assert.match(relaunchLoader, /last_contact_at,\s*synced_at/);
+  assert.match(
+    relaunchLoader,
+    /\.order\("synced_at",\s*\{\s*ascending:\s*false\s*\}\)[\s\S]{0,100}\.order\("id",\s*\{\s*ascending:\s*false\s*\}\)/,
+  );
+  assert.doesNotMatch(relaunchLoader, /source\.is\.null/);
   assert.match(
     proposal,
     /payload:\s*\{[\s\S]{0,900}(?:demo\s*:\s*true|demo\s*\?)/,
@@ -115,6 +123,7 @@ test("play dormant - une action active est dedupliquee et les cohortes passees s
   assert.match(dormantPlay, /\.in\("action_id",/);
   assert.match(dormantPlay, /new Set(?:<string>)?\(/);
   assert.match(proposal, /selectDormantProspects\(/);
+  assert.match(proposal, /canonicalizeProspectCohort\(\s*loaded\.prospects/);
   assert.match(proposal, /priorEmails/);
   assert.match(proposal, /normalizedEmailKey/);
 
@@ -184,20 +193,43 @@ test("relance dormant - approbation, preuve et selection aval reconnaissent le k
   assert.match(commercialSafeRpc, /'relaunch_dormant'/);
 
   assert.match(prospects, /selectDormantProspects/);
+  assert.match(prospects, /canonicalizeProspectCohort\(rows\)/);
   assert.match(prospects, /loadRelaunchProspects\(/);
   assert.match(prospects, /payload\.demo === true/);
   assert.match(prospects, /kind === "relaunch_dormant"/);
-  const prospectSelection = prospects.indexOf("selectDormantProspects(");
+  assert.match(
+    prospects,
+    /const snapshotContacts = restrictCanonicalCohortToSnapshot\([\s\S]{0,180}contacts,[\s\S]{0,80}rawContacts,[\s\S]{0,80}snapshotIds[\s\S]{0,240}selectCurrentTargets\([\s\S]{0,120}snapshotContacts/,
+  );
+  const targetHelper = prospects.indexOf("function selectCurrentTargets(");
+  const prospectSelection = prospects.indexOf(
+    "selectDormantProspects(",
+    targetHelper,
+  );
   const prospectCap = prospects.indexOf(".slice(0, 50)", prospectSelection);
-  assert.ok(prospectSelection >= 0 && prospectCap > prospectSelection);
+  assert.ok(
+    targetHelper >= 0 &&
+      prospectSelection > targetHelper &&
+      prospectCap > prospectSelection,
+  );
 
   assert.match(execution, /selectDormantProspects/);
+  assert.match(
+    execution,
+    /const rawProspectRows = loadedProspects\.prospects[\s\S]{0,120}canonicalizeProspectCohort\(rawProspectRows\)/,
+  );
   assert.match(execution, /loadRelaunchProspects\(/);
   assert.match(execution, /payload\.demo === true/);
   assert.match(execution, /kind === "relaunch_dormant"/);
   assert.match(execution, /\.from\("action_target_snapshots"\)/);
   assert.match(execution, /\.from\("action_target_snapshot_members"\)/);
-  assert.match(execution, /memberIds\.has\(prospect\.id\)/);
+  assert.match(execution, /restrictCanonicalCohortToSnapshot\(/);
+  assert.match(relaunchSnapshot, /snapshotIds\.has\(row\.id\)/);
+  assert.match(relaunchSnapshot, /snapshotIdByEmail/);
+  assert.match(
+    relaunchSnapshot,
+    /snapshotId === row\.id \? row : \{ \.\.\.row, id: snapshotId \}/,
+  );
   assert.match(
     execution,
     /!targetSnapshot && claimedAction\.kind === "relaunch_dormant"[\s\S]{0,180}target_snapshot_missing_recovery_required/,
@@ -207,16 +239,21 @@ test("relance dormant - approbation, preuve et selection aval reconnaissent le k
     /v_action_kind = 'relaunch_dormant'[\s\S]{0,180}dormant outcome requires an action cohort/,
   );
   const executionSelection = execution.indexOf("selectDormantProspects(");
+  const canonicalization = execution.indexOf(
+    "canonicalizeProspectCohort(",
+  );
   const snapshotRestriction = execution.indexOf(
-    "memberIds.has(prospect.id)",
+    "restrictCanonicalCohortToSnapshot(",
   );
   const recipientPlanning = execution.indexOf(
     "planRecipients(",
     executionSelection,
   );
   assert.ok(
-    snapshotRestriction >= 0 && snapshotRestriction < executionSelection,
-    "le snapshot doit restreindre la cohorte avant le cap dormant",
+    canonicalization >= 0 &&
+      canonicalization < snapshotRestriction &&
+      snapshotRestriction < executionSelection,
+    "la cohorte complète doit être canonicalisée avant l'intersection stricte du snapshot puis le cap dormant",
   );
   assert.ok(executionSelection >= 0 && recipientPlanning > executionSelection);
 });

@@ -1,13 +1,17 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentAuthContext } from "@/lib/auth/context";
-import { dedupeByEmail } from "@/lib/dedupe-prospects";
 import {
   ProspectsBoard,
   type BoardProspect,
   type StageGroup,
 } from "./_components/prospects-board";
 import { CoachBubble } from "@/components/ui/coach-bubble";
+import {
+  createSupabaseProspectReader,
+  DEFAULT_PROSPECT_MAX_ROWS,
+  loadProspectCohort,
+} from "@/lib/prospect-cohort-loader";
 
 const NO_STAGE = "Sans statut";
 
@@ -15,21 +19,18 @@ export default async function ProspectsPage() {
   const { supabase, user } = await getCurrentAuthContext();
   if (!user) redirect("/login");
 
-  const { data, count } = await supabase
-    .from("prospects")
-    .select("id, name, email, company, stage, last_contact_at", {
-      count: "exact",
-    })
-    .order("synced_at", { ascending: false })
-    .limit(500);
-  // Dédup à l'affichage : une même personne lue par deux connecteurs (ex. Sheets
-  // + Notion) ne doit pas compter double. Lecture seule, rien n'est écrit en base.
-  const rawRows = (data ?? []) as BoardProspect[];
-  const prospects = dedupeByEmail(rawRows);
-  const maskedDupes = rawRows.length - prospects.length;
+  const prospectCohort = await loadProspectCohort(
+    createSupabaseProspectReader(supabase),
+    { maxRows: DEFAULT_PROSPECT_MAX_ROWS },
+  );
+  const prospects =
+    prospectCohort.status === "complete"
+      ? (prospectCohort.dedupedRows as BoardProspect[])
+      : [];
   const today = new Date().toISOString().slice(0, 10);
 
-  // Regroupement par statut, colonnes ordonnées par effectif décroissant.
+  // Regroupement uniquement sur une cohorte complète : aucun total partiel ne
+  // doit alimenter le funnel ou le board.
   const byStage = new Map<string, BoardProspect[]>();
   for (const p of prospects) {
     const s = (p.stage ?? "").trim() || NO_STAGE;
@@ -55,7 +56,19 @@ export default async function ProspectsPage() {
         </p>
       </div>
 
-      {prospects.length === 0 ? (
+      {prospectCohort.status !== "complete" ? (
+        <div className="rounded-[18px] border border-line-soft bg-white p-8 text-center shadow-card">
+          <p className="text-[13.5px] font-medium text-ink">
+            Vue prospects temporairement suspendue
+          </p>
+          <p className="mx-auto mt-1.5 max-w-lg text-[12.5px] leading-relaxed text-muted">
+            {prospectCohort.status === "partial"
+              ? `${prospectCohort.importedCount.toLocaleString("fr-FR")} lignes importées dépassent la borne de ${prospectCohort.maxRows.toLocaleString("fr-FR")}.`
+              : "La cohorte complète n’a pas pu être vérifiée."}{" "}
+            Aucun board, total ou taux partiel n&apos;est affiché.
+          </p>
+        </div>
+      ) : prospects.length === 0 ? (
         <div className="rounded-[18px] border border-line-soft bg-white p-8 text-center shadow-card">
           <p className="text-[13.5px] font-medium text-ink">
             Aucun prospect pour l&apos;instant
@@ -79,10 +92,17 @@ export default async function ProspectsPage() {
             today={today}
           />
           <p className="mt-3 text-[12px] text-faint">
-            {prospects.length} prospect{prospects.length > 1 ? "s" : ""} au total
-            {maskedDupes > 0 &&
-              ` · ${maskedDupes} doublon${maskedDupes > 1 ? "s" : ""} d'email masqué${maskedDupes > 1 ? "s" : ""}`}
-            {(count ?? 0) > 500 && " · 500 lignes brutes affichées"}.
+            {prospectCohort.dedupedCount.toLocaleString("fr-FR")} fiche
+            {prospectCohort.dedupedCount > 1 ? "s" : ""} dédoublonnée
+            {prospectCohort.dedupedCount > 1 ? "s" : ""}
+            {" · "}
+            {prospectCohort.maskedCount.toLocaleString("fr-FR")} doublon
+            {prospectCohort.maskedCount > 1 ? "s" : ""} masqué
+            {prospectCohort.maskedCount > 1 ? "s" : ""}
+            {" · "}
+            {prospectCohort.importedCount.toLocaleString("fr-FR")} ligne
+            {prospectCohort.importedCount > 1 ? "s" : ""} importée
+            {prospectCohort.importedCount > 1 ? "s" : ""}.
           </p>
         </>
       )}

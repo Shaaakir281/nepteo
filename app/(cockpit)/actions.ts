@@ -1,6 +1,9 @@
 "use server";
 
-import { analyzeNow as analyzeNowImpl } from "./_actions/analysis";
+import {
+  analyzeNow as analyzeNowImpl,
+  type AnalyzeNowResult,
+} from "./_actions/analysis";
 import {
   draftForAction as draftForActionImpl,
   draftForProspect as draftForProspectImpl,
@@ -103,7 +106,7 @@ export async function toggleExecutionPause(paused: boolean): Promise<void> {
   return toggleExecutionPauseImpl(paused);
 }
 
-export async function analyzeNow(): Promise<{ ok: boolean; created: number }> {
+export async function analyzeNow(): Promise<AnalyzeNowResult> {
   return analyzeNowImpl();
 }
 

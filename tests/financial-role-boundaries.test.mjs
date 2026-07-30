@@ -9,13 +9,15 @@ const migration = await readFile(
   ),
   "utf8",
 );
-const catchupMigration = await readFile(
-  new URL(
-    "../supabase/migrations/0019_commercial_rls_catchup.sql",
-    import.meta.url,
-  ),
-  "utf8",
-);
+const catchupMigration = (
+  await readFile(
+    new URL(
+      "../supabase/migrations/0019_commercial_rls_catchup.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  )
+).replace(/\r\n/g, "\n");
 const context = await readFile(
   new URL("../lib/auth/context.ts", import.meta.url),
   "utf8",

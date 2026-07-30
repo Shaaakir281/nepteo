@@ -8,10 +8,19 @@ import { getEditorContext } from "@/lib/auth/context";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isRelanceKind } from "@/lib/draft";
 import {
-  dedupeContacts,
-  normalizedEmailKey,
-} from "@/lib/execution-rules";
-import { loadRelaunchProspects } from "@/lib/relaunch-prospect-loader";
+  DemoBusyError,
+  withDemoMutationLock,
+} from "@/lib/demo/lock";
+import { normalizedEmailKey } from "@/lib/execution-rules";
+import {
+  canonicalizeProspectCohort,
+  type CanonicalProspectCohortRow,
+} from "@/lib/prospect-cohort-loader";
+import {
+  loadRelaunchProspects,
+  type RelaunchProspectRow,
+} from "@/lib/relaunch-prospect-loader";
+import { restrictCanonicalCohortToSnapshot } from "@/lib/relaunch-snapshot";
 import type { TargetProspect } from "../actions";
 
 type RelaunchActionRow = {
@@ -20,6 +29,29 @@ type RelaunchActionRow = {
   status: string;
   payload: Record<string, unknown> | null;
 };
+
+type CurrentProspect = CanonicalProspectCohortRow<RelaunchProspectRow>;
+
+function selectCurrentTargets(
+  action: RelaunchActionRow,
+  payload: Record<string, unknown>,
+  contacts: CurrentProspect[],
+  today: string,
+): CurrentProspect[] {
+  return action.kind === "relaunch_dormant"
+    ? selectDormantProspects(
+        contacts,
+        today,
+        typeof payload.min_silence_days === "number"
+          ? payload.min_silence_days
+          : Number.NaN,
+      )
+    : contacts
+        .filter((prospect) =>
+          matchesRelaunchTarget(action.kind, payload, prospect, today),
+        )
+        .slice(0, 50);
+}
 
 async function priorDormantProspectIds(
   admin: ReturnType<typeof createAdminClient>,
@@ -68,8 +100,8 @@ async function priorDormantProspectIds(
 async function loadRelaunchActionAndProspects(
   id: string,
   organizationId: string,
+  admin = createAdminClient(),
 ) {
-  const admin = createAdminClient();
   const { data: action, error: actionError } = await admin
     .from("actions")
     .select("id, kind, status, payload")
@@ -89,7 +121,7 @@ async function loadRelaunchActionAndProspects(
   const rows = loadedProspects.prospects;
 
   const today = new Date().toISOString().slice(0, 10);
-  let uniqueCurrentContacts = dedupeContacts(rows);
+  let uniqueCurrentContacts = canonicalizeProspectCohort(rows);
   if (typedAction.kind === "relaunch_dormant") {
     const priorProspectIds = await priorDormantProspectIds(
       admin,
@@ -113,27 +145,21 @@ async function loadRelaunchActionAndProspects(
       },
     );
   }
-  const currentTargets =
-    typedAction.kind === "relaunch_dormant"
-      ? selectDormantProspects(
-          uniqueCurrentContacts,
-          today,
-          typeof payload.min_silence_days === "number"
-            ? payload.min_silence_days
-            : Number.NaN,
-        )
-      : uniqueCurrentContacts
-          .filter((prospect) =>
-            matchesRelaunchTarget(typedAction.kind, payload, prospect, today),
-          )
-          .slice(0, 50);
+  const currentTargets = selectCurrentTargets(
+    typedAction,
+    payload,
+    uniqueCurrentContacts,
+    today,
+  );
 
   return {
     admin,
     action: typedAction,
     payload,
-    rows,
+    contacts: uniqueCurrentContacts,
+    rawContacts: rows,
     currentTargets,
+    today,
   };
 }
 
@@ -150,39 +176,64 @@ export async function approveRelaunchWithTargetSnapshot(
 ): Promise<RelaunchApprovalResult> {
   const ctx = await getEditorContext();
   if (!ctx || !ctx.canEdit) return { handled: true, changed: false };
+  const admin = createAdminClient();
 
-  const loaded = await loadRelaunchActionAndProspects(id, ctx.orgId);
-  if (!loaded) {
-    const admin = createAdminClient();
-    const { data: action, error } = await admin
-      .from("actions")
-      .select("kind")
-      .eq("id", id)
-      .eq("organization_id", ctx.orgId)
-      .maybeSingle();
-    if (error || !action) return { handled: true, changed: false };
-    return isRelanceKind(action.kind)
-      ? { handled: true, changed: false }
-      : { handled: false };
+  try {
+    return await withDemoMutationLock(
+      admin,
+      ctx.orgId,
+      "data",
+      async () => {
+        const loaded = await loadRelaunchActionAndProspects(
+          id,
+          ctx.orgId,
+          admin,
+        );
+        if (!loaded) {
+          const { data: action, error } = await admin
+            .from("actions")
+            .select("kind")
+            .eq("id", id)
+            .eq("organization_id", ctx.orgId)
+            .maybeSingle();
+          if (error || !action) return { handled: true, changed: false };
+          return isRelanceKind(action.kind)
+            ? { handled: true, changed: false }
+            : { handled: false };
+        }
+
+        const { data, error } = await loaded.admin.rpc(
+          "approve_relaunch_action_with_targets",
+          {
+            p_organization_id: ctx.orgId,
+            p_action_id: id,
+            p_actor_id: ctx.userId,
+            p_prospect_ids: loaded.currentTargets.map(
+              (prospect) => prospect.id,
+            ),
+          },
+        );
+        if (
+          error ||
+          !data ||
+          typeof data !== "object" ||
+          Array.isArray(data)
+        ) {
+          return { handled: true, changed: false };
+        }
+
+        return {
+          handled: true,
+          changed: (data as Record<string, unknown>).changed === true,
+        };
+      },
+    );
+  } catch (error) {
+    if (error instanceof DemoBusyError) {
+      return { handled: true, changed: false };
+    }
+    throw error;
   }
-
-  const { data, error } = await loaded.admin.rpc(
-    "approve_relaunch_action_with_targets",
-    {
-      p_organization_id: ctx.orgId,
-      p_action_id: id,
-      p_actor_id: ctx.userId,
-      p_prospect_ids: loaded.currentTargets.map((prospect) => prospect.id),
-    },
-  );
-  if (error || !data || typeof data !== "object" || Array.isArray(data)) {
-    return { handled: true, changed: false };
-  }
-
-  return {
-    handled: true,
-    changed: (data as Record<string, unknown>).changed === true,
-  };
 }
 
 /**
@@ -198,7 +249,15 @@ export async function prospectsForAction(
 
   const loaded = await loadRelaunchActionAndProspects(id, ctx.orgId);
   if (!loaded) return { ok: false, prospects: [] };
-  const { action, admin, currentTargets, payload, rows } = loaded;
+  const {
+    action,
+    admin,
+    contacts,
+    currentTargets,
+    payload,
+    rawContacts,
+    today,
+  } = loaded;
   const drafts = (payload.prospect_drafts ?? {}) as Record<string, unknown>;
   let targeted = currentTargets;
 
@@ -220,7 +279,20 @@ export async function prospectsForAction(
     const snapshotIds = new Set(
       (members ?? []).map((member) => member.prospect_id as string),
     );
-    targeted = rows.filter((prospect) => snapshotIds.has(prospect.id));
+    const snapshotContacts = restrictCanonicalCohortToSnapshot(
+      contacts,
+      rawContacts,
+      snapshotIds,
+    );
+    // Le snapshot restreint d'abord la population ; le tri/cap dormant vient
+    // ensuite, afin qu'un nouveau prospect hors snapshot ne masque jamais un
+    // membre historique encore sûr.
+    targeted = selectCurrentTargets(
+      action,
+      payload,
+      snapshotContacts,
+      today,
+    );
   } else if (action.status !== "proposed") {
     // Compatibilité des décisions antérieures à 0020.
     const legacyIds = new Set<string>();
@@ -246,8 +318,16 @@ export async function prospectsForAction(
       if (row.prospect_id) legacyIds.add(row.prospect_id as string);
     }
 
-    targeted = dedupeContacts(
-      rows.filter((prospect) => legacyIds.has(prospect.id)),
+    const legacyContacts = restrictCanonicalCohortToSnapshot(
+      contacts,
+      rawContacts,
+      legacyIds,
+    );
+    targeted = selectCurrentTargets(
+      action,
+      payload,
+      legacyContacts,
+      today,
     );
   }
 

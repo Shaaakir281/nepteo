@@ -71,3 +71,79 @@ export function dedupeByEmail<T extends DedupProspect>(rows: T[]): T[] {
   }
   return out;
 }
+
+export interface ProspectKpiSummary<T extends DedupProspect = DedupProspect> {
+  dedupedCount: number | null;
+  dedupedRows: T[] | null;
+  hasData: boolean;
+  value: string;
+  hint: string;
+}
+
+const formatCount = (count: number) => count.toLocaleString("fr-FR");
+
+/**
+ * Construit le KPI Prospects et la cohorte dédoublonnée sans jamais présenter
+ * une lecture partielle comme un total. `importedRowCount` vient du count exact
+ * en base ; les lignes ne sont dédoublonnées que si elles ont toutes été
+ * chargées dans la borne.
+ */
+export function buildProspectKpi<T extends DedupProspect>(
+  rows: T[],
+  importedRowCount: number | null,
+  maxRows: number,
+): ProspectKpiSummary<T> {
+  // Une erreur de count ne prouve jamais que la base est vide. Dans ce cas,
+  // rester côté cockpit évite d'afficher à tort le diagnostic de départ.
+  const hasData = importedRowCount === null ? true : importedRowCount > 0;
+
+  if (importedRowCount === null) {
+    return {
+      dedupedCount: null,
+      dedupedRows: null,
+      hasData,
+      value: "—",
+      hint: "décompte dédoublonné indisponible",
+    };
+  }
+
+  if (importedRowCount > maxRows) {
+    return {
+      dedupedCount: null,
+      dedupedRows: null,
+      hasData,
+      value: "—",
+      hint: `${formatCount(importedRowCount)} lignes importées · décompte dédoublonné suspendu au-delà de ${formatCount(maxRows)}`,
+    };
+  }
+
+  if (rows.length !== importedRowCount) {
+    return {
+      dedupedCount: null,
+      dedupedRows: null,
+      hasData,
+      value: "—",
+      hint: `${formatCount(importedRowCount)} ligne${importedRowCount > 1 ? "s" : ""} importée${importedRowCount > 1 ? "s" : ""} · décompte dédoublonné indisponible`,
+    };
+  }
+
+  const dedupedRows = dedupeByEmail(rows);
+  const dedupedCount = dedupedRows.length;
+  if (dedupedCount === 0) {
+    return {
+      dedupedCount,
+      dedupedRows,
+      hasData,
+      value: "—",
+      hint: "aucune ligne importée",
+    };
+  }
+
+  return {
+    dedupedCount,
+    dedupedRows,
+    hasData,
+    value: formatCount(dedupedCount),
+    hint: `fiche${dedupedCount > 1 ? "s" : ""} dédoublonnée${dedupedCount > 1 ? "s" : ""} · ${formatCount(importedRowCount)} ligne${importedRowCount > 1 ? "s" : ""} importée${importedRowCount > 1 ? "s" : ""}`,
+  };
+}

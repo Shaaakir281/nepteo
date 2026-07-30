@@ -63,6 +63,47 @@ export interface DemoIsolationInventory {
   realBriefings: number;
 }
 
+export interface DemoModeMarkerCounts {
+  backups: number;
+  seededProspects: number;
+  trustedDemoConnectors: number;
+}
+
+export function isTrustedDemoConnectorConfig(config: unknown): boolean {
+  return (
+    typeof config === "object" &&
+    config !== null &&
+    !Array.isArray(config) &&
+    (config as Record<string, unknown>).demo === true
+  );
+}
+
+export function demoProspectsMatchTrustedConnectors(
+  trustedConnectorIds: readonly string[],
+  prospectConnectorIds: readonly (string | null)[],
+): boolean {
+  const trusted = new Set(trustedConnectorIds);
+  return prospectConnectorIds.every(
+    (connectorId) => connectorId !== null && trusted.has(connectorId),
+  );
+}
+
+/**
+ * Un connecteur explicitement réservé et marqué pour la démo est un marqueur à
+ * part entière. Cela couvre notamment l'état orphelin laissé par les anciennes
+ * versions après le retrait des prospects et de la sauvegarde, sans faire
+ * confiance au seul champ texte `provider`.
+ */
+export function hasActiveDemoMarker(
+  markers: DemoModeMarkerCounts,
+): boolean {
+  return (
+    markers.backups > 0 ||
+    markers.seededProspects > 0 ||
+    markers.trustedDemoConnectors > 0
+  );
+}
+
 export type DemoIsolationConflict =
   | "connectors"
   | "prospects"

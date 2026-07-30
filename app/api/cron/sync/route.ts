@@ -7,6 +7,7 @@ import {
   type ConnectorRow,
 } from "@/lib/connectors/sync";
 import { runAnalysis } from "@/lib/analysis";
+import { withDemoMutationLock } from "@/lib/demo/lock";
 
 /**
  * Sync quotidienne de tous les connecteurs configurés (toutes organisations),
@@ -62,15 +63,22 @@ export async function POST(request: NextRequest) {
   // du LLM : sans clé, l'habillage retombe sur les templates (cf. runAnalysis).
   const analyzed: { organization_id: string; proposed?: number; error?: string }[] = [];
   for (const orgId of syncedOrgs) {
-    await admin.from("journal").insert({
-      organization_id: orgId,
-      event: "analysis_run",
-      actor: "agent",
-      actor_id: null,
-      payload: { mode: "auto" },
-    });
     try {
-      const proposed = await runAnalysis(admin, orgId, null);
+      const proposed = await withDemoMutationLock(
+        admin,
+        orgId,
+        "analysis",
+        async () => {
+          await admin.from("journal").insert({
+            organization_id: orgId,
+            event: "analysis_run",
+            actor: "agent",
+            actor_id: null,
+            payload: { mode: "auto" },
+          });
+          return runAnalysis(admin, orgId, null);
+        },
+      );
       analyzed.push({ organization_id: orgId, proposed });
     } catch (e) {
       analyzed.push({

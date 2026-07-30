@@ -19,6 +19,7 @@ import {
   DEMO_PROVIDER,
   DEMO_REVENUE_PREFIX,
   demoCampaignId,
+  demoProspectsMatchTrustedConnectors,
   demoRevenueId,
   isDemoAction,
 } from "@/lib/demo/isolation-rules";
@@ -180,6 +181,7 @@ async function demoConnectorIds(admin: Admin, orgId: string): Promise<string[]> 
     .select("id")
     .eq("organization_id", orgId)
     .eq("provider", DEMO_PROVIDER)
+    .contains("config", { demo: true })
     .order("created_at", { ascending: true });
   ensureOk(error, "connecteurs de démonstration");
   return ((data ?? []) as { id: string }[]).map((row) => row.id);
@@ -188,8 +190,74 @@ async function demoConnectorIds(admin: Admin, orgId: string): Promise<string[]> 
 /** Supprime les prospects portés par les connecteurs de démo donnés. */
 async function deleteDemoProspects(admin: Admin, ids: string[]): Promise<void> {
   if (ids.length === 0) return;
-  const { error } = await admin.from("prospects").delete().in("connector_id", ids);
+  const { error } = await admin
+    .from("prospects")
+    .delete()
+    .in("connector_id", ids)
+    .eq("source", DEMO_PROVIDER);
   ensureOk(error, "prospects de démonstration");
+}
+
+/**
+ * Les lignes `source=demo` doivent appartenir à un connecteur qui porte aussi
+ * le marqueur fort `config.demo=true`. Un état désaligné est ambigu : on le
+ * signale avant toute suppression plutôt que d'annoncer un retrait incomplet.
+ */
+async function assertDemoProspectsAreAligned(
+  admin: Admin,
+  orgId: string,
+  connectorIds: string[],
+): Promise<void> {
+  const { data, error } = await admin
+    .from("prospects")
+    .select("connector_id")
+    .eq("organization_id", orgId)
+    .eq("source", DEMO_PROVIDER);
+  ensureOk(error, "vérification des marqueurs de prospects de démonstration");
+  if (!data) {
+    throw new Error(
+      "Retrait refusé : impossible de vérifier les prospects de démonstration.",
+    );
+  }
+
+  const aligned = demoProspectsMatchTrustedConnectors(
+    connectorIds,
+    data.map((row) => (row.connector_id as string | null) ?? null),
+  );
+  if (!aligned) {
+    throw new Error(
+      "Retrait refusé : des prospects marqués comme démo ne dépendent pas d'un connecteur de démonstration vérifié.",
+    );
+  }
+}
+
+/**
+ * Un connecteur marqué démo ne doit jamais servir de raccourci pour supprimer
+ * une fiche réelle. Après retrait des lignes `source=demo`, toute ligne encore
+ * attachée bloque donc la suppression du connecteur (dont la FK est en cascade).
+ */
+async function assertDemoConnectorsEmpty(
+  admin: Admin,
+  orgId: string,
+  ids: string[],
+): Promise<void> {
+  if (ids.length === 0) return;
+  const { count, error } = await admin
+    .from("prospects")
+    .select("id", { count: "exact", head: true })
+    .eq("organization_id", orgId)
+    .in("connector_id", ids);
+  ensureOk(error, "vérification des connecteurs de démonstration");
+  if (count === null) {
+    throw new Error(
+      "Retrait refusé : impossible de vérifier que les connecteurs de démonstration sont vides.",
+    );
+  }
+  if (count > 0) {
+    throw new Error(
+      "Retrait refusé : un connecteur de démonstration porte encore des prospects non marqués comme démo.",
+    );
+  }
 }
 
 /**
@@ -395,7 +463,9 @@ export async function clearDemoData(
   if (!markers.active) return;
 
   const ids = await demoConnectorIds(admin, args.orgId);
+  await assertDemoProspectsAreAligned(admin, args.orgId, ids);
   await deleteDemoProspects(admin, ids);
+  await assertDemoConnectorsEmpty(admin, args.orgId, ids);
   if (ids.length > 0) {
     const { error } = await admin.from("connectors").delete().in("id", ids);
     ensureOk(error, "connecteurs de démonstration");
@@ -409,6 +479,13 @@ export async function clearDemoData(
   const legacyNameRestored = restored
     ? false
     : await restoreLegacyOrganizationName(admin, args.orgId);
+
+  const remainingMarkers = await readDemoModeMarkers(admin, args.orgId);
+  if (remainingMarkers.active) {
+    throw new Error(
+      "Retrait incomplet : des marqueurs de démonstration sont encore présents.",
+    );
+  }
 
   const journal = await admin.from("journal").insert({
     organization_id: args.orgId,

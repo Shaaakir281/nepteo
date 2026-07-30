@@ -22,8 +22,9 @@ import { readMemory } from "@/lib/memory-store";
  * mouvements condensés, CTA sobres qui renvoient vers l'écran où agir). Rien
  * ne s'exécute d'ici.
  *
- * Composant serveur asynchrone : il fait ses propres lectures pour que
- * `page.tsx` reste court. Le moteur `lib/plan.ts` n'est pas modifié.
+ * Composant serveur asynchrone : la cohorte prospects est injectée par la page
+ * pour garantir les mêmes chiffres partout ; seules mémoire et campagnes sont
+ * encore lues ici. Le moteur `lib/plan.ts` n'est pas modifié.
  */
 
 /** On condense : le bandeau donne le cap, pas la liste exhaustive. */
@@ -36,17 +37,29 @@ const CHANNEL_CLS: Record<string, string> = {
   Données: "bg-tint text-violet",
 };
 
-export async function PlanBanner() {
+interface PlanBannerProps {
+  /**
+   * Cohorte complète déjà dédoublonnée par la page Aujourd'hui.
+   * `null` interdit tout calcul de funnel sur une lecture partielle.
+   */
+  prospectCohort: BriefingProspect[] | null;
+  /** Date ISO injectée par la page pour figer les seuils de relance. */
+  today: string;
+}
+
+export async function PlanBanner({
+  prospectCohort,
+  today,
+}: PlanBannerProps) {
+  if (prospectCohort === null) return null;
+
   const { supabase, membership } = await getCurrentAuthContext();
   const canViewFinancials = membership?.canViewFinancials ?? false;
 
   const memCtx = await readMemory(supabase);
   const offre = memoText(memCtx, "offres") || memoText(memCtx, "activite");
 
-  const { data: prospectRows } = await supabase
-    .from("prospects")
-    .select("email, stage, company");
-  const stats = computeFunnelStats((prospectRows ?? []) as BriefingProspect[]);
+  const stats = computeFunnelStats(prospectCohort, today);
 
   const { data: adRows } = canViewFinancials
     ? await supabase
@@ -117,7 +130,8 @@ export async function PlanBanner() {
       <p className="mt-3 text-[11.5px] text-faint">
         Des conseils, pas des actions à valider : rien ne s&apos;exécute
         d&apos;ici. Construit à partir de votre funnel
-        {canViewFinancials ? ", de vos campagnes" : ""} et de votre mémoire
+        {canViewFinancials ? ", de vos campagnes" : ""}{" "}
+        et de votre mémoire
         d&apos;entreprise.
       </p>
     </div>

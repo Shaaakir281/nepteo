@@ -47,7 +47,7 @@ Jeu de données : `docs/tests/prospects-test.csv` (24 prospects, 5 sans email, s
    (L'analyse utilise la tâche `recommend_action` → niveau premium, d'où les 3 lignes. Quand tu prendras une clé Anthropic : supprime les 3 lignes `LLM_MODEL*`, les défauts Claude reprennent.) Sans aucune clé, l'analyse fonctionne quand même avec des textes templates.
 4. Redémarrer `npm run dev` après toute modif d'env.
 
-> État au 29 juillet 2026 : cette vague et les migrations `0012` à `0020` sont locales. Elles n'ont été ni appliquées sur la base distante ni déployées.
+> État au 30 juillet 2026 : les migrations `0012` à `0020` et l'application correspondante sont en production sur la révision Azure `nepteo-prod--0000003`. Le smoke applicatif authentifié en lecture est passé ; le smoke RLS complet reste réservé à des comptes et organisations `E2E_RLS_*` dédiés. Les callbacks OAuth, synchronisations et mutations de démonstration ne font pas partie du contrôle en lecture seule.
 
 ### Contrats de sécurité locaux
 
@@ -60,6 +60,8 @@ npm run lint
 npm run build
 ```
 
+Dernier passage local du lot non publié : **340/340 tests**, lint, typecheck et build Next.js 16.2.10 verts ; **23 pages/routes** générées.
+
 Les tests couvrent notamment :
 
 - la matrice de rôles et le filtrage RLS fail-closed de `0015`, réappliqués par `0019` : le commercial ne voit aucun contenu libre/dérivé (mémoire, recherches, briefings, actions, journal, outbox), seulement les colonnes prospects expurgées, le nom de l'organisation et les métadonnées non sensibles des connecteurs non financiers ; `organizations.activity`, `connectors.config` et les credentials restent côté serveur ;
@@ -68,6 +70,10 @@ Les tests couvrent notamment :
 - le quota de recherche atomique de `0017`, séparé du cache et sérialisé avec la pause : une pause gagnante ne réserve rien ; les appels forcés ou échoués après claim consomment une réservation, mais seul `status = ok` sert une réponse en cache ;
 - les RPC transactionnelles de `0018` pour décisions, claim, finalisation, pause et autonomie, avec reprise fail-closed en cas d'état ambigu ;
 - le Top 5 de R1B : filtre d'autorisation avant classement, plafond strict de cinq actions et justification « Pourquoi maintenant » déterministe ;
+- la cohorte prospects partagée : pagination bornée à 5 000, ordre stable, double snapshot, dédoublonnage après lecture complète et suspension de tous les agrégats sur une lecture partielle ou incohérente ;
+- la canonicalisation multi-source : terminal/DNC/opposition prioritaire, conflit de statuts actifs non relançable, dernier contact valide le plus récent, homonymes sans email distincts en métier et application avant le snapshot sur proposition, approbation et préparation ;
+- la stabilité opérationnelle du snapshot : inversion du représentant Sheets/Notion réconciliée avec l'ID figé, identité disparue exclue, et verrou partagé avec les synchronisations pendant l'approbation et l'exécution ;
+- la concurrence d'analyse : clic, cron et démonstration partagent le même verrou distribué avant le journal et le moteur ; une passe Ads échouée après une analyse prospects réussie remonte comme succès partiel, y compris quand Supabase renvoie une propriété `error` sans lever d'exception ;
 - `0020` : cohorte de relance figée dans la transaction d'approbation, `value_events` append-only, séparation stricte des organisations, idempotence des déclarations et résultats aval rattachés à un prospect de la cohorte.
 
 Après application sur une base de recette, vérifier séparément :

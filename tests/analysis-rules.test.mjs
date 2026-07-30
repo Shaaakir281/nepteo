@@ -105,12 +105,63 @@ test("CSV de test (24 prospects) → exactement 3 propositions", () => {
   assert.equal(find(f, "complete_missing_company"), undefined);
 });
 
+test("cohorte canonique : chiffres métier sur 24 fiches, doublons sur 48 lignes brutes", () => {
+  const rawRows = [
+    ...CSV_FIXTURE,
+    ...CSV_FIXTURE.map((prospect) => ({
+      ...prospect,
+      source: "notion",
+    })),
+  ];
+
+  const findings = buildFindings(CSV_FIXTURE, rawRows);
+  assert.equal(findings.length, 4);
+
+  const emails = find(findings, "complete_missing_emails");
+  assert.ok(emails);
+  assert.equal(emails.payload.count, 5);
+  assert.equal(emails.payload.total, 24);
+
+  const relaunch = find(findings, "relaunch_stage_nouveau");
+  assert.ok(relaunch);
+  assert.equal(relaunch.payload.count, 7);
+  assert.match(relaunch.finding, /7 prospects sur 24/);
+
+  const priority = find(findings, "relaunch_priority");
+  assert.ok(priority);
+  assert.equal(priority.payload.count, 15);
+  assert.equal(priority.payload.total, 24);
+
+  const dedupe = find(findings, "dedupe_emails");
+  assert.ok(dedupe, "les doublons restent détectés dans les lignes physiques");
+  assert.equal(dedupe.payload.duplicate_values, 19);
+  assert.equal(dedupe.payload.extra, 19);
+
+  for (const finding of findings) {
+    assert.deepEqual(finding.data_sources, [
+      "prospects (google_sheets, notion)",
+    ]);
+  }
+});
+
 test("aucun email manquant → pas de règle emails", () => {
   const f = buildFindings([
     p("A", "a@x.fr", "AA", "Nouveau"),
     p("B", "b@x.fr", "BB", "Nouveau"),
   ]);
   assert.equal(find(f, "complete_missing_emails"), undefined);
+});
+
+test("un email blanc est compté comme manquant", () => {
+  const findings = buildFindings([
+    p("A", "   ", "AA", "Nouveau"),
+    p("B", "b@x.fr", "BB", "Nouveau"),
+  ]);
+  const missing = find(findings, "complete_missing_emails");
+
+  assert.ok(missing);
+  assert.equal(missing.payload.count, 1);
+  assert.equal(missing.payload.total, 2);
 });
 
 test("plus gros groupe : nécessite au moins 2", () => {

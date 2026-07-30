@@ -10,13 +10,16 @@ import {
   DEMO_LOCK_SECTION,
   DEMO_PROVIDER,
   DEMO_REVENUE_PREFIX,
+  demoProspectsMatchTrustedConnectors,
   demoCampaignId,
   demoIsolationConflicts,
   demoRevenueId,
+  hasActiveDemoMarker,
   isDemoAction,
   isDemoMutationLock,
   isNamespacedDemoCampaign,
   isNamespacedDemoRevenue,
+  isTrustedDemoConnectorConfig,
   isTrustedDemoArtifact,
   legacyDemoCleanupAllowed,
   parseDemoLock,
@@ -59,6 +62,74 @@ test("actions démo — marqueur courant et ancien libellé explicite seulement"
     false,
   );
   assert.equal(isDemoAction({ payload: null, data_sources: null }), false);
+});
+
+test("mode démo — chaque marqueur explicite suffit, dont le connecteur orphelin", () => {
+  assert.equal(
+    hasActiveDemoMarker({
+      backups: 0,
+      seededProspects: 0,
+      trustedDemoConnectors: 0,
+    }),
+    false,
+  );
+  assert.equal(
+    hasActiveDemoMarker({
+      backups: 1,
+      seededProspects: 0,
+      trustedDemoConnectors: 0,
+    }),
+    true,
+  );
+  assert.equal(
+    hasActiveDemoMarker({
+      backups: 0,
+      seededProspects: 1,
+      trustedDemoConnectors: 0,
+    }),
+    true,
+  );
+  assert.equal(
+    hasActiveDemoMarker({
+      backups: 0,
+      seededProspects: 0,
+      trustedDemoConnectors: 1,
+    }),
+    true,
+    "un connector provider=demo isolé doit permettre son retrait",
+  );
+});
+
+test("connecteur démo — le provider seul ne vaut jamais marqueur de confiance", () => {
+  assert.equal(isTrustedDemoConnectorConfig(null), false);
+  assert.equal(isTrustedDemoConnectorConfig("demo"), false);
+  assert.equal(isTrustedDemoConnectorConfig({}), false);
+  assert.equal(isTrustedDemoConnectorConfig({ demo: false }), false);
+  assert.equal(isTrustedDemoConnectorConfig({ demo: true }), true);
+  assert.equal(
+    isTrustedDemoConnectorConfig({ demo: true, scenario: "legacy" }),
+    true,
+  );
+});
+
+test("prospects démo — chaque ligne doit dépendre d'un connecteur vérifié", () => {
+  assert.equal(demoProspectsMatchTrustedConnectors([], []), true);
+  assert.equal(
+    demoProspectsMatchTrustedConnectors(["trusted"], ["trusted", "trusted"]),
+    true,
+  );
+  assert.equal(
+    demoProspectsMatchTrustedConnectors(["trusted"], ["other"]),
+    false,
+  );
+  assert.equal(
+    demoProspectsMatchTrustedConnectors(["trusted"], [null]),
+    false,
+  );
+  assert.equal(
+    demoProspectsMatchTrustedConnectors([], ["orphan"]),
+    false,
+  );
 });
 
 test("préflight — toute donnée réelle ferme le chargement, même entre A et B", () => {
@@ -223,6 +294,28 @@ test("frontières I/O — admin, lock propriétaire, scopes et clear no-op", asy
   assert.match(lock, /if \(await isDemoModeActive\(admin, orgId\)\)/);
 
   assert.match(isolation, /source\.neq\.\$\{DEMO_PROVIDER\},source\.is\.null/);
+  assert.match(isolation, /const \[backup, prospects, connector\] = await Promise\.all/);
+  assert.match(
+    isolation,
+    /\.from\("connectors"\)[\s\S]*?\.eq\("provider", DEMO_PROVIDER\)[\s\S]*?\.contains\("config", \{ demo: true \}\)/,
+  );
+  assert.match(isolation, /hasActiveDemoMarker\(\{/);
+  assert.match(
+    seed,
+    /async function demoConnectorIds[\s\S]*?\.eq\("provider", DEMO_PROVIDER\)[\s\S]*?\.contains\("config", \{ demo: true \}\)/,
+  );
+  assert.match(
+    seed,
+    /async function deleteDemoProspects[\s\S]*?\.eq\("source", DEMO_PROVIDER\)/,
+  );
+  assert.match(
+    seed,
+    /await assertDemoProspectsAreAligned\(admin, args\.orgId, ids\);\s+await deleteDemoProspects\(admin, ids\);\s+await assertDemoConnectorsEmpty\(admin, args\.orgId, ids\);/,
+  );
+  assert.match(
+    isolation,
+    /providerDemoConnectors[\s\S]*?isTrustedDemoConnectorConfig\(connector\.config\)/,
+  );
   assert.match(isolation, /if \(active\) \{/);
   assert.match(isolation, /isTrustedDemoArtifact\(active,/);
   assert.match(isolation, /isDemoMutationLock\(lock\.data\.content\)/);
@@ -231,6 +324,8 @@ test("frontières I/O — admin, lock propriétaire, scopes et clear no-op", asy
 
   assert.match(seed, /const markers = await readDemoModeMarkers/);
   assert.match(seed, /if \(!markers\.active\) return;/);
+  assert.match(seed, /const remainingMarkers = await readDemoModeMarkers/);
+  assert.match(seed, /if \(remainingMarkers\.active\)/);
   assert.match(seed, /if \(legacy\)/);
   assert.match(seed, /\.like\("campaign_id", `\$\{DEMO_CAMPAIGN_PREFIX\}%`\)/);
   assert.match(seed, /\.like\("external_id", `\$\{DEMO_REVENUE_PREFIX\}%`\)/);

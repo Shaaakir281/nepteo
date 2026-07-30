@@ -4,7 +4,7 @@
 >
 > Elle complète `docs/ROADMAP.md` et **remplace l'ordre d'exécution de la phase C** décrit historiquement dans `docs/projets/roadmap-beta.md`. Les fiches C1–C12 restent utiles comme historique et comme premières spécifications, mais ne valent ni autorisation d'envoi externe ni ordre de lancement.
 >
-> **Avancement de release** : R1A, R1B et le lot R2 ont été promus en production le 2026-07-30. Les migrations `0012` à `0020` sont appliquées (`app_schema_version = 20`) et Azure sert l'image `73f7e79`, révision `nepteo-prod--0000003`, avec 100 % du trafic. `/`, `/api/health` et `/api/ready` répondent HTTP 200 ; le smoke public navigateur est propre. R0 reste ouvert pour le smoke authentifié/RLS, les callbacks OAuth et la recette fonctionnelle.
+> **Avancement de release** : R1A, R1B et le lot R2 ont été promus en production le 2026-07-30. Les migrations `0012` à `0020` sont appliquées (`app_schema_version = 20`) et Azure sert l'image `73f7e79`, révision `nepteo-prod--0000003`, avec 100 % du trafic. `/`, `/api/health` et `/api/ready` répondent HTTP 200 ; le smoke applicatif authentifié en lecture est propre. Un lot local isole le connecteur démo orphelin, unifie les agrégats autour d'une cohorte complète, canonicalise conservatoirement les conflits multi-source et stabilise les snapshots de relance face aux synchronisations, mais il n'est pas encore publié. R0 reste ouvert pour la livraison/recette de ce lot, le smoke RLS dédié, les callbacks OAuth et la recette fonctionnelle.
 
 ## Cap produit
 
@@ -60,8 +60,10 @@ Les estimations sont des ordres de grandeur de développement, hors délais de c
 1. Conserver la preuve de l'acquis base : `0012` → `0020` appliquées manuellement et `app_schema_version.version = 20` à `2026-07-30T06:02:14Z`.
 2. Conserver la preuve de release : PR #5, CI de PR et de `main` vertes, image `73f7e79`, révision `nepteo-prod--0000003`.
 3. Vérifier sur session authentifiée le smoke RLS, les rôles et l'absence d'envoi externe.
-4. Rejouer les callbacks Google Sheets/Notion, l'isolation de démonstration, C8, le Top 5, toute la boucle déclarative R1A et les garde-fous R2.
-5. Ne pas déclarer R0 entièrement franchi ni basculer le pilote tant que cette verticale n'est pas verte.
+4. Livrer puis recetter le retrait sélectif du connecteur démo orphelin et la cohorte prospects complète partagée par les écrans, l'analyse et le briefing.
+5. Recetter la réconciliation conservatrice des statuts contradictoires d'un même contact entre plusieurs sources : un état terminal ou une opposition bloque la relance ; deux statuts actifs contradictoires suspendent la cible.
+6. Rejouer les callbacks Google Sheets/Notion, l'isolation de démonstration, C8, le Top 5, toute la boucle déclarative R1A et les garde-fous R2.
+7. Ne pas déclarer R0 entièrement franchi ni basculer le pilote tant que cette verticale n'est pas verte.
 
 R1A, R1B et R2 sont déployés et leur schéma de support est présent en production. R0 bloque encore leur promotion vers un pilote réel, pas leur recette sur la révision de production.
 
@@ -99,7 +101,7 @@ Le classement est une fonction pure et déterministe. Le filtre de rôle est app
 
 ## R2 — Prouver le play « prospects dormants »
 
-> **Statut de release au 2026-07-30** : le lanceur, la scorecard et leur schéma de support sont déployés en production sur l'image `73f7e79`. `/api/ready` répond HTTP 200. Le pilote reste interdit tant que le reliquat R0 — smoke authentifié/RLS, OAuth et recette des parcours — n'est pas vert.
+> **Statut de release au 2026-07-30** : le lanceur, la scorecard et leur schéma de support sont déployés en production sur l'image `73f7e79`. `/api/ready` répond HTTP 200 et le smoke applicatif administrateur en lecture est vert. Le pilote reste interdit tant que le reliquat R0 — hotfix connecteurs, smoke RLS dédié, OAuth et recette des parcours — n'est pas vert.
 
 La cohorte implémentée est volontairement stricte :
 
@@ -122,7 +124,9 @@ Les derniers garde-fous du lot restent fail-closed :
 - une action dormante active empêche la création d'une proposition concurrente ;
 - les vagues antérieures sont exclues par snapshot et, lorsque l'information existe encore, par email normalisé ;
 - le scan des prospects et l'historique sont paginés et bornés ; une base ou un historique trop grand bloque la proposition plutôt que de produire une cohorte partielle ;
-- l'exécution ne peut utiliser que les membres du snapshot, puis revalide leur éligibilité courante ; un play dormant approuvé sans snapshot exige une récupération manuelle ;
+- approbation et exécution gardent le verrou distribué des synchronisations pendant toute la lecture paginée ;
+- l'exécution ne peut utiliser que les membres du snapshot, puis revalide leur éligibilité courante ; si un autre connecteur devient le représentant canonique du même email, l'ID figé reste utilisé ; une identité disparue sans correspondance est exclue ;
+- les lignes sans email restent distinctes dans les chiffres métier, même si nom et entreprise sont identiques ;
 - un résultat aval dormant est refusé sans cohorte d'action ;
 - la scorecard n'affiche aucun taux en cas de lecture incomplète ou échouée.
 
