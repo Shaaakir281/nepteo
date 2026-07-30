@@ -87,7 +87,7 @@ Les tests couvrent notamment :
 
 - la matrice de rôles et le filtrage RLS fail-closed de `0015`, réappliqués par `0019` : le commercial ne voit aucun contenu libre/dérivé (mémoire, recherches, briefings, actions, journal, outbox), seulement les colonnes prospects expurgées, le nom de l'organisation et les métadonnées non sensibles des connecteurs non financiers ; `organizations.activity`, `connectors.config` et les credentials restent côté serveur ;
 - l'isolation des deux voies : administrateur uniquement pour le scénario, organisation vide au seed, certification V2 fail-closed, retrait obligatoire avant import, sauvegarde validée, verrou partagé avec les mutations de données apportées et nettoyage sélectif ;
-- `/api/health` sans dépendance base et `/api/ready` exigeant le marqueur de schéma `>= 20` ;
+- `/api/health` sans dépendance base et `/api/ready` exigeant le marqueur de schéma `>= 21` ;
 - le quota de recherche atomique de `0017`, séparé du cache et sérialisé avec la pause : une pause gagnante ne réserve rien ; les appels forcés ou échoués après claim consomment une réservation, mais seul `status = ok` sert une réponse en cache ;
 - les RPC transactionnelles de `0018` pour décisions, claim, finalisation, pause et autonomie, avec reprise fail-closed en cas d'état ambigu ;
 - le Top 5 de R1B : filtre d'autorisation avant classement, plafond strict de cinq actions et justification « Pourquoi maintenant » déterministe ;
@@ -100,12 +100,31 @@ Les tests couvrent notamment :
 Après application sur une base de recette, vérifier séparément :
 
 1. `GET /api/health` renvoie 200 si le processus répond ;
-2. `GET /api/ready` renvoie 200 uniquement si Supabase est joignable et `app_schema_version.version >= 20` ;
+2. `GET /api/ready` renvoie 200 uniquement si Supabase est joignable et `app_schema_version.version >= 21` ;
 3. le chargement d'une démo est refusé hors rôle admin ou dans une organisation contenant une donnée réelle ;
 4. deux recherches simultanées ne peuvent pas dépasser le quota quotidien ;
 5. deux décisions ou exécutions concurrentes ne produisent qu'un gagnant ;
 6. « Aujourd'hui » affiche au plus cinq propositions autorisées, ordonnées, chacune avec sa raison « Pourquoi maintenant » ;
 7. l'approbation d'une relance fige ses cibles, puis les suites terrain sont déclarées prospect par prospect sans aucun envoi externe.
+
+### Smoke réel des RPC CSV
+
+Le smoke `0021` utilise exclusivement deux organisations synthétiques réservées,
+`E2E_RLS_CSV_OWN` et `E2E_RLS_CSV_OTHER`. Il crée la fixture si elle n'existe
+pas, refuse tout état métier préexistant, vérifie le refus inter-tenant, l'import
+valide, le rollback d'une date invalide, le rejeu idempotent et le retrait. Il ne
+touche jamais au tenant vitrine. Les organisations et les événements du journal
+append-only sont conservés pour rendre les recettes suivantes identifiables.
+
+```powershell
+$env:CSV_RPC_SMOKE_WRITE_PROBE = "I_ACKNOWLEDGE_E2E_CSV_PRODUCTION_FIXTURES"
+npm run smoke:csv-rpc
+Remove-Item Env:CSV_RPC_SMOKE_WRITE_PROBE
+```
+
+La commande exige `NEXT_PUBLIC_SUPABASE_URL` et
+`SUPABASE_SERVICE_ROLE_KEY`, chargées depuis `.env.local` si présent. Les
+contacts utilisés portent uniquement des adresses `.invalid`.
 
 ## 1. Fausse base Google Sheets
 
