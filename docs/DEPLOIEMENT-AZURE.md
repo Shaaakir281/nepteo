@@ -3,9 +3,11 @@
 Cette procédure prépare un déploiement Docker vers Azure Container Apps, avec
 images dans ACR, région UE et GitHub Actions en OIDC.
 
-> État au 29 juillet 2026 : la vague locale et les migrations `0012` à `0020`
-> ne sont ni déployées ni appliquées à la base distante. Le workflow ne lance
-> aucune migration : leur application manuelle est un préalable obligatoire.
+> État au 30 juillet 2026 : les migrations `0012` à `0020` sont appliquées à
+> Supabase production (`app_schema_version = 20`) et Azure sert l'image
+> `5d03f109e9d06c456781d72c2c0b5ab13eca1a4c`, révision
+> `nepteo-prod--0000006`. Le workflow ne lance aucune migration : leur
+> application manuelle reste un préalable obligatoire à tout code qui les exige.
 
 ## 1. Verrou absolu : identifier le bon compte Azure
 

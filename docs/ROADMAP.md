@@ -2,7 +2,7 @@
 
 Une phase = un objectif unique + une porte go/no-go. On ne passe pas la porte, on ne passe pas à la suite.
 
-> **Lecture au 2026-07-29** : la phase 3A est livrée **techniquement et localement**, mais la porte de valeur de la phase 2 reste ouverte faute de preuve commanditaire. L'ordre opérationnel des prochains incréments est défini dans la [roadmap valeur — tests commanditaires](projets/roadmap-valeur-commanditaires.md).
+> **Lecture au 2026-07-30** : la phase 3A est déployée et recettée en lecture, mais la porte de valeur de la phase 2 reste ouverte faute de preuve commanditaire. L'ordre opérationnel des prochains incréments est défini dans la [roadmap valeur — tests commanditaires](projets/roadmap-valeur-commanditaires.md).
 
 ## Phase 1 — Fondations (lecture seule)
 
@@ -22,11 +22,11 @@ Livrables : moteur d'analyse (anomalies, comparaisons), file d'actions proposée
 
 **Porte de sortie terrain** : après au moins 3 testeurs, 50 recommandations examinées et deux semaines de test, accélérer à partir de 60 % d'utilité avec moins de 15 % de faux positifs ; pivoter sous 40 %.
 
-## Phase 3 — Première exécution réelle — étape A technique livrée localement
+## Phase 3 — Première exécution réelle — étape A technique déployée
 
 **Objectif** : une action validée est exécutée par l'agent, de bout en bout.
 
-Livrables : 1 ou 2 types d'action réels (ex. email de relance), idempotence + journal avant envoi, garde-fous serveur, bouton d'arrêt, gestion d'erreurs. L'étape A prépare aujourd'hui les messages sans les envoyer ; C8 et les migrations `0012`–`0019` sont locaux et non déployés au 2026-07-29.
+Livrables : 1 ou 2 types d'action réels (ex. email de relance), idempotence + journal avant envoi, garde-fous serveur, bouton d'arrêt, gestion d'erreurs. L'étape A prépare aujourd'hui les messages sans les envoyer ; C8 et les migrations `0012`–`0020` sont en production depuis le 2026-07-30.
 
 **Porte 3A — préparation** : zéro préparation non voulue ; le testeur comprend ce qui est préparé et garde la décision.
 

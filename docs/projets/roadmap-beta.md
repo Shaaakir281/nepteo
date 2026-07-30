@@ -88,7 +88,7 @@ Les erreurs ci-dessous ont soit déjà eu lieu sur ce repo, soit sont les plus f
 
 À faire **avant** de lancer le moindre chantier, et à revérifier la veille de la démo :
 
-> **Note au 2026-07-29** : cette checklist décrit le jalon historique de juillet. Pour le lot actuel, la recette de référence est désormais `0012` → `0019`, `app_schema_version = 19`, puis les smokes auth/RLS/OAuth/C8 définis dans la roadmap valeur.
+> **Note au 2026-07-30** : cette checklist décrit le jalon historique de juillet. Les migrations `0012` → `0020` sont désormais en production (`app_schema_version = 20`) ; la recette courante porte sur les smokes auth/RLS/OAuth/C8/R1/R2 définis dans la roadmap valeur.
 
 - [ ] **Migration `0010_research.sql`** passée dans Supabase — « la seule en attente » dans les quatre entrées SUIVI du 25/07. Sans elle, si `PERPLEXITY_API_KEY` est active, l'assistant d'identité échoue **au premier contact** d'un nouveau compte.
 - [ ] Sinon : retirer `PERPLEXITY_API_KEY` de l'env de démo (la recherche se désactive proprement, l'onboarding saute l'étape).
@@ -220,7 +220,7 @@ Ordre : **C4 → C5**, C6 quand on veut. Ne rien commencer de la phase B avant l
 
 # Phase C — la valeur : une bêta qui prouve
 
-C'est ici que le produit cesse d'être une promesse. **L'ordre ci-dessous est historique.** Depuis le 2026-07-29, l'ordre opérationnel est : recette du lot local → C9A preuve manuelle + Top 5 → play dormant supervisé → éventuel connecteur de contexte unique → C7 conditionnel → C9B. Voir la [roadmap valeur — tests commanditaires](roadmap-valeur-commanditaires.md).
+C'est ici que le produit cesse d'être une promesse. **L'ordre ci-dessous est historique.** Depuis le 2026-07-30, l'ordre opérationnel est : finaliser R0 sur fixtures dédiées → mesurer le play dormant supervisé → éventuel connecteur de contexte unique → C7 conditionnel → apprentissage des corrections. Voir la [roadmap valeur — tests commanditaires](roadmap-valeur-commanditaires.md).
 
 ## C7 — Étape B : l'envoi réel
 
@@ -249,7 +249,7 @@ C'est ici que le produit cesse d'être une promesse. **L'ordre ci-dessous est hi
 
 **Modèle : Opus 5 · Effort : 1–2 jours · Indépendant de C7 (mais C9 veut les deux).**
 
-**Statut : implémenté localement le 2026-07-29, non déployé. La migration `0012_prospect_last_contact.sql` reste à appliquer et le parcours Sheets/Notion à recetter.**
+**Statut : déployé le 2026-07-30 avec `0012_prospect_last_contact.sql`. Le parcours Sheets/Notion avec synchronisation et mutation reste à recetter sur fixtures dédiées.**
 
 **But** : combler le trou n°1 du produit — la relance ignore **depuis quand** un prospect attend. Le temps fabrique aussi de la nouveauté : chaque semaine, des prospects franchissent les seuils, l'agent a du neuf à dire.
 

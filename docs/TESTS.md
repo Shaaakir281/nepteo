@@ -47,7 +47,7 @@ Jeu de données : `docs/tests/prospects-test.csv` (24 prospects, 5 sans email, s
    (L'analyse utilise la tâche `recommend_action` → niveau premium, d'où les 3 lignes. Quand tu prendras une clé Anthropic : supprime les 3 lignes `LLM_MODEL*`, les défauts Claude reprennent.) Sans aucune clé, l'analyse fonctionne quand même avec des textes templates.
 4. Redémarrer `npm run dev` après toute modif d'env.
 
-> État au 30 juillet 2026 : les migrations `0012` à `0020` et l'application correspondante sont en production sur la révision Azure `nepteo-prod--0000003`. Le smoke applicatif authentifié en lecture est passé ; le smoke RLS complet reste réservé à des comptes et organisations `E2E_RLS_*` dédiés. Les callbacks OAuth, synchronisations et mutations de démonstration ne font pas partie du contrôle en lecture seule.
+> État au 30 juillet 2026 : les migrations `0012` à `0020` et l'application correspondante sont en production sur la révision Azure `nepteo-prod--0000006`, image `5d03f109e9d06c456781d72c2c0b5ab13eca1a4c`. Le smoke applicatif authentifié en lecture est passé ; le smoke RLS complet reste réservé à des comptes et organisations `E2E_RLS_*` dédiés. Les callbacks OAuth, synchronisations, retrait du marqueur démo et autres mutations ne font pas partie du contrôle en lecture seule.
 
 ### Contrats de sécurité locaux
 
@@ -60,7 +60,7 @@ npm run lint
 npm run build
 ```
 
-Dernier passage local du lot non publié : **340/340 tests**, lint, typecheck et build Next.js 16.2.10 verts ; **23 pages/routes** générées.
+Passage de référence du lot livré par les PR #7 à #9 : **341/341 tests**, lint, typecheck et build Next.js 16.2.10 verts ; **23 pages/routes** générées.
 
 Les tests couvrent notamment :
 
