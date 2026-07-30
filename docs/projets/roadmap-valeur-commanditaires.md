@@ -4,7 +4,7 @@
 >
 > Elle complète `docs/ROADMAP.md` et **remplace l'ordre d'exécution de la phase C** décrit historiquement dans `docs/projets/roadmap-beta.md`. Les fiches C1–C12 restent utiles comme historique et comme premières spécifications, mais ne valent ni autorisation d'envoi externe ni ordre de lancement.
 >
-> **Avancement de release** : R1A, R1B et R2 sont en production depuis le 2026-07-30. Les migrations `0012` à `0020` sont appliquées (`app_schema_version = 20`) et Azure sert l'image `5d03f109e9d06c456781d72c2c0b5ab13eca1a4c`, révision `nepteo-prod--0000006`, avec 100 % du trafic. `/`, `/api/health` et `/api/ready` répondent HTTP 200 ; le smoke applicatif authentifié en lecture est propre. Le tenant vitrine conserve volontairement ses données fictives pour montrer l'agent. R0 reste ouvert pour certifier ce scénario et son reset, puis pour le smoke RLS, les callbacks OAuth et les parcours fonctionnels avec mutation dans des organisations séparées.
+> **Avancement de release** : R1A, R1B et R2 sont en production depuis le 2026-07-30. Les migrations `0012` à `0020` sont appliquées (`app_schema_version = 20`) et Azure sert l'image `a2bbc34dcb97ab00951a3efa631c4f7c0a0428ca`, révision `nepteo-prod--0000007`, avec 100 % du trafic. `/`, `/api/health` et `/api/ready` répondent HTTP 200 ; la vitrine authentifiée et ses libellés démo sont recettés sans erreur console. Le tenant vitrine conserve volontairement ses données fictives pour montrer l'agent. R0 reste ouvert pour certifier le scénario et son reset, puis pour le smoke RLS, les callbacks OAuth et les parcours fonctionnels avec mutation dans des organisations séparées.
 
 ## Cap produit
 
@@ -44,7 +44,7 @@ Principes de preuve :
 
 | Vague | Incrément | Effort indicatif | Dépendance | Porte de sortie |
 |---:|---|---:|---|---|
-| R0 | Vitrine certifiée, fin du smoke et recette contrôlée | 1–2 j d'exploitation | Artefact `5d03f10` déployé, readiness 20, lecture admin verte | Scénario démo reproductible puis smoke RLS/OAuth/C8/R1/R2 sur tenants séparés |
+| R0 | Vitrine certifiée, fin du smoke et recette contrôlée | 1–2 j d'exploitation | Artefact `a2bbc34` déployé, readiness 20, lecture admin verte | Scénario démo reproductible puis smoke RLS/OAuth/C8/R1/R2 sur tenants séparés |
 | R1A | Preuve manuelle structurée — C9A | 2–3 j | Modèle d'événements validé | Utilité, faux positif, retouche, envoi et résultat déclarés sans fabriquer de statut fournisseur |
 | R1B | « Aujourd'hui » : jusqu'à cinq priorités réelles | 1–2 j | Règles actuelles réutilisées | Jusqu'à cinq actions classées de façon déterministe avec « pourquoi maintenant » |
 | R2 | Play supervisé « prospects dormants » | 2–3 j + 2 semaines d'observation | R0 franchi, puis R1A + R1B promus sur l'environnement pilote | Cohorte bornée, validation humaine, snapshot atomique, scorecard exploitable et observations terrain suffisantes |
@@ -58,7 +58,7 @@ Les estimations sont des ordres de grandeur de développement, hors délais de c
 ## R0 — Recetter avant de promouvoir
 
 1. Conserver la preuve de l'acquis base : `0012` → `0020` appliquées manuellement et `app_schema_version.version = 20` à `2026-07-30T06:02:14Z`.
-2. Conserver la preuve de release : PR #7, #8 et #9, CI de PR et de `main` vertes, image `5d03f109e9d06c456781d72c2c0b5ab13eca1a4c`, révision `nepteo-prod--0000006`, workflow `30540910670`.
+2. Conserver la preuve de release : PR #11, CI de PR et de `main` vertes, image `a2bbc34dcb97ab00951a3efa631c4f7c0a0428ca`, révision `nepteo-prod--0000007`, workflow `30550603760`.
 3. Le smoke administrateur authentifié en lecture et l'absence d'envoi externe sont acquis. Jouer encore le smoke RLS/rôles sur les organisations `E2E_RLS_*` dédiées.
 4. Conserver le tenant vitrine et certifier son jeu fictif : scénario identifiable et versionné, comptages/signaux attendus, bandeau permanent, puis cycle `reset → reseed` idempotent. Ne pas utiliser cette organisation pour OAuth ou pour une preuve terrain.
 5. Recetter la réconciliation conservatrice des statuts contradictoires d'un même contact entre plusieurs sources : un état terminal ou une opposition bloque la relance ; deux statuts actifs contradictoires suspendent la cible.
@@ -67,7 +67,7 @@ Les estimations sont des ordres de grandeur de développement, hors délais de c
 
 R1A, R1B et R2 sont déployés et leur schéma de support est présent en production. R0 bloque encore leur promotion vers un pilote réel, pas leur recette sur la révision de production.
 
-Les tests techniques publics continuent sur la révision `nepteo-prod--0000006`. Après fermeture des fixtures R0, R1A, R1B puis R2 sont promus de façon supervisée sur un tenant pilote dédié, avec l'image et la révision notées dans la scorecard.
+Les tests techniques publics continuent sur la révision `nepteo-prod--0000007`. Après fermeture des fixtures R0, R1A, R1B puis R2 sont promus de façon supervisée sur un tenant pilote dédié, avec l'image et la révision notées dans la scorecard.
 
 ## R1A — Instrumenter la preuve avant l'envoi
 
@@ -101,7 +101,7 @@ Le classement est une fonction pure et déterministe. Le filtre de rôle est app
 
 ## R2 — Prouver le play « prospects dormants »
 
-> **Statut de release au 2026-07-30** : le lanceur, la scorecard et leur schéma de support sont déployés en production sur l'image `5d03f109e9d06c456781d72c2c0b5ab13eca1a4c`. `/api/ready` répond HTTP 200 et le smoke applicatif administrateur en lecture est vert. La vitrine fictive sert à juger le raisonnement mais ne franchit aucun gate terrain. Le pilote reste interdit tant que le reliquat R0 — scénario démo reproductible, smoke RLS dédié, OAuth et recette des parcours avec mutation dans des tenants séparés — n'est pas vert.
+> **Statut de release au 2026-07-30** : le lanceur, la scorecard et leur schéma de support sont déployés en production sur l'image `a2bbc34dcb97ab00951a3efa631c4f7c0a0428ca`. `/api/ready` répond HTTP 200 et le smoke applicatif administrateur en lecture est vert. La vitrine fictive sert à juger le raisonnement mais ne franchit aucun gate terrain. Le pilote reste interdit tant que le reliquat R0 — scénario démo reproductible, smoke RLS dédié, OAuth et recette des parcours avec mutation dans des tenants séparés — n'est pas vert.
 
 La cohorte implémentée est volontairement stricte :
 
