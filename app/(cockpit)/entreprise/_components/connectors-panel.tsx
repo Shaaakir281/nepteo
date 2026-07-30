@@ -3,7 +3,10 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { icons } from "@/components/icons";
 import { CONNECTOR_CATALOG } from "@/lib/connectors";
 import { DEMO_SCENARIOS } from "@/lib/demo/scenarios";
-import { DEMO_PROVIDER } from "@/lib/demo/seed";
+import {
+  DEMO_PROVIDER,
+  isTrustedDemoConnectorConfig,
+} from "@/lib/demo/isolation-rules";
 import { DemoPanel } from "../../agent/_components/demo-panel";
 import {
   ConnectorCard,
@@ -63,7 +66,11 @@ export async function ConnectorsPanel({
   const hasConnected = (rows ?? []).some(
     (r) => r.status === "connected" && r.provider !== DEMO_PROVIDER,
   );
-  const hasDemo = (rows ?? []).some((r) => r.provider === DEMO_PROVIDER);
+  const hasDemo = (rows ?? []).some(
+    (r) =>
+      r.provider === DEMO_PROVIDER &&
+      (!("config" in r) || isTrustedDemoConnectorConfig(r.config)),
+  );
 
   return (
     <>
@@ -103,7 +110,10 @@ export async function ConnectorsPanel({
 
       {hasDemo && (
         <p className="mb-4 rounded-[10px] bg-amber-tint px-4 py-2.5 text-[12.5px] text-body">
-          Retirez la démonstration avant de connecter un outil réel.
+          <b>Mode démonstration actif.</b> Les prospects, campagnes et ventes
+          affichés sont fictifs ; aucun compte externe n&apos;est connecté. Les
+          connexions réelles se testent dans une organisation séparée pour
+          éviter tout mélange.
         </p>
       )}
 
