@@ -59,6 +59,9 @@ export function DemoPanel({
   const [busy, setBusy] = useState<string | null>(null);
   const [step, setStep] = useState(0);
   const [message, setMessage] = useState<string | null>(null);
+  const [messageTone, setMessageTone] = useState<"success" | "warning">(
+    "success",
+  );
   const [error, setError] = useState<string | null>(null);
   const [detail, setDetail] = useState<string | null>(null);
 
@@ -67,6 +70,10 @@ export function DemoPanel({
     task: () => Promise<{
       ok: boolean;
       created?: number;
+      analysis?: {
+        prospects: { ok: boolean; created: number; detail?: string };
+        campaigns: { ok: boolean; created: number; detail?: string };
+      };
       reason?: string;
       detail?: string;
     }>,
@@ -74,6 +81,7 @@ export function DemoPanel({
     if (busy) return;
     setBusy(id);
     setMessage(null);
+    setMessageTone("success");
     setError(null);
     setDetail(null);
     setStep(0);
@@ -91,13 +99,35 @@ export function DemoPanel({
       ]);
       if (result.ok) {
         const created = result.created ?? 0;
-        setMessage(
-          id === "clear"
-            ? "Données de démonstration retirées."
-            : created > 0
-              ? `Scénario chargé et analysé — ${created} proposition${created > 1 ? "s" : ""} en attente sur « Aujourd'hui ».`
-              : "Scénario chargé. L'analyse n'a rien trouvé à proposer cette fois.",
-        );
+        const failedAnalyses = result.analysis
+          ? Object.entries(result.analysis).filter(([, value]) => !value.ok)
+          : [];
+        if (id !== "clear" && failedAnalyses.length > 0) {
+          const labels = failedAnalyses.map(([key]) =>
+            key === "prospects" ? "prospects" : "campagnes",
+          );
+          setMessageTone("warning");
+          setMessage(
+            `Scénario chargé — ${
+              created > 0
+                ? `${created} proposition${created > 1 ? "s" : ""} créée${created > 1 ? "s" : ""}`
+                : "aucune proposition créée"
+            }. Analyse à relancer : ${labels.join(" et ")}.`,
+          );
+          setDetail(
+            failedAnalyses
+              .map(([key, value]) => `${key}: ${value.detail ?? "échec inconnu"}`)
+              .join(" · "),
+          );
+        } else {
+          setMessage(
+            id === "clear"
+              ? "Données de démonstration retirées."
+              : created > 0
+                ? `Scénario chargé et analysé — ${created} proposition${created > 1 ? "s" : ""} en attente sur « Aujourd'hui ».`
+                : "Scénario chargé. L'analyse n'a rien trouvé à proposer cette fois.",
+          );
+        }
       } else {
         setError(failureMessage(id, result.reason));
         setDetail(result.detail ?? null);
@@ -159,9 +189,20 @@ export function DemoPanel({
         </div>
       )}
       {message && (
-        <p className="mt-4 rounded-[10px] bg-green-tint px-3.5 py-2.5 text-[13px] font-medium text-green">
-          {message}
-        </p>
+        <div
+          className={`mt-4 rounded-[10px] px-3.5 py-2.5 ${
+            messageTone === "warning"
+              ? "bg-amber-tint text-amber"
+              : "bg-green-tint text-green"
+          }`}
+        >
+          <p className="text-[13px] font-medium">{message}</p>
+          {messageTone === "warning" && detail && (
+            <p className="mt-1 text-[11.5px] leading-relaxed opacity-80">
+              Détail : {detail}
+            </p>
+          )}
+        </div>
       )}
       {error && (
         <div className="mt-4 rounded-[10px] bg-red-tint px-3.5 py-2.5">

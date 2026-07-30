@@ -1,4 +1,4 @@
-import type { FieldMapping, NormalizedProspect } from "./common";
+import type { FieldMapping, NormalizedProspect } from "./common.ts";
 import { normalizeContactDate } from "./date-rules.ts";
 
 /** Notion — OAuth intégration publique + lecture d'une base contacts. */

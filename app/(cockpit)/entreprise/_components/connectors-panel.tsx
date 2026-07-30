@@ -7,6 +7,7 @@ import {
   DEMO_PROVIDER,
   isTrustedDemoConnectorConfig,
 } from "@/lib/demo/isolation-rules";
+import { readDemoPresentation } from "@/lib/demo/presentation";
 import { DemoPanel } from "../../agent/_components/demo-panel";
 import {
   ConnectorCard,
@@ -33,19 +34,22 @@ export async function ConnectorsPanel({
   orgId: string;
   saved?: string;
 }) {
-  const rows = canViewConnectorConfig
+  const rowsResult = canViewConnectorConfig
     ? (
         await createAdminClient()
           .from("connectors")
           .select("provider, status, config")
           .eq("organization_id", orgId)
-      ).data
+      )
     : (
         await (await createClient())
           .from("connectors")
           .select("provider, status")
           .eq("organization_id", orgId)
-      ).data;
+      );
+  const rows = rowsResult.data;
+  const presentationSnapshot = await readDemoPresentation(orgId);
+  const demoPresentation = presentationSnapshot.presentation;
 
   const statusOf = (provider: string): ConnectorStatus => {
     const row = rows?.find((r) => r.provider === provider);
@@ -66,11 +70,15 @@ export async function ConnectorsPanel({
   const hasConnected = (rows ?? []).some(
     (r) => r.status === "connected" && r.provider !== DEMO_PROVIDER,
   );
-  const hasDemo = (rows ?? []).some(
+  const hasVisibleDemoMarker = (rows ?? []).some(
     (r) =>
       r.provider === DEMO_PROVIDER &&
       (!("config" in r) || isTrustedDemoConnectorConfig(r.config)),
   );
+  const hasDemo =
+    hasVisibleDemoMarker ||
+    presentationSnapshot.hasDemoMarker ||
+    Boolean(rowsResult.error);
 
   return (
     <>
@@ -108,12 +116,20 @@ export async function ConnectorsPanel({
         </div>
       )}
 
-      {hasDemo && (
+      {hasDemo && demoPresentation === "certified-demo" && (
         <p className="mb-4 rounded-[10px] bg-amber-tint px-4 py-2.5 text-[12.5px] text-body">
-          <b>Mode démonstration actif.</b> Les prospects, campagnes et ventes
-          affichés sont fictifs ; aucun compte externe n&apos;est connecté. Les
-          connexions réelles se testent dans une organisation séparée pour
-          éviter tout mélange.
+          <b>Scénario Nepteo — données fictives.</b> Le jeu versionné ne
+          contient aucun connecteur ou prospect apporté par le testeur. Les
+          connexions réelles restent désactivées pendant ce scénario.
+        </p>
+      )}
+
+      {hasDemo && demoPresentation === "test-environment" && (
+        <p className="mb-4 rounded-[10px] bg-amber-tint px-4 py-2.5 text-[12.5px] text-body">
+          <b>Environnement de test.</b> Un marqueur de scénario Nepteo est
+          actif, mais les données ne sont pas certifiées comme entièrement
+          fictives et peuvent inclure celles du testeur. Les connexions
+          externes restent désactivées tant que ce marqueur est présent.
         </p>
       )}
 
@@ -133,6 +149,7 @@ export async function ConnectorsPanel({
                 status={statusOf(tool.provider)}
                 canEdit={canEdit && !hasDemo}
                 blockedByDemo={hasDemo}
+                demoPresentation={demoPresentation}
                 justRequested={saved === tool.provider}
               />
             ))}

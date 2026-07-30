@@ -27,6 +27,7 @@ import {
   assertDemoLoadIsSafe,
   readDemoModeMarkers,
 } from "@/lib/demo/isolation";
+import { DEMO_SEED_VERSION } from "@/lib/demo/version";
 
 /**
  * Charge un scénario de démo complet : identité, prospects, campagnes, ventes.
@@ -41,6 +42,7 @@ import {
 
 export interface DemoLoadResult {
   scenario: string;
+  seedVersion: number;
   prospects: number;
   campaignRows: number;
   sales: number;
@@ -187,6 +189,39 @@ async function demoConnectorIds(admin: Admin, orgId: string): Promise<string[]> 
   return ((data ?? []) as { id: string }[]).map((row) => row.id);
 }
 
+function loadingDemoConfig(scenarioId: string): Record<string, unknown> {
+  return {
+    demo: true,
+    scenario: scenarioId,
+    seed_version: DEMO_SEED_VERSION,
+    complete: false,
+    loading_started_at: new Date().toISOString(),
+  };
+}
+
+/**
+ * Invalide la certification précédente avant la première mutation du cockpit.
+ *
+ * Sans cette étape, une panne pendant le passage A → B pourrait conserver les
+ * anciens comptages certifiés alors que l'identité ou les actions ont déjà été
+ * partiellement remplacées. Le bandeau doit alors échouer prudemment vers
+ * « Environnement de test ».
+ */
+async function invalidateDemoCertification(
+  admin: Admin,
+  orgId: string,
+  scenarioId: string,
+): Promise<void> {
+  const ids = await demoConnectorIds(admin, orgId);
+  if (ids.length === 0) return;
+  const { error } = await admin
+    .from("connectors")
+    .update({ status: "connected", config: loadingDemoConfig(scenarioId) })
+    .eq("organization_id", orgId)
+    .in("id", ids);
+  ensureOk(error, "invalidation du scénario de démonstration précédent");
+}
+
 /** Supprime les prospects portés par les connecteurs de démo donnés. */
 async function deleteDemoProspects(admin: Admin, ids: string[]): Promise<void> {
   if (ids.length === 0) return;
@@ -265,7 +300,11 @@ async function assertDemoConnectorsEmpty(
  * précédente (tous connecteurs confondus), ne garde qu'un connecteur, en crée
  * un s'il n'y en a pas.
  */
-async function prepareDemoConnector(admin: Admin, orgId: string): Promise<string> {
+async function prepareDemoConnector(
+  admin: Admin,
+  orgId: string,
+  scenarioId: string,
+): Promise<string> {
   const ids = await demoConnectorIds(admin, orgId);
   // Changer de scénario remplace la base de démo, sans toucher aux vraies données.
   await deleteDemoProspects(admin, ids);
@@ -275,7 +314,15 @@ async function prepareDemoConnector(admin: Admin, orgId: string): Promise<string
     const { error } = await admin.from("connectors").delete().in("id", extra);
     ensureOk(error, "connecteurs de démonstration en double");
   }
-  if (ids.length > 0) return ids[0];
+  const config = loadingDemoConfig(scenarioId);
+  if (ids.length > 0) {
+    const { error } = await admin
+      .from("connectors")
+      .update({ status: "connected", config })
+      .eq("id", ids[0]);
+    ensureOk(error, "version du scénario de démonstration");
+    return ids[0];
+  }
 
   const { data, error } = await admin
     .from("connectors")
@@ -284,12 +331,44 @@ async function prepareDemoConnector(admin: Admin, orgId: string): Promise<string
       type: "crm",
       provider: DEMO_PROVIDER,
       status: "connected",
-      config: { demo: true },
+      config,
     })
     .select("id")
     .single();
   if (error || !data) throw new Error(error?.message ?? "connecteur de démo");
   return data.id as string;
+}
+
+/**
+ * Le marqueur certifiable n'est écrit qu'après la réussite de toutes les
+ * données et de leur journal. Un seed interrompu reste donc présenté comme un
+ * environnement de test à réparer, jamais comme un scénario fictif complet.
+ */
+async function finalizeDemoConnector(
+  admin: Admin,
+  connectorId: string,
+  scenarioId: string,
+  counts: { prospects: number; campaignRows: number; sales: number },
+): Promise<void> {
+  const { error } = await admin
+    .from("connectors")
+    .update({
+      status: "connected",
+      config: {
+        demo: true,
+        scenario: scenarioId,
+        seed_version: DEMO_SEED_VERSION,
+        complete: true,
+        loaded_at: new Date().toISOString(),
+        counts: {
+          prospects: counts.prospects,
+          campaign_rows: counts.campaignRows,
+          revenue_events: counts.sales,
+        },
+      },
+    })
+    .eq("id", connectorId);
+  ensureOk(error, "certification du scénario de démonstration");
 }
 
 async function seedMemory(
@@ -357,13 +436,14 @@ export async function loadDemoScenario(
   // Avant toute suppression : la vraie fiche est mise à l'abri. Le préflight
   // a déjà refusé une organisation portant un état opérationnel réel.
   await backupMemoryOnce(admin, orgId);
+  await invalidateDemoCertification(admin, orgId, scenario.id);
   // On repart d'un cockpit propre : les propositions du scénario précédent
   // parleraient de campagnes et de prospects qui n'existent plus.
   await resetCockpitState(admin, orgId, isolation.legacy);
   await seedMemory(admin, orgId, actorId, scenario);
 
   // --- Prospects (sous le connecteur de démo) ---
-  const connectorId = await prepareDemoConnector(admin, orgId);
+  const connectorId = await prepareDemoConnector(admin, orgId, scenario.id);
 
   const now = new Date().toISOString();
   const prospects = buildDemoProspects(scenario.pool, scenario.id);
@@ -431,6 +511,7 @@ export async function loadDemoScenario(
     actor_id: actorId,
     payload: {
       scenario: scenario.id,
+      seed_version: DEMO_SEED_VERSION,
       name: scenario.orgName,
       prospects: prospects.length,
       campaigns: scenario.campaigns.length,
@@ -438,9 +519,15 @@ export async function loadDemoScenario(
     },
   });
   ensureOk(journal.error, "journal du chargement de démonstration");
+  await finalizeDemoConnector(admin, connectorId, scenario.id, {
+    prospects: prospects.length,
+    campaignRows: campaignRows.length,
+    sales: sales.length,
+  });
 
   return {
     scenario: scenario.id,
+    seedVersion: DEMO_SEED_VERSION,
     prospects: prospects.length,
     campaignRows: campaignRows.length,
     sales: sales.length,

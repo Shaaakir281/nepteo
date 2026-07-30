@@ -17,6 +17,7 @@ import {
 import { analyzeAdsForm } from "./actions";
 import { NewCampaignModal } from "./_components/new-campaign-modal";
 import { CoachBubble } from "@/components/ui/coach-bubble";
+import { readDemoPresentation } from "@/lib/demo/presentation";
 
 const eur = (n: number) =>
   `${n.toLocaleString("fr-FR", { maximumFractionDigits: 0 })} €`;
@@ -53,6 +54,9 @@ export default async function CampagnesPage({
     spend: Number(r.spend),
     revenue: Number(r.revenue),
   })) as DatedMetric[];
+  const { presentation: demoPresentation } = await readDemoPresentation(
+    membership.organizationId,
+  );
 
   // Les KPI portent sur les 30 derniers jours ; l'historique complet sert à
   // savoir ce qui tourne encore et ce qui a déjà été tenté.
@@ -300,8 +304,11 @@ export default async function CampagnesPage({
           )}
 
           <p className="text-[11.5px] text-faint">
-            Données de démonstration (fictives). Le connecteur Meta Ads réel
-            alimentera ce tableau à l&apos;identique.
+            {demoPresentation === "certified-demo"
+              ? "Scénario Nepteo — campagnes fictives."
+              : demoPresentation === "test-environment"
+                ? "Environnement de test — vérifiez l'origine des campagnes avant d'utiliser les résultats comme preuve terrain."
+                : "Environnement de test — campagnes issues de la source Meta Ads configurée."}
           </p>
         </div>
       )}

@@ -48,6 +48,41 @@ export interface DemoScenario {
   products: DemoProduct[];
 }
 
+export interface DemoScenarioExpectedCounts {
+  canonicalProspects: number;
+  importedProspects: number;
+  duplicateEmails: number;
+  missingEmails: number;
+  missingStages: number;
+  dormantProspects: number;
+  campaigns: number;
+  revenueEvents: number;
+}
+
+/** Comptages annoncés par le scénario, dérivés de sa configuration pure. */
+export function getScenarioExpectedCounts(
+  scenario: DemoScenario,
+): DemoScenarioExpectedCounts {
+  const profile = scenario.pool.demoProfile;
+  const canonicalProspects = profile?.count ?? 24;
+  const duplicateEmails = profile?.duplicateEmails ?? 1;
+  const declaredRevenueEvents = scenario.products.reduce(
+    (total, product) => total + Math.max(0, Math.floor(product.demoMonthlySales ?? 0)),
+    0,
+  );
+
+  return {
+    canonicalProspects,
+    importedProspects: canonicalProspects + duplicateEmails,
+    duplicateEmails,
+    missingEmails: profile?.missingEmails ?? Math.floor(canonicalProspects / 6),
+    missingStages: profile?.missingStages ?? Math.floor(canonicalProspects / 8),
+    dormantProspects: profile?.dormantProspects ?? 6,
+    campaigns: scenario.campaigns.length,
+    revenueEvents: declaredRevenueEvents || 18,
+  };
+}
+
 const FIRST_NAMES = [
   "Julie", "Marc", "Sarah", "Thomas", "Nadia", "Antoine",
   "Camille", "Youssef", "Élodie", "Pierre", "Leïla", "Hugo",
@@ -91,6 +126,14 @@ const ARTISAN: DemoScenario = {
     firstNames: FIRST_NAMES,
     lastNames: LAST_NAMES,
     companies: [],
+    companyWhenNotApplicable: "Particulier — projet habitat",
+    demoProfile: {
+      count: 26,
+      duplicateEmails: 2,
+      missingEmails: 4,
+      missingStages: 3,
+      dormantProspects: 5,
+    },
     stages: ["Devis envoyé", "Visite planifiée", "Premier contact", "En réflexion", "Chantier signé"],
     notes: [
       "Rencontré au salon de l'habitat, projet pour le printemps.",
@@ -102,20 +145,20 @@ const ARTISAN: DemoScenario = {
   },
   campaigns: [
     // --- En cours ---
-    { id: "art_local", name: "Google — Fenêtres sur mesure Chartres", dailyImpressions: 3200, ctr: 0.041, cpc: 0.95, cvr: 0.038, aov: 890, startDaysAgo: 90, trend: 1.15 },
-    { id: "art_retarget", name: "Retargeting — Demande de devis", dailyImpressions: 2100, ctr: 0.034, cpc: 0.61, cvr: 0.031, aov: 1150, startDaysAgo: 70, trend: 0.7 },
+    { id: "art_local", name: "Meta Ads — Fenêtres sur mesure Chartres", dailyImpressions: 900, ctr: 0.041, cpc: 0.95, cvr: 0.015, aov: 890, startDaysAgo: 90, trend: 1.15 },
+    { id: "art_retarget", name: "Retargeting — Demande de devis", dailyImpressions: 450, ctr: 0.034, cpc: 0.61, cvr: 0.035, aov: 1150, startDaysAgo: 70, trend: 0.7 },
     // En perte assumée : beaucoup de vues, zéro devis. C'est LE constat que
     // l'agent doit remonter en premier (≈ 30 €/jour qui ne rapportent rien).
     { id: "art_notoriete", name: "Facebook — Nos réalisations en vidéo", dailyImpressions: 14000, ctr: 0.008, cpc: 0.28, cvr: 0.0002, aov: 300, startDaysAgo: 45 },
     // --- Terminées (mémoire de ce qui a déjà été tenté) ---
-    { id: "art_hiver", name: "Google — Isolation avant l'hiver", dailyImpressions: 2600, ctr: 0.035, cpc: 1.1, cvr: 0.011, aov: 480, startDaysAgo: 175, endDaysAgo: 130 },
-    { id: "art_tiktok", name: "TikTok — Test format court", dailyImpressions: 18000, ctr: 0.012, cpc: 0.22, cvr: 0.0004, aov: 300, startDaysAgo: 105, endDaysAgo: 88 },
+    { id: "art_hiver", name: "Meta Ads — Isolation avant l'hiver", dailyImpressions: 2600, ctr: 0.035, cpc: 1.1, cvr: 0.011, aov: 480, startDaysAgo: 175, endDaysAgo: 130 },
+    { id: "art_tiktok", name: "Instagram Reels — Test format court", dailyImpressions: 18000, ctr: 0.012, cpc: 0.22, cvr: 0.0004, aov: 300, startDaysAgo: 105, endDaysAgo: 88 },
   ],
   products: [
-    { label: "Pose fenêtres — maison Chartres", price: 4200 },
-    { label: "Escalier bois sur mesure", price: 3600 },
-    { label: "Porte d'entrée alu", price: 1850 },
-    { label: "Remplacement 2 fenêtres", price: 1720 },
+    { label: "Pose fenêtres — maison Chartres", price: 4200, demoMonthlySales: 6 },
+    { label: "Escalier bois sur mesure", price: 3600, demoMonthlySales: 3 },
+    { label: "Porte d'entrée alu", price: 1850, demoMonthlySales: 5 },
+    { label: "Remplacement 2 fenêtres", price: 1720, demoMonthlySales: 4 },
   ],
 };
 
@@ -156,6 +199,13 @@ const AGENCE: DemoScenario = {
       "Fonderie Delaunay", "Groupe Vervent", "Plastimold", "Cartonnages Réault",
       "Hydrotech Ouest", "Menuiseries Barot", "Sodial Industries", "Verrerie Nantaise",
     ],
+    demoProfile: {
+      count: 30,
+      duplicateEmails: 2,
+      missingEmails: 4,
+      missingStages: 3,
+      dormantProspects: 7,
+    },
     stages: ["Rendez-vous fait", "Proposition envoyée", "Premier contact", "En attente budget", "Signé"],
     notes: [
       "Rencontré au salon Global Industrie, à recontacter après l'été.",
@@ -167,19 +217,19 @@ const AGENCE: DemoScenario = {
   },
   campaigns: [
     // --- En cours ---
-    { id: "agc_linkedin", name: "LinkedIn — Diagnostic positionnement", dailyImpressions: 5200, ctr: 0.014, cpc: 3.4, cvr: 0.045, aov: 2400, startDaysAgo: 90, trend: 1.1 },
-    { id: "agc_search", name: "Google — Agence communication industrie", dailyImpressions: 1800, ctr: 0.052, cpc: 2.1, cvr: 0.021, aov: 2400, startDaysAgo: 90, trend: 0.85 },
+    { id: "agc_linkedin", name: "Meta Lead Ads — Diagnostic positionnement", dailyImpressions: 500, ctr: 0.014, cpc: 3.4, cvr: 0.058, aov: 2400, startDaysAgo: 90, trend: 1.1 },
+    { id: "agc_search", name: "Meta Retargeting — Communication industrie", dailyImpressions: 200, ctr: 0.052, cpc: 2.1, cvr: 0.05, aov: 2400, startDaysAgo: 90, trend: 0.85 },
     // En perte assumée : de la visibilité, aucun rendez-vous.
-    { id: "agc_display", name: "Display — Notoriété régionale", dailyImpressions: 42000, ctr: 0.004, cpc: 0.22, cvr: 0.00008, aov: 1200, startDaysAgo: 40 },
+    { id: "agc_display", name: "Meta Audience Network — Notoriété régionale", dailyImpressions: 42000, ctr: 0.004, cpc: 0.22, cvr: 0.00008, aov: 1200, startDaysAgo: 40 },
     // --- Terminées ---
-    { id: "agc_salon", name: "LinkedIn — Salon Global Industrie", dailyImpressions: 7000, ctr: 0.016, cpc: 3.6, cvr: 0.013, aov: 2400, startDaysAgo: 170, endDaysAgo: 140 },
-    { id: "agc_webinar", name: "Webinaire — Inscriptions", dailyImpressions: 5000, ctr: 0.009, cpc: 1.9, cvr: 0.0009, aov: 2400, startDaysAgo: 120, endDaysAgo: 100 },
+    { id: "agc_salon", name: "Meta Lead Ads — Salon Global Industrie", dailyImpressions: 7000, ctr: 0.016, cpc: 3.6, cvr: 0.013, aov: 2400, startDaysAgo: 170, endDaysAgo: 140 },
+    { id: "agc_webinar", name: "Meta — Inscriptions au webinaire", dailyImpressions: 5000, ctr: 0.009, cpc: 1.9, cvr: 0.0009, aov: 2400, startDaysAgo: 120, endDaysAgo: 100 },
   ],
   products: [
-    { label: "Diagnostic positionnement", price: 2400 },
-    { label: "Refonte identité + site", price: 16500 },
-    { label: "Accompagnement contenus — mensuel", price: 1800 },
-    { label: "Atelier stratégie — journée", price: 1400 },
+    { label: "Diagnostic positionnement", price: 2400, demoMonthlySales: 4 },
+    { label: "Refonte identité + site", price: 16500, demoMonthlySales: 2 },
+    { label: "Accompagnement contenus — mensuel", price: 1800, demoMonthlySales: 6 },
+    { label: "Atelier stratégie — journée", price: 1400, demoMonthlySales: 3 },
   ],
 };
 
@@ -217,6 +267,14 @@ const ECOMMERCE: DemoScenario = {
     firstNames: FIRST_NAMES,
     lastNames: LAST_NAMES,
     companies: [],
+    companyWhenNotApplicable: "Particulier — client e-commerce",
+    demoProfile: {
+      count: 36,
+      duplicateEmails: 3,
+      missingEmails: 6,
+      missingStages: 4,
+      dormantProspects: 6,
+    },
     stages: ["Panier abandonné", "Première commande", "Client fidèle", "Abonné", "Inactif depuis 3 mois"],
     notes: [
       "A demandé un café décaféiné, on n'en propose pas encore.",
@@ -228,20 +286,20 @@ const ECOMMERCE: DemoScenario = {
   },
   campaigns: [
     // --- En cours ---
-    { id: "eco_prospect", name: "Meta — Coffret découverte", dailyImpressions: 26000, ctr: 0.019, cpc: 0.38, cvr: 0.016, aov: 32, startDaysAgo: 90, trend: 0.8 },
-    { id: "eco_retarget", name: "Retargeting — Panier abandonné", dailyImpressions: 6400, ctr: 0.033, cpc: 0.44, cvr: 0.048, aov: 41, startDaysAgo: 90, trend: 1.1 },
-    { id: "eco_search", name: "Google Shopping — Café de spécialité", dailyImpressions: 9200, ctr: 0.026, cpc: 0.51, cvr: 0.022, aov: 29, startDaysAgo: 75 },
+    { id: "eco_prospect", name: "Meta — Coffret découverte", dailyImpressions: 5000, ctr: 0.019, cpc: 0.25, cvr: 0.008, aov: 32, startDaysAgo: 90, trend: 0.8 },
+    { id: "eco_retarget", name: "Retargeting — Panier abandonné", dailyImpressions: 1500, ctr: 0.033, cpc: 0.3, cvr: 0.03, aov: 41, startDaysAgo: 90, trend: 1.1 },
+    { id: "eco_search", name: "Meta — Collection café de spécialité", dailyImpressions: 2500, ctr: 0.026, cpc: 0.32, cvr: 0.012, aov: 29, startDaysAgo: 75 },
     // En perte assumée : énormément de vues, presque aucune vente.
     { id: "eco_reels", name: "Reels — Notoriété torréfaction", dailyImpressions: 61000, ctr: 0.007, cpc: 0.26, cvr: 0.002, aov: 24, startDaysAgo: 50 },
     // --- Terminées ---
     { id: "eco_noel", name: "Meta — Coffrets de fin d'année", dailyImpressions: 34000, ctr: 0.024, cpc: 0.41, cvr: 0.035, aov: 38, startDaysAgo: 180, endDaysAgo: 150 },
-    { id: "eco_influence", name: "Partenariat créateurs — Test", dailyImpressions: 22000, ctr: 0.006, cpc: 0.6, cvr: 0.002, aov: 24, startDaysAgo: 130, endDaysAgo: 115 },
+    { id: "eco_influence", name: "Instagram créateurs — Test", dailyImpressions: 22000, ctr: 0.006, cpc: 0.6, cvr: 0.002, aov: 24, startDaysAgo: 130, endDaysAgo: 115 },
   ],
   products: [
-    { label: "Abonnement mensuel", price: 24 },
-    { label: "Coffret découverte", price: 32 },
-    { label: "Sachet 250 g — Éthiopie", price: 13 },
-    { label: "Sachet 1 kg — Brésil", price: 42 },
+    { label: "Abonnement mensuel", price: 24, demoMonthlySales: 70 },
+    { label: "Coffret découverte", price: 32, demoMonthlySales: 50 },
+    { label: "Sachet 250 g — Éthiopie", price: 13, demoMonthlySales: 75 },
+    { label: "Sachet 1 kg — Brésil", price: 42, demoMonthlySales: 25 },
   ],
 };
 
