@@ -17,6 +17,13 @@ export interface ScenarioChoice {
   pitch: string;
 }
 
+export interface DemoLoadGuardView {
+  canLoad: boolean;
+  checkFailed: boolean;
+  requiresDemoRemoval: boolean;
+  categories: string[];
+}
+
 const STEPS = [
   "Remise à zéro du cockpit…",
   "Installation de l'identité…",
@@ -51,9 +58,13 @@ function failureMessage(id: string, reason?: string): string {
 export function DemoPanel({
   scenarios,
   canManageDemo,
+  hasDemoMarker,
+  loadGuard,
 }: {
   scenarios: ScenarioChoice[];
   canManageDemo: boolean;
+  hasDemoMarker: boolean;
+  loadGuard: DemoLoadGuardView;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
@@ -158,6 +169,45 @@ export function DemoPanel({
         restaurée quand vous retirerez les données. Le chargement est refusé si
         l&apos;organisation contient déjà des données ou connecteurs réels.
       </p>
+      {!loadGuard.canLoad && (
+        <div
+          id="demo-load-block"
+          role="status"
+          className="mb-3 rounded-[10px] bg-amber-tint px-3.5 py-2.5 text-[12.5px] leading-relaxed text-body"
+        >
+          <p className="font-semibold">
+            Chargement désactivé avant toute modification.
+          </p>
+          {loadGuard.checkFailed && (
+            <p className="mt-1">
+              Nepteo n&apos;a pas pu vérifier complètement cette organisation.
+              Les scénarios restent bloqués par précaution.
+            </p>
+          )}
+          {loadGuard.requiresDemoRemoval && (
+            <p className="mt-1">
+              <b>Ancien marqueur de scénario détecté.</b> Retirez d&apos;abord
+              l&apos;ancien scénario avec le bouton ci-dessous, puis rechargez
+              cette page avant de choisir un scénario V2.
+            </p>
+          )}
+          {loadGuard.categories.length > 0 && (
+            <p className="mt-1">
+              <b>Données ou outils apportés à préserver :</b>{" "}
+              {loadGuard.categories.join(", ")}. Ils ne seront pas supprimés
+              par Nepteo et continueront de bloquer une démonstration sur cette
+              organisation. Utilisez une organisation de test vide.
+            </p>
+          )}
+          {loadGuard.requiresDemoRemoval &&
+            loadGuard.categories.length > 0 && (
+              <p className="mt-1 font-medium">
+                Retirer l&apos;ancien scénario ne suffira donc pas à débloquer
+                le chargement tant que ces éléments resteront présents.
+              </p>
+            )}
+        </div>
+      )}
       <div className="grid gap-3 sm:grid-cols-3">
         {scenarios.map((s) => (
           <div
@@ -172,7 +222,10 @@ export function DemoPanel({
             </p>
             <button
               type="button"
-              disabled={busy !== null}
+              disabled={busy !== null || !loadGuard.canLoad}
+              aria-describedby={
+                loadGuard.canLoad ? undefined : "demo-load-block"
+              }
               onClick={() => run(s.id, () => loadDemoScenarioAction(s.id))}
               className="mt-3 rounded-[10px] bg-violet px-3 py-2 text-[12.5px] font-semibold text-white transition hover:bg-violet-deep disabled:cursor-not-allowed disabled:opacity-40"
             >
@@ -218,17 +271,25 @@ export function DemoPanel({
       <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-line-soft pt-3">
         <p className="max-w-xl text-[11.5px] leading-relaxed text-faint">
           Entreprises fictives. Utilisez une organisation de test dédiée et
-          vide. Changer de scénario retire uniquement l&apos;état marqué comme
-          démonstration, puis relance l&apos;analyse.
+          vide.{" "}
+          {loadGuard.canLoad
+            ? "Changer de scénario retire uniquement l'état marqué comme démonstration, puis relance l'analyse."
+            : hasDemoMarker
+              ? "Le retrait vise uniquement l'état marqué comme démonstration ; les données apportées sont préservées."
+              : "Les données et outils déjà présents doivent rester dans leur organisation actuelle."}
         </p>
-        <button
-          type="button"
-          disabled={busy !== null}
-          onClick={() => run("clear", clearDemoAction)}
-          className="text-[12px] font-semibold text-muted hover:text-ink hover:underline disabled:opacity-40"
-        >
-          Retirer les données de démonstration
-        </button>
+        {hasDemoMarker && (
+          <button
+            type="button"
+            disabled={busy !== null}
+            onClick={() => run("clear", clearDemoAction)}
+            className="text-[12px] font-semibold text-muted hover:text-ink hover:underline disabled:opacity-40"
+          >
+            {loadGuard.requiresDemoRemoval
+              ? "Retirer l'ancien scénario"
+              : "Retirer les données de démonstration"}
+          </button>
+        )}
       </div>
     </div>
   );

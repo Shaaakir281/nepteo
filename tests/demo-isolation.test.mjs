@@ -10,6 +10,7 @@ import {
   DEMO_LOCK_SECTION,
   DEMO_PROVIDER,
   DEMO_REVENUE_PREFIX,
+  buildDemoLoadState,
   demoProspectsMatchTrustedConnectors,
   demoCampaignId,
   demoIsolationConflicts,
@@ -152,6 +153,17 @@ test("préflight — toute donnée réelle ferme le chargement, même entre A et
       `${field} doit fermer le préflight`,
     );
   }
+});
+
+test("préflight UI — l'état de chargement conserve marqueur, legacy et catégories", () => {
+  const inventory = emptyInventory();
+  inventory.realConnectors = 1;
+  inventory.realProspects = 12;
+  assert.deepEqual(buildDemoLoadState(true, true, inventory), {
+    active: true,
+    legacy: true,
+    conflicts: ["connectors", "prospects"],
+  });
 });
 
 test("compatibilité legacy — un ancien ID n'est nettoyable qu'en démo active", () => {

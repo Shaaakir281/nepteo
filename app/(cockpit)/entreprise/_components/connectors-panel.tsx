@@ -7,7 +7,12 @@ import {
   DEMO_PROVIDER,
   isTrustedDemoConnectorConfig,
 } from "@/lib/demo/isolation-rules";
+import {
+  DEMO_ISOLATION_CONFLICT_LABELS,
+  readDemoLoadState,
+} from "@/lib/demo/isolation";
 import { readDemoPresentation } from "@/lib/demo/presentation";
+import { classifyDemoLoadGuard } from "@/lib/demo/presentation-rules";
 import { DemoPanel } from "../../agent/_components/demo-panel";
 import {
   ConnectorCard,
@@ -34,9 +39,10 @@ export async function ConnectorsPanel({
   orgId: string;
   saved?: string;
 }) {
+  const admin = createAdminClient();
   const rowsResult = canViewConnectorConfig
     ? (
-        await createAdminClient()
+        await admin
           .from("connectors")
           .select("provider, status, config")
           .eq("organization_id", orgId)
@@ -48,8 +54,24 @@ export async function ConnectorsPanel({
           .eq("organization_id", orgId)
       );
   const rows = rowsResult.data;
-  const presentationSnapshot = await readDemoPresentation(orgId);
+  const [presentationSnapshot, demoLoadState] = await Promise.all([
+    readDemoPresentation(orgId),
+    readDemoLoadState(admin, orgId).catch(() => null),
+  ]);
   const demoPresentation = presentationSnapshot.presentation;
+  const verifiedDemoLoadState = presentationSnapshot.evidence.evidenceComplete
+    ? demoLoadState
+    : null;
+  const hasCertifiedDemoMarker =
+    presentationSnapshot.evidence.evidenceComplete &&
+    presentationSnapshot.evidence.certifiedDemoConnectors === 1;
+  const demoLoadGuard = classifyDemoLoadGuard(
+    verifiedDemoLoadState,
+    hasCertifiedDemoMarker,
+  );
+  const loadBlockCategories = demoLoadGuard.conflicts.map(
+    (conflict) => DEMO_ISOLATION_CONFLICT_LABELS[conflict],
+  );
 
   const statusOf = (provider: string): ConnectorStatus => {
     const row = rows?.find((r) => r.provider === provider);
@@ -79,6 +101,8 @@ export async function ConnectorsPanel({
     hasVisibleDemoMarker ||
     presentationSnapshot.hasDemoMarker ||
     Boolean(rowsResult.error);
+  const hasRemovableDemoMarker =
+    !demoLoadGuard.checkFailed && demoLoadState?.active === true;
 
   return (
     <>
@@ -92,7 +116,7 @@ export async function ConnectorsPanel({
         </span>
       </div>
 
-      {!hasConnected && (
+      {(!hasConnected || hasDemo) && (
         <div className="mb-7 rounded-[18px] border border-line-soft bg-white shadow-card">
           <div className="border-b border-line-soft px-[22px] py-4">
             <h3 className="font-display text-[15px] font-semibold">
@@ -106,6 +130,13 @@ export async function ConnectorsPanel({
           <div className="p-[22px]">
             <DemoPanel
               canManageDemo={canManageDemo}
+              hasDemoMarker={hasRemovableDemoMarker}
+              loadGuard={{
+                canLoad: demoLoadGuard.canLoad,
+                checkFailed: demoLoadGuard.checkFailed,
+                requiresDemoRemoval: demoLoadGuard.requiresDemoRemoval,
+                categories: loadBlockCategories,
+              }}
               scenarios={DEMO_SCENARIOS.map((s) => ({
                 id: s.id,
                 label: s.label,
