@@ -7,6 +7,8 @@ import {
 } from "@/lib/memory";
 import { researchConfigured } from "@/lib/research/provider";
 import { IdentityWizard } from "./_components/identity-wizard";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { isDemoModeOrMutationActive } from "@/lib/demo/isolation";
 
 /**
  * Onboarding, 2e écran — FACULTATIF. L'agent lit le site de l'entreprise et
@@ -18,6 +20,24 @@ export default async function IdentitePage() {
   if (!user) redirect("/login");
   if (!membership) redirect("/onboarding");
   if (!membership.canEdit) redirect("/");
+  let mutationBlocked = true;
+  try {
+    mutationBlocked = await isDemoModeOrMutationActive(
+      createAdminClient(),
+      membership.organizationId,
+    );
+  } catch {
+    // L'absence de marqueur doit être prouvée avant d'exposer une recherche
+    // externe ou une écriture d'identité.
+    mutationBlocked = true;
+  }
+  if (mutationBlocked) {
+    redirect(
+      `/entreprise?error=${encodeURIComponent(
+        "Retirez d'abord les données de démonstration avant d'analyser un site.",
+      )}`,
+    );
+  }
   // Sans clé de recherche, cet écran n'aurait rien à proposer.
   if (!researchConfigured()) redirect("/");
 
