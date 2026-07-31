@@ -3,8 +3,8 @@
 Cette procédure prépare un déploiement Docker vers Azure Container Apps, avec
 images dans ACR, région UE et GitHub Actions en OIDC.
 
-> État au 30 juillet 2026 : les migrations `0012` à `0020` sont appliquées à
-> Supabase production (`app_schema_version = 20`) et Azure sert l'image
+> État au 30 juillet 2026 : les migrations `0012` à `0021` sont appliquées à
+> Supabase production (`app_schema_version = 21`) et Azure sert encore l'image
 > `a2bbc34dcb97ab00951a3efa631c4f7c0a0428ca`, révision
 > `nepteo-prod--0000007`. Le workflow ne lance aucune migration : leur
 > application manuelle reste un préalable obligatoire à tout code qui les exige.
@@ -235,7 +235,7 @@ OAuth doivent utiliser le domaine principal.
 ### Préalable Supabase
 
 Appliquer manuellement toutes les migrations dans l'ordre. Pour une base à jour
-jusqu'à `0011`, appliquer `0012` à `0020` sans en sauter. Contrôler ensuite avec
+jusqu'à `0011`, appliquer `0012` à `0021` sans en sauter. Contrôler ensuite avec
 le service role :
 
 ```sql
@@ -244,10 +244,11 @@ from public.app_schema_version
 where id = 1;
 ```
 
-La valeur doit être au moins `20`. `0016` introduit ce marqueur et prouve les
-prérequis critiques ; `0017`, `0018`, le rattrapage additif `0019`, puis `0020`
-le font progresser à la version actuellement requise. `0020` crée les cohortes
-figées de relance et les événements de valeur structurés. Ne jamais modifier le
+La valeur doit être au moins `21`. `0016` introduit ce marqueur et prouve les
+prérequis critiques ; `0017`, `0018`, le rattrapage additif `0019`, `0020`, puis
+`0021` le font progresser à la version actuellement requise. `0020` crée les
+cohortes figées de relance et les événements de valeur structurés ; `0021`
+ajoute les RPC atomiques d'import et de retrait CSV. Ne jamais modifier le
 marqueur à la main pour contourner une migration absente.
 
 Le workflow `.github/workflows/deploy.yml` est volontairement
@@ -263,7 +264,7 @@ Le job :
 1. compare la saisie à `AZURE_SUBSCRIPTION_ID` ;
 2. se connecte par OIDC ;
 3. revalide en lecture seule souscription, tenant et région ;
-4. vérifie que Supabase est joignable et que `app_schema_version >= 20` ;
+4. vérifie que Supabase est joignable et que `app_schema_version >= 21` ;
 5. seulement alors, construit l’image Node 22 dans ACR, taguée avec le SHA Git ;
 6. configure secrets et variables runtime ;
 7. déploie une révision Container Apps ;
@@ -311,5 +312,5 @@ Ne lancer `POST /api/llm/status` que si un ping LLM facturé est souhaité.
 - la révision est en région `AZURE_LOCATION` ;
 - les URLs Supabase et OAuth utilisent exactement le domaine de production ;
 - `CONNECTOR_TOKEN_ENCRYPTION_KEY` est sauvegardée durablement ;
-- `app_schema_version.version >= 20` ;
+- `app_schema_version.version >= 21` ;
 - `/api/health` et `/api/ready` répondent tous deux 200.

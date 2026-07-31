@@ -1,8 +1,13 @@
 # Nepteo — guide de test (bêta)
 
-> Pour tester Nepteo sans rien brancher. Compte ~25 minutes pour le parcours complet.
-> Toutes les données de démonstration sont **fictives**. En mode sûr, **aucun message ne part à l'extérieur** : l'agent prépare, il n'envoie pas.
-> Le scénario reste volontairement chargé pendant toute la démonstration. Ne le retirez pas entre deux étapes : il constitue la matière nécessaire pour juger le raisonnement de l'agent.
+> Compte ~25 minutes pour le parcours complet. En mode sûr, **aucun message ne part à l'extérieur** : l'agent prépare, il n'envoie pas.
+
+## Choisir une seule voie
+
+- **A — scénario Nepteo V2 certifié** : choisir l'une des trois variantes ci-dessous. Le jeu complet est fictif, identifié et réinitialisable ; il reste chargé pendant tout le parcours.
+- **B — données autorisées du testeur** : importer un CSV ou connecter une source après avoir retiré tout scénario Nepteo. Ces lignes appartiennent à un environnement de test et ne sont jamais présentées comme fictives.
+
+Les deux voies ne se mélangent jamais. Si vous passez de A à B, retirez d'abord le scénario. Les observations de A servent à juger compréhension, explicabilité et qualité des brouillons, mais ne comptent pas comme preuves terrain.
 
 ## Ce que Nepteo essaie d'être
 
@@ -20,7 +25,7 @@ Trois questions à garder en tête pendant le test :
 2. **Onboarding** : nom de l'entreprise, ce que vous vendez, et le champ **« Votre philosophie »** — écrivez-y votre façon de travailler, ce à quoi vous tenez. C'est ce qui donne sa voix à l'agent.
 3. **Un écran facultatif peut s'intercaler** : si la recherche web est activée, l'agent lit votre site et **propose une fiche d'identité** (ce que vous vendez, vos offres, votre ton, ce que vous faites déjà en communication) que vous corrigez avant de valider — chaque affirmation porte ses sources, cliquez-les. « Passer cette étape » entre directement au cockpit. Sans clé de recherche, cet écran n'apparaît pas du tout.
 4. **Vous arrivez sur « Aujourd'hui ». Arrêtez-vous là une minute avant de charger quoi que ce soit** : sans aucune donnée branchée, l'écran d'accueil affiche un **diagnostic de départ** — deux ou trois canaux conseillés à partir de votre seule fiche entreprise, avec le premier geste, ce qu'il vaut mieux éviter, et trois actions pour la semaine. C'est le moment où l'agent doit déjà paraître compétent, avant tout connecteur.
-5. Aller sur **« Mon entreprise » → onglet « Connecteurs »** → section **« Pas d'outil à brancher ? »** → choisir un scénario :
+5. Pour la voie A, aller sur **« Mon entreprise » → onglet « Connecteurs »** → section **« Pas d'outil à brancher ? »** → choisir un scénario V2 :
 
 | Scénario | Profil | Ce qu'il montre |
 |---|---|---|
@@ -88,7 +93,7 @@ Les plafonds (messages par exécution, par jour) sont indiqués en note sous le 
 
 Tout ce qui s'y trouve nourrit les messages, les briefs et les recommandations. Modifiez le **Ton** ou la **Philosophie**, puis régénérez une relance : la voix doit changer.
 
-L'onglet **Connecteurs**, à côté, gagne désormais la section **« Pas d'outil à brancher ? »** pour choisir le scénario. Le tenant vitrine reste en démonstration ; Google Sheets et Notion se recettent dans une organisation séparée afin de ne jamais mélanger données fictives et réelles.
+L'onglet **Connecteurs**, à côté, permet de choisir le scénario ou d'apporter les données du testeur. Un seul mode peut être actif : retirez le scénario avant Google Sheets, Notion ou CSV.
 
 ## Ce qui n'est pas encore là
 
@@ -97,7 +102,7 @@ Autant le dire avant que vous le cherchiez :
 - **Aucun envoi réel.** Le transport SMTP est la prochaine étape, derrière les mêmes garde-fous.
 - **Le lancement réel de campagne** n'est pas branché (c'est l'action la plus engageante : elle attend des plafonds de budget côté serveur).
 - **La recherche web** dans l'onboarding (lire votre site pour pré-remplir votre identité) nécessite une clé d'API — OpenAI ou Perplexity. Si votre version n'en a pas, l'étape est simplement sautée ; rien ne casse. Quand elle est active, chaque recherche est **facturée** : le résultat est donc mis en cache 30 jours et plafonné par jour.
-- **Les connecteurs réels** (Google Sheets, Notion) fonctionnent, mais ils sont volontairement désactivés dans le tenant vitrine. Leur recette utilise une organisation séparée.
+- **Les connecteurs de test** (Google Sheets, Notion, CSV) fonctionnent uniquement sans scénario actif. Les données doivent être autorisées pour le test et l'interface ne les qualifie pas de fictives.
 
 ## Vos retours
 
@@ -108,6 +113,8 @@ Les plus utiles, dans l'ordre :
 3. Ce qui manque pour que ça remplace une tâche que vous faites aujourd'hui à la main.
 4. Un moment où vous n'avez pas compris ce que l'agent voulait dire.
 
-## Utiliser vos propres données fictives
+## Utiliser des données apportées pour le test
 
-Le mode démonstration couvre trois métiers. Pour un quatrième — le vôtre, ou celui d'un client type — voir **`PROMPT-DONNEES-FICTIVES.md`** : un prompt à coller dans n'importe quel assistant IA pour obtenir un fichier au bon format, importable via Google Sheets.
+Retirez d'abord le scénario Nepteo, puis connectez Google Sheets/Notion ou importez un CSV UTF-8 de **900 Ko et 5 000 lignes maximum**. Nepteo détecte sans ambiguïté les six champs utiles, ignore les autres colonnes et précise que ces champs peuvent nourrir analyses et brouillons. Le remplacement ou le retrait du seul import CSV est atomique, verrouillé et journalisé ; les identifiants restent stables si les lignes sont réordonnées. Même si le fichier a été généré pour le test, il relève de la voie B et l'environnement n'est pas certifié « données fictives ».
+
+Le bouton de retrait CSV supprime les contacts, les propositions liées à cette source et le briefing courant. Le journal append-only et les recherches d'entreprise déjà demandées restent des traces d'audit/cache : ce bouton ne constitue pas un effacement RGPD complet de l'organisation.

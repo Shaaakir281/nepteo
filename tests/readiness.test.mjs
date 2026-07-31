@@ -45,13 +45,13 @@ const latestMigration = latestMigrationFile
   : "";
 
 test("readiness schéma — accepte la version requise et les migrations additives", () => {
-  assert.equal(REQUIRED_SCHEMA_VERSION, 20);
-  assert.equal(supportsRequiredSchemaVersion(20), true);
+  assert.equal(REQUIRED_SCHEMA_VERSION, 21);
   assert.equal(supportsRequiredSchemaVersion(21), true);
+  assert.equal(supportsRequiredSchemaVersion(22), true);
 });
 
 test("readiness schéma — refuse une version ancienne ou invalide", () => {
-  for (const value of [19, 20.5, "20", null, undefined]) {
+  for (const value of [20, 21.5, "21", null, undefined]) {
     assert.equal(supportsRequiredSchemaVersion(value), false);
   }
 });

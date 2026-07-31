@@ -1,4 +1,8 @@
-import type { FieldMapping, NormalizedProspect } from "./common";
+import {
+  autoDetectTabularMapping,
+  type FieldMapping,
+  type NormalizedProspect,
+} from "./common.ts";
 import { normalizeContactDate } from "./date-rules.ts";
 
 /** Google Sheets — OAuth + lecture seule (scope spreadsheets.readonly). */
@@ -90,34 +94,11 @@ export function parseSpreadsheetId(input: string): string | null {
   return null;
 }
 
-/** En-tête correspondant au premier motif trouvé (par nom, réutilisable par l'UI). */
-function matchHeader(headers: string[], patterns: RegExp[]): string | null {
-  for (const re of patterns) {
-    const h = headers.find((x) => x && re.test(x));
-    if (h) return h;
-  }
-  return null;
-}
-
 /** Détection auto des colonnes → champs Nepteo. Sert de valeur par défaut
  *  quand aucun mapping explicite n'est enregistré, et de valeur pré-remplie
  *  dans l'écran de correspondance. */
 export function autoDetectSheetMapping(headers: string[]): FieldMapping {
-  return {
-    name: matchHeader(headers, [/^nom$|^name$/i, /nom/i, /name/i, /contact/i]),
-    email: matchHeader(headers, [/e-?mail/i, /courriel/i]),
-    company: matchHeader(headers, [/entreprise/i, /soci[eé]t[eé]/i, /company/i, /organisation/i]),
-    stage: matchHeader(headers, [/statut/i, /status/i, /stage/i, /[ée]tape/i]),
-    notes: matchHeader(headers, [/notes?/i, /remarque/i, /commentaire/i, /comment/i]),
-    last_contact_at: matchHeader(headers, [
-      /dernier\s+contact/i,
-      /derni[eè]re\s+relance/i,
-      /last\s+contact/i,
-      /date.*contact|contact.*date/i,
-      /relance/i,
-      /^date$/i,
-    ]),
-  };
+  return autoDetectTabularMapping(headers);
 }
 
 /** Lit méta + valeurs et renvoie en-têtes nettoyés + lignes de données. */

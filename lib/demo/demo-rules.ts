@@ -51,6 +51,12 @@ export interface DemoCampaignRow {
 export interface DemoProduct {
   label: string;
   price: number;
+  /**
+   * Volume mensuel du scénario de démonstration. Quand il est renseigné,
+   * `buildDemoRevenue` respecte exactement le mix déclaré au lieu d'inventer
+   * un même volume pour une vente artisanale et une commande e-commerce.
+   */
+  demoMonthlySales?: number;
 }
 
 export interface DemoSale {
@@ -64,10 +70,31 @@ export interface DemoSale {
 export interface DemoPeoplePool {
   firstNames: string[];
   lastNames: string[];
-  /** Vide pour un scénario B2C : les prospects n'ont alors pas d'entreprise. */
+  /** Vide pour un scénario B2C. */
   companies: string[];
   stages: string[];
   notes: string[];
+  /**
+   * Valeur explicite quand la notion d'entreprise ne s'applique pas.
+   * Elle évite de présenter les particuliers comme des fiches incomplètes,
+   * sans leur inventer une raison sociale.
+   */
+  companyWhenNotApplicable?: string;
+  /** Contrat déterministe du jeu de prospects V2. */
+  demoProfile?: DemoProspectProfile;
+}
+
+export interface DemoProspectProfile {
+  /** Fiches canoniques avant ajout des doublons volontaires. */
+  count: number;
+  /** Nombre exact d'adresses répétées une fois. */
+  duplicateEmails: number;
+  /** Nombre exact de fiches canoniques sans email. */
+  missingEmails: number;
+  /** Nombre exact de fiches canoniques sans statut. */
+  missingStages: number;
+  /** Contacts joignables, actifs et silencieux depuis au moins 30 jours. */
+  dormantProspects: number;
 }
 
 /** Pseudo-aléatoire déterministe dans [0,1) — même patron que les autres mocks. */
@@ -98,38 +125,87 @@ function slug(value: string): string {
 
 /**
  * Base de prospects fictive et réaliste. Volontairement IMPARFAITE : quelques
- * emails manquants, quelques statuts vides, un doublon — c'est exactement ce que
- * l'agent doit repérer. Une base trop propre ne démontre rien.
+ * emails manquants, quelques statuts vides et un nombre EXPLICITE de doublons.
+ * Les contacts dormants restent joignables et actifs : l'agent peut donc
+ * proposer une relance utile plutôt qu'un faux signal.
  */
 export function buildDemoProspects(
   pool: DemoPeoplePool,
   prefix: string,
-  count = 24,
+  count?: number,
 ): DemoProspect[] {
   const out: DemoProspect[] = [];
+  const profile = pool.demoProfile;
+  const baseCount = Math.max(0, Math.floor(count ?? profile?.count ?? 24));
+  const duplicateEmails = Math.min(
+    Math.max(0, Math.floor(profile?.duplicateEmails ?? 1)),
+    baseCount,
+  );
+  const missingEmails = Math.min(
+    Math.max(0, Math.floor(profile?.missingEmails ?? Math.floor(baseCount / 6))),
+    Math.max(0, baseCount - duplicateEmails),
+  );
+  const missingStages = Math.min(
+    Math.max(0, Math.floor(profile?.missingStages ?? Math.floor(baseCount / 8))),
+    Math.max(0, baseCount - duplicateEmails),
+  );
+  const dormantProspects = Math.min(
+    Math.max(0, Math.floor(profile?.dormantProspects ?? 6)),
+    Math.max(0, baseCount - missingEmails - missingStages),
+  );
 
-  for (let i = 0; i < count; i++) {
-    const first = pick(pool.firstNames, i * 3 + 1);
-    const last = pick(pool.lastNames, i * 5 + 2);
-    const name = `${first} ${last}`;
+  // Les défauts sont placés à des indices distincts et hors de la cohorte
+  // dormante. Cela garantit les comptages annoncés par le scénario.
+  const missingEmailIndexes = new Set<number>();
+  const missingStageIndexes = new Set<number>();
+  for (let n = 0; n < missingEmails; n++) {
+    missingEmailIndexes.add(baseCount - 1 - n);
+  }
+  for (let n = 0; n < missingStages; n++) {
+    missingStageIndexes.add(baseCount - 1 - missingEmails - n);
+  }
+
+  for (let i = 0; i < baseCount; i++) {
+    // Parcours bijectif du produit prénoms × noms : aucune collision de nom ou
+    // d'email n'est possible avant épuisement de toutes les combinaisons.
+    const pairCount = pool.firstNames.length * pool.lastNames.length;
+    const pairIndex = pairCount > 0 ? (i * 37 + 17) % pairCount : i;
+    const first = pool.firstNames[pairIndex % pool.firstNames.length] ?? `Contact ${i + 1}`;
+    const last =
+      pool.lastNames[Math.floor(pairIndex / Math.max(1, pool.firstNames.length))] ??
+      String(i + 1);
+    const cycle = pairCount > 0 ? Math.floor(i / pairCount) : 0;
+    const name = cycle > 0 ? `${first} ${last} ${cycle + 1}` : `${first} ${last}`;
     const company =
-      pool.companies.length > 0 ? pick(pool.companies, i * 7 + 3) : null;
+      pool.companies.length > 0
+        ? pick(pool.companies, i * 7 + 3)
+        : pool.companyWhenNotApplicable ?? null;
 
-    // 1 fiche sur 6 sans email : l'agent doit proposer de les compléter.
-    const hasEmail = i % 6 !== 4;
-    const domain = company ? `${slug(company)}.fr` : "email.fr";
-    const email = hasEmail ? `${slug(first)}.${slug(last)}@${domain}` : null;
+    const hasEmail = !missingEmailIndexes.has(i);
+    // Le libellé B2C « non applicable » ne devient pas un faux domaine.
+    const domain =
+      pool.companies.length > 0 && company ? `${slug(company)}.fr` : "email.fr";
+    const cycleSuffix = cycle > 0 ? `.${cycle + 1}` : "";
+    const email = hasEmail
+      ? `${slug(first)}.${slug(last)}${cycleSuffix}@${domain}`
+      : null;
 
-    // 1 fiche sur 8 sans statut : autre signal que l'agent sait relever.
-    const stage = i % 8 === 5 ? "" : pick(pool.stages, i * 11 + 4);
+    const isDormant = i < dormantProspects;
+    const stage = missingStageIndexes.has(i)
+      ? ""
+      : isDormant
+        ? pool.stages[0] ?? ""
+        : pick(pool.stages, i * 11 + 4);
 
     // 1 fiche sur 5 porte une note personnelle (matière à personnalisation).
     const notes = i % 5 === 2 ? pick(pool.notes, i * 13 + 5) : null;
 
     // Le temps fait partie du scénario : contacts récents à laisser tranquilles,
-    // relances ordinaires et silences de plus de 21 jours. `null` représente une
+    // relances ordinaires et silences d'au moins 30 jours. `null` représente une
     // source qui ne connaît pas cette information.
-    const contactDaysAgo = [2, 10, 24, 45, null, 14][i % 6];
+    const contactDaysAgo = isDormant
+      ? [31, 38, 45, 52, 60, 75, 90, 120][i % 8]
+      : [2, 8, 14, 20, null][i % 5];
 
     out.push({
       external_id: `${prefix}-${String(i + 1).padStart(3, "0")}`,
@@ -143,13 +219,20 @@ export function buildDemoProspects(
     });
   }
 
-  // Un doublon d'email volontaire : la dédup et la proposition « doublons »
-  // n'ont d'intérêt que s'il y en a un à trouver.
-  const source = out.find((p) => p.email);
-  if (source) {
+  // Doublons strictement maîtrisés : les fiches canoniques ont des emails
+  // uniques et chaque source sélectionnée n'est dupliquée qu'une fois.
+  const duplicateSources = out.filter(
+    (p, index) =>
+      index >= dormantProspects &&
+      p.email !== null &&
+      p.stage !== "",
+  );
+  for (let i = 0; i < duplicateEmails; i++) {
+    const source = duplicateSources[i];
+    if (!source) break;
     out.push({
       ...source,
-      external_id: `${prefix}-dup`,
+      external_id: `${prefix}-dup-${String(i + 1).padStart(3, "0")}`,
       stage: pool.stages[0] ?? source.stage,
       notes: null,
     });
@@ -210,11 +293,31 @@ export function buildDemoRevenue(
   products: readonly DemoProduct[],
   prefix: string,
   days = 30,
-  count = 18,
+  count?: number,
 ): DemoSale[] {
   const out: DemoSale[] = [];
-  for (let i = 0; i < count; i++) {
-    const p = pick(products, i * 3 + 1);
+  const declaredMix = products.flatMap((product) =>
+    Array.from(
+      { length: Math.max(0, Math.floor(product.demoMonthlySales ?? 0)) },
+      () => product,
+    ),
+  );
+  const useDeclaredMix = count === undefined && declaredMix.length > 0;
+  const saleCount = Math.max(
+    0,
+    Math.floor(count ?? (useDeclaredMix ? declaredMix.length : 18)),
+  );
+  // Même volume par produit à chaque seed, ordre seulement brassé pour que la
+  // chronologie ne soit pas artificiellement groupée par offre.
+  const scheduledProducts = useDeclaredMix
+    ? declaredMix
+        .map((product, index) => ({ product, index, order: rand(index * 17 + 11) }))
+        .sort((a, b) => a.order - b.order || a.index - b.index)
+        .map(({ product }) => product)
+    : [];
+
+  for (let i = 0; i < saleCount; i++) {
+    const p = useDeclaredMix ? scheduledProducts[i] : pick(products, i * 3 + 1);
     const dayBack = 1 + Math.floor(rand(i * 5 + 2) * days);
     const wobble = 0.9 + rand(i * 7 + 3) * 0.2; // ±10 %
     out.push({

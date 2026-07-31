@@ -18,8 +18,38 @@ import {
 } from "@/lib/demo/lock";
 import { runAnalysis } from "@/lib/analysis";
 import { runAdsAnalysis } from "@/lib/ads/analysis";
+import {
+  demoAnalysisDetail,
+  settleDemoAnalysis,
+  type DemoAnalysisStep,
+} from "@/lib/demo/analysis-outcome";
 
 const LEVELS = ["suggest", "prepare"] as const;
+
+async function journalDemoAnalysis(
+  admin: ReturnType<typeof createAdminClient>,
+  orgId: string,
+  actorId: string,
+  scope: "prospects" | "campaigns",
+  status: "succeeded" | "failed",
+  created: number,
+  detail?: string,
+): Promise<void> {
+  const { error } = await admin.from("journal").insert({
+    organization_id: orgId,
+    event: "analysis_run",
+    actor: "agent",
+    actor_id: actorId,
+    payload: {
+      mode: "demo_seed",
+      scope,
+      status,
+      created,
+      ...(detail ? { error: detail } : {}),
+    },
+  });
+  if (error) throw new Error(`[demo-analysis] journal ${scope}: ${error.message}`);
+}
 
 /** Change le niveau d'autonomie de l'agent (proposer seulement / préparer). */
 export async function setAutonomyLevel(level: string): Promise<void> {
@@ -54,7 +84,15 @@ function revalidateCockpit(): void {
 }
 
 export type DemoResult =
-  | { ok: true; prospects: number; created: number }
+  | {
+      ok: true;
+      prospects: number;
+      created: number;
+      analysis: {
+        prospects: DemoAnalysisStep;
+        campaigns: DemoAnalysisStep;
+      };
+    }
   /**
    * `detail` porte le message technique de l'échec (table + erreur Postgres).
    * Sans lui, « ça n'a pas abouti » n'est pas exploitable : ni l'utilisateur ni
@@ -64,8 +102,7 @@ export type DemoResult =
 
 /** Message technique d'une exception, sans jamais faire tomber l'affichage. */
 function detailOf(err: unknown): string {
-  const raw = err instanceof Error ? err.message : String(err ?? "");
-  return raw.trim().slice(0, 300) || "erreur inconnue";
+  return demoAnalysisDetail(err);
 }
 
 /**
@@ -84,7 +121,7 @@ export async function loadDemoScenarioAction(scenarioId: string): Promise<DemoRe
 
   const admin = createAdminClient();
   try {
-    const { result, created } = await withDemoMutationLock(
+    const { result, created, analysis } = await withDemoMutationLock(
       admin,
       ctx.orgId,
       "demo",
@@ -97,29 +134,80 @@ export async function loadDemoScenarioAction(scenarioId: string): Promise<DemoRe
 
         // Le scope explicite interdit à l'analyse de mélanger un prospect ou
         // une campagne réelle apparus pendant le chargement.
-        let created = 0;
+        const analysis: {
+          prospects: DemoAnalysisStep;
+          campaigns: DemoAnalysisStep;
+        } = {
+          prospects: await settleDemoAnalysis(() =>
+            runAnalysis(
+              admin,
+              ctx.orgId,
+              ctx.userId,
+              {
+                prospectSource: DEMO_PROVIDER,
+                demo: true,
+              },
+            ),
+          ),
+          campaigns: { ok: true, created: 0 },
+        };
         try {
-          created = await runAnalysis(admin, ctx.orgId, ctx.userId, {
-            prospectSource: DEMO_PROVIDER,
-            demo: true,
-          });
-        } catch {
-          /* ignoré volontairement */
+          await journalDemoAnalysis(
+            admin,
+            ctx.orgId,
+            ctx.userId,
+            "prospects",
+            analysis.prospects.ok ? "succeeded" : "failed",
+            analysis.prospects.created,
+            analysis.prospects.detail,
+          );
+        } catch (error) {
+          analysis.prospects = {
+            ok: false,
+            created: analysis.prospects.created,
+            detail: [analysis.prospects.detail, detailOf(error)]
+              .filter(Boolean)
+              .join(" · "),
+          };
         }
+        analysis.campaigns = await settleDemoAnalysis(() =>
+          runAdsAnalysis(
+            admin,
+            ctx.orgId,
+            ctx.userId,
+            {
+              campaignIdPrefix: DEMO_CAMPAIGN_PREFIX,
+              demo: true,
+            },
+          ),
+        );
         try {
-          created += await runAdsAnalysis(admin, ctx.orgId, ctx.userId, {
-            campaignIdPrefix: DEMO_CAMPAIGN_PREFIX,
-            demo: true,
-          });
-        } catch {
-          /* ignoré volontairement */
+          await journalDemoAnalysis(
+            admin,
+            ctx.orgId,
+            ctx.userId,
+            "campaigns",
+            analysis.campaigns.ok ? "succeeded" : "failed",
+            analysis.campaigns.created,
+            analysis.campaigns.detail,
+          );
+        } catch (error) {
+          analysis.campaigns = {
+            ok: false,
+            created: analysis.campaigns.created,
+            detail: [analysis.campaigns.detail, detailOf(error)]
+              .filter(Boolean)
+              .join(" · "),
+          };
         }
-        return { result, created };
+        const created =
+          analysis.prospects.created + analysis.campaigns.created;
+        return { result, created, analysis };
       },
     );
 
     revalidateCockpit();
-    return { ok: true, prospects: result.prospects, created };
+    return { ok: true, prospects: result.prospects, created, analysis };
   } catch (err) {
     if (err instanceof DemoIsolationError) {
       return {
@@ -155,7 +243,15 @@ export async function clearDemoAction(): Promise<DemoResult> {
       }),
     );
     revalidateCockpit();
-    return { ok: true, prospects: 0, created: 0 };
+    return {
+      ok: true,
+      prospects: 0,
+      created: 0,
+      analysis: {
+        prospects: { ok: true, created: 0 },
+        campaigns: { ok: true, created: 0 },
+      },
+    };
   } catch (err) {
     if (err instanceof DemoBusyError) {
       return { ok: false, reason: "busy", detail: detailOf(err) };

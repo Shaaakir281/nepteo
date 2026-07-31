@@ -157,7 +157,9 @@ export async function draftForProspect(
     event: "draft_prepared",
     actor: "agent",
     actor_id: ctx.userId,
-    payload: { kind: action.kind, title: prospect.name ?? action.title },
+    // Le journal est append-only : conserver l'identifiant de la fiche suffit
+    // à l'audit, sans recopier durablement le nom d'une personne.
+    payload: { kind: action.kind, prospect_id: prospectId },
   });
 
   return { ok: true, draft };

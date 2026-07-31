@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentAuthContext } from "@/lib/auth/context";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { DEMO_PROVIDER } from "@/lib/demo/isolation-rules";
+import { readDemoPresentation } from "@/lib/demo/presentation";
 import { icons } from "@/components/icons";
 import { Sidebar } from "./_components/sidebar";
 import { MobileCockpitNav } from "./_components/nav";
@@ -22,16 +21,12 @@ export default async function CockpitLayout({
   if (!membership) redirect("/onboarding");
 
   // Le bandeau est informatif, pas un garde-fou : les mutations continuent de
-  // passer par `isDemoModeActive`. Une seule lecture du marqueur de confiance
-  // suffit ici pour rendre le contexte fictif visible sur tout le cockpit.
-  const { data: demoConnectors } = await createAdminClient()
-    .from("connectors")
-    .select("id")
-    .eq("organization_id", membership.organizationId)
-    .eq("provider", DEMO_PROVIDER)
-    .contains("config", { demo: true })
-    .limit(1);
-  const demoActive = (demoConnectors?.length ?? 0) > 0;
+  // passer par `isDemoModeActive`. Un marqueur `demo` seul ne prouve pas que
+  // toutes les données sont fictives : la preuve complète couvre sauvegarde,
+  // seed finalisé, prospects, campagnes, ventes et absence de mélange réel.
+  const { presentation: demoPresentation } = await readDemoPresentation(
+    membership.organizationId,
+  );
 
   const initial = (user.email ?? "?").charAt(0).toUpperCase();
   const raw = new Intl.DateTimeFormat("fr-FR", {
@@ -49,7 +44,7 @@ export default async function CockpitLayout({
         roleLabel={ROLE_LABELS[membership.role] ?? membership.role}
         initial={initial}
         canViewFinancials={membership.canViewFinancials}
-        demoActive={demoActive}
+        demoPresentation={demoPresentation}
       />
 
       <div className="min-w-0">
@@ -69,12 +64,20 @@ export default async function CockpitLayout({
           </div>
         </div>
         <main className="mx-auto max-w-[1060px] px-4 pb-28 pt-6 sm:px-7 sm:pt-8 lg:pb-8">
-          {demoActive && (
+          {demoPresentation === "certified-demo" && (
             <div className="mb-5 rounded-[12px] border border-amber/25 bg-amber-tint px-4 py-3 text-[12.5px] leading-relaxed text-body">
-              <b>Démonstration active — données fictives.</b>{" "}
-              Ce jeu de données illustre les analyses et propositions de
-              l&apos;agent. Aucun compte externe n&apos;est connecté et ces
-              résultats ne comptent pas dans la preuve terrain.
+              <b>Scénario Nepteo — données fictives.</b> Ce jeu versionné
+              illustre les analyses et propositions de l&apos;agent. Aucun
+              compte externe n&apos;est connecté et ces résultats ne comptent
+              pas dans la preuve terrain.
+            </div>
+          )}
+          {demoPresentation === "test-environment" && (
+            <div className="mb-5 rounded-[12px] border border-violet/20 bg-tint px-4 py-3 text-[12.5px] leading-relaxed text-body">
+              <b>Environnement de test.</b> Les données affichées peuvent avoir
+              été importées par le testeur (CSV ou connecteur) ou provenir
+              d&apos;un scénario Nepteo. Vérifiez leur origine avant
+              d&apos;utiliser les résultats comme preuve terrain.
             </div>
           )}
           {children}

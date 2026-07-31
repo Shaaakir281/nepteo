@@ -1,5 +1,6 @@
 import { icons } from "@/components/icons";
 import { logout } from "@/app/(auth)/actions";
+import type { DemoPresentation } from "@/lib/demo/presentation-rules";
 import { CockpitNav } from "./nav";
 
 /**
@@ -15,14 +16,14 @@ export function Sidebar({
   roleLabel,
   initial,
   canViewFinancials,
-  demoActive,
+  demoPresentation,
 }: {
   orgName: string;
   email: string;
   roleLabel: string;
   initial: string;
   canViewFinancials: boolean;
-  demoActive: boolean;
+  demoPresentation: DemoPresentation;
 }) {
   return (
     <aside className="sticky top-0 flex h-screen flex-col overflow-y-auto border-r border-line-soft bg-white max-lg:hidden">
@@ -34,9 +35,11 @@ export function Sidebar({
       </div>
       <div className="mx-3.5 mb-3.5 rounded-[10px] border border-line bg-tint-soft px-3 py-[9px] text-[12.5px]">
         <b className="block truncate font-semibold text-ink">{orgName}</b>
-        {demoActive && (
+        {demoPresentation !== "none" && (
           <span className="mt-1 inline-flex rounded-full bg-amber-tint px-2 py-0.5 text-[10.5px] font-semibold text-amber">
-            Démonstration · données fictives
+            {demoPresentation === "certified-demo"
+              ? "Scénario Nepteo — données fictives"
+              : "Environnement de test"}
           </span>
         )}
       </div>

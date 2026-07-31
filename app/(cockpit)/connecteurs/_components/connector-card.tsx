@@ -1,6 +1,10 @@
 import Link from "next/link";
 import type { CatalogTool } from "@/lib/connectors";
-import { isOauthProvider } from "@/lib/connectors/common";
+import {
+  isImportProvider,
+  isOauthProvider,
+} from "@/lib/connectors/common";
+import type { DemoPresentation } from "@/lib/demo/presentation-rules";
 import { requestConnector } from "../actions";
 
 const TYPE_LABELS: Record<string, string> = {
@@ -19,12 +23,14 @@ export function ConnectorCard({
   status,
   canEdit,
   blockedByDemo,
+  demoPresentation = "test-environment",
   justRequested,
 }: {
   tool: CatalogTool;
   status: ConnectorStatus;
   canEdit: boolean;
   blockedByDemo?: boolean;
+  demoPresentation?: DemoPresentation;
   justRequested?: boolean;
 }) {
   return (
@@ -58,9 +64,10 @@ export function ConnectorCard({
           <span className="inline-flex items-center gap-3">
             <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-green">
               <i className="h-[7px] w-[7px] rounded-full bg-green" />
-              Connecté
+              {isImportProvider(tool.provider) ? "Importé" : "Connecté"}
             </span>
-            {isOauthProvider(tool.provider) && (
+            {(isOauthProvider(tool.provider) ||
+              isImportProvider(tool.provider)) && (
               <Link
                 href={`/connecteurs/${tool.provider}`}
                 className="text-[12px] font-semibold text-violet hover:underline"
@@ -83,7 +90,27 @@ export function ConnectorCard({
           !canEdit &&
           blockedByDemo && (
             <span className="text-[12px] font-medium text-amber">
-              Aperçu démo — connexion réelle désactivée.
+              {demoPresentation === "certified-demo"
+                ? "Scénario Nepteo — connexion réelle désactivée."
+                : "Environnement de test — connexion réelle désactivée tant que le scénario Nepteo est actif."}
+            </span>
+          )}
+        {status === "available" &&
+          isImportProvider(tool.provider) &&
+          canEdit && (
+            <Link
+              href={`/connecteurs/${tool.provider}`}
+              className="inline-block rounded-[7px] bg-tint px-3.5 py-1.5 text-[12px] font-semibold text-violet transition hover:bg-violet hover:text-white"
+            >
+              Importer
+            </Link>
+          )}
+        {status === "available" &&
+          isImportProvider(tool.provider) &&
+          !canEdit &&
+          blockedByDemo && (
+            <span className="text-[12px] font-medium text-amber">
+              Retirez d&apos;abord le scénario Nepteo pour importer ce fichier.
             </span>
           )}
         {status === "requested" && !isOauthProvider(tool.provider) && (
@@ -94,6 +121,7 @@ export function ConnectorCard({
         )}
         {status === "available" &&
           !isOauthProvider(tool.provider) &&
+          !isImportProvider(tool.provider) &&
           (canEdit ? (
             <form action={requestConnector}>
               <input type="hidden" name="provider" value={tool.provider} />

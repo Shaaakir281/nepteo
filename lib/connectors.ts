@@ -34,6 +34,7 @@ export const CONNECTOR_CATALOG: CatalogGroup[] = [
       { provider: "pipedrive", name: "Pipedrive", letter: "P", color: "#1a1a2e", type: "crm", description: "Suivre vos ventes en cours et repérer les affaires qui n'avancent plus." },
       { provider: "salesforce", name: "Salesforce", letter: "S", color: "#00a1e0", type: "crm", description: "Relier votre base commerciale existante sans rien déplacer." },
       { provider: "airtable", name: "Airtable", letter: "A", color: "#f6b93b", type: "crm", description: "Utiliser vos tableaux de contacts comme base de prospects." },
+      { provider: "csv", name: "Fichier CSV", letter: "CSV", color: "#5a4fe0", type: "crm", description: "Importer un export de votre base pour tester Nepteo avec vos propres contacts." },
       { provider: "google_sheets", name: "Google Sheets", letter: "G", color: "#1c9e5f", type: "crm", description: "Un simple fichier de contacts suffit pour commencer à relancer." },
       { provider: "notion", name: "Notion", letter: "N", color: "#26262b", type: "crm", description: "Importer vos listes de clients et de prospects déjà organisées." },
     ],

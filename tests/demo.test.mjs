@@ -8,6 +8,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  buildFindings,
+  daysSinceContact,
+  isTerminalStage,
+  selectDormantProspects,
+} from "../lib/analysis-rules.ts";
+import {
   buildDemoCampaigns,
   buildDemoProspects,
   buildDemoRevenue,
@@ -16,6 +22,7 @@ import {
   DEMO_SCENARIOS,
   DEMO_SCENARIO_IDS,
   findScenario,
+  getScenarioExpectedCounts,
 } from "../lib/demo/scenarios.ts";
 import {
   rollupWithStatus,
@@ -62,52 +69,140 @@ test("findScenario — retrouve par identifiant, refuse le reste", () => {
   assert.equal(findScenario(42), null);
 });
 
-test("prospects — déterministes et identifiants uniques", () => {
-  const pool = DEMO_SCENARIOS[0].pool;
-  const a = buildDemoProspects(pool, "art", 24);
-  const b = buildDemoProspects(pool, "art", 24);
-  assert.deepEqual(a, b, "deux appels donnent exactement la même base");
+test("prospects V2 — contrats, défauts et doublons sont exacts", () => {
+  for (const scenario of DEMO_SCENARIOS) {
+    const expected = getScenarioExpectedCounts(scenario);
+    const a = buildDemoProspects(scenario.pool, scenario.id);
+    const b = buildDemoProspects(scenario.pool, scenario.id);
+    assert.deepEqual(a, b, `${scenario.id} : deux appels donnent la même base`);
+    assert.equal(a.length, expected.importedProspects, `${scenario.id} : imports`);
 
-  const ids = a.map((p) => p.external_id);
-  assert.equal(new Set(ids).size, ids.length, "identifiants uniques");
-  assert.equal(a.length, 25, "24 fiches + le doublon volontaire");
+    const ids = a.map((p) => p.external_id);
+    assert.equal(new Set(ids).size, ids.length, `${scenario.id} : identifiants uniques`);
+
+    const canonical = a.slice(0, expected.canonicalProspects);
+    assert.equal(
+      canonical.filter((p) => !p.email).length,
+      expected.missingEmails,
+      `${scenario.id} : emails manquants`,
+    );
+    assert.equal(
+      canonical.filter((p) => !p.stage).length,
+      expected.missingStages,
+      `${scenario.id} : statuts manquants`,
+    );
+    assert.ok(
+      canonical.filter((p) => p.notes).length >= 3,
+      `${scenario.id} : notes de personnalisation`,
+    );
+    assert.ok(
+      canonical.some((p) => p.last_contact_at === null),
+      `${scenario.id} : dernier contact parfois inconnu`,
+    );
+
+    const canonicalEmails = canonical.map((p) => p.email).filter(Boolean);
+    assert.equal(
+      new Set(canonicalEmails).size,
+      canonicalEmails.length,
+      `${scenario.id} : aucune collision accidentelle`,
+    );
+
+    const emailCounts = new Map();
+    for (const email of a.map((p) => p.email).filter(Boolean)) {
+      emailCounts.set(email, (emailCounts.get(email) ?? 0) + 1);
+    }
+    const repeated = [...emailCounts.values()].filter((count) => count > 1);
+    assert.equal(
+      repeated.length,
+      expected.duplicateEmails,
+      `${scenario.id} : nombre exact d'adresses dupliquées`,
+    );
+    assert.ok(
+      repeated.every((count) => count === 2),
+      `${scenario.id} : chaque adresse volontaire est répétée une seule fois`,
+    );
+  }
 });
 
-test("prospects — défauts volontaires présents (matière pour l'agent)", () => {
-  const pool = DEMO_SCENARIOS[1].pool;
-  const list = buildDemoProspects(pool, "agc", 24);
-
-  const sansEmail = list.filter((p) => !p.email);
-  assert.ok(sansEmail.length >= 3, "des emails manquants à compléter");
-
-  const sansStatut = list.filter((p) => !p.stage);
-  assert.ok(sansStatut.length >= 2, "des fiches sans statut");
-
-  const avecNotes = list.filter((p) => p.notes);
-  assert.ok(avecNotes.length >= 3, "des notes pour la personnalisation");
-
-  const dates = list.map((p) => p.last_contact_at).filter(Boolean);
-  assert.ok(dates.length >= 12, "des dates de dernier contact pour prioriser");
-  assert.ok(
-    list.some((p) => p.last_contact_at === null),
-    "certaines sources ne connaissent pas le dernier contact",
-  );
-
-  const emails = list.map((p) => p.email).filter(Boolean);
-  assert.ok(
-    new Set(emails).size < emails.length,
-    "au moins un doublon d'email à dédupliquer",
-  );
-
-  // Scénario B2B : les prospects ont une entreprise.
-  assert.ok(list.every((p) => p.company), "B2B : entreprise renseignée partout");
+test("campagnes — le catalogue reste cohérent avec le provider Meta du seed", () => {
+  const metaVocabulary =
+    /Meta|Facebook|Instagram|Retargeting|Reels|Audience Network/i;
+  for (const scenario of DEMO_SCENARIOS) {
+    for (const campaign of scenario.campaigns) {
+      assert.match(
+        campaign.name,
+        metaVocabulary,
+        `${scenario.id}/${campaign.id} doit désigner un canal Meta`,
+      );
+    }
+  }
 });
 
-test("prospects — un scénario B2C n'invente pas d'entreprise", () => {
-  const b2c = DEMO_SCENARIOS.find((s) => s.pool.companies.length === 0);
-  assert.ok(b2c, "au moins un scénario particuliers");
-  const list = buildDemoProspects(b2c.pool, "b2c", 12);
-  assert.ok(list.every((p) => p.company === null));
+test("prospects V2 — 4 à 8 dormants joignables et actifs par scénario", () => {
+  const today = new Date().toISOString().slice(0, 10);
+
+  for (const scenario of DEMO_SCENARIOS) {
+    const expected = getScenarioExpectedCounts(scenario);
+    const list = buildDemoProspects(scenario.pool, scenario.id);
+    const dormant = selectDormantProspects(list, today, 30);
+
+    assert.equal(
+      dormant.length,
+      expected.dormantProspects,
+      `${scenario.id} : cohorte dormante annoncée`,
+    );
+    assert.ok(
+      dormant.length >= 4 && dormant.length <= 8,
+      `${scenario.id} : volume lisible en démonstration`,
+    );
+    for (const prospect of dormant) {
+      assert.ok(prospect.email, `${scenario.id} : dormant joignable`);
+      assert.ok(prospect.stage, `${scenario.id} : dormant classé`);
+      assert.equal(
+        isTerminalStage(prospect.stage),
+        false,
+        `${scenario.id} : dormant encore actif`,
+      );
+      assert.ok(
+        daysSinceContact(prospect.last_contact_at, today) >= 30,
+        `${scenario.id} : silence factuel`,
+      );
+    }
+  }
+});
+
+test("prospects V2 — les particuliers ne déclenchent pas l'entreprise manquante", () => {
+  const b2cScenarios = DEMO_SCENARIOS.filter(
+    (scenario) => scenario.memory.audience === "Particuliers",
+  );
+  assert.equal(b2cScenarios.length, 2, "artisan et e-commerce sont B2C");
+
+  for (const scenario of b2cScenarios) {
+    const list = buildDemoProspects(scenario.pool, scenario.id);
+    assert.ok(
+      list.every(
+        (prospect) =>
+          prospect.company === scenario.pool.companyWhenNotApplicable,
+      ),
+      `${scenario.id} : la société est explicitement non applicable`,
+    );
+    const findings = buildFindings(
+      list.map((prospect) => ({ ...prospect, source: "demo" })),
+      new Date().toISOString().slice(0, 10),
+    );
+    assert.equal(
+      findings.find((finding) => finding.kind === "complete_missing_company"),
+      undefined,
+      `${scenario.id} : aucun faux positif B2B`,
+    );
+  }
+
+  const b2b = DEMO_SCENARIOS.find((scenario) => scenario.memory.audience === "Entreprises");
+  assert.ok(b2b, "un scénario B2B existe");
+  assert.ok(
+    buildDemoProspects(b2b.pool, b2b.id).every((prospect) => prospect.company),
+    "B2B : entreprise renseignée partout",
+  );
 });
 
 test("campagnes — chaque campagne a sa propre période de diffusion", () => {
@@ -147,6 +242,51 @@ test("ventes — déterministes, datées dans le passé, montants plausibles", (
     assert.ok(
       s.products.some((p) => p.label === sale.label),
       "le libellé correspond à une offre du scénario",
+    );
+  }
+});
+
+test("ventes V2 — le mix mensuel déclaré est respecté exactement", () => {
+  for (const scenario of DEMO_SCENARIOS) {
+    const expected = getScenarioExpectedCounts(scenario);
+    const sales = buildDemoRevenue(scenario.products, scenario.id);
+    assert.equal(sales.length, expected.revenueEvents, `${scenario.id} : volume de ventes`);
+
+    for (const product of scenario.products) {
+      assert.equal(
+        sales.filter((sale) => sale.label === product.label).length,
+        product.demoMonthlySales,
+        `${scenario.id} : mix ${product.label}`,
+      );
+    }
+  }
+});
+
+test("économie V2 — le revenu publicitaire reste attribuable aux ventes du mois", () => {
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+
+  for (const scenario of DEMO_SCENARIOS) {
+    const currentCampaignRows = buildDemoCampaigns(scenario.campaigns).filter((row) => {
+      const rowDate = new Date(`${row.date}T00:00:00Z`);
+      return (today.getTime() - rowDate.getTime()) / 86_400_000 <= 30;
+    });
+    const attributedRevenue = currentCampaignRows.reduce(
+      (total, row) => total + row.revenue,
+      0,
+    );
+    const totalRevenue = buildDemoRevenue(scenario.products, scenario.id).reduce(
+      (total, sale) => total + sale.amount,
+      0,
+    );
+
+    assert.ok(
+      attributedRevenue <= totalRevenue,
+      `${scenario.id} : l'attribution publicitaire ne dépasse pas les ventes`,
+    );
+    assert.ok(
+      attributedRevenue >= totalRevenue * 0.45,
+      `${scenario.id} : les campagnes restent matériellement reliées aux ventes`,
     );
   }
 });

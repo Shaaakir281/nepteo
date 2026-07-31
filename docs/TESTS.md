@@ -16,7 +16,8 @@ Jeu de données : `docs/tests/prospects-test.csv` (24 prospects, 5 sans email, s
    - `0017_research_daily_quota.sql` ;
    - `0018_atomic_action_decisions.sql` ;
    - `0019_commercial_rls_catchup.sql` ;
-   - `0020_value_events.sql`.
+   - `0020_value_events.sql` ;
+   - `0021_atomic_csv_import.sql`.
 
    Avant `0013`, contrôler les doublons :
 
@@ -27,7 +28,7 @@ Jeu de données : `docs/tests/prospects-test.csv` (24 prospects, 5 sans email, s
    having count(*) > 1;
    ```
 
-   Si la requête renvoie une ligne, arrêter et arbitrer explicitement les memberships concernés. `0013` échoue volontairement sans modifier les données ; ne pas supprimer automatiquement une appartenance. Après `0015`, exécuter le [smoke authentifié/RLS](tests/SMOKE-AUTH-RLS.md), puis compléter par une recette manuelle du rôle commercial ; le smoke automatisé actuel couvre le rôle lecture. `0016` crée le marqueur de readiness après avoir vérifié les prérequis critiques ; `0017`, `0018`, `0019` puis `0020` doivent le porter à `20`. (« Success. No rows returned » est normal pour une migration de schéma.)
+   Si la requête renvoie une ligne, arrêter et arbitrer explicitement les memberships concernés. `0013` échoue volontairement sans modifier les données ; ne pas supprimer automatiquement une appartenance. Après `0015`, exécuter le [smoke authentifié/RLS](tests/SMOKE-AUTH-RLS.md), puis compléter par une recette manuelle du rôle commercial ; le smoke automatisé actuel couvre le rôle lecture. `0016` crée le marqueur de readiness après avoir vérifié les prérequis critiques ; `0017`, `0018`, `0019`, `0020` puis `0021` doivent le porter à `21`. (« Success. No rows returned » est normal pour une migration de schéma.)
 2. **`CONNECTOR_TOKEN_ENCRYPTION_KEY` et `CRON_SECRET`** : ces clés ne se « trouvent » nulle part — **c'est toi qui les fabriques**. Ouvre PowerShell et lance **deux fois** :
 
    ```powershell
@@ -47,7 +48,27 @@ Jeu de données : `docs/tests/prospects-test.csv` (24 prospects, 5 sans email, s
    (L'analyse utilise la tâche `recommend_action` → niveau premium, d'où les 3 lignes. Quand tu prendras une clé Anthropic : supprime les 3 lignes `LLM_MODEL*`, les défauts Claude reprennent.) Sans aucune clé, l'analyse fonctionne quand même avec des textes templates.
 4. Redémarrer `npm run dev` après toute modif d'env.
 
-> État au 30 juillet 2026 : les migrations `0012` à `0020` et l'application correspondante sont en production sur la révision Azure `nepteo-prod--0000007`, image `a2bbc34dcb97ab00951a3efa631c4f7c0a0428ca`. Le smoke applicatif authentifié en lecture est passé sur la vitrine fictive, dont le bandeau et les aperçus connecteurs ont été contrôlés dans le navigateur intégré. Le scénario de démonstration doit rester chargé pendant les tests commanditaires ; son cycle `seed → analyse → actions préparées → reset → reseed identique` se recette séparément. Le smoke RLS, les callbacks OAuth, les synchronisations et les autres mutations utilisent des comptes et organisations de test dédiés.
+> État au 31 juillet 2026 : Supabase est à `app_schema_version = 21` depuis `2026-07-30T17:40:26Z`, tandis qu'Azure sert encore l'application précédente sur la révision `nepteo-prod--0000007`, image `a2bbc34dcb97ab00951a3efa631c4f7c0a0428ca`. Le smoke réel des RPC `0021` est vert sur les fixtures dédiées `E2E_RLS_CSV_OWN` et `E2E_RLS_CSV_OTHER`.
+
+### Deux voies de données, jamais mélangées
+
+Choisir exactement une voie par organisation :
+
+1. **Scénario Nepteo V2 certifié** : charger l'une des trois variantes natives dans une organisation vide. Le connecteur porte le scénario, `seed_version = 2` et l'heure de chargement ; seuls ce seed complet et ses artefacts marqués peuvent être affichés comme « données fictives ». Recetter `seed → analyse → actions préparées → reset → reseed identique`.
+2. **Données autorisées du testeur** : retirer d'abord tout scénario Nepteo, puis utiliser Google Sheets, Notion ou CSV. L'interface reste « Environnement de test » et ne qualifie jamais ces lignes de fictives. Les résultats de cette voie peuvent alimenter une preuve terrain seulement selon le protocole de la scorecard.
+
+Les événements `is_demo = true` de la voie A sont toujours exclus des gates terrain. Un scénario actif doit bloquer OAuth, synchronisation et import ; aucun test ne doit superposer une feuille ou un CSV au scénario.
+
+### Contrat CSV V1
+
+- fichier strictement UTF-8, au plus **900 Ko**, **5 000 lignes de données** et 100 colonnes ;
+- séparateur virgule, point-virgule ou tabulation, avec support de `sep=;` et rejet des séparateurs ambigus ;
+- auto-mapping non ambigu de nom, email, entreprise, statut, notes et dernier contact : un en-tête ne peut servir qu'une fois ;
+- confirmation explicite que les données sont autorisées ; seuls ces six champs sont conservés et peuvent nourrir analyses et brouillons, les colonnes inconnues sont ignorées ;
+- identifiants stables dérivés de l'email normalisé ou, à défaut, du couple nom/entreprise ; réordonner les lignes ou modifier une note ne recrée pas tous les prospects ;
+- remplacement idempotent et retrait explicite du seul import CSV ; les autres connecteurs restent intacts ;
+- remplacement, suppression des artefacts CSV devenus obsolètes, métadonnées et journal exécutés atomiquement par les RPC service-role de `0021`, sous verrou `data`.
+- le retrait supprime contacts, propositions liées à la source et briefing courant ; le journal append-only et le cache des recherches d'entreprise déjà demandées restent conservés. Ce retrait de source ne vaut pas effacement RGPD complet du tenant.
 
 ### Contrats de sécurité locaux
 
@@ -65,8 +86,8 @@ Passage de référence du lot livré jusqu'à la PR #11 : **341/341 tests**, lin
 Les tests couvrent notamment :
 
 - la matrice de rôles et le filtrage RLS fail-closed de `0015`, réappliqués par `0019` : le commercial ne voit aucun contenu libre/dérivé (mémoire, recherches, briefings, actions, journal, outbox), seulement les colonnes prospects expurgées, le nom de l'organisation et les métadonnées non sensibles des connecteurs non financiers ; `organizations.activity`, `connectors.config` et les credentials restent côté serveur ;
-- l'isolation démo : administrateur uniquement, organisation test vide, préflight fail-closed, sauvegarde validée, verrou partagé avec les mutations de données réelles et nettoyage sélectif ;
-- `/api/health` sans dépendance base et `/api/ready` exigeant le marqueur de schéma `>= 20` ;
+- l'isolation des deux voies : administrateur uniquement pour le scénario, organisation vide au seed, certification V2 fail-closed, retrait obligatoire avant import, sauvegarde validée, verrou partagé avec les mutations de données apportées et nettoyage sélectif ;
+- `/api/health` sans dépendance base et `/api/ready` exigeant le marqueur de schéma `>= 21` ;
 - le quota de recherche atomique de `0017`, séparé du cache et sérialisé avec la pause : une pause gagnante ne réserve rien ; les appels forcés ou échoués après claim consomment une réservation, mais seul `status = ok` sert une réponse en cache ;
 - les RPC transactionnelles de `0018` pour décisions, claim, finalisation, pause et autonomie, avec reprise fail-closed en cas d'état ambigu ;
 - le Top 5 de R1B : filtre d'autorisation avant classement, plafond strict de cinq actions et justification « Pourquoi maintenant » déterministe ;
@@ -79,12 +100,31 @@ Les tests couvrent notamment :
 Après application sur une base de recette, vérifier séparément :
 
 1. `GET /api/health` renvoie 200 si le processus répond ;
-2. `GET /api/ready` renvoie 200 uniquement si Supabase est joignable et `app_schema_version.version >= 20` ;
+2. `GET /api/ready` renvoie 200 uniquement si Supabase est joignable et `app_schema_version.version >= 21` ;
 3. le chargement d'une démo est refusé hors rôle admin ou dans une organisation contenant une donnée réelle ;
 4. deux recherches simultanées ne peuvent pas dépasser le quota quotidien ;
 5. deux décisions ou exécutions concurrentes ne produisent qu'un gagnant ;
 6. « Aujourd'hui » affiche au plus cinq propositions autorisées, ordonnées, chacune avec sa raison « Pourquoi maintenant » ;
 7. l'approbation d'une relance fige ses cibles, puis les suites terrain sont déclarées prospect par prospect sans aucun envoi externe.
+
+### Smoke réel des RPC CSV
+
+Le smoke `0021` utilise exclusivement deux organisations synthétiques réservées,
+`E2E_RLS_CSV_OWN` et `E2E_RLS_CSV_OTHER`. Il crée la fixture si elle n'existe
+pas, refuse tout état métier préexistant, vérifie le refus inter-tenant, l'import
+valide, le rollback d'une date invalide, le rejeu idempotent et le retrait. Il ne
+touche jamais au tenant vitrine. Les organisations et les événements du journal
+append-only sont conservés pour rendre les recettes suivantes identifiables.
+
+```powershell
+$env:CSV_RPC_SMOKE_WRITE_PROBE = "I_ACKNOWLEDGE_E2E_CSV_PRODUCTION_FIXTURES"
+npm run smoke:csv-rpc
+Remove-Item Env:CSV_RPC_SMOKE_WRITE_PROBE
+```
+
+La commande exige `NEXT_PUBLIC_SUPABASE_URL` et
+`SUPABASE_SERVICE_ROLE_KEY`, chargées depuis `.env.local` si présent. Les
+contacts utilisés portent uniquement des adresses `.invalid`.
 
 ## 1. Fausse base Google Sheets
 
