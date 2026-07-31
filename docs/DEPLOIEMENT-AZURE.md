@@ -3,17 +3,25 @@
 Cette procédure prépare un déploiement Docker vers Azure Container Apps, avec
 images dans ACR, région UE et GitHub Actions en OIDC.
 
-> **État au 31 juillet 2026** : la PR #13 est fusionnée dans `main` au SHA
-> `813d2e0f3d49f19ec4d2c5094fe1e5f95af281ae`. Azure sert l'image
-> `nepteoacr27de3b.azurecr.io/nepteo:813d2e0f3d49f19ec4d2c5094fe1e5f95af281ae`
-> sur la révision saine `nepteo-prod--0000008`, avec 100 % du trafic. Supabase
-> production porte les migrations `0012` à `0021` et
+> **État au 31 juillet 2026 — release courante attestée** : la PR #17 est
+> fusionnée dans `main` au SHA `704efabd80de434ea2619cd993ae87427c114838`.
+> Sa CI `30620564365` est verte sur le head
+> `28781aad52564f02fcee1c0dda4b5ee5291836b8` ; la CI `main` `30620691704`
+> et le déploiement `30620812901` sont verts. Azure sert à 100 %, avec une
+> réplique, la révision `nepteo-prod--0000011`, latest et ready, état
+> Healthy/Provisioned/RunningAtMaxScale, image
+> `nepteoacr27de3b.azurecr.io/nepteo:704efabd80de434ea2619cd993ae87427c114838`,
+> digest `sha256:fe6cafbe991c45952262e33be965e4ba09239ff421a86dce80231117a3504425`.
+> Supabase production porte les migrations `0012` à `0021` et
 > `app_schema_version = 21`. Le workflow ne lance aucune migration : leur
 > application manuelle reste un préalable obligatoire à tout code qui les exige.
 >
-> **Historique — 30 juillet 2026** : la révision précédente
-> `nepteo-prod--0000007` servait l'image
-> `a2bbc34dcb97ab00951a3efa631c4f7c0a0428ca`.
+> **Historique — ne pas confondre avec la release courante** : la PR #16 a été
+> attestée sur `nepteo-prod--0000010`, au merge
+> `21c90f77af0c877e9c99f60a4997c4dad4b1ba84`. La PR #15 a porté la
+> reconstruction de la vitrine sur `nepteo-prod--0000009`. La PR #13 avait été promue sur
+> `nepteo-prod--0000008` ; le 30 juillet 2026, `nepteo-prod--0000007` servait
+> l'image `a2bbc34dcb97ab00951a3efa631c4f7c0a0428ca`.
 
 ## 1. Verrou absolu : identifier le bon compte Azure
 
@@ -289,31 +297,59 @@ Une fois le premier déploiement validé, on pourra ajouter le trigger
 `CRON_SECRET` comme **secret de dépôt** (le job planifié ne lit pas
 l’environnement GitHub `production`).
 
-### Preuve de la release du 31 juillet 2026
+### Preuve de la release courante PR #17 du 31 juillet 2026
 
-- PR #13 : CI de PR verte, run `30609476514` ;
-- `main` : SHA `813d2e0f3d49f19ec4d2c5094fe1e5f95af281ae`, CI verte,
-  run `30609579805` ;
-- build ACR : run `dd8`, image
-  `nepteoacr27de3b.azurecr.io/nepteo:813d2e0f3d49f19ec4d2c5094fe1e5f95af281ae`,
-  digest
-  `sha256:73b9566dcdafe12d01b472fa02c7ed1108bf042f7154631ec9ed01fa9283eca9` ;
-- promotion opérateur : build ACR puis mise à jour directe de Container Apps,
-  sans exécution du workflow GitHub de déploiement pour cette release ;
-- Container Apps : révision `nepteo-prod--0000008` saine, 100 % du trafic ;
+- PR [#17](https://github.com/Shaaakir281/nepteo/pull/17) fusionnée dans
+  `main` au SHA `704efabd80de434ea2619cd993ae87427c114838` ;
+- CI de PR verte, run `30620564365`, sur le head
+  `28781aad52564f02fcee1c0dda4b5ee5291836b8` ;
+- CI `main` verte, run `30620691704` ;
+- workflow de déploiement vert, run `30620812901` ;
+- validation automatisée : 385/385 tests, typecheck, lint et build verts,
+  24 pages/routes générées ; relecture finale sans défaut P1 ni P2 ;
+- Container Apps : `latestRevisionName` et `latestReadyRevisionName` valent
+  `nepteo-prod--0000011`, état Healthy/Provisioned/RunningAtMaxScale, une
+  réplique et 100 % du trafic, image
+  `nepteoacr27de3b.azurecr.io/nepteo:704efabd80de434ea2619cd993ae87427c114838`,
+  digest attesté
+  `sha256:fe6cafbe991c45952262e33be965e4ba09239ff421a86dce80231117a3504425` ;
 - Supabase : migrations `0012` à `0021`, `app_schema_version = 21` ;
 - six contrôles HTTP 200 : `/`, `/api/health` et `/api/ready` sur le domaine
   public, puis sur le FQDN Azure ;
-- smoke réel des RPC CSV vert sur les fixtures réservées
-  `E2E_RLS_CSV_OWN` et `E2E_RLS_CSV_OTHER` ;
-- contrôle navigateur de surface vert sur **Mon entreprise / Connecteurs**,
-  **Prospects** et **Aujourd'hui** : les trois scénarios sont présents, aucun
-  ancien badge exact « Démonstration · données fictives » ne subsiste et la
-  console ne remonte aucune erreur.
+- recette authentifiée : les surfaces emploient « scénario d'exemple Nepteo »
+  et « données d'exemple » et les anciens libellés ont disparu ; le briefing
+  attribue explicitement sa source aux données d'exemple du scénario Nepteo ;
+  l'identité reste en lecture seule et l'accès direct à
+  `/onboarding/identite` est redirigé vers « Mon entreprise » avec le message
+  de garde ; Northwind reste actif sans mutation de ses données pendant la
+  recette ; console navigateur vide ;
+- garde historique : PR #16 / `nepteo-prod--0000010` est la release attestée
+  précédente et ne décrit plus l'état courant de production ;
+- étape historique PR #15 / `nepteo-prod--0000009` : reconstruction de
+  production appliquée après sauvegarde
+  (`sha256:ffa9536fadf70d195cebc9b63c4fcfb73e3745ede0e9a20be31348cd6748e07c`) :
+  48 prospects, 6 connecteurs et 8 rubriques retirés, nom et membres préservés ;
+  les cycles de chargement et d'analyse des trois scénarios avaient produit six
+  propositions chacun.
 
-Cette preuve ferme la promotion technique de la release. Le smoke RLS
-multi-rôles complet, les OAuth réels et les parcours terrain commanditaires
-restent à jouer avant de déclarer le pilote entièrement recetté.
+Cette preuve ferme la promotion technique et la recette ciblée de PR #17. Le
+gate complet `reset → reseed → préparation → exécution` reste ouvert ; le smoke
+RLS multi-rôles complet, les OAuth réels et les parcours terrain commanditaires
+restent à jouer avant de déclarer le pilote entièrement recetté. C7 reste fermé.
+
+> **Note non bloquante** : le déploiement vert signale la dépréciation future
+> du runtime Node 20 utilisé par certaines actions GitHub. Ce warning n'affecte
+> ni l'artefact ni la révision ; mettre à niveau les actions concernées avant le
+> retrait effectif de ce runtime.
+
+### Contrat spécifique PR #17 désormais promu
+
+La voie Nepteo expose désormais uniquement « scénario d'exemple Nepteo » et
+« données d'exemple » ; `certified-demo` reste un marqueur technique. La voie
+apportée par le testeur reste « environnement de test » et précise que ses
+données peuvent être réelles ou synthétiques. La couverture automatisée vérifie
+aussi le refus `unsafe_existing_data` avant toute mutation et le latch UI
+fail-closed lorsque l'inventaire rendu devient obsolète.
 
 ## 7. Smoke test produit obligatoire
 
