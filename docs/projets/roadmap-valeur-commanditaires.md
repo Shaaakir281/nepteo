@@ -4,20 +4,34 @@
 >
 > Elle complète `docs/ROADMAP.md` et **remplace l'ordre d'exécution de la phase C** décrit historiquement dans `docs/projets/roadmap-beta.md`. Les fiches C1–C12 restent utiles comme historique et comme premières spécifications, mais ne valent ni autorisation d'envoi externe ni ordre de lancement.
 >
-> **Avancement de release** : la PR #13 est fusionnée dans `main` au SHA
-> `813d2e0f3d49f19ec4d2c5094fe1e5f95af281ae`. Les CI de PR
-> (`30609476514`) et de `main` (`30609579805`) sont vertes. L'image
-> `nepteoacr27de3b.azurecr.io/nepteo:813d2e0f3d49f19ec4d2c5094fe1e5f95af281ae`
-> est servie par la révision saine `nepteo-prod--0000008` avec 100 % du
-> trafic. Supabase porte `app_schema_version = 21` et les migrations `0012` à
-> `0021`. Les contrôles HTTP et le smoke RPC CSV réel sont verts ; le contrôle
-> navigateur de surface confirme les trois cartes de scénario et les libellés.
-> Restent leurs cycles complets, le RLS multi-rôles complet, les OAuth
-> réels et les parcours terrain commanditaires.
+> **Avancement de release** : la PR #17 est fusionnée dans `main` au SHA
+> `704efabd80de434ea2619cd993ae87427c114838`. Sa CI `30620564365` est verte
+> sur le head `28781aad52564f02fcee1c0dda4b5ee5291836b8` ; la CI `main`
+> (`30620691704`) et le déploiement (`30620812901`) sont verts. La révision
+> `nepteo-prod--0000011`, latest et ready, est
+> Healthy/Provisioned/RunningAtMaxScale avec une réplique et sert 100 % du trafic
+> sur l'image
+> `nepteoacr27de3b.azurecr.io/nepteo:704efabd80de434ea2619cd993ae87427c114838`,
+> digest `sha256:fe6cafbe991c45952262e33be965e4ba09239ff421a86dce80231117a3504425`.
+> Supabase porte `app_schema_version = 21` et les six checks HTTP répondent 200.
+> La release est validée par **385/385 tests**, typecheck, lint et build de
+> production à **24 pages/routes**, sans P1/P2 à l'issue de la revue indépendante.
+> La recette authentifiée valide la terminologie des deux voies de test, la
+> provenance du briefing, la lecture seule de l'identité, des offres et du site
+> ainsi que la redirection de `/onboarding/identite` vers « Mon entreprise ».
+> La couverture automatisée confirme le refus avant mutation et le latch
+> fail-closed ; le contrôle authentifié laisse Northwind actif sans mutation,
+> avec une console vide.
+> Le gate `reset → reseed → préparation → exécution` reste ouvert, comme le smoke
+> RLS multi-rôles complet, les OAuth réels et les parcours terrain C8, R1A, R1B
+> et R2. C7 reste fermé et aucun envoi externe n'est activé.
 >
-> **Historique — release du 30 juillet 2026** : l'image
-> `a2bbc34dcb97ab00951a3efa631c4f7c0a0428ca` était servie par la révision
-> `nepteo-prod--0000007` avec 100 % du trafic.
+> **Étape historique de reconstruction** : la PR #15 a reconstruit la vitrine
+> sur `nepteo-prod--0000009`, après sauvegarde
+> `sha256:ffa9536fadf70d195cebc9b63c4fcfb73e3745ede0e9a20be31348cd6748e07c`.
+> La release du 30 juillet 2026 servait auparavant l'image
+> `a2bbc34dcb97ab00951a3efa631c4f7c0a0428ca` sur la révision
+> `nepteo-prod--0000007`, avec 100 % du trafic.
 
 ## Cap produit
 
@@ -31,7 +45,7 @@ Le benchmark converge vers une boucle courte : **signal fiable → priorité exp
 
 - **Phase technique atteinte** : la phase 3A est déployée. Nepteo peut détecter, expliquer, faire décider et préparer une relance sans l'envoyer.
 - **Porte produit encore ouverte** : la phase 2 n'est pas prouvée sur le terrain. Il manque des recommandations évaluées sur des données réelles et des résultats aval observés.
-- **Schéma et application alignés** : les migrations `0012` à `0021` et le SHA `813d2e0f3d49f19ec4d2c5094fe1e5f95af281ae` sont en production. Les contrôles HTTP et le smoke RPC CSV sont acquis ; le navigateur confirme les trois cartes de scénario, les libellés prudents et une console sans erreur. Leurs cycles complets, le RLS multi-rôles, les OAuth réels et les parcours terrain restent à recetter avant le pilote.
+- **Schéma et application alignés** : les migrations `0012` à `0021` et le SHA `704efabd80de434ea2619cd993ae87427c114838` sont en production. Les six checks HTTP, les cycles de chargement et d'analyse des trois scénarios, le hotfix PR #16 et la terminologie/garde PR #17 sont acquis ; chaque scénario a produit six propositions sans erreur console lors de la reconstruction, puis Artisan et Northwind ont validé les corrections de surface et le refus sans mutation. Le gate `reset → reseed → préparation → exécution`, le smoke RLS multi-rôles, les OAuth réels et les parcours terrain C8, R1A, R1B et R2 restent à recetter avant le pilote.
 - **C7 n'est plus l'étape automatique suivante** : l'envoi réel ne sera construit qu'après preuve de l'utilité du play de relance et fermeture de ses gates RGPD/exploitation.
 
 ## Définitions de mesure
@@ -52,13 +66,13 @@ Principes de preuve :
 - aucun revenu n'est « attribué » sans source d'opportunité ou de paiement explicite ;
 - aucun objet, corps d'email ou adresse n'est nécessaire dans les métriques de valeur.
 - les événements marqués `is_demo = true` ne participent jamais aux gates terrain.
-- seul un scénario Nepteo V2 complet et certifié peut être qualifié de « données fictives » ; toute donnée apportée reste étiquetée « environnement de test ».
+- seul un scénario Nepteo V2 complet et classé `certified-demo` peut être présenté en surface comme un « scénario d'exemple Nepteo » contenant des « données d'exemple » ; toute donnée saisie ou importée par le testeur, réelle ou synthétique, reste sous le libellé « environnement de test ».
 
 ## Roadmap ordonnée
 
 | Vague | Incrément | Effort indicatif | Dépendance | Porte de sortie |
 |---:|---|---:|---|---|
-| R0 | Deux voies de test certifiées, fin du smoke | 1–2 j d'exploitation | Artefact `813d2e0` déployé, readiness 21, HTTP et RPC CSV verts, surfaces contrôlées | Cycles des scénarios, smoke RLS multi-rôles et OAuth réels ; parcours C8/R1/R2 terrain verts |
+| R0 | Deux voies de test certifiées, fin du smoke | 1–2 j d'exploitation | Artefact au préfixe `704efab` déployé, readiness 21, HTTP, RPC CSV, chargement/analyse et recettes authentifiées PR #16/#17 verts | `reset → reseed → préparation → exécution`, smoke RLS multi-rôles et OAuth réels ; parcours C8/R1A/R1B/R2 terrain verts |
 | R1A | Preuve manuelle structurée — C9A | 2–3 j | Modèle d'événements validé | Utilité, faux positif, retouche, envoi et résultat déclarés sans fabriquer de statut fournisseur |
 | R1B | « Aujourd'hui » : jusqu'à cinq priorités réelles | 1–2 j | Règles actuelles réutilisées | Jusqu'à cinq actions classées de façon déterministe avec « pourquoi maintenant » |
 | R2 | Play supervisé « prospects dormants » | 2–3 j + 2 semaines d'observation | R0 franchi, puis R1A + R1B promus sur l'environnement pilote | Cohorte bornée, validation humaine, snapshot atomique, scorecard exploitable et observations terrain suffisantes |
@@ -69,17 +83,17 @@ Principes de preuve :
 
 Les estimations sont des ordres de grandeur de développement, hors délais de consentement administrateur, validation de domaine, revue juridique et disponibilité des testeurs.
 
-## R0 — Recetter avant de promouvoir
+## R0 — Fermer les derniers gates avant le pilote
 
 1. **Acquis actuel — base** : migrations `0012` → `0021` appliquées manuellement et `app_schema_version.version = 21`.
-2. **Acquis actuel — release** : PR #13 ; CI de PR `30609476514` et CI de `main` `30609579805` vertes ; SHA `813d2e0f3d49f19ec4d2c5094fe1e5f95af281ae`.
-3. **Acquis actuel — artefact** : run ACR `dd8`, image `nepteoacr27de3b.azurecr.io/nepteo:813d2e0f3d49f19ec4d2c5094fe1e5f95af281ae`, digest `sha256:73b9566dcdafe12d01b472fa02c7ed1108bf042f7154631ec9ed01fa9283eca9`, révision saine `nepteo-prod--0000008`, 100 % du trafic.
-4. **Acquis actuel — exploitation** : six contrôles HTTP 200 sur le domaine public et le FQDN Azure ; smoke RPC CSV réel vert sur `E2E_RLS_CSV_OWN` et `E2E_RLS_CSV_OTHER`.
-5. **Acquis actuel — surface de la voie A** : contrôle navigateur vert sur entreprise/connecteurs, prospects et accueil ; les trois cartes de scénario sont présentes, l'ancien badge exact « Démonstration · données fictives » est absent et la console est sans erreur.
-6. **Reste R0** : jouer le smoke RLS multi-rôles complet, puis les OAuth Google Sheets/Notion réels et les parcours terrain C8, R1A, R1B et R2.
-7. Recetter la voie B avec les données autorisées des commanditaires : retirer d'abord le scénario, puis utiliser Google Sheets, Notion ou CSV sans jamais qualifier ces données de fictives.
-8. Recetter la réconciliation conservatrice des statuts contradictoires d'un même contact entre plusieurs sources : un état terminal ou une opposition bloque la relance ; deux statuts actifs contradictoires suspendent la cible.
-9. Ne pas déclarer R0 entièrement franchi ni basculer le pilote tant que le reliquat multi-rôles, OAuth et terrain n'est pas vert.
+2. **Acquis actuel — release** : PR #17 fusionnée au SHA `704efabd80de434ea2619cd993ae87427c114838` ; CI de PR `30620564365` verte sur le head `28781aad52564f02fcee1c0dda4b5ee5291836b8`, CI `main` `30620691704` et déploiement `30620812901` verts.
+3. **Acquis actuel — artefact** : image `nepteoacr27de3b.azurecr.io/nepteo:704efabd80de434ea2619cd993ae87427c114838`, digest attesté `sha256:fe6cafbe991c45952262e33be965e4ba09239ff421a86dce80231117a3504425`, révision `nepteo-prod--0000011` latest et ready, Healthy/Provisioned/RunningAtMaxScale, une réplique et 100 % du trafic.
+4. **Acquis actuel — exploitation et qualité** : six contrôles HTTP 200 sur le domaine public et le FQDN Azure ; smoke RPC CSV réel vert sur `E2E_RLS_CSV_OWN` et `E2E_RLS_CSV_OTHER` ; **385/385 tests**, typecheck, lint et build de production à **24 pages/routes** verts ; revue indépendante sans P1/P2.
+5. **Acquis historique — reconstruction PR #15** : sauvegarde `sha256:ffa9536fadf70d195cebc9b63c4fcfb73e3745ede0e9a20be31348cd6748e07c`, retrait exact de 48 prospects, 6 connecteurs et 8 rubriques sans modifier le nom ni les membres ; cycles de chargement et d'analyse des trois scénarios verts, chaque scénario ayant produit six propositions avec une console vide.
+6. **Acquis historique — hotfix PR #16** : recette authentifiée verte sur la provenance du briefing, la lecture seule de l'identité, des offres et du site avec accès direct refusé, l'explication Artisan « 13 visibles / 12 actionnables / 1 suspendu », puis Northwind rechargé et laissé actif avec six propositions ; console vide.
+7. **Acquis actuel — PR #17** : terminologie « scénario d'exemple Nepteo » / « données d'exemple » pour la voie A et « environnement de test » pour la voie B ; provenance du briefing, lecture seule de l'identité, des offres et du site avec redirection de `/onboarding/identite` vers « Mon entreprise » ; refus `unsafe_existing_data` avant mutation et latch fail-closed des trois chargements vérifiés par la couverture automatisée, puis Northwind laissé actif sans mutation lors de la recette authentifiée avec une console vide.
+8. **Reste R0** : jouer le gate `reset → reseed → préparation → exécution`, terminer le smoke RLS multi-rôles, recetter les OAuth Google Sheets/Notion réels et les parcours terrain C8, R1A, R1B et R2.
+9. **Frontière** : ne pas déclarer R0 entièrement franchi ni basculer le pilote tant que ces gates ne sont pas verts. C7 reste fermé et aucun envoi externe n'est activé.
 
 **Historique conservé — 30 juillet 2026** : les migrations `0012` → `0020`
 avaient porté le schéma à `20` à `2026-07-30T06:02:14Z`. La PR #11, ses CI,
@@ -89,7 +103,7 @@ la release précédente.
 
 R1A, R1B et R2 sont déployés et leur schéma de support est présent en production. R0 bloque encore leur promotion vers un pilote réel, pas leur recette sur la révision de production.
 
-Les tests techniques publics continuent sur la révision `nepteo-prod--0000008`. Après fermeture du reliquat R0, R1A, R1B puis R2 sont promus de façon supervisée sur un tenant pilote dédié, avec l'image et la révision notées dans la scorecard.
+Les tests techniques publics continuent sur la révision `nepteo-prod--0000011`. Après fermeture du reliquat R0, R1A, R1B puis R2 sont promus de façon supervisée sur un tenant pilote dédié, avec l'image et la révision notées dans la scorecard.
 
 ## R1A — Instrumenter la preuve avant l'envoi
 
@@ -124,12 +138,14 @@ Le classement est une fonction pure et déterministe. Le filtre de rôle est app
 ## R2 — Prouver le play « prospects dormants »
 
 > **Statut de release au 2026-07-31** : le lanceur, la scorecard et leur schéma
-> de support sont déployés sur l'image
-> `nepteoacr27de3b.azurecr.io/nepteo:813d2e0f3d49f19ec4d2c5094fe1e5f95af281ae`,
-> révision `nepteo-prod--0000008`. Les six contrôles HTTP et le smoke RPC CSV
-> sont verts ; le navigateur confirme les trois cartes de scénario et les
-> libellés prudents. Seule la voie A
-> certifiée est fictive et elle ne franchit aucun gate terrain. Le pilote reste
+> de support sont déployés au SHA
+> `704efabd80de434ea2619cd993ae87427c114838`, révision
+> `nepteo-prod--0000011`. Les six contrôles HTTP, le smoke RPC CSV et les
+> cycles de chargement et d'analyse des trois scénarios sont verts ; chaque
+> scénario a produit six propositions. Le gate
+> `reset → reseed → préparation → exécution` reste ouvert. Seule la voie A
+> classée `certified-demo` est la voie des scénarios d'exemple et elle ne
+> franchit aucun gate terrain. Le pilote reste
 > interdit tant que le RLS multi-rôles complet, les OAuth réels et les parcours
 > terrain ne sont pas verts.
 
@@ -260,7 +276,7 @@ R2 est maintenant déployé avec son schéma à 21, mais il attend encore la fin
 ## Dix prochains jours ouvrés
 
 1. **J1 — terminé** : commit du worktree complet, PR/CI, fusion dans `main`, déploiement manuel protégé et contrôles publics verts.
-2. **J2 — surfaces et RPC CSV terminées** : contrôle navigateur des trois cartes de scénario et smoke RPC CSV réel verts ; restent leurs cycles complets, le smoke RLS multi-rôles, les OAuth réels et les parcours terrain C8/R1A/R1B/R2.
+2. **J2 — vitrine reconstruite, PR #16 et PR #17 recettées** : smoke RPC CSV réel, reconstruction de la vitrine et cycles de chargement et d'analyse des trois scénarios verts ; chaque scénario a produit six propositions avec une console vide. La recette authentifiée de PR #16 valide le briefing, les gardes en lecture seule et l'explication des cohortes. PR #17 est promue et recettée sur la terminologie des deux voies, la provenance du briefing, la lecture seule avec redirection et le refus/latch `unsafe_existing_data` ; Northwind est resté sans mutation et la console vide. Restent le gate `reset → reseed → préparation → exécution`, le smoke RLS multi-rôles, les OAuth réels et les parcours terrain C8/R1A/R1B/R2.
 3. **J3** : scorecard mise à jour et promotion supervisée vers l'environnement pilote si R0 est vert.
 4. **J4–J5** : recette du play dormant borné, de l'exclusion des vagues antérieures, du snapshot atomique et de la scorecard.
 5. **J6–J10** : premières sessions commanditaires, correction des blocages P0/P1 et collecte des 30 premières évaluations.

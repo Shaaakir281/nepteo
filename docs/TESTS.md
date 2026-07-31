@@ -48,22 +48,44 @@ Jeu de données : `docs/tests/prospects-test.csv` (24 prospects, 5 sans email, s
    (L'analyse utilise la tâche `recommend_action` → niveau premium, d'où les 3 lignes. Quand tu prendras une clé Anthropic : supprime les 3 lignes `LLM_MODEL*`, les défauts Claude reprennent.) Sans aucune clé, l'analyse fonctionne quand même avec des textes templates.
 4. Redémarrer `npm run dev` après toute modif d'env.
 
-> **État au 31 juillet 2026** : la PR #13 et les CI de PR et de `main` sont
-> vertes. Le SHA applicatif issu de `main`
-> `813d2e0f3d49f19ec4d2c5094fe1e5f95af281ae` est déployé sur la révision
-> saine `nepteo-prod--0000008`, avec 100 % du trafic. Supabase est à
-> `app_schema_version = 21` avec les migrations `0012` à `0021`. Le smoke réel
-> des RPC `0021` est vert sur les fixtures dédiées `E2E_RLS_CSV_OWN` et
-> `E2E_RLS_CSV_OTHER`.
+> **État au 31 juillet 2026 — release courante attestée** : la PR #17 est
+> fusionnée dans `main` au SHA `704efabd80de434ea2619cd993ae87427c114838`.
+> Sa CI `30620564365` est verte sur le head
+> `28781aad52564f02fcee1c0dda4b5ee5291836b8` ; la CI `main` `30620691704`
+> et le déploiement `30620812901` sont verts. La révision
+> `nepteo-prod--0000011`, latest et ready, sert à 100 %, avec une réplique,
+> l'image
+> `nepteoacr27de3b.azurecr.io/nepteo:704efabd80de434ea2619cd993ae87427c114838`,
+> digest `sha256:fe6cafbe991c45952262e33be965e4ba09239ff421a86dce80231117a3504425`,
+> état Healthy/Provisioned/RunningAtMaxScale. Supabase reste à
+> `app_schema_version = 21`.
 
 ### Deux voies de données, jamais mélangées
 
 Choisir exactement une voie par organisation :
 
-1. **Scénario Nepteo V2 certifié** : charger l'une des trois variantes natives dans une organisation vide. Le connecteur porte le scénario, `seed_version = 2` et l'heure de chargement ; seuls ce seed complet et ses artefacts marqués peuvent être affichés comme « données fictives ». Recetter `seed → analyse → actions préparées → reset → reseed identique`.
-2. **Données autorisées du testeur** : retirer d'abord tout scénario Nepteo, puis utiliser Google Sheets, Notion ou CSV. L'interface reste « Environnement de test » et ne qualifie jamais ces lignes de fictives. Les résultats de cette voie peuvent alimenter une preuve terrain seulement selon le protocole de la scorecard.
+1. **Scénario d'exemple Nepteo** : charger l'une des trois variantes natives dans une organisation vide. Le connecteur porte le scénario, `seed_version = 2` et l'heure de chargement ; l'état complet et cohérent est classé techniquement `certified-demo`, tandis que la surface présente ses artefacts marqués comme des « données d'exemple ». Recetter `seed → analyse → actions préparées → reset → reseed identique`.
+2. **Environnement de test alimenté par le testeur** : retirer d'abord tout scénario Nepteo, puis saisir des données ou utiliser Google Sheets, Notion ou CSV. L'interface reste « Environnement de test » et indique que les données saisies ou importées peuvent être réelles ou synthétiques ; elle n'en déduit jamais la provenance. Les résultats de cette voie peuvent alimenter une preuve terrain seulement selon le protocole de la scorecard.
 
 Les événements `is_demo = true` de la voie A sont toujours exclus des gates terrain. Un scénario actif doit bloquer OAuth, synchronisation et import ; aucun test ne doit superposer une feuille ou un CSV au scénario.
+
+### Contrat PR #17 attesté en production
+
+La release courante inclut ce contrat et sa preuve de production :
+
+1. Toutes les surfaces de la voie A emploient « scénario d'exemple Nepteo » et
+   « données d'exemple », sans exposer `certified-demo` comme texte produit ;
+   les anciens libellés ont disparu.
+2. La voie B reste « environnement de test » et précise que les données saisies
+   ou importées par le testeur peuvent être réelles ou synthétiques.
+3. La couverture automatisée vérifie la course de rendu : si l'inventaire
+   devient dangereux avant le clic, le serveur retourne
+   `unsafe_existing_data` avant sauvegarde, invalidation, reset ou seed, puis le
+   latch UI fail-closed désactive les trois chargements.
+4. La recette authentifiée confirme la source du briefing, l'identité en lecture
+   seule, la redirection de `/onboarding/identite` vers « Mon entreprise » avec
+   le message de garde, Northwind actif sans mutation et une console navigateur
+   vide.
 
 ### Contrat CSV V1
 
@@ -87,9 +109,12 @@ npm run lint
 npm run build
 ```
 
-Passage de référence de la release actuelle : PR #13, CI de PR
-`30609476514` verte, puis CI de `main` `30609579805` verte sur le SHA
-`813d2e0f3d49f19ec4d2c5094fe1e5f95af281ae`.
+Passage de référence de la release actuelle : **385/385 tests**, typecheck,
+lint et build verts, **24 pages/routes** générées et aucun défaut P1 ou P2 lors
+de la relecture finale. PR #17 est fusionnée au SHA
+`704efabd80de434ea2619cd993ae87427c114838`, avec la CI de PR `30620564365`
+verte sur le head `28781aad52564f02fcee1c0dda4b5ee5291836b8`, la CI de `main`
+`30620691704` verte, puis le déploiement `30620812901` vert.
 
 **Historique — lot livré jusqu'à la PR #11** : **341/341 tests**, lint,
 typecheck et build Next.js 16.2.10 verts ; **23 pages/routes** générées.
@@ -143,20 +168,41 @@ valide, rollback, rejeu idempotent et retrait vérifiés.
 
 ### Recette de production de la release
 
-- image
-  `nepteoacr27de3b.azurecr.io/nepteo:813d2e0f3d49f19ec4d2c5094fe1e5f95af281ae`,
-  digest
-  `sha256:73b9566dcdafe12d01b472fa02c7ed1108bf042f7154631ec9ed01fa9283eca9` ;
-- run ACR `dd8`, révision `nepteo-prod--0000008` saine et 100 % du trafic ;
+- PR [#17](https://github.com/Shaaakir281/nepteo/pull/17) fusionnée au SHA
+  `704efabd80de434ea2619cd993ae87427c114838` ;
+- CI de PR `30620564365` verte sur le head
+  `28781aad52564f02fcee1c0dda4b5ee5291836b8` ;
+- CI `main` `30620691704` et déploiement `30620812901` verts ;
+- 385/385 tests, typecheck, lint et build verts, 24 pages/routes générées ;
+  relecture finale sans défaut P1 ni P2 ;
+- révision `nepteo-prod--0000011`, latest et ready, état
+  Healthy/Provisioned/RunningAtMaxScale, une réplique et 100 % du trafic, image
+  `nepteoacr27de3b.azurecr.io/nepteo:704efabd80de434ea2619cd993ae87427c114838`,
+  digest attesté
+  `sha256:fe6cafbe991c45952262e33be965e4ba09239ff421a86dce80231117a3504425`,
+  schéma Supabase 21 ;
 - six réponses HTTP 200 pour `/`, `/api/health` et `/api/ready`, sur le
   domaine public et sur le FQDN Azure ;
-- navigateur authentifié vert sur **Mon entreprise / Connecteurs**,
-  **Prospects** et **Aujourd'hui** ;
-- trois scénarios proposés, aucune occurrence de l'ancien badge exact
-  « Démonstration · données fictives », aucune erreur dans la console.
+- recette authentifiée : nouveau vocabulaire « scénario d'exemple Nepteo » et
+  « données d'exemple » présent, anciens libellés absents ; briefing attribué
+  aux données d'exemple du scénario Nepteo ; identité en lecture seule et accès
+  direct à `/onboarding/identite` redirigé vers « Mon entreprise » avec le
+  message de garde ; Northwind actif sans mutation de ses données pendant la
+  recette ; console navigateur vide ;
+- garde historique : PR #16 / `nepteo-prod--0000010` est la release attestée
+  précédente et ne doit plus être interprétée comme la production courante ;
+- étape historique PR #15 / `nepteo-prod--0000009` : reconstruction de
+  production appliquée après sauvegarde
+  (`sha256:ffa9536fadf70d195cebc9b63c4fcfb73e3745ede0e9a20be31348cd6748e07c`) :
+  exactement 48 prospects, 6 connecteurs et 8 rubriques retirés ; nom et
+  membres préservés ;
+- cycles de chargement et d'analyse historiques des trois scénarios verts :
+  chaque scénario a produit six propositions avec une console vide.
 
-Cette recette ne ferme pas encore le smoke RLS multi-rôles complet, les OAuth
-réels ni les parcours terrain commanditaires.
+Cette recette valide PR #17 mais ne ferme pas le gate complet
+`reset → reseed → préparation → exécution`, le smoke RLS multi-rôles complet,
+les OAuth réels ni les parcours terrain commanditaires. C7 reste fermé : aucun
+envoi externe n'est activé.
 
 ## 1. Fausse base Google Sheets
 
