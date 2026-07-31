@@ -50,6 +50,8 @@ La migration `0015` applique aussi la frontière financière en base. Une allowl
 
 Le mode démonstration est réservé aux administrateurs et à une organisation de test sans donnée réelle au moment du premier chargement. Cette vacuité est une précondition du seed : la vitrine reste ensuite volontairement peuplée par son scénario fictif jusqu'à une réinitialisation ou un remplacement explicite. Un préflight fail-closed contrôle connecteurs, prospects, campagnes, revenus, actions, outbox et briefings. Les artefacts actuels portent des marqueurs explicites (`demo`, provider et identifiants préfixés) ; les anciens identifiants ne sont reconnus qu'avec un marqueur de démo actif et fiable. Les organisations de recette OAuth/RLS et le futur pilote réel restent distincts du tenant vitrine.
 
+Un environnement de test emprunte une seule de deux voies exclusives : un scénario Nepteo V2 certifié, qui seul peut être présenté comme « données fictives », ou des données autorisées apportées par le testeur via un connecteur ou un CSV, qui restent libellées « environnement de test ». Le scénario doit être retiré avant tout import. La migration `0021` fournit au service role les RPC transactionnelles de remplacement et de retrait CSV ; elles verrouillent la ligne d'organisation, contrôlent rôle et tenant, bornent les données conservées et journalisent la mutation. Les Server Actions les appellent sous `withRealDataMutationLock`, qui détient le verrou distribué `data` pendant le contrôle du mode scénario et la RPC ; tout autre appelant doit conserver cette enveloppe.
+
 Un verrou distribué par organisation sérialise chargement, nettoyage, analyse, campagne et mutation de données réelles. Les écritures mémoire/connecteurs prennent le verrou `data`, vérifient le mode démo puis lisent et écrivent dans la même section critique : aucune donnée réelle ne peut apparaître entre le contrôle et la mutation. L'analyse et les campagnes restent dans le scope démo, et le nettoyage est sélectif : il ne supprime jamais une ligne non marquée. Une sauvegarde `__demo_backup` existante est validée avant tout reset ou seed ; une sauvegarde corrompue bloque le chargement. Un verrou orphelin n'est jamais repris automatiquement : sa suppression exige une vérification opératoire, faute de fencing distribué.
 
 ## Quotas et transitions atomiques
@@ -80,6 +82,9 @@ Un verrou distribué par organisation sérialise chargement, nettoyage, analyse,
 
 - Production Azure Container Apps en région EU, domaine HTTPS actif.
 - `/api/health` est un contrôle de liveness sans accès base ; `/api/ready` vérifie Supabase et le marqueur de compatibilité de schéma introduit par `0016`.
-- L'application exige une version de schéma au moins égale à `20`, portée par `0020`.
-- Les migrations `0012` à `0020` restent manuelles. Le workflow vérifie le marqueur avant toute mutation Azure, puis `/api/health` et `/api/ready` après déploiement.
-- Les migrations `0012` à `0020` et le code associé sont en production depuis le 2026-07-30. Azure sert l'image `a2bbc34dcb97ab00951a3efa631c4f7c0a0428ca`, révision `nepteo-prod--0000007`.
+- L'application exige une version de schéma au moins égale à `21`, portée par `0021`.
+- Les migrations `0012` à `0021` restent manuelles. Le workflow vérifie le marqueur avant toute mutation Azure, puis `/api/health` et `/api/ready` après déploiement.
+- Release applicative du 2026-07-31 : la PR #13 a livré le SHA `813d2e0f3d49f19ec4d2c5094fe1e5f95af281ae`, qui est celui déployé. Azure sert l'image `nepteoacr27de3b.azurecr.io/nepteo:813d2e0f3d49f19ec4d2c5094fe1e5f95af281ae`, digest `sha256:73b9566dcdafe12d01b472fa02c7ed1108bf042f7154631ec9ed01fa9283eca9`, sur la révision `nepteo-prod--0000008` avec 100 % du trafic.
+- `/`, `/api/health` et `/api/ready` répondent HTTP 200. Le smoke réel des RPC CSV est vert sur `E2E_RLS_CSV_OWN` et `E2E_RLS_CSV_OTHER` ; le contrôle navigateur de surface confirme les trois cartes de scénario, les libellés prudents et une console sans erreur.
+- C7 reste fermé : cette release ne réalise aucun envoi externe.
+- Jalon historique du 2026-07-30 : les migrations `0012` à `0020` et le code alors associé étaient en production dans l'image `a2bbc34dcb97ab00951a3efa631c4f7c0a0428ca`, révision `nepteo-prod--0000007`.

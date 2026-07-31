@@ -3,11 +3,17 @@
 Cette procédure prépare un déploiement Docker vers Azure Container Apps, avec
 images dans ACR, région UE et GitHub Actions en OIDC.
 
-> État au 30 juillet 2026 : les migrations `0012` à `0021` sont appliquées à
-> Supabase production (`app_schema_version = 21`) et Azure sert encore l'image
-> `a2bbc34dcb97ab00951a3efa631c4f7c0a0428ca`, révision
-> `nepteo-prod--0000007`. Le workflow ne lance aucune migration : leur
+> **État au 31 juillet 2026** : la PR #13 est fusionnée dans `main` au SHA
+> `813d2e0f3d49f19ec4d2c5094fe1e5f95af281ae`. Azure sert l'image
+> `nepteoacr27de3b.azurecr.io/nepteo:813d2e0f3d49f19ec4d2c5094fe1e5f95af281ae`
+> sur la révision saine `nepteo-prod--0000008`, avec 100 % du trafic. Supabase
+> production porte les migrations `0012` à `0021` et
+> `app_schema_version = 21`. Le workflow ne lance aucune migration : leur
 > application manuelle reste un préalable obligatoire à tout code qui les exige.
+>
+> **Historique — 30 juillet 2026** : la révision précédente
+> `nepteo-prod--0000007` servait l'image
+> `a2bbc34dcb97ab00951a3efa631c4f7c0a0428ca`.
 
 ## 1. Verrou absolu : identifier le bon compte Azure
 
@@ -282,6 +288,32 @@ Une fois le premier déploiement validé, on pourra ajouter le trigger
 écrit, ajouter `APP_URL` comme **variable de dépôt** et dupliquer
 `CRON_SECRET` comme **secret de dépôt** (le job planifié ne lit pas
 l’environnement GitHub `production`).
+
+### Preuve de la release du 31 juillet 2026
+
+- PR #13 : CI de PR verte, run `30609476514` ;
+- `main` : SHA `813d2e0f3d49f19ec4d2c5094fe1e5f95af281ae`, CI verte,
+  run `30609579805` ;
+- build ACR : run `dd8`, image
+  `nepteoacr27de3b.azurecr.io/nepteo:813d2e0f3d49f19ec4d2c5094fe1e5f95af281ae`,
+  digest
+  `sha256:73b9566dcdafe12d01b472fa02c7ed1108bf042f7154631ec9ed01fa9283eca9` ;
+- promotion opérateur : build ACR puis mise à jour directe de Container Apps,
+  sans exécution du workflow GitHub de déploiement pour cette release ;
+- Container Apps : révision `nepteo-prod--0000008` saine, 100 % du trafic ;
+- Supabase : migrations `0012` à `0021`, `app_schema_version = 21` ;
+- six contrôles HTTP 200 : `/`, `/api/health` et `/api/ready` sur le domaine
+  public, puis sur le FQDN Azure ;
+- smoke réel des RPC CSV vert sur les fixtures réservées
+  `E2E_RLS_CSV_OWN` et `E2E_RLS_CSV_OTHER` ;
+- contrôle navigateur de surface vert sur **Mon entreprise / Connecteurs**,
+  **Prospects** et **Aujourd'hui** : les trois scénarios sont présents, aucun
+  ancien badge exact « Démonstration · données fictives » ne subsiste et la
+  console ne remonte aucune erreur.
+
+Cette preuve ferme la promotion technique de la release. Le smoke RLS
+multi-rôles complet, les OAuth réels et les parcours terrain commanditaires
+restent à jouer avant de déclarer le pilote entièrement recetté.
 
 ## 7. Smoke test produit obligatoire
 
