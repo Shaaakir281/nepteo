@@ -48,7 +48,13 @@ Jeu de données : `docs/tests/prospects-test.csv` (24 prospects, 5 sans email, s
    (L'analyse utilise la tâche `recommend_action` → niveau premium, d'où les 3 lignes. Quand tu prendras une clé Anthropic : supprime les 3 lignes `LLM_MODEL*`, les défauts Claude reprennent.) Sans aucune clé, l'analyse fonctionne quand même avec des textes templates.
 4. Redémarrer `npm run dev` après toute modif d'env.
 
-> État au 31 juillet 2026 : Supabase est à `app_schema_version = 21` depuis `2026-07-30T17:40:26Z`, tandis qu'Azure sert encore l'application précédente sur la révision `nepteo-prod--0000007`, image `a2bbc34dcb97ab00951a3efa631c4f7c0a0428ca`. Le smoke réel des RPC `0021` est vert sur les fixtures dédiées `E2E_RLS_CSV_OWN` et `E2E_RLS_CSV_OTHER`.
+> **État au 31 juillet 2026** : la PR #13 et les CI de PR et de `main` sont
+> vertes. Le SHA applicatif issu de `main`
+> `813d2e0f3d49f19ec4d2c5094fe1e5f95af281ae` est déployé sur la révision
+> saine `nepteo-prod--0000008`, avec 100 % du trafic. Supabase est à
+> `app_schema_version = 21` avec les migrations `0012` à `0021`. Le smoke réel
+> des RPC `0021` est vert sur les fixtures dédiées `E2E_RLS_CSV_OWN` et
+> `E2E_RLS_CSV_OTHER`.
 
 ### Deux voies de données, jamais mélangées
 
@@ -81,7 +87,12 @@ npm run lint
 npm run build
 ```
 
-Passage de référence du lot livré jusqu'à la PR #11 : **341/341 tests**, lint, typecheck et build Next.js 16.2.10 verts ; **23 pages/routes** générées.
+Passage de référence de la release actuelle : PR #13, CI de PR
+`30609476514` verte, puis CI de `main` `30609579805` verte sur le SHA
+`813d2e0f3d49f19ec4d2c5094fe1e5f95af281ae`.
+
+**Historique — lot livré jusqu'à la PR #11** : **341/341 tests**, lint,
+typecheck et build Next.js 16.2.10 verts ; **23 pages/routes** générées.
 
 Les tests couvrent notamment :
 
@@ -125,6 +136,27 @@ Remove-Item Env:CSV_RPC_SMOKE_WRITE_PROBE
 La commande exige `NEXT_PUBLIC_SUPABASE_URL` et
 `SUPABASE_SERVICE_ROLE_KEY`, chargées depuis `.env.local` si présent. Les
 contacts utilisés portent uniquement des adresses `.invalid`.
+
+Résultat de production du 31 juillet 2026 : smoke vert sur
+`E2E_RLS_CSV_OWN` et `E2E_RLS_CSV_OTHER`, avec refus inter-tenant, import
+valide, rollback, rejeu idempotent et retrait vérifiés.
+
+### Recette de production de la release
+
+- image
+  `nepteoacr27de3b.azurecr.io/nepteo:813d2e0f3d49f19ec4d2c5094fe1e5f95af281ae`,
+  digest
+  `sha256:73b9566dcdafe12d01b472fa02c7ed1108bf042f7154631ec9ed01fa9283eca9` ;
+- run ACR `dd8`, révision `nepteo-prod--0000008` saine et 100 % du trafic ;
+- six réponses HTTP 200 pour `/`, `/api/health` et `/api/ready`, sur le
+  domaine public et sur le FQDN Azure ;
+- navigateur authentifié vert sur **Mon entreprise / Connecteurs**,
+  **Prospects** et **Aujourd'hui** ;
+- trois scénarios proposés, aucune occurrence de l'ancien badge exact
+  « Démonstration · données fictives », aucune erreur dans la console.
+
+Cette recette ne ferme pas encore le smoke RLS multi-rôles complet, les OAuth
+réels ni les parcours terrain commanditaires.
 
 ## 1. Fausse base Google Sheets
 
