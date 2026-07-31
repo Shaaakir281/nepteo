@@ -66,7 +66,7 @@ export async function requestConnector(formData: FormData) {
     );
   } catch (error) {
     if (error instanceof DemoDataMutationBlockedError) {
-      fail("Retirez d'abord la démonstration avant de gérer un connecteur.");
+      fail("Retirez d'abord le scénario Nepteo avant de gérer un connecteur.");
     }
     if (error instanceof DemoBusyError) {
       fail("Une autre opération est en cours. Réessayez dans un instant.");

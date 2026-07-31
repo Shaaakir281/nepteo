@@ -109,7 +109,7 @@ export function templateCreativeBrief(seed: CreativeSeed): string {
     `- Un message simple, une seule promesse par création.`,
     `- Un visuel qui montre le produit en situation réelle.`,
     `- Un appel à l'action explicite et une offre limitée dans le temps.`,
-    `(Bonnes pratiques générales du secteur — à confirmer avec vos données réelles.)`,
+    `(Bonnes pratiques générales du secteur — à confirmer avec les données de votre organisation.)`,
     ``,
     `Accroches possibles :`,
     `- « ${offre} : ${objectif} sans y passer vos soirées. »`,

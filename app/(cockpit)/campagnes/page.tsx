@@ -153,15 +153,15 @@ export default async function CampagnesPage({
           </p>
           <p className="mx-auto mt-1.5 max-w-md text-[13px] leading-relaxed text-muted">
             Meta Ads sera bientôt connectable en direct. En attendant, chargez
-            une entreprise fictive pour voir l&apos;analyse à l&apos;œuvre (ROAS,
-            coût d&apos;acquisition, campagne à couper).
+            un scénario d&apos;exemple pour voir l&apos;analyse à l&apos;œuvre
+            (ROAS, coût d&apos;acquisition, campagne à couper).
           </p>
           {canEdit && (
             <Link
               href="/entreprise?onglet=connecteurs"
               className="mt-4 inline-block rounded-[10px] bg-violet px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-violet-deep"
             >
-              Essayer avec une entreprise fictive →
+              Charger un scénario d&apos;exemple →
             </Link>
           )}
         </div>
@@ -305,7 +305,7 @@ export default async function CampagnesPage({
 
           <p className="text-[11.5px] text-faint">
             {demoPresentation === "certified-demo"
-              ? "Scénario Nepteo — campagnes fictives."
+              ? "Scénario d'exemple Nepteo."
               : demoPresentation === "test-environment"
                 ? "Environnement de test — vérifiez l'origine des campagnes avant d'utiliser les résultats comme preuve terrain."
                 : "Environnement de test — campagnes issues de la source Meta Ads configurée."}

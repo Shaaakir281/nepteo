@@ -38,7 +38,7 @@ export function Sidebar({
         {demoPresentation !== "none" && (
           <span className="mt-1 inline-flex rounded-full bg-amber-tint px-2 py-0.5 text-[10.5px] font-semibold text-amber">
             {demoPresentation === "certified-demo"
-              ? "Scénario Nepteo — données fictives"
+              ? "Scénario d'exemple Nepteo"
               : "Environnement de test"}
           </span>
         )}

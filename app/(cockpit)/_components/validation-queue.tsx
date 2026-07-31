@@ -42,10 +42,11 @@ export function ValidationQueue({
                 href="/entreprise?onglet=connecteurs"
                 className="font-semibold text-violet hover:underline"
               >
-                Chargez une entreprise de démonstration
+                Chargez un scénario d&apos;exemple
               </Link>{" "}
-              — identité, prospects, campagnes et ventes en un clic. Attention :
-              cela remplace l&apos;identité que vous venez de saisir.
+              — identité, prospects, campagnes et ventes en un clic. Il
+              remplace temporairement l&apos;identité que vous venez de saisir,
+              puis la restaure à son retrait.
             </p>
           </>
         )}

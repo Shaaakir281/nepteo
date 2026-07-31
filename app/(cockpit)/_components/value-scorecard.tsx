@@ -275,8 +275,8 @@ export function ValueScorecard({
       )}
       {scorecard.excludedDemoEvents > 0 && (
         <p className="mt-1 text-[11px] text-faint">
-          {scorecard.excludedDemoEvents} événement(s) de démonstration exclu(s)
-          de tous les calculs.
+          {scorecard.excludedDemoEvents} événement(s) issu(s) d&apos;un scénario
+          d&apos;exemple exclu(s) de tous les calculs.
         </p>
       )}
     </section>

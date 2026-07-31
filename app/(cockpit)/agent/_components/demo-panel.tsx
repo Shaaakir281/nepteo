@@ -5,10 +5,10 @@ import { useRouter } from "next/navigation";
 import { clearDemoAction, loadDemoScenarioAction } from "../actions";
 
 /**
- * Mode démonstration : charge une entreprise fictive complète (identité,
- * prospects, campagnes, ventes) en un clic. Les trois scénarios sont
- * volontairement contrastés — l'agent doit s'adapter au métier, c'est ce
- * qu'on montre. Aucune donnée réelle n'est touchée.
+ * Charge un scénario d'exemple complet (identité, prospects, campagnes,
+ * ventes) en un clic. Les trois scénarios sont volontairement contrastés :
+ * l'agent doit s'adapter au métier. Les données apportées par le testeur ne
+ * sont jamais supprimées pour installer un scénario.
  */
 
 export interface ScenarioChoice {
@@ -34,24 +34,24 @@ const STEPS = [
 const STEP_MS = 700;
 
 /**
- * Un retrait qui échoue peut laisser des données fictives en base : le dire,
- * plutôt que d'afficher « Réessayez » comme pour un chargement.
+ * Un retrait qui échoue peut laisser des éléments du scénario en base : le
+ * dire, plutôt que d'afficher « Réessayez » comme pour un chargement.
  *
  * Une session expirée et une erreur de base ne se réparent pas pareil : on ne
  * renvoie donc pas le même conseil pour les deux.
  */
 function failureMessage(id: string, reason?: string): string {
   if (reason === "forbidden") {
-    return "Action refusée : le mode démonstration est réservé aux administrateurs.";
+    return "Action refusée : la gestion des scénarios d'exemple est réservée aux administrateurs.";
   }
   if (reason === "unsafe_existing_data") {
-    return "Chargement refusé pour protéger vos données existantes. Utilisez une organisation de test vide.";
+    return "Chargement refusé pour protéger les données déjà présentes. Utilisez une autre organisation de test, dédiée et vide.";
   }
   if (reason === "busy") {
-    return "Une autre opération de démonstration est en cours. Attendez sa fin, puis réessayez.";
+    return "Une autre opération de scénario est en cours. Attendez sa fin, puis réessayez.";
   }
   return id === "clear"
-    ? "Le retrait n'a pas abouti — des données de démonstration sont peut-être encore là, et votre fiche entreprise n'a pas été restaurée. Réessayez."
+    ? "Le retrait n'a pas abouti — le scénario peut être encore partiellement présent et votre fiche entreprise ne pas avoir été restaurée. Réessayez."
     : "Le chargement n'a pas abouti. Réessayez.";
 }
 
@@ -75,6 +75,9 @@ export function DemoPanel({
   );
   const [error, setError] = useState<string | null>(null);
   const [detail, setDetail] = useState<string | null>(null);
+  const [runtimeLoadBlock, setRuntimeLoadBlock] = useState<string[] | null>(
+    null,
+  );
 
   async function run(
     id: string,
@@ -87,6 +90,7 @@ export function DemoPanel({
       };
       reason?: string;
       detail?: string;
+      categories?: string[];
     }>,
   ) {
     if (busy) return;
@@ -133,13 +137,19 @@ export function DemoPanel({
         } else {
           setMessage(
             id === "clear"
-              ? "Données de démonstration retirées."
+              ? "Scénario Nepteo retiré."
               : created > 0
                 ? `Scénario chargé et analysé — ${created} proposition${created > 1 ? "s" : ""} en attente sur « Aujourd'hui ».`
                 : "Scénario chargé. L'analyse n'a rien trouvé à proposer cette fois.",
           );
         }
       } else {
+        if (id !== "clear" && result.reason === "unsafe_existing_data") {
+          // Le préflight serveur reste l'autorité. Si l'organisation a changé
+          // depuis le rendu RSC, on verrouille immédiatement les trois CTA sans
+          // attendre que le rafraîchissement réseau aboutisse.
+          setRuntimeLoadBlock(result.categories ?? []);
+        }
         setError(failureMessage(id, result.reason));
         setDetail(result.detail ?? null);
       }
@@ -156,32 +166,47 @@ export function DemoPanel({
   if (!canManageDemo) {
     return (
       <p className="text-[13px] text-muted">
-        Le chargement et le retrait des données de démonstration sont réservés
+        Le chargement et le retrait des scénarios d&apos;exemple sont réservés
         aux administrateurs.
       </p>
     );
   }
 
+  const canLoad = loadGuard.canLoad && runtimeLoadBlock === null;
+  const blockedCategories = runtimeLoadBlock ?? loadGuard.categories;
+
   return (
     <div>
       <p className="mb-3 rounded-[10px] bg-tint-soft px-3.5 py-2.5 text-[12.5px] leading-relaxed text-body">
-        Votre fiche entreprise sera remplacée le temps de la démonstration, puis
-        restaurée quand vous retirerez les données. Le chargement est refusé si
-        l&apos;organisation contient déjà des données ou connecteurs réels.
+        Les trois scénarios contiennent uniquement des données d&apos;exemple.
+        Votre fiche entreprise sera remplacée pendant le scénario, puis
+        restaurée à son retrait. Le chargement est désactivé dès que
+        l&apos;organisation contient des données ou outils apportés par le
+        testeur.
       </p>
-      {!loadGuard.canLoad && (
+      {!canLoad && (
         <div
           id="demo-load-block"
           role="status"
           className="mb-3 rounded-[10px] bg-amber-tint px-3.5 py-2.5 text-[12.5px] leading-relaxed text-body"
         >
           <p className="font-semibold">
-            Chargement désactivé avant toute modification.
+            {loadGuard.checkFailed
+              ? "État de l'organisation non vérifiable."
+              : loadGuard.requiresDemoRemoval
+                ? "Retirez l'ancien scénario avant de continuer."
+                : "Scénarios d'exemple indisponibles dans cette organisation."}
           </p>
+          {runtimeLoadBlock !== null && loadGuard.canLoad && (
+            <p className="mt-1">
+              L&apos;organisation a changé depuis l&apos;ouverture de cette
+              page. Nepteo a bloqué le chargement avant toute modification.
+            </p>
+          )}
           {loadGuard.checkFailed && (
             <p className="mt-1">
               Nepteo n&apos;a pas pu vérifier complètement cette organisation.
-              Les scénarios restent bloqués par précaution.
+              Actualisez la page ; les scénarios restent bloqués par précaution.
             </p>
           )}
           {loadGuard.requiresDemoRemoval && (
@@ -191,16 +216,16 @@ export function DemoPanel({
               cette page avant de choisir un scénario V2.
             </p>
           )}
-          {loadGuard.categories.length > 0 && (
+          {blockedCategories.length > 0 && (
             <p className="mt-1">
-              <b>Données ou outils apportés à préserver :</b>{" "}
-              {loadGuard.categories.join(", ")}. Ils ne seront pas supprimés
-              par Nepteo et continueront de bloquer une démonstration sur cette
-              organisation. Utilisez une organisation de test vide.
+              <b>Données ou outils déjà présents à préserver :</b>{" "}
+              {blockedCategories.join(", ")}. Nepteo ne les supprimera pas.
+              Utilisez une autre organisation vide dédiée aux scénarios
+              d&apos;exemple.
             </p>
           )}
           {loadGuard.requiresDemoRemoval &&
-            loadGuard.categories.length > 0 && (
+            blockedCategories.length > 0 && (
               <p className="mt-1 font-medium">
                 Retirer l&apos;ancien scénario ne suffira donc pas à débloquer
                 le chargement tant que ces éléments resteront présents.
@@ -222,14 +247,18 @@ export function DemoPanel({
             </p>
             <button
               type="button"
-              disabled={busy !== null || !loadGuard.canLoad}
+              disabled={busy !== null || !canLoad}
               aria-describedby={
-                loadGuard.canLoad ? undefined : "demo-load-block"
+                canLoad ? undefined : "demo-load-block"
               }
               onClick={() => run(s.id, () => loadDemoScenarioAction(s.id))}
               className="mt-3 rounded-[10px] bg-violet px-3 py-2 text-[12.5px] font-semibold text-white transition hover:bg-violet-deep disabled:cursor-not-allowed disabled:opacity-40"
             >
-              {busy === s.id ? "Chargement…" : "Charger et analyser"}
+              {busy === s.id
+                ? "Chargement…"
+                : canLoad
+                  ? "Charger et analyser"
+                  : "Indisponible ici"}
             </button>
           </div>
         ))}
@@ -270,13 +299,12 @@ export function DemoPanel({
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-line-soft pt-3">
         <p className="max-w-xl text-[11.5px] leading-relaxed text-faint">
-          Entreprises fictives. Utilisez une organisation de test dédiée et
-          vide.{" "}
-          {loadGuard.canLoad
-            ? "Changer de scénario retire uniquement l'état marqué comme démonstration, puis relance l'analyse."
+          Scénarios de test préchargés avec des données d&apos;exemple.{" "}
+          {canLoad
+            ? "Changer de scénario retire uniquement le scénario actif, puis relance l'analyse."
             : hasDemoMarker
-              ? "Le retrait vise uniquement l'état marqué comme démonstration ; les données apportées sont préservées."
-              : "Les données et outils déjà présents doivent rester dans leur organisation actuelle."}
+              ? "Le retrait vise uniquement les éléments marqués par le scénario ; les données apportées par le testeur sont préservées."
+              : "Les données et outils déjà présents restent dans cette organisation."}
         </p>
         {hasDemoMarker && (
           <button
@@ -287,7 +315,7 @@ export function DemoPanel({
           >
             {loadGuard.requiresDemoRemoval
               ? "Retirer l'ancien scénario"
-              : "Retirer les données de démonstration"}
+              : "Retirer le scénario Nepteo"}
           </button>
         )}
       </div>

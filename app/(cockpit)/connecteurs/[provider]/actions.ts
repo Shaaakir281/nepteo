@@ -65,7 +65,7 @@ async function mutateConnector<T>(
     return await withRealDataMutationLock(admin, orgId, () => task(admin));
   } catch (error) {
     if (error instanceof DemoDataMutationBlockedError) {
-      fail(provider, "Retirez d'abord la démonstration avant cette action.");
+      fail(provider, "Retirez d'abord le scénario Nepteo avant cette action.");
     }
     if (error instanceof DemoBusyError) {
       fail(provider, "Une autre opération est en cours. Réessayez dans un instant.");
@@ -152,7 +152,7 @@ export async function syncNow(formData: FormData) {
     count = await syncConnectorRow(admin, connector, "user", ctx.userId);
   } catch (e) {
     if (e instanceof DemoDataMutationBlockedError) {
-      fail(provider, "Retirez d'abord la démonstration avant de synchroniser.");
+      fail(provider, "Retirez d'abord le scénario Nepteo avant de synchroniser.");
     }
     if (e instanceof DemoBusyError) {
       fail(provider, "Une autre opération est en cours. Réessayez dans un instant.");

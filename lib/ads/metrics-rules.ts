@@ -382,7 +382,7 @@ export function buildAdsProposals(
     title: `Mettre en pause « ${c.campaign_name} »`,
     finding: `ROAS ${x(c.roas)} sur ${eur(c.spend)} dépensés — la campagne perd de l'argent (${eur(c.revenue)} de revenu).`,
     rationale: `Chaque euro investi n'en rapporte que ${x(c.roas)}. La mettre en pause stoppe la perte immédiatement ; l'action est réversible, on peut la réactiver à tout moment.`,
-    data_sources: ["Meta Ads (démo)"],
+    data_sources: ["Meta Ads (scénario d'exemple)"],
     expected_impact: `~${eur(c.spend)} de dépense évitée sur 7 jours`,
     confidence: 0.8,
     risk: "low",

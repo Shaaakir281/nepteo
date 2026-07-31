@@ -41,8 +41,8 @@ export async function IdentityPanel({
             Scénario Nepteo actif — identité en lecture seule.
           </p>
           <p className="mt-1">
-            Retirez les données de démonstration avant de modifier la mémoire
-            de l&apos;entreprise ou d&apos;analyser un site.
+            Retirez le scénario Nepteo avant de modifier la mémoire de
+            l&apos;entreprise ou d&apos;analyser un site.
           </p>
           <Link
             href="/entreprise?onglet=connecteurs"

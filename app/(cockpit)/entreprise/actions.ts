@@ -45,7 +45,7 @@ async function requireEditor() {
     )
   ) {
     fail(
-      "Retirez d'abord les données de démonstration avant de modifier la mémoire.",
+      "Retirez d'abord le scénario Nepteo avant de modifier la mémoire.",
     );
   }
   return { userId: user.id, orgId: membership.organizationId };
@@ -91,7 +91,7 @@ async function persist(
     if (error instanceof MemoryMutationInputError) fail(error.message);
     if (error instanceof DemoDataMutationBlockedError) {
       fail(
-        "Retirez d'abord les données de démonstration avant de modifier la mémoire.",
+        "Retirez d'abord le scénario Nepteo avant de modifier la mémoire.",
       );
     }
     if (error instanceof DemoBusyError) {

@@ -22,8 +22,9 @@ export default async function CockpitLayout({
 
   // Le bandeau est informatif, pas un garde-fou : les mutations continuent de
   // passer par `isDemoModeActive`. Un marqueur `demo` seul ne prouve pas que
-  // toutes les données sont fictives : la preuve complète couvre sauvegarde,
-  // seed finalisé, prospects, campagnes, ventes et absence de mélange réel.
+  // toutes les données appartiennent au scénario d'exemple : la preuve complète
+  // couvre sauvegarde, seed finalisé, prospects, campagnes, ventes et absence
+  // de données apportées par le testeur.
   const { presentation: demoPresentation } = await readDemoPresentation(
     membership.organizationId,
   );
@@ -66,17 +67,17 @@ export default async function CockpitLayout({
         <main className="mx-auto max-w-[1060px] px-4 pb-28 pt-6 sm:px-7 sm:pt-8 lg:pb-8">
           {demoPresentation === "certified-demo" && (
             <div className="mb-5 rounded-[12px] border border-amber/25 bg-amber-tint px-4 py-3 text-[12.5px] leading-relaxed text-body">
-              <b>Scénario Nepteo — données fictives.</b> Ce jeu versionné
-              illustre les analyses et propositions de l&apos;agent. Aucun
-              compte externe n&apos;est connecté et ces résultats ne comptent
-              pas dans la preuve terrain.
+              <b>Scénario d&apos;exemple Nepteo.</b> Ce jeu versionné contient
+              uniquement des données d&apos;exemple et illustre les analyses et
+              propositions de l&apos;agent. Aucun compte externe n&apos;est
+              connecté et ces résultats ne comptent pas dans la preuve terrain.
             </div>
           )}
           {demoPresentation === "test-environment" && (
             <div className="mb-5 rounded-[12px] border border-violet/20 bg-tint px-4 py-3 text-[12.5px] leading-relaxed text-body">
               <b>Environnement de test.</b> Les données affichées peuvent avoir
-              été importées par le testeur (CSV ou connecteur) ou provenir
-              d&apos;un scénario Nepteo. Vérifiez leur origine avant
+              été saisies ou importées par le testeur (CSV ou connecteur), ou
+              provenir d&apos;un scénario Nepteo. Vérifiez leur origine avant
               d&apos;utiliser les résultats comme preuve terrain.
             </div>
           )}

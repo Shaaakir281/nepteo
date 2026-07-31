@@ -30,7 +30,7 @@ const REASONS: Record<string, string> = {
   empty_answer: "Je n'ai rien trouvé d'exploitable sur cette adresse.",
   timeout: "La recherche a été trop longue. Réessayez dans un instant.",
   demo_active:
-    "Retirez d'abord les données de démonstration avant d'analyser un site.",
+    "Retirez d'abord le scénario Nepteo avant d'analyser un site.",
   busy: "Une autre opération est en cours. Réessayez dans un instant.",
 };
 
