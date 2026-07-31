@@ -113,6 +113,12 @@ export type DemoIsolationConflict =
   | "outbox"
   | "briefing";
 
+export interface DemoLoadState {
+  active: boolean;
+  legacy: boolean;
+  conflicts: DemoIsolationConflict[];
+}
+
 /**
  * Une démo déjà active peut enchaîner A → B uniquement si tout l'état
  * opérationnel reste marqué démo. Une action, un message ou un briefing non
@@ -131,6 +137,18 @@ export function demoIsolationConflicts(
   if (inventory.realOutbox > 0) conflicts.push("outbox");
   if (inventory.realBriefings > 0) conflicts.push("briefing");
   return conflicts;
+}
+
+export function buildDemoLoadState(
+  active: boolean,
+  legacy: boolean,
+  inventory: DemoIsolationInventory,
+): DemoLoadState {
+  return {
+    active,
+    legacy,
+    conflicts: demoIsolationConflicts(inventory),
+  };
 }
 
 /**

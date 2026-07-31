@@ -27,12 +27,17 @@ test("analyse cron — journal et moteur ne démarrent qu'après acquisition", (
   const lock = cron.indexOf("const proposed = await withDemoMutationLock(");
   const journal = cron.indexOf('event: "analysis_run"', lock);
   const analysis = cron.indexOf("return runAnalysis(admin, orgId, null)", lock);
-  const callbackEnd = cron.indexOf("\n        },\n      );", lock);
+  const callbackEnd = cron
+    .slice(lock)
+    .search(/\r?\n        },\r?\n      \);/);
 
   assert.ok(lock >= 0, "verrou du cron absent");
   assert.ok(journal > lock, "journal écrit avant le verrou");
   assert.ok(analysis > journal, "moteur lancé avant le journal verrouillé");
-  assert.ok(callbackEnd > analysis, "moteur hors de la section critique");
+  assert.ok(
+    callbackEnd > analysis - lock,
+    "moteur hors de la section critique",
+  );
 });
 
 test("analyse — le moteur reste non réentrant et la démo garde son verrou externe", () => {

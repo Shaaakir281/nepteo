@@ -1,5 +1,9 @@
 import { DEMO_SEED_VERSION } from "./version.ts";
 import { DEMO_SCENARIO_IDS } from "./scenarios.ts";
+import type {
+  DemoIsolationConflict,
+  DemoLoadState,
+} from "./isolation-rules.ts";
 
 /**
  * Ce type décrit uniquement la manière honnête de présenter l'environnement.
@@ -9,6 +13,13 @@ export type DemoPresentation =
   | "none"
   | "certified-demo"
   | "test-environment";
+
+export interface DemoLoadGuard {
+  canLoad: boolean;
+  checkFailed: boolean;
+  requiresDemoRemoval: boolean;
+  conflicts: DemoIsolationConflict[];
+}
 
 export interface DemoPresentationEvidence {
   evidenceComplete: boolean;
@@ -138,4 +149,33 @@ export function classifyDemoPresentation(
   if (!evidenceComplete || hasAnyEvidence) return "test-environment";
 
   return "none";
+}
+
+/**
+ * Une certification V2 active peut changer de scénario, à condition que
+ * l'inventaire de sécurité reste vide. Un ancien marqueur demande en revanche
+ * un retrait explicite : on ne transforme jamais silencieusement un état
+ * ambigu en nouveau seed.
+ */
+export function classifyDemoLoadGuard(
+  state: DemoLoadState | null,
+  hasCertifiedDemoMarker: boolean,
+): DemoLoadGuard {
+  if (!state) {
+    return {
+      canLoad: false,
+      checkFailed: true,
+      requiresDemoRemoval: false,
+      conflicts: [],
+    };
+  }
+
+  const requiresDemoRemoval =
+    state.active && !hasCertifiedDemoMarker;
+  return {
+    canLoad: state.conflicts.length === 0 && !requiresDemoRemoval,
+    checkFailed: false,
+    requiresDemoRemoval,
+    conflicts: state.conflicts,
+  };
 }

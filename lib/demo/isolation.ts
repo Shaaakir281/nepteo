@@ -4,7 +4,7 @@ import {
   DEMO_LOCK_SECTION,
   DEMO_PROVIDER,
   DEMO_REVENUE_PREFIX,
-  demoIsolationConflicts,
+  buildDemoLoadState,
   hasActiveDemoMarker,
   isDemoAction,
   isDemoMutationLock,
@@ -13,6 +13,7 @@ import {
   legacyDemoCleanupAllowed,
   type DemoIsolationConflict,
   type DemoIsolationInventory,
+  type DemoLoadState,
 } from "@/lib/demo/isolation-rules";
 import { DEMO_BACKUP_SECTION } from "@/lib/demo/memory-backup-rules";
 import { DEMO_SCENARIOS } from "@/lib/demo/scenarios";
@@ -24,7 +25,10 @@ const LEGACY_REVENUE_PATTERNS = DEMO_SCENARIOS.map(
   (scenario) => `${scenario.id}-sale-%`,
 );
 
-const CONFLICT_LABELS: Record<DemoIsolationConflict, string> = {
+export const DEMO_ISOLATION_CONFLICT_LABELS: Record<
+  DemoIsolationConflict,
+  string
+> = {
   connectors: "connecteurs",
   prospects: "prospects",
   campaigns: "campagnes",
@@ -38,7 +42,9 @@ export class DemoIsolationError extends Error {
   readonly conflicts: DemoIsolationConflict[];
 
   constructor(conflicts: DemoIsolationConflict[]) {
-    const labels = conflicts.map((conflict) => CONFLICT_LABELS[conflict]).join(", ");
+    const labels = conflicts
+      .map((conflict) => DEMO_ISOLATION_CONFLICT_LABELS[conflict])
+      .join(", ");
     super(
       `Chargement refusé : cette organisation contient déjà des données réelles (${labels}). Utilisez une organisation de test vide.`,
     );
@@ -352,8 +358,23 @@ export async function assertDemoLoadIsSafe(
   admin: Admin,
   orgId: string,
 ): Promise<{ active: boolean; legacy: boolean }> {
-  const state = await readDemoIsolation(admin, orgId);
-  const conflicts = demoIsolationConflicts(state.inventory);
-  if (conflicts.length > 0) throw new DemoIsolationError(conflicts);
+  const state = await readDemoLoadState(admin, orgId);
+  if (state.conflicts.length > 0) {
+    throw new DemoIsolationError(state.conflicts);
+  }
   return { active: state.active, legacy: state.legacy };
+}
+
+/**
+ * État en lecture seule partagé par le préflight d'écriture et l'interface.
+ * La décision reste dérivée du même inventaire exhaustif : l'UI ne peut donc
+ * pas annoncer qu'un chargement est possible sur la seule foi du statut d'un
+ * connecteur.
+ */
+export async function readDemoLoadState(
+  admin: Admin,
+  orgId: string,
+): Promise<DemoLoadState> {
+  const state = await readDemoIsolation(admin, orgId);
+  return buildDemoLoadState(state.active, state.legacy, state.inventory);
 }

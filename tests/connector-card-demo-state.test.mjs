@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import {
+  classifyDemoLoadGuard,
   classifyDemoPresentation,
   isCertifiedDemoConnectorConfig,
 } from "../lib/demo/presentation-rules.ts";
@@ -179,8 +180,101 @@ test("présentation — un scénario pur est certifié, tout mélange devient un
   );
 });
 
+test("chargement — V2 peut changer, ancien marqueur et données apportées bloquent avant le clic", () => {
+  assert.deepEqual(
+    classifyDemoLoadGuard(
+      {
+        active: false,
+        legacy: false,
+        conflicts: [],
+      },
+      false,
+    ),
+    {
+      canLoad: true,
+      checkFailed: false,
+      requiresDemoRemoval: false,
+      conflicts: [],
+    },
+  );
+  assert.deepEqual(
+    classifyDemoLoadGuard(
+      {
+        active: true,
+        legacy: false,
+        conflicts: [],
+      },
+      true,
+    ),
+    {
+      canLoad: true,
+      checkFailed: false,
+      requiresDemoRemoval: false,
+      conflicts: [],
+    },
+    "un scénario V2 pur reste remplaçable",
+  );
+  assert.deepEqual(
+    classifyDemoLoadGuard(
+      {
+        active: true,
+        legacy: true,
+        conflicts: [],
+      },
+      false,
+    ),
+    {
+      canLoad: false,
+      checkFailed: false,
+      requiresDemoRemoval: true,
+      conflicts: [],
+    },
+    "un ancien marqueur demande un retrait explicite",
+  );
+  assert.deepEqual(
+    classifyDemoLoadGuard(
+      {
+        active: true,
+        legacy: true,
+        conflicts: ["connectors", "prospects"],
+      },
+      false,
+    ),
+    {
+      canLoad: false,
+      checkFailed: false,
+      requiresDemoRemoval: true,
+      conflicts: ["connectors", "prospects"],
+    },
+    "le retrait du marqueur ne transforme pas les données apportées en démo",
+  );
+  assert.deepEqual(
+    classifyDemoLoadGuard(
+      {
+        active: true,
+        legacy: false,
+        conflicts: ["actions"],
+      },
+      true,
+    ),
+    {
+      canLoad: false,
+      checkFailed: false,
+      requiresDemoRemoval: false,
+      conflicts: ["actions"],
+    },
+    "même un marqueur V2 ne contourne jamais l'inventaire serveur",
+  );
+  assert.deepEqual(classifyDemoLoadGuard(null, false), {
+    canLoad: false,
+    checkFailed: true,
+    requiresDemoRemoval: false,
+    conflicts: [],
+  });
+});
+
 test("interface — le libellé reste honnête et le marqueur bloque toujours OAuth", async () => {
-  const [layout, sidebar, panel, card] = await Promise.all([
+  const [layout, sidebar, panel, demoPanel, card] = await Promise.all([
     readFile(
       new URL("../app/(cockpit)/layout.tsx", import.meta.url),
       "utf8",
@@ -201,6 +295,13 @@ test("interface — le libellé reste honnête et le marqueur bloque toujours OA
     ),
     readFile(
       new URL(
+        "../app/(cockpit)/agent/_components/demo-panel.tsx",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+    readFile(
+      new URL(
         "../app/(cockpit)/connecteurs/_components/connector-card.tsx",
         import.meta.url,
       ),
@@ -211,6 +312,30 @@ test("interface — le libellé reste honnête et le marqueur bloque toujours OA
   assert.match(panel, /canEdit=\{canEdit && !hasDemo\}/);
   assert.match(panel, /blockedByDemo=\{hasDemo\}/);
   assert.match(panel, /demoPresentation=\{demoPresentation\}/);
+  assert.match(panel, /readDemoLoadState\(admin, orgId\)\.catch\(\(\) => null\)/);
+  assert.match(panel, /classifyDemoLoadGuard\(/);
+  assert.match(panel, /\(!hasConnected \|\| hasDemo\)/);
+  assert.match(
+    panel,
+    /!demoLoadGuard\.checkFailed && demoLoadState\?\.active === true/,
+  );
+  assert.doesNotMatch(
+    panel,
+    /hasRemovableDemoMarker\s*=[\s\S]{0,100}presentationSnapshot\.hasDemoMarker/,
+  );
+  assert.match(panel, /hasDemoMarker=\{hasRemovableDemoMarker\}/);
+  assert.match(panel, /categories: loadBlockCategories/);
+  assert.match(
+    demoPanel,
+    /disabled=\{busy !== null \|\| !loadGuard\.canLoad\}/,
+  );
+  assert.match(demoPanel, /Ancien marqueur de scénario détecté/);
+  assert.match(demoPanel, /Données ou outils apportés à préserver/);
+  assert.match(
+    demoPanel,
+    /Retirer l&apos;ancien scénario ne suffira donc pas à débloquer/,
+  );
+  assert.match(demoPanel, /\{hasDemoMarker && \(/);
   assert.match(
     layout,
     /demoPresentation === "certified-demo"[\s\S]*Scénario Nepteo — données fictives\.[\s\S]*Aucun[\s\S]*compte externe n&apos;est connecté/,
