@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import {
+  briefingDataSourceLabel,
   classifyDemoLoadGuard,
   classifyDemoPresentation,
   isCertifiedDemoConnectorConfig,
@@ -177,6 +178,21 @@ test("présentation — un scénario pur est certifié, tout mélange devient un
       nonDemoRevenueRows: 0,
     }),
     "none",
+  );
+});
+
+test("présentation — le briefing nomme exactement la provenance affichée", () => {
+  assert.equal(
+    briefingDataSourceLabel("certified-demo"),
+    "à partir des données fictives du scénario Nepteo.",
+  );
+  assert.equal(
+    briefingDataSourceLabel("test-environment"),
+    "à partir des données de cet environnement de test.",
+  );
+  assert.equal(
+    briefingDataSourceLabel("none"),
+    "à partir de vos données réelles.",
   );
 });
 

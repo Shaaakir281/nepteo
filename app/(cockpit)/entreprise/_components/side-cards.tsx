@@ -4,9 +4,11 @@ import { icons } from "@/components/icons";
 
 export function DocumentsCard({
   canEdit,
+  blockedByDemo,
   researchEnabled,
 }: {
   canEdit: boolean;
+  blockedByDemo: boolean;
   researchEnabled: boolean;
 }) {
   return (
@@ -20,7 +22,20 @@ export function DocumentsCard({
           sources publiques et vous propose une fiche à corriger avant
           enregistrement.
         </p>
-        {researchEnabled && canEdit ? (
+        {blockedByDemo ? (
+          <div className="mt-4 rounded-[10px] bg-amber-tint px-3.5 py-2.5 text-[12px] leading-relaxed text-body">
+            <p>
+              L&apos;analyse de site est désactivée tant que le scénario Nepteo
+              est actif.
+            </p>
+            <Link
+              href="/entreprise?onglet=connecteurs"
+              className="mt-1.5 inline-block font-semibold text-violet hover:underline"
+            >
+              Retirer le scénario dans Connecteurs →
+            </Link>
+          </div>
+        ) : researchEnabled && canEdit ? (
           <Link
             href="/onboarding/identite"
             className="mt-4 flex items-center justify-center gap-2 rounded-[10px] bg-violet px-4 py-2.5 text-[13px] font-semibold text-white transition hover:bg-violet-deep"

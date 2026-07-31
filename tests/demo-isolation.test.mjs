@@ -290,7 +290,7 @@ test("frontières I/O — admin, lock propriétaire, scopes et clear no-op", asy
   assert.match(actions, /campaignIdPrefix:\s*DEMO_CAMPAIGN_PREFIX/);
 
   assert.match(lock, /\.eq\("id", lockId\)/);
-  assert.match(lock, /\.contains\("content", \{ token: content\.token \}\)/);
+  assert.match(lock, /\.contains\("content", \{ token \}\)/);
   assert.match(
     lock,
     /if \(freshId\) return freshId;[\s\S]*throw new DemoBusyError\(\)/,

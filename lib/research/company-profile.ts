@@ -15,6 +15,11 @@ import {
   parseIdentityProposal,
   type IdentityProposal,
 } from "@/lib/research/profile-rules";
+import {
+  DemoBusyError,
+  DemoDataMutationBlockedError,
+  withRealDataMutationLock,
+} from "@/lib/demo/lock";
 
 type Admin = ReturnType<typeof createAdminClient>;
 
@@ -49,7 +54,7 @@ const PROMPT_SCHEMA = `{
   "gaps": ["ce que la recherche n'a PAS permis d'établir"]
 }`;
 
-export async function researchCompanyProfile(
+async function researchCompanyProfile(
   admin: Admin,
   args: {
     orgId: string;
@@ -152,19 +157,35 @@ export async function proposeIdentityForOrg(
     force?: boolean;
   },
 ): Promise<CompanyProfileResult> {
-  const { data: org } = await admin
-    .from("organizations")
-    .select("name, activity")
-    .eq("id", args.orgId)
-    .maybeSingle();
-  if (!org?.name) return { ok: false, reason: "not_found" };
+  try {
+    // La recherche écrit dans `research_runs` et dans le journal, puis peut
+    // nourrir une identité réelle. Elle partage donc la même frontière
+    // atomique que les mutations de mémoire : aucun scénario ne peut démarrer
+    // entre le contrôle du marqueur et l'appel externe.
+    return await withRealDataMutationLock(admin, args.orgId, async () => {
+      const { data: org } = await admin
+        .from("organizations")
+        .select("name, activity")
+        .eq("id", args.orgId)
+        .maybeSingle();
+      if (!org?.name) return { ok: false, reason: "not_found" };
 
-  return researchCompanyProfile(admin, {
-    orgId: args.orgId,
-    actorId: args.actorId,
-    name: org.name as string,
-    website: args.website,
-    activity: (org.activity as string | null) ?? null,
-    force: args.force,
-  });
+      return researchCompanyProfile(admin, {
+        orgId: args.orgId,
+        actorId: args.actorId,
+        name: org.name as string,
+        website: args.website,
+        activity: (org.activity as string | null) ?? null,
+        force: args.force,
+      });
+    });
+  } catch (error) {
+    if (error instanceof DemoDataMutationBlockedError) {
+      return { ok: false, reason: "demo_active" };
+    }
+    if (error instanceof DemoBusyError) {
+      return { ok: false, reason: "busy" };
+    }
+    throw error;
+  }
 }

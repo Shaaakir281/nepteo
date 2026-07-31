@@ -9,6 +9,7 @@ import { IdentityPanel } from "./_components/identity-panel";
 import { ConnectorsPanel } from "./_components/connectors-panel";
 import { AgentPanel } from "./_components/agent-panel";
 import { CoachBubble } from "@/components/ui/coach-bubble";
+import { readDemoPresentation } from "@/lib/demo/presentation";
 
 /** Chaque onglet garde l'introduction de l'écran dont il vient. */
 const INTRO: Record<TabId, string> = {
@@ -33,6 +34,17 @@ export default async function EntreprisePage({
   const canManageDemo = membership.role === "admin";
 
   const tab = resolveTab(onglet);
+  // `hasDemoMarker` échoue prudemment à vrai si la preuve ne peut pas être
+  // lue. Le layout appelle déjà cette primitive mise en cache : aucun second
+  // inventaire n'est lancé dans la même requête RSC.
+  const identityMutationBlocked =
+    tab === "identite"
+      ? (await readDemoPresentation(membership.organizationId)).hasDemoMarker
+      : false;
+  const intro =
+    tab === "identite" && identityMutationBlocked
+      ? "C'est la mémoire de Nepteo : elle reste consultable en lecture seule pendant le scénario actif."
+      : INTRO[tab];
 
   return (
     <>
@@ -43,7 +55,7 @@ export default async function EntreprisePage({
           Mon entreprise
         </h1>
         <p className="mt-1.5 max-w-2xl text-[13.5px] leading-relaxed text-muted">
-          {INTRO[tab]}
+          {intro}
         </p>
       </div>
 
@@ -55,7 +67,13 @@ export default async function EntreprisePage({
         </p>
       )}
 
-      {tab === "identite" && <IdentityPanel canEdit={canEdit} saved={saved} />}
+      {tab === "identite" && (
+        <IdentityPanel
+          canEdit={canEdit}
+          mutationBlockedByDemo={identityMutationBlocked}
+          saved={saved}
+        />
+      )}
       {tab === "connecteurs" && (
         <ConnectorsPanel
           canEdit={canEdit}

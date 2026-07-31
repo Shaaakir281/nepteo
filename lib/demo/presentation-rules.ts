@@ -14,6 +14,18 @@ export type DemoPresentation =
   | "certified-demo"
   | "test-environment";
 
+const BRIEFING_DATA_SOURCE_LABELS: Record<DemoPresentation, string> = {
+  "certified-demo": "à partir des données fictives du scénario Nepteo.",
+  "test-environment": "à partir des données de cet environnement de test.",
+  none: "à partir de vos données réelles.",
+};
+
+export function briefingDataSourceLabel(
+  presentation: DemoPresentation,
+): string {
+  return BRIEFING_DATA_SOURCE_LABELS[presentation];
+}
+
 export interface DemoLoadGuard {
   canLoad: boolean;
   checkFailed: boolean;

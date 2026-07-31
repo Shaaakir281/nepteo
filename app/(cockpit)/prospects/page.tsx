@@ -12,6 +12,7 @@ import {
   DEFAULT_PROSPECT_MAX_ROWS,
   loadProspectCohort,
 } from "@/lib/prospect-cohort-loader";
+import { prospectPriority } from "@/lib/analysis-rules";
 
 const NO_STAGE = "Sans statut";
 
@@ -27,6 +28,7 @@ export default async function ProspectsPage() {
     prospectCohort.status === "complete"
       ? (prospectCohort.dedupedRows as BoardProspect[])
       : [];
+  const today = new Date().toISOString().slice(0, 10);
   const visualMissingEmailCount = prospects.filter(
     (prospect) => !(prospect.email ?? "").trim(),
   ).length;
@@ -36,11 +38,32 @@ export default async function ProspectsPage() {
           (prospect) => !(prospect.email ?? "").trim(),
         ).length
       : 0;
-  const explainConservativeCohort =
+  const visualPriorityCount = prospects.filter(
+    (prospect) => prospectPriority(prospect, today).tier === "priority",
+  ).length;
+  const actionablePriorityCount =
+    prospectCohort.status === "complete"
+      ? prospectCohort.canonicalRows.filter(
+          (prospect) => prospectPriority(prospect, today).tier === "priority",
+        ).length
+      : 0;
+  const activeStageConflictCount =
+    prospectCohort.status === "complete"
+      ? prospectCohort.canonicalRows.filter(
+          (prospect) =>
+            prospect.cohort_conflict === "active_stage_conflict",
+        ).length
+      : 0;
+  const explainMissingEmailCohort =
     prospectCohort.status === "complete" &&
     (prospectCohort.canonicalCount !== prospectCohort.dedupedCount ||
       conservativeMissingEmailCount !== visualMissingEmailCount);
-  const today = new Date().toISOString().slice(0, 10);
+  const priorityCountsDiffer =
+    visualPriorityCount !== actionablePriorityCount;
+  const explainPriorityCohort =
+    priorityCountsDiffer || activeStageConflictCount > 0;
+  const explainConservativeCohort =
+    explainMissingEmailCohort || explainPriorityCohort;
 
   // Regroupement uniquement sur une cohorte complète : aucun total partiel ne
   // doit alimenter le funnel ou le board.
@@ -107,20 +130,52 @@ export default async function ProspectsPage() {
               <p className="font-semibold text-ink">
                 Deux comptages, deux usages
               </p>
-              <p className="mt-1">
-                Ce tableau regroupe{" "}
-                {prospectCohort.dedupedCount.toLocaleString("fr-FR")} contacts
-                pour la lecture, dont{" "}
-                {visualMissingEmailCount.toLocaleString("fr-FR")}{" "}
-                sans email.
-                Pour sécuriser les relances, l&apos;agent conserve{" "}
-                {prospectCohort.canonicalCount.toLocaleString("fr-FR")} identités
-                dans sa cohorte métier prudente, dont{" "}
-                {conservativeMissingEmailCount.toLocaleString("fr-FR")} fiches
-                importées sans email. Sans email, il ne suppose pas que deux
-                homonymes issus de sources différentes sont la même personne :
-                les propositions peuvent donc afficher un total supérieur.
-              </p>
+              {explainMissingEmailCohort && (
+                <p className="mt-1">
+                  Ce tableau regroupe{" "}
+                  {prospectCohort.dedupedCount.toLocaleString("fr-FR")} contacts
+                  pour la lecture, dont{" "}
+                  {visualMissingEmailCount.toLocaleString("fr-FR")}{" "}
+                  sans email. Pour sécuriser les relances, l&apos;agent conserve{" "}
+                  {prospectCohort.canonicalCount.toLocaleString("fr-FR")} identités
+                  dans sa cohorte métier prudente, dont{" "}
+                  {conservativeMissingEmailCount.toLocaleString("fr-FR")} fiches
+                  importées sans email. Sans email, il ne suppose pas que deux
+                  homonymes issus de sources différentes sont la même personne :
+                  les propositions peuvent donc afficher un total supérieur.
+                </p>
+              )}
+              {explainPriorityCohort && (
+                <p className="mt-1">
+                  <strong>
+                    Priorités :{" "}
+                    {visualPriorityCount.toLocaleString("fr-FR")} visible
+                    {visualPriorityCount > 1 ? "s" : ""}
+                    {" · "}
+                    {actionablePriorityCount.toLocaleString("fr-FR")} actionnable
+                    {actionablePriorityCount > 1 ? "s" : ""}
+                    .
+                  </strong>{" "}
+                  {priorityCountsDiffer && (
+                    <>
+                      Ces nombres diffèrent lorsque plusieurs lignes d&apos;un
+                      même email ne racontent pas la même situation. Un statut
+                      terminal ou une opposition, un contact récent ou des
+                      statuts actifs contradictoires conduisent l&apos;agent à
+                      retenir la lecture la plus prudente avant toute relance.
+                    </>
+                  )}
+                  {activeStageConflictCount > 0 && (
+                    <>
+                      {priorityCountsDiffer && " "}
+                      {activeStageConflictCount.toLocaleString("fr-FR")} contact
+                      {activeStageConflictCount > 1 ? "s" : ""} suspendu
+                      {activeStageConflictCount > 1 ? "s" : ""} ici parce que
+                      plusieurs statuts actifs se contredisent.
+                    </>
+                  )}
+                </p>
+              )}
             </div>
           )}
           <ProspectsBoard

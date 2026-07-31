@@ -39,6 +39,8 @@ import {
   DEFAULT_PROSPECT_MAX_ROWS,
   loadProspectCohort,
 } from "@/lib/prospect-cohort-loader";
+import { readDemoPresentation } from "@/lib/demo/presentation";
+import { briefingDataSourceLabel } from "@/lib/demo/presentation-rules";
 
 const VALUE_EVENT_PAGE_SIZE = 1000;
 const MAX_VALUE_SCORECARD_EVENTS = 5000;
@@ -94,6 +96,10 @@ export default async function TodayPage() {
     .select("content, created_at")
     .maybeSingle();
   const briefing = briefingRow as { content: string; created_at: string } | null;
+  const briefingPresentation =
+    briefing && membership
+      ? (await readDemoPresentation(membership.organizationId)).presentation
+      : "none";
 
   const fmt = new Intl.DateTimeFormat("fr-FR", {
     day: "numeric",
@@ -268,8 +274,8 @@ export default async function TodayPage() {
             {briefing.content}
           </p>
           <p className="mt-2 text-[11.5px] text-faint">
-            Mis à jour le {fmt.format(new Date(briefing.created_at))} · à partir
-            de vos données réelles.
+            Mis à jour le {fmt.format(new Date(briefing.created_at))} ·{" "}
+            {briefingDataSourceLabel(briefingPresentation)}
           </p>
         </div>
       )}
