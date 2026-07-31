@@ -124,11 +124,11 @@ test("analyse de site — la route et son retour client expliquent le blocage", 
   assert.match(onboardingPage, /let mutationBlocked = true/);
   assert.match(
     onboardingPage,
-    /Retirez d'abord les données de démonstration avant d'analyser un site/,
+    /Retirez d'abord le scénario Nepteo avant d'analyser un site/,
   );
   assert.match(identityWizard, /demo_active:/);
   assert.match(
     identityWizard,
-    /Retirez d'abord les données de démonstration avant d'analyser un site/,
+    /Retirez d'abord le scénario Nepteo avant d'analyser un site/,
   );
 });

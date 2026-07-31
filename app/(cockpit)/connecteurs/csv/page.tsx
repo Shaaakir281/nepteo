@@ -81,8 +81,9 @@ export default async function CsvConnectorPage({
               Importer les prospects du testeur
             </h1>
             <p className="mt-1.5 text-[13px] leading-relaxed text-muted">
-              Le CSV est une vraie source de test. Ses lignes peuvent être
-              réelles et ne seront jamais présentées comme des données fictives.
+              Le CSV est une source fournie par le testeur. Ses lignes peuvent
+              être réelles ou synthétiques ; Nepteo indique leur provenance
+              sans la déduire automatiquement.
             </p>
           </div>
           {connector?.status === "connected" && (
@@ -109,7 +110,8 @@ export default async function CsvConnectorPage({
         {cleared && (
           <p className="mt-5 rounded-[10px] bg-green-tint px-4 py-3 text-[12.5px] font-medium text-green">
             Import CSV retiré. Un scénario Nepteo peut maintenant être chargé
-            si l&apos;espace ne contient aucune autre donnée réelle.
+            si l&apos;espace ne contient aucune autre donnée ou outil à
+            préserver.
           </p>
         )}
         {demo.active && (

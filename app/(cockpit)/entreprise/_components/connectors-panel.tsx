@@ -23,8 +23,8 @@ import {
  * Onglet « Connecteurs » — repris de l'ancienne page `/connecteurs`, qui
  * redirige désormais ici. Les fiches de configuration par outil restent sur
  * `/connecteurs/<provider>` : ce sont des sous-écrans, pas une entrée de menu.
- * Depuis C5, l'état vide (aucun connecteur branché) porte le mode
- * démonstration — déplacé depuis l'ancien onglet Agent.
+ * Depuis C5, l'état vide (aucun connecteur branché) porte les scénarios
+ * d'exemple — déplacés depuis l'ancien onglet Agent.
  */
 export async function ConnectorsPanel({
   canEdit,
@@ -85,7 +85,7 @@ export async function ConnectorsPanel({
     return "available";
   };
 
-  // Le connecteur `demo` porte les données de démonstration (voir
+  // Le connecteur `demo` porte les données du scénario d'exemple (voir
   // `prepareDemoConnector`, lib/demo/seed.ts) — toujours "connected" dès qu'un
   // scénario est chargé. Il ne compte pas comme un VRAI outil branché, sinon
   // le panneau démo disparaîtrait juste après avoir servi.
@@ -103,6 +103,18 @@ export async function ConnectorsPanel({
     Boolean(rowsResult.error);
   const hasRemovableDemoMarker =
     !demoLoadGuard.checkFailed && demoLoadState?.active === true;
+  const scenarioPanelTitle =
+    demoPresentation === "certified-demo"
+      ? "Scénario d'exemple actif"
+      : demoLoadGuard.canLoad
+        ? "Besoin de données pour tester ?"
+        : "Scénarios d'exemple Nepteo";
+  const scenarioPanelSubtitle =
+    demoPresentation === "certified-demo"
+      ? "Changez de métier ou retirez le scénario actuel en conservant votre fiche d'origine."
+      : demoLoadGuard.canLoad
+        ? "Chargez un jeu cohérent — identité, prospects, campagnes et ventes en un clic."
+        : "Ils sont réservés à une organisation de test dédiée et vide ; vos données actuelles sont préservées.";
 
   return (
     <>
@@ -120,11 +132,10 @@ export async function ConnectorsPanel({
         <div className="mb-7 rounded-[18px] border border-line-soft bg-white shadow-card">
           <div className="border-b border-line-soft px-[22px] py-4">
             <h3 className="font-display text-[15px] font-semibold">
-              Pas d&apos;outil à brancher ?
+              {scenarioPanelTitle}
             </h3>
             <p className="mt-0.5 text-[12px] text-muted">
-              Essayez avec une entreprise fictive — identité, prospects,
-              campagnes et ventes en un clic.
+              {scenarioPanelSubtitle}
             </p>
           </div>
           <div className="p-[22px]">
@@ -149,18 +160,19 @@ export async function ConnectorsPanel({
 
       {hasDemo && demoPresentation === "certified-demo" && (
         <p className="mb-4 rounded-[10px] bg-amber-tint px-4 py-2.5 text-[12.5px] text-body">
-          <b>Scénario Nepteo — données fictives.</b> Le jeu versionné ne
-          contient aucun connecteur ou prospect apporté par le testeur. Les
-          connexions réelles restent désactivées pendant ce scénario.
+          <b>Scénario d&apos;exemple Nepteo.</b> Le jeu versionné ne contient
+          aucun connecteur ou prospect apporté par le testeur. Les connexions
+          externes restent désactivées pendant ce scénario.
         </p>
       )}
 
       {hasDemo && demoPresentation === "test-environment" && (
         <p className="mb-4 rounded-[10px] bg-amber-tint px-4 py-2.5 text-[12.5px] text-body">
-          <b>Environnement de test.</b> Un marqueur de scénario Nepteo est
-          actif, mais les données ne sont pas certifiées comme entièrement
-          fictives et peuvent inclure celles du testeur. Les connexions
-          externes restent désactivées tant que ce marqueur est présent.
+          <b>Environnement de test.</b> Cet espace peut contenir des données
+          apportées par le testeur et Nepteo ne peut pas certifier qu&apos;il
+          contient uniquement un scénario d&apos;exemple. Par précaution, les
+          connexions externes restent désactivées tant que cet état n&apos;est
+          pas clarifié.
         </p>
       )}
 

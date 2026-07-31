@@ -15,9 +15,9 @@ export type DemoPresentation =
   | "test-environment";
 
 const BRIEFING_DATA_SOURCE_LABELS: Record<DemoPresentation, string> = {
-  "certified-demo": "à partir des données fictives du scénario Nepteo.",
+  "certified-demo": "à partir des données d'exemple du scénario Nepteo.",
   "test-environment": "à partir des données de cet environnement de test.",
-  none: "à partir de vos données réelles.",
+  none: "à partir des données de votre organisation.",
 };
 
 export function briefingDataSourceLabel(
@@ -110,9 +110,9 @@ export function isCertifiedDemoConnectorConfig(config: unknown): boolean {
 }
 
 /**
- * « Données fictives » n'est affiché que pour un seed complet, unique et sans
- * données apportées par le testeur. Toute preuve incomplète ou tout mélange
- * bascule vers le libellé prudent « Environnement de test ».
+ * Le libellé « scénario d'exemple » n'est affiché que pour un seed complet,
+ * unique et sans données apportées par le testeur. Toute preuve incomplète ou
+ * tout mélange bascule vers le libellé prudent « Environnement de test ».
  */
 export function classifyDemoPresentation(
   evidence: DemoPresentationEvidence,

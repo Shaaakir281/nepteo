@@ -29,7 +29,7 @@ function safeFileName(name: string): string {
 
 function importErrorMessage(error: unknown): string {
   if (error instanceof DemoDataMutationBlockedError) {
-    return "Retirez d'abord le scénario fictif Nepteo avant d'importer les données du testeur.";
+    return "Retirez d'abord le scénario d'exemple Nepteo avant d'importer les données du testeur.";
   }
   if (error instanceof DemoBusyError) {
     return "Une autre opération est en cours. Réessayez dans un instant.";

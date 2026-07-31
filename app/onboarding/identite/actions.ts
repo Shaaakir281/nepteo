@@ -172,7 +172,7 @@ export async function applyIdentity(formData: FormData) {
   } catch (error) {
     const message =
       error instanceof DemoDataMutationBlockedError
-        ? "Retirez d'abord la démonstration avant de modifier la mémoire."
+        ? "Retirez d'abord le scénario Nepteo avant de modifier la mémoire."
         : error instanceof DemoBusyError
           ? "Une autre opération est en cours. Réessayez dans un instant."
           : "Enregistrement impossible. Réessayez dans un instant.";

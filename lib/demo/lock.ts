@@ -16,7 +16,7 @@ export class DemoBusyError extends Error {
 export class DemoDataMutationBlockedError extends Error {
   constructor() {
     super(
-      "Retirez d'abord les données de démonstration avant de modifier les données réelles.",
+      "Retirez d'abord le scénario Nepteo avant de modifier les données de l'organisation.",
     );
     this.name = "DemoDataMutationBlockedError";
   }

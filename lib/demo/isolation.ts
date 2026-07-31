@@ -46,7 +46,7 @@ export class DemoIsolationError extends Error {
       .map((conflict) => DEMO_ISOLATION_CONFLICT_LABELS[conflict])
       .join(", ");
     super(
-      `Chargement refusé : cette organisation contient déjà des données réelles (${labels}). Utilisez une organisation de test vide.`,
+      `Chargement refusé : cette organisation contient déjà des données ou outils à préserver (${labels}). Utilisez une organisation de test vide.`,
     );
     this.name = "DemoIsolationError";
     this.conflicts = conflicts;

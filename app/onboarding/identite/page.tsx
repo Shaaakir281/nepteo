@@ -34,7 +34,7 @@ export default async function IdentitePage() {
   if (mutationBlocked) {
     redirect(
       `/entreprise?error=${encodeURIComponent(
-        "Retirez d'abord les données de démonstration avant d'analyser un site.",
+        "Retirez d'abord le scénario Nepteo avant d'analyser un site.",
       )}`,
     );
   }

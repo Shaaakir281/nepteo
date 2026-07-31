@@ -254,7 +254,8 @@ export default async function TodayPage() {
             <Link href="/entreprise" className="font-semibold text-violet hover:underline">
               mémoire de l&apos;agent
             </Link>{" "}
-            — vos données réelles apparaîtront ici dès le premier connecteur.
+            — les données de votre organisation apparaîtront ici dès le premier
+            connecteur.
           </p>
         )}
       </div>
@@ -282,7 +283,7 @@ export default async function TodayPage() {
 
       {diagnostic ? (
         /* Rien de branché : le diagnostic de départ tient lieu de tableau de
-           bord. Le chemin vers une entreprise fictive reste offert juste en
+           bord. Le chemin vers un scénario d'exemple reste offert juste en
            dessous, par l'état vide de la file de validation. */
         <StarterDiagnosticCard diagnostic={diagnostic} />
       ) : (
@@ -313,7 +314,7 @@ export default async function TodayPage() {
                 href="/entreprise?onglet=connecteurs"
                 className="mt-2.5 inline-block text-[12px] font-semibold text-violet hover:underline"
               >
-                Essayer avec une entreprise fictive →
+                Charger un scénario d&apos;exemple →
               </Link>
             ) : (
               <p className="mt-2.5 text-[12px] text-faint">

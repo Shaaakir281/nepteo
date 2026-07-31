@@ -91,8 +91,8 @@ export function ConnectorCard({
           blockedByDemo && (
             <span className="text-[12px] font-medium text-amber">
               {demoPresentation === "certified-demo"
-                ? "Scénario Nepteo — connexion réelle désactivée."
-                : "Environnement de test — connexion réelle désactivée tant que le scénario Nepteo est actif."}
+                ? "Scénario d'exemple Nepteo — connexion externe désactivée."
+                : "Environnement de test — connexion externe désactivée tant que l'état du scénario Nepteo n'est pas clarifié."}
             </span>
           )}
         {status === "available" &&

@@ -49,7 +49,9 @@ export function isDemoAction(action: DemoActionLike): boolean {
   return action.data_sources.some(
     (source) =>
       typeof source === "string" &&
-      (source === "Meta Ads (démo)" || source.includes("prospects (demo)")),
+      (source === "Meta Ads (démo)" ||
+        source === "Meta Ads (scénario d'exemple)" ||
+        source.includes("prospects (demo)")),
   );
 }
 

@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
   } catch {
     return NextResponse.redirect(
       new URL(
-        `/entreprise?onglet=connecteurs&error=${encodeURIComponent("Connexion indisponible pendant la démonstration ou une opération en cours.")}`,
+        `/entreprise?onglet=connecteurs&error=${encodeURIComponent("Connexion indisponible tant que le scénario Nepteo ou une autre opération est en cours.")}`,
         request.url,
       ),
     );

@@ -27,7 +27,7 @@ const certifiedEvidence = () => ({
   nonDemoRevenueRows: 0,
 });
 
-test("présentation — seul le contrat de seed versionné certifie les données fictives", () => {
+test("présentation — seul le contrat de seed versionné certifie le scénario d'exemple", () => {
   assert.equal(
     isCertifiedDemoConnectorConfig({
       demo: true,
@@ -184,7 +184,7 @@ test("présentation — un scénario pur est certifié, tout mélange devient un
 test("présentation — le briefing nomme exactement la provenance affichée", () => {
   assert.equal(
     briefingDataSourceLabel("certified-demo"),
-    "à partir des données fictives du scénario Nepteo.",
+    "à partir des données d'exemple du scénario Nepteo.",
   );
   assert.equal(
     briefingDataSourceLabel("test-environment"),
@@ -192,7 +192,7 @@ test("présentation — le briefing nomme exactement la provenance affichée", (
   );
   assert.equal(
     briefingDataSourceLabel("none"),
-    "à partir de vos données réelles.",
+    "à partir des données de votre organisation.",
   );
 });
 
@@ -290,7 +290,16 @@ test("chargement — V2 peut changer, ancien marqueur et données apportées blo
 });
 
 test("interface — le libellé reste honnête et le marqueur bloque toujours OAuth", async () => {
-  const [layout, sidebar, panel, demoPanel, card] = await Promise.all([
+  const [
+    layout,
+    sidebar,
+    panel,
+    demoPanel,
+    card,
+    actions,
+    csvActions,
+    journal,
+  ] = await Promise.all([
     readFile(
       new URL("../app/(cockpit)/layout.tsx", import.meta.url),
       "utf8",
@@ -323,6 +332,15 @@ test("interface — le libellé reste honnête et le marqueur bloque toujours OA
       ),
       "utf8",
     ),
+    readFile(
+      new URL("../app/(cockpit)/agent/actions.ts", import.meta.url),
+      "utf8",
+    ),
+    readFile(
+      new URL("../app/(cockpit)/connecteurs/csv/actions.ts", import.meta.url),
+      "utf8",
+    ),
+    readFile(new URL("../lib/journal.ts", import.meta.url), "utf8"),
   ]);
 
   assert.match(panel, /canEdit=\{canEdit && !hasDemo\}/);
@@ -343,10 +361,13 @@ test("interface — le libellé reste honnête et le marqueur bloque toujours OA
   assert.match(panel, /categories: loadBlockCategories/);
   assert.match(
     demoPanel,
-    /disabled=\{busy !== null \|\| !loadGuard\.canLoad\}/,
+    /disabled=\{busy !== null \|\| !canLoad\}/,
   );
+  assert.match(demoPanel, /setRuntimeLoadBlock\(result\.categories \?\? \[\]\)/);
+  assert.match(demoPanel, /Scénarios d'exemple indisponibles/);
+  assert.match(demoPanel, /Indisponible ici/);
   assert.match(demoPanel, /Ancien marqueur de scénario détecté/);
-  assert.match(demoPanel, /Données ou outils apportés à préserver/);
+  assert.match(demoPanel, /Données ou outils déjà présents à préserver/);
   assert.match(
     demoPanel,
     /Retirer l&apos;ancien scénario ne suffira donc pas à débloquer/,
@@ -354,26 +375,44 @@ test("interface — le libellé reste honnête et le marqueur bloque toujours OA
   assert.match(demoPanel, /\{hasDemoMarker && \(/);
   assert.match(
     layout,
-    /demoPresentation === "certified-demo"[\s\S]*Scénario Nepteo — données fictives\.[\s\S]*Aucun[\s\S]*compte externe n&apos;est connecté/,
+    /demoPresentation === "certified-demo"[\s\S]*Scénario d&apos;exemple Nepteo\.[\s\S]*Aucun[\s\S]*compte externe n&apos;est[\s\S]*connecté/,
   );
   assert.match(
     layout,
-    /demoPresentation === "test-environment"[\s\S]*Environnement de test\.[\s\S]*importées par le testeur/,
+    /demoPresentation === "test-environment"[\s\S]*Environnement de test\.[\s\S]*saisies ou importées par le testeur/,
   );
-  assert.match(sidebar, /Scénario Nepteo — données fictives/);
+  assert.match(sidebar, /Scénario d'exemple Nepteo/);
   assert.match(sidebar, /Environnement de test/);
   assert.match(
     panel,
-    /demoPresentation === "certified-demo"[\s\S]*Scénario Nepteo — données fictives\./,
+    /demoPresentation === "certified-demo"[\s\S]*Scénario d&apos;exemple Nepteo\./,
   );
   assert.match(
     panel,
-    /demoPresentation === "test-environment"[\s\S]*Environnement de test\.[\s\S]*peuvent inclure celles du testeur/,
+    /demoPresentation === "test-environment"[\s\S]*Environnement de test\.[\s\S]*données[\s\S]*apportées par le testeur/,
   );
   assert.match(
     card,
-    /status === "available"[\s\S]*isOauthProvider\(tool\.provider\)[\s\S]*!canEdit[\s\S]*blockedByDemo[\s\S]*Environnement de test — connexion réelle désactivée/,
+    /status === "available"[\s\S]*isOauthProvider\(tool\.provider\)[\s\S]*!canEdit[\s\S]*blockedByDemo[\s\S]*Environnement de test — connexion externe désactivée/,
   );
+  assert.match(
+    actions,
+    /err instanceof DemoIsolationError[\s\S]*revalidateCockpit\(\)[\s\S]*categories: err\.conflicts\.map/,
+  );
+  for (const source of [
+    layout,
+    sidebar,
+    panel,
+    demoPanel,
+    card,
+    csvActions,
+    journal,
+  ]) {
+    assert.doesNotMatch(source, /entreprise fictive|données fictives|données de démonstration|vos données réelles/i);
+  }
+  assert.match(csvActions, /scénario d'exemple Nepteo/);
+  assert.match(journal, /Données d'exemple Meta Ads chargées/);
+  assert.match(journal, /Revenu d'exemple chargé/);
   assert.match(
     card,
     /status !== "connected" && isOauthProvider\(tool\.provider\) && canEdit/,

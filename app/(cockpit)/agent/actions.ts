@@ -11,7 +11,10 @@ import {
   DEMO_CAMPAIGN_PREFIX,
   DEMO_PROVIDER,
 } from "@/lib/demo/isolation-rules";
-import { DemoIsolationError } from "@/lib/demo/isolation";
+import {
+  DEMO_ISOLATION_CONFLICT_LABELS,
+  DemoIsolationError,
+} from "@/lib/demo/isolation";
 import {
   DemoBusyError,
   withDemoMutationLock,
@@ -98,7 +101,12 @@ export type DemoResult =
    * Sans lui, « ça n'a pas abouti » n'est pas exploitable : ni l'utilisateur ni
    * nous ne savons quoi réessayer. Il est affiché à l'écran ET écrit au journal.
    */
-  | { ok: false; reason: string; detail?: string };
+  | {
+      ok: false;
+      reason: string;
+      detail?: string;
+      categories?: string[];
+    };
 
 /** Message technique d'une exception, sans jamais faire tomber l'affichage. */
 function detailOf(err: unknown): string {
@@ -106,9 +114,9 @@ function detailOf(err: unknown): string {
 }
 
 /**
- * Charge un scénario de démonstration complet (entreprise fictive : identité,
- * prospects, campagnes, ventes). Données FICTIVES et cohérentes entre elles —
- * aucun connecteur à brancher pour voir le cockpit vivre.
+ * Charge un scénario d'exemple complet (identité, prospects, campagnes,
+ * ventes). Les données sont cohérentes entre elles : aucun connecteur à
+ * brancher pour voir le cockpit vivre.
  */
 export async function loadDemoScenarioAction(scenarioId: string): Promise<DemoResult> {
   const ctx = await getEditorContext();
@@ -210,10 +218,17 @@ export async function loadDemoScenarioAction(scenarioId: string): Promise<DemoRe
     return { ok: true, prospects: result.prospects, created, analysis };
   } catch (err) {
     if (err instanceof DemoIsolationError) {
+      // Le rendu client peut dater d'avant un import ou une synchronisation.
+      // Invalider côté serveur complète le verrouillage local immédiat du
+      // panneau et garantit que le prochain payload reflète l'inventaire.
+      revalidateCockpit();
       return {
         ok: false,
         reason: "unsafe_existing_data",
         detail: detailOf(err),
+        categories: err.conflicts.map(
+          (conflict) => DEMO_ISOLATION_CONFLICT_LABELS[conflict],
+        ),
       };
     }
     if (err instanceof DemoBusyError) {
