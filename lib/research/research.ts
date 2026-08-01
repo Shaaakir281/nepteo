@@ -5,10 +5,11 @@ import {
   isFresh,
   MAX_RESEARCH_PER_DAY,
   readQuotaReservation,
+  readQuotaUsage,
+  sanitizeResearchSources,
   subjectKey,
   type ResearchAnswer,
   type ResearchKind,
-  type ResearchSource,
 } from "@/lib/research/research-rules";
 
 type Admin = ReturnType<typeof createAdminClient>;
@@ -24,8 +25,27 @@ export type ResearchResult =
   | ({ ok: true; cached: boolean } & ResearchAnswer)
   | { ok: false; reason: string };
 
-function readSources(raw: unknown): ResearchSource[] {
-  return Array.isArray(raw) ? (raw as ResearchSource[]) : [];
+export interface ResearchQuotaStatus {
+  used: number;
+  limit: number;
+  remaining: number;
+}
+
+/** Lecture seule du quota du jour ; aucune réservation n'est effectuée ici. */
+export async function readResearchQuota(
+  admin: Admin,
+  orgId: string,
+): Promise<ResearchQuotaStatus | null> {
+  const { data, error } = await admin.rpc("read_research_usage", {
+    p_organization_id: orgId,
+  });
+  const used = readQuotaUsage(data);
+  if (error || used === null) return null;
+  return {
+    used,
+    limit: MAX_RESEARCH_PER_DAY,
+    remaining: Math.max(0, MAX_RESEARCH_PER_DAY - used),
+  };
 }
 
 async function recordBlocked(
@@ -94,7 +114,7 @@ export async function runResearch(
         ok: true,
         cached: true,
         text: cached.answer as string,
-        sources: readSources(cached.sources),
+        sources: sanitizeResearchSources(cached.sources),
       };
     }
   }

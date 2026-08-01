@@ -86,7 +86,7 @@ export async function IdentityPanel({
         </div>
         <div className="space-y-4">
           <DocumentsCard
-            canEdit={editable}
+            canEdit={canEdit}
             blockedByDemo={mutationBlockedByDemo}
             researchEnabled={researchConfigured()}
           />

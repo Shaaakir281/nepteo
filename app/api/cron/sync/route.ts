@@ -8,6 +8,7 @@ import {
 } from "@/lib/connectors/sync";
 import { runAnalysis } from "@/lib/analysis";
 import { withDemoMutationLock } from "@/lib/demo/lock";
+import { purgeExpiredWebsitePreviews } from "@/lib/research/website-preview";
 
 /**
  * Sync quotidienne de tous les connecteurs configurés (toutes organisations),
@@ -22,6 +23,9 @@ export async function POST(request: NextRequest) {
   }
 
   const admin = createAdminClient();
+  // Rétention du laboratoire : les analyses de test disparaissent après 30 j.
+  // Un échec est rendu honnêtement mais ne bloque pas la sync des connecteurs.
+  const websitePreviewRetention = await purgeExpiredWebsitePreviews(admin);
   const { data } = await admin
     .from("connectors")
     .select(CONNECTOR_SELECT)
@@ -93,5 +97,6 @@ export async function POST(request: NextRequest) {
     at: new Date().toISOString(),
     results,
     analyzed,
+    website_preview_retention: websitePreviewRetention,
   });
 }
