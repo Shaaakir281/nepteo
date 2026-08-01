@@ -17,7 +17,9 @@ import {
   parseOpenAiSearchResponse,
   parseResearchResponse,
   readQuotaReservation,
+  readQuotaUsage,
   renderResearch,
+  sanitizeResearchSources,
   subjectKey,
 } from "../lib/research/research-rules.ts";
 
@@ -127,6 +129,14 @@ test("readQuotaReservation — valide strictement le contrat de la RPC", () => {
     { allowed: true, reason: null, used: "1" },
   ]) {
     assert.equal(readQuotaReservation(value), null);
+  }
+});
+
+test("readQuotaUsage — lecture non mutante et stricte du quota", () => {
+  assert.equal(readQuotaUsage({ used: 0, usage_date: "2026-08-01" }), 0);
+  assert.equal(readQuotaUsage({ used: 12 }), 12);
+  for (const value of [null, [], {}, { used: -1 }, { used: 1.5 }, { used: "1" }]) {
+    assert.equal(readQuotaUsage(value), null);
   }
 });
 
@@ -358,6 +368,19 @@ test("countWebSearchCalls — une requête ≠ une recherche facturée", () => {
 test("openaiSearchContext — profondeur bornée, la fiche prospect coûte le moins", () => {
   assert.equal(openaiSearchContext("company_profile"), "medium");
   assert.equal(openaiSearchContext("prospect_company"), "low");
+  assert.equal(openaiSearchContext("website_preview"), "medium");
+});
+
+test("sources — seuls les liens HTTP(S) sans identifiants survivent", () => {
+  assert.deepEqual(
+    sanitizeResearchSources([
+      { title: "Valide", url: "https://acme.fr/preuve" },
+      { title: "Script", url: "javascript:alert(1)" },
+      { title: "Identifiants", url: "https://user:pass@acme.fr" },
+      { title: "Doublon", url: "https://acme.fr/preuve" },
+    ]),
+    [{ title: "Valide", url: "https://acme.fr/preuve" }],
+  );
 });
 
 test("renderResearch — vide sans résultat (prompt inchangé), sinon texte + sources", () => {

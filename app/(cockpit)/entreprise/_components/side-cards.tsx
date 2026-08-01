@@ -48,6 +48,24 @@ export function DocumentsCard({
             La recherche web n&apos;est pas configurée sur ce compte.
           </p>
         ) : null}
+        {researchEnabled && canEdit && (
+          <div className="mt-4 border-t border-line-soft pt-4">
+            <p className="text-[12.5px] font-semibold text-ink">
+              Tester un site sans toucher à la fiche
+            </p>
+            <p className="mt-1 text-[12px] leading-relaxed text-muted">
+              Votre site ou un autre site public : l&apos;analyse reste isolée,
+              y compris pendant un scénario d&apos;exemple.
+            </p>
+            <Link
+              href="/entreprise/laboratoire-web"
+              className="mt-2.5 flex items-center justify-center gap-2 rounded-[10px] border border-violet/25 bg-tint px-4 py-2.5 text-[13px] font-semibold text-violet-ink transition hover:bg-tint-soft"
+            >
+              {icons.search}
+              Ouvrir le laboratoire web
+            </Link>
+          </div>
+        )}
         <span className="mt-4 flex cursor-default items-center justify-center gap-2 rounded-[13px] border-[1.5px] border-dashed border-line px-4 py-[11px] text-[13px] font-semibold text-faint">
           {icons.plus}
           Ajouter un document — bientôt

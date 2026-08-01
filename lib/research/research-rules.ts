@@ -11,7 +11,10 @@
  */
 
 /** Types de recherche du produit. Un type = une requête et un cache dédiés. */
-export type ResearchKind = "company_profile" | "prospect_company";
+export type ResearchKind =
+  | "company_profile"
+  | "prospect_company"
+  | "website_preview";
 
 /**
  * Presets de l'Agent API Perplexity, du moins cher au plus profond.
@@ -24,6 +27,7 @@ export type ResearchPreset = "fast" | "low" | "medium" | "high" | "xhigh";
 export const RESEARCH_PRESETS: Record<ResearchKind, ResearchPreset> = {
   company_profile: "low",
   prospect_company: "fast",
+  website_preview: "low",
 };
 
 /** Plafond atomique des appels facturés par organisation et par jour UTC. */
@@ -216,10 +220,40 @@ function pushSource(
   const raw = item as Record<string, unknown>;
   const url = typeof raw.url === "string" ? raw.url.trim() : "";
   if (!url || seen.has(url)) return;
+  try {
+    const parsed = new URL(url);
+    if (
+      (parsed.protocol !== "http:" && parsed.protocol !== "https:") ||
+      parsed.username ||
+      parsed.password
+    ) {
+      return;
+    }
+  } catch {
+    return;
+  }
   seen.add(url);
   const title = typeof raw.title === "string" && raw.title.trim() ? raw.title.trim() : url;
   const date = typeof raw.date === "string" && raw.date.trim() ? raw.date.trim() : undefined;
   out.push({ title: title.slice(0, 200), url, ...(date ? { date } : {}) });
+}
+
+/** Lecture stricte du compteur non-mutant renvoyé par `read_research_usage`. */
+export function readQuotaUsage(raw: unknown): number | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const used = (raw as Record<string, unknown>).used;
+  return typeof used === "number" && Number.isInteger(used) && used >= 0
+    ? used
+    : null;
+}
+
+/** Nettoie aussi les sources relues depuis le cache avant de créer des liens. */
+export function sanitizeResearchSources(raw: unknown): ResearchSource[] {
+  if (!Array.isArray(raw)) return [];
+  const sources: ResearchSource[] = [];
+  const seen = new Set<string>();
+  for (const item of raw) pushSource(sources, seen, item);
+  return sources;
 }
 
 /**
@@ -288,7 +322,7 @@ export function parseResearchResponse(payload: unknown): ResearchAnswer {
  * d'un survol.
  */
 export function openaiSearchContext(kind: ResearchKind): "low" | "medium" | "high" {
-  return kind === "company_profile" ? "medium" : "low";
+  return kind === "prospect_company" ? "low" : "medium";
 }
 
 /**
