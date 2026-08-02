@@ -17,7 +17,7 @@ import {
  */
 
 const ENDPOINT = "https://api.perplexity.ai/v1/agent";
-const TIMEOUT_MS = 45_000;
+const DEFAULT_TIMEOUT_MS = 45_000;
 
 export type PerplexityResult =
   | ({ ok: true } & ResearchAnswer)
@@ -40,6 +40,7 @@ export async function askPerplexity(args: {
   query: string;
   preset: ResearchPreset;
   maxAnswerChars?: number;
+  timeoutMs?: number;
 }): Promise<PerplexityResult> {
   const key = process.env.PERPLEXITY_API_KEY;
   if (!key) return { ok: false, reason: "no_key" };
@@ -57,7 +58,7 @@ export async function askPerplexity(args: {
         preset: resolvePreset(args.preset),
         input: query,
       }),
-      signal: AbortSignal.timeout(TIMEOUT_MS),
+      signal: AbortSignal.timeout(args.timeoutMs ?? DEFAULT_TIMEOUT_MS),
       cache: "no-store",
     });
 

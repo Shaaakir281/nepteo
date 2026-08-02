@@ -3,6 +3,7 @@ import { askPerplexity } from "@/lib/research/perplexity";
 import {
   RESEARCH_PRESETS,
   researchAnswerLimit,
+  researchTimeoutMs,
   type ResearchAnswer,
   type ResearchKind,
 } from "@/lib/research/research-rules";
@@ -69,5 +70,6 @@ export async function askResearch(args: {
     query: args.query,
     preset: RESEARCH_PRESETS[args.kind],
     maxAnswerChars: researchAnswerLimit(args.kind),
+    timeoutMs: researchTimeoutMs(args.kind),
   });
 }

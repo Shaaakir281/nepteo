@@ -70,6 +70,16 @@ Environnement : Supabase `hrqnzorapjnosjphftur`, repo GitHub `Shaaakir281/nepteo
 
 ## Historique des sessions
 
+### 2026-08-02 — Codex — **timeout d'analyse d'onboarding diagnostiqué, correctif local non déployé**
+
+**Preuve production** : pour `https://www.airwell.com/`, le journal de l'organisation d'onboarding porte `research_started` à `2026-08-02T16:59:48.177345Z`, puis `research_failed` à `2026-08-02T17:00:33.576930Z` avec `reason = timeout` et `provider = openai`, soit 45,40 s. L'échec correspond donc au `AbortSignal.timeout(45_000)` du fournisseur, avant toute synthèse ; ni le client, ni Next/Azure, ni une récupération directe du site par Nepteo n'ont interrompu la requête. Deux exécutions explicites et distinctes de `website_preview` sur le même domaine avaient abouti plus tôt en 13,47 s et 18,73 s, avec six sources chacune.
+
+**Correctif local** : `company_profile` utilise désormais le schéma JSON strict déjà éprouvé par `website_preview`, accepte 12 000 caractères et exploite directement la proposition du seul appel `runResearch`. Les analyses d'identité ont un délai borné à 120 s ; `prospect_company` conserve 45 s. Le second appel de synthèse a été retiré, aucun retry automatique n'a été ajouté et aucune écriture dans `company_memory` n'a lieu avant validation.
+
+**Validation locale** : 28/28 tests ciblés, typecheck, lint des dix fichiers touchés (0 erreur, 0 avertissement) et build Next/Webpack de 25 routes verts. La suite complète passe 415/416 ; l'unique échec, hors périmètre, est l'empreinte octet du CSV `docs/tests/prospects-test.csv` checkouté en CRLF (`i/lf`, `w/crlf`). Le build Turbopack n'a pas pu démarrer dans ce worktree car il refuse la jonction temporaire `node_modules` pointant hors racine ; le build Webpack du même Next a compilé et généré toutes les pages. La jonction a été supprimée sans toucher aux dépendances sources.
+
+**Reste à faire** : après accord explicite de Fathi, pousser le correctif, ouvrir/fusionner la PR et déployer. La recette production devra lancer une seule analyse manuelle d'Airwell, vérifier un seul `research_started`, son `research_succeeded`, le nombre de `web_search_call`, les sources et l'absence de mutation de la fiche avant validation. Aucun appel payant de recette n'a été lancé pendant ce diagnostic.
+
 ### 2026-07-31 — Codex — **PR #17 déployée et recettée en production**
 
 **Terminologie livrée** : la voie A devient en surface « scénario d'exemple Nepteo » / « données d'exemple », tout en conservant `certified-demo` comme classification technique. La voie B reste « environnement de test » et peut contenir des données saisies ou importées par le testeur, réelles ou synthétiques.

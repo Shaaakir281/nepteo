@@ -19,13 +19,14 @@ import {
   readQuotaReservation,
   readQuotaUsage,
   researchAnswerLimit,
+  researchTimeoutMs,
   renderResearch,
   sanitizeResearchSources,
   subjectKey,
 } from "../lib/research/research-rules.ts";
 
-test("website_preview — conserve une réponse structurée au-delà de 4 000 caractères", () => {
-  assert.equal(researchAnswerLimit("company_profile"), 4000);
+test("propositions d'identité — conservent le JSON structuré au-delà de 4 000 caractères", () => {
+  assert.equal(researchAnswerLimit("company_profile"), 12000);
   assert.equal(researchAnswerLimit("website_preview"), 12000);
 
   const longJson = JSON.stringify({ description: "x".repeat(5000) });
@@ -42,6 +43,12 @@ test("website_preview — conserve une réponse structurée au-delà de 4 000 ca
   );
   assert.equal(parsed.text, longJson);
   assert.doesNotThrow(() => JSON.parse(parsed.text));
+});
+
+test("timeout — les identités riches ont deux minutes sans allonger les fiches rapides", () => {
+  assert.equal(researchTimeoutMs("company_profile"), 120000);
+  assert.equal(researchTimeoutMs("website_preview"), 120000);
+  assert.equal(researchTimeoutMs("prospect_company"), 45000);
 });
 
 test("subjectKey — même société, même clé (on ne paie pas deux fois)", () => {

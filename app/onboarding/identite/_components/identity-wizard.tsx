@@ -28,7 +28,8 @@ const REASONS: Record<string, string> = {
   no_subject: "Cette adresse ne semble pas valide.",
   nothing_found: "Je n'ai rien trouvé d'exploitable sur cette adresse.",
   empty_answer: "Je n'ai rien trouvé d'exploitable sur cette adresse.",
-  timeout: "La recherche a été trop longue. Réessayez dans un instant.",
+  timeout:
+    "La recherche n'a pas abouti dans le délai maximal. Aucun nouvel essai automatique n'a été lancé.",
   demo_active:
     "Retirez d'abord le scénario Nepteo avant d'analyser un site.",
   busy: "Une autre opération est en cours. Réessayez dans un instant.",

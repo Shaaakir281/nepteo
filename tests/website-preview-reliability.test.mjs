@@ -22,13 +22,13 @@ const [openAi, preview, lab, result] = await Promise.all([
 ]);
 
 test("website_preview — OpenAI impose un schéma JSON strict sur le même appel web", () => {
-  assert.match(openAi, /export function websitePreviewTextFormat\(\)/);
+  assert.match(openAi, /export function identityProposalTextFormat\(\)/);
   assert.match(openAi, /type: "json_schema"[\s\S]*strict: true/);
   assert.match(openAi, /required: \[[\s\S]*"activity_type"[\s\S]*"gaps"/);
   assert.match(openAi, /additionalProperties: false/);
   assert.match(
     openAi,
-    /args\.kind === "website_preview"[\s\S]*text: \{ format: websitePreviewTextFormat\(\) \}/,
+    /args\.kind === "website_preview"[\s\S]*text: \{ format: identityProposalTextFormat\(\) \}/,
   );
   assert.doesNotMatch(openAi, /generateText|responses\.create/i);
 });
