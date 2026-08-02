@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { FIELD } from "@/components/ui/styles";
 import type { ResearchQuotaStatus } from "@/lib/research/research";
+import type { WebsitePreviewCurrentProfile } from "@/lib/research/website-preview-apply-rules";
 import { validatePublicWebsite } from "@/lib/research/website-preview-rules";
 import { runWebsitePreviewAction } from "../actions";
 import { WebsitePreviewResult } from "./website-preview-result";
@@ -44,10 +45,16 @@ export function WebsitePreviewLab({
   canEdit,
   researchEnabled,
   initialQuota,
+  currentProfile,
+  applicationBlocked,
+  applicationContextAvailable,
 }: {
   canEdit: boolean;
   researchEnabled: boolean;
   initialQuota: ResearchQuotaStatus | null;
+  currentProfile: WebsitePreviewCurrentProfile;
+  applicationBlocked: boolean;
+  applicationContextAvailable: boolean;
 }) {
   const [website, setWebsite] = useState("");
   const [quota, setQuota] = useState(initialQuota);
@@ -59,6 +66,7 @@ export function WebsitePreviewLab({
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<SuccessResult | null>(null);
+  const [resultRevision, setResultRevision] = useState(0);
 
   function prepare(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -87,6 +95,7 @@ export function WebsitePreviewLab({
       if ("quota" in response && response.quota) setQuota(response.quota);
       if (response.ok) {
         setResult(response);
+        setResultRevision((revision) => revision + 1);
         setWebsite(response.url);
         setPending(null);
       } else {
@@ -201,7 +210,11 @@ export function WebsitePreviewLab({
 
       {result && (
         <WebsitePreviewResult
+          key={resultRevision}
           result={result}
+          currentProfile={currentProfile}
+          applicationBlocked={applicationBlocked}
+          applicationContextAvailable={applicationContextAvailable}
           onRefresh={() => {
             setError(null);
             setPending({ website: result.url, hostname: result.hostname, force: true });

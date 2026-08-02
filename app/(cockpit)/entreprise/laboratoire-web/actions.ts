@@ -1,8 +1,15 @@
 "use server";
 
 import { getEditorContext } from "@/lib/auth/context";
+import {
+  ACTIVITY_OPTIONS,
+  AUDIENCE_OPTIONS,
+  CHANNEL_OPTIONS,
+} from "@/lib/memory";
 import { researchConfigured } from "@/lib/research/provider";
 import { readResearchQuota } from "@/lib/research/research";
+import { applyWebsitePreview } from "@/lib/research/website-preview-apply";
+import { parseWebsitePreviewApplicationSections } from "@/lib/research/website-preview-apply-rules";
 import {
   previewWebsite,
   purgeExpiredWebsitePreviews,
@@ -54,4 +61,34 @@ export async function runWebsitePreviewAction(input: {
   });
   const quotaAfter = (await readResearchQuota(admin, context.orgId)) ?? quotaBefore;
   return { ...result, quota: quotaAfter };
+}
+
+/**
+ * Action distincte et gratuite : seules les sections relues sont appliquées.
+ * Le service verrouille la mémoire réelle et la RPC assure l'atomicité.
+ */
+export async function applyWebsitePreviewAction(input: {
+  website: string;
+  confirmed: boolean;
+  sections: unknown;
+}) {
+  const context = await getEditorContext();
+  if (!context?.canEdit) return { ok: false as const, reason: "forbidden" };
+  if (input.confirmed !== true) {
+    return { ok: false as const, reason: "application_confirmation_required" };
+  }
+
+  const parsed = parseWebsitePreviewApplicationSections(input.sections, {
+    activityOptions: ACTIVITY_OPTIONS,
+    audienceOptions: AUDIENCE_OPTIONS,
+    channelOptions: CHANNEL_OPTIONS,
+  });
+  if (!parsed.ok) return { ok: false as const, reason: parsed.reason };
+
+  return applyWebsitePreview(createAdminClient(), {
+    orgId: context.orgId,
+    actorId: context.userId,
+    website: input.website,
+    sections: parsed.sections,
+  });
 }

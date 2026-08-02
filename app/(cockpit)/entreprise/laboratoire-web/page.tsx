@@ -1,10 +1,43 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentAuthContext } from "@/lib/auth/context";
+import { isDemoModeOrMutationActive } from "@/lib/demo/isolation";
 import { researchConfigured } from "@/lib/research/provider";
 import { readResearchQuota } from "@/lib/research/research";
+import {
+  WEBSITE_PREVIEW_MEMORY_SECTIONS,
+  readWebsitePreviewCurrentProfile,
+} from "@/lib/research/website-preview-apply-rules";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { WebsitePreviewLab } from "./_components/website-preview-lab";
+
+async function readApplicationContext(
+  admin: ReturnType<typeof createAdminClient>,
+  organizationId: string,
+) {
+  const [initialQuota, memoryResult, scenarioState] = await Promise.all([
+    readResearchQuota(admin, organizationId),
+    admin
+      .from("company_memory")
+      .select("section, content")
+      .eq("organization_id", organizationId)
+      .in("section", [...WEBSITE_PREVIEW_MEMORY_SECTIONS]),
+    isDemoModeOrMutationActive(admin, organizationId).catch(() => null),
+  ]);
+  return {
+    initialQuota,
+    currentProfile: readWebsitePreviewCurrentProfile(
+      memoryResult.data
+        ? Object.fromEntries(
+            memoryResult.data.map((row) => [row.section, row.content]),
+          )
+        : {},
+    ),
+    applicationBlocked: scenarioState === true,
+    applicationContextAvailable:
+      !memoryResult.error && scenarioState !== null,
+  };
+}
 
 export default async function WebsitePreviewPage() {
   const { user, membership } = await getCurrentAuthContext();
@@ -12,9 +45,15 @@ export default async function WebsitePreviewPage() {
   if (!membership) redirect("/onboarding");
 
   const researchEnabled = researchConfigured();
-  const initialQuota = membership.canEdit
-    ? await readResearchQuota(createAdminClient(), membership.organizationId)
-    : null;
+  const admin = membership.canEdit ? createAdminClient() : null;
+  const applicationContext = admin
+    ? await readApplicationContext(admin, membership.organizationId)
+    : {
+        initialQuota: null,
+        currentProfile: {},
+        applicationBlocked: false,
+        applicationContextAvailable: false,
+      };
 
   return (
     <>
@@ -35,15 +74,19 @@ export default async function WebsitePreviewPage() {
       </div>
 
       <div className="mt-5 rounded-[13px] border border-violet/20 bg-tint px-4 py-3 text-[12.5px] leading-relaxed text-body">
-        <b>Zone sans effet sur la mémoire.</b> Rien n&apos;est appliqué à votre
-        fiche, même pendant un scénario d&apos;exemple. Aucun envoi, aucune
+        <b>L&apos;analyse seule reste sans effet sur la mémoire.</b> Après le
+        résultat, une application séparée exige une revue section par section
+        et reste bloquée pendant un scénario d&apos;exemple. Aucun envoi, aucune
         campagne et aucun déploiement ne sont déclenchés ici.
       </div>
 
       <WebsitePreviewLab
         canEdit={membership.canEdit}
         researchEnabled={researchEnabled}
-        initialQuota={initialQuota}
+        initialQuota={applicationContext.initialQuota}
+        currentProfile={applicationContext.currentProfile}
+        applicationBlocked={applicationContext.applicationBlocked}
+        applicationContextAvailable={applicationContext.applicationContextAvailable}
       />
     </>
   );

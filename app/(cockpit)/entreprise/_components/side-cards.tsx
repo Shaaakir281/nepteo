@@ -51,11 +51,12 @@ export function DocumentsCard({
         {researchEnabled && canEdit && (
           <div className="mt-4 border-t border-line-soft pt-4">
             <p className="text-[12.5px] font-semibold text-ink">
-              Tester un site sans toucher à la fiche
+              Tester un site avant de choisir
             </p>
             <p className="mt-1 text-[12px] leading-relaxed text-muted">
               Votre site ou un autre site public : l&apos;analyse reste isolée,
-              y compris pendant un scénario d&apos;exemple.
+              y compris pendant un scénario d&apos;exemple. Hors scénario, vous
+              pourrez ensuite appliquer uniquement les sections validées.
             </p>
             <Link
               href="/entreprise/laboratoire-web"

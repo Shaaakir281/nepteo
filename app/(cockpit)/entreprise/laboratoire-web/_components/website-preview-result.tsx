@@ -1,6 +1,8 @@
 import type { IdentityProposal } from "@/lib/research/profile-rules";
 import type { ResearchQuotaStatus } from "@/lib/research/research";
 import type { ResearchSource } from "@/lib/research/research-rules";
+import type { WebsitePreviewCurrentProfile } from "@/lib/research/website-preview-apply-rules";
+import { WebsitePreviewApplication } from "./website-preview-application";
 
 function ResultSection({
   title,
@@ -20,6 +22,9 @@ function ResultSection({
 export function WebsitePreviewResult({
   result,
   onRefresh,
+  currentProfile,
+  applicationBlocked,
+  applicationContextAvailable,
 }: {
   result: {
     url: string;
@@ -30,6 +35,9 @@ export function WebsitePreviewResult({
     quota: ResearchQuotaStatus;
   };
   onRefresh: () => void;
+  currentProfile: WebsitePreviewCurrentProfile;
+  applicationBlocked: boolean;
+  applicationContextAvailable: boolean;
 }) {
   const p = result.proposal;
   return (
@@ -115,8 +123,16 @@ export function WebsitePreviewResult({
       </section>
 
       <p className="mt-4 rounded-[10px] bg-tint px-3.5 py-2.5 text-[12px] leading-relaxed text-body">
-        Cette analyse reste séparée de votre fiche entreprise. I1 ne propose aucun bouton d&apos;application : rien n&apos;a été écrit dans la mémoire.
+        Cette analyse reste séparée de votre fiche tant que vous n&apos;avez pas relu, coché et confirmé des sections ci-dessous.
       </p>
+
+      <WebsitePreviewApplication
+        website={result.url}
+        proposal={p}
+        currentProfile={currentProfile}
+        applicationBlocked={applicationBlocked}
+        applicationContextAvailable={applicationContextAvailable}
+      />
     </article>
   );
 }
