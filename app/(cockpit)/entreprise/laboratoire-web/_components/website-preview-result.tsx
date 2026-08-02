@@ -51,7 +51,7 @@ export function WebsitePreviewResult({
             </span>
           </div>
           <p className="mt-1 text-[12px] text-muted">
-            Quota : {result.quota.used}/{result.quota.limit} utilisé · {result.quota.remaining} restant
+            {result.quota.used} analyses lancées aujourd&apos;hui · sans limite
           </p>
         </div>
         <button

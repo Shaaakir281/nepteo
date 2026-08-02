@@ -1,7 +1,13 @@
 import {
+  ACTIVITY_OPTIONS,
+  AUDIENCE_OPTIONS,
+  CHANNEL_OPTIONS,
+} from "@/lib/memory";
+import {
   countWebSearchCalls,
   openaiSearchContext,
   parseOpenAiSearchResponse,
+  researchAnswerLimit,
   type ResearchAnswer,
   type ResearchKind,
 } from "@/lib/research/research-rules";
@@ -40,12 +46,76 @@ const DEFAULT_MODEL = "gpt-5.5";
  *
  * C'est le garde-fou de coût le plus important de ce fichier : un effort élevé
  * transforme la requête en recherche agentique, capable d'enchaîner plusieurs
- * dizaines de `web_search_call` facturés dans un seul appel — ce que
- * `MAX_RESEARCH_PER_DAY` (qui compte des appels `runResearch`) ne verrait pas.
- * Ne pas monter cette valeur sans revoir les plafonds serveur.
+ * dizaines de `web_search_call` facturés dans un seul appel. Le compteur des
+ * appels `runResearch` ne suffit pas à révéler cette multiplication.
+ * Ne pas monter cette valeur sans revoir la supervision des coûts.
  * (`minimal` n'est pas supporté avec `web_search`.)
  */
 const REASONING_EFFORT = "low";
+
+/**
+ * Le laboratoire affiche des sections distinctes : sa réponse doit donc être
+ * un objet exploitable, pas seulement un texte auquel le prompt demande du JSON.
+ */
+export function websitePreviewTextFormat() {
+  return {
+    type: "json_schema",
+    name: "website_preview",
+    strict: true,
+    schema: {
+      type: "object",
+      properties: {
+        activity_type: { type: "string", enum: ["", ...ACTIVITY_OPTIONS] },
+        audience: { type: "string", enum: ["", ...AUDIENCE_OPTIONS] },
+        description: { type: "string", maxLength: 1000 },
+        zone: { type: "string", maxLength: 200 },
+        ton: { type: "string", maxLength: 500 },
+        canaux: {
+          type: "array",
+          items: { type: "string", enum: [...CHANNEL_OPTIONS] },
+          maxItems: CHANNEL_OPTIONS.length,
+        },
+        offres: {
+          type: "array",
+          maxItems: 6,
+          items: {
+            type: "object",
+            properties: {
+              name: { type: "string", maxLength: 80 },
+              price: { type: "string", maxLength: 200 },
+              target: { type: "string", maxLength: 200 },
+              promise: { type: "string", maxLength: 200 },
+            },
+            required: ["name", "price", "target", "promise"],
+            additionalProperties: false,
+          },
+        },
+        presence: {
+          type: "array",
+          items: { type: "string", maxLength: 200 },
+          maxItems: 6,
+        },
+        gaps: {
+          type: "array",
+          items: { type: "string", maxLength: 200 },
+          maxItems: 5,
+        },
+      },
+      required: [
+        "activity_type",
+        "audience",
+        "description",
+        "zone",
+        "ton",
+        "canaux",
+        "offres",
+        "presence",
+        "gaps",
+      ],
+      additionalProperties: false,
+    },
+  };
+}
 
 export type OpenAiSearchResult =
   | ({ ok: true; searches: number } & ResearchAnswer)
@@ -96,6 +166,9 @@ export async function askOpenAiSearch(args: {
         // contestable).
         include: ["web_search_call.action.sources"],
         reasoning: { effort: REASONING_EFFORT },
+        ...(args.kind === "website_preview"
+          ? { text: { format: websitePreviewTextFormat() } }
+          : {}),
         // Rien à conserver chez le fournisseur : les résultats vivent dans
         // `research_runs` (hébergement EU).
         store: false,
@@ -110,7 +183,10 @@ export async function askOpenAiSearch(args: {
     }
 
     const payload: unknown = await response.json();
-    const answer = parseOpenAiSearchResponse(payload);
+    const answer = parseOpenAiSearchResponse(
+      payload,
+      researchAnswerLimit(args.kind),
+    );
     // Contrat partagé avec Perplexity : un texte vide est un ÉCHEC, sinon on
     // mettrait une recherche vide en cache pendant 30 jours.
     if (!answer.text) return { ok: false, reason: "empty_answer" };

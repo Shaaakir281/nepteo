@@ -138,11 +138,11 @@ export function buildWebsitePreviewQuery(
     `trouvée dans ces pages.\n` +
     `Réponds uniquement avec un objet JSON valide selon ce schéma :\n` +
     `{\n` +
-    `  "activity_type": "une valeur exacte parmi ${options.activityOptions.join(" | ")}, sinon omise",\n` +
-    `  "audience": "une valeur exacte parmi ${options.audienceOptions.join(" | ")}, sinon omise",\n` +
+    `  "activity_type": "une valeur exacte parmi ${options.activityOptions.join(" | ")}, sinon chaîne vide",\n` +
+    `  "audience": "une valeur exacte parmi ${options.audienceOptions.join(" | ")}, sinon chaîne vide",\n` +
     `  "description": "offres et positionnement observables en 2 à 3 phrases",\n` +
-    `  "zone": "territoire servi, sinon omis",\n` +
-    `  "ton": "ton observable, sinon omis",\n` +
+    `  "zone": "territoire servi, sinon chaîne vide",\n` +
+    `  "ton": "ton observable, sinon chaîne vide",\n` +
     `  "canaux": ["valeurs exactes parmi ${options.channelOptions.join(" | ")}"],\n` +
     `  "offres": [{"name":"...","price":"...","target":"...","promise":"..."}],\n` +
     `  "presence": ["preuve ou communication publique constatée"],\n` +

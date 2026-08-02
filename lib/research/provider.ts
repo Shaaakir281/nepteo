@@ -2,6 +2,7 @@ import { askOpenAiSearch, openAiSearchConfigured } from "@/lib/research/openai-s
 import { askPerplexity } from "@/lib/research/perplexity";
 import {
   RESEARCH_PRESETS,
+  researchAnswerLimit,
   type ResearchAnswer,
   type ResearchKind,
 } from "@/lib/research/research-rules";
@@ -64,5 +65,9 @@ export async function askResearch(args: {
   if (provider === "openai") {
     return askOpenAiSearch({ kind: args.kind, query: args.query });
   }
-  return askPerplexity({ query: args.query, preset: RESEARCH_PRESETS[args.kind] });
+  return askPerplexity({
+    query: args.query,
+    preset: RESEARCH_PRESETS[args.kind],
+    maxAnswerChars: researchAnswerLimit(args.kind),
+  });
 }

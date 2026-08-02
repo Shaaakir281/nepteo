@@ -59,7 +59,7 @@ test("laboratoire — un seul appel externe via runResearch, aucune mémoire", (
   assert.match(service, /await runResearch\(admin,[\s\S]*kind: "website_preview"/);
   assert.doesNotMatch(service, /askResearch|askOpenAiSearch|askPerplexity/);
   assert.doesNotMatch(service, /generateText|company_memory|proposeIdentityForOrg/);
-  assert.match(service, /parseIdentityProposal\(research\.text/);
+  assert.match(service, /parseUsefulProposal\(research\.text\)/);
 });
 
 test("laboratoire — confirmation, rôle éditeur, rétention et aucun verrou démo", () => {
