@@ -42,6 +42,7 @@ export const EVENT_LABELS: Record<string, string> = {
   research_failed: "Recherche web échouée",
   research_blocked: "Recherche web bloquée",
   identity_proposed: "Identité proposée par l'agent",
+  website_preview_applied: "Analyse web appliquée à la fiche",
   demo_scenario_loaded: "Scénario d'exemple Nepteo chargé",
   demo_scenario_cleared: "Scénario Nepteo retiré",
   demo_scenario_clear_failed: "Retrait du scénario Nepteo échoué",
