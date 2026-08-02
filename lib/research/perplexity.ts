@@ -39,6 +39,7 @@ export function resolvePreset(fallback: ResearchPreset): ResearchPreset {
 export async function askPerplexity(args: {
   query: string;
   preset: ResearchPreset;
+  maxAnswerChars?: number;
 }): Promise<PerplexityResult> {
   const key = process.env.PERPLEXITY_API_KEY;
   if (!key) return { ok: false, reason: "no_key" };
@@ -66,7 +67,7 @@ export async function askPerplexity(args: {
     }
 
     const payload: unknown = await response.json();
-    const answer = parseResearchResponse(payload);
+    const answer = parseResearchResponse(payload, args.maxAnswerChars);
     if (!answer.text) return { ok: false, reason: "empty_answer" };
     return { ok: true, ...answer };
   } catch (error) {

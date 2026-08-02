@@ -30,8 +30,14 @@ export const RESEARCH_PRESETS: Record<ResearchKind, ResearchPreset> = {
   website_preview: "low",
 };
 
-/** Plafond atomique des appels facturés par organisation et par jour UTC. */
-export const MAX_RESEARCH_PER_DAY = 30;
+/**
+ * Limite quotidienne optionnelle des appels facturés.
+ *
+ * `null` conserve le compteur et la réservation atomique, mais ne bloque jamais
+ * une recherche pour une raison budgétaire. La pause d'exécution reste, elle,
+ * prioritaire et fail-closed.
+ */
+export const RESEARCH_DAILY_LIMIT: number | null = null;
 
 /** Une réponse ne retient qu'une poignée de sources — au-delà c'est illisible. */
 export const MAX_SOURCES = 6;
@@ -41,6 +47,15 @@ export const CACHE_DAYS = 30;
 
 /** Bornes de sortie — protège la base et les prompts en aval. */
 export const MAX_ANSWER_CHARS = 4000;
+
+/** Un aperçu structuré riche peut dépasser la borne des réponses narratives. */
+export const WEBSITE_PREVIEW_MAX_ANSWER_CHARS = 12_000;
+
+export function researchAnswerLimit(kind: ResearchKind): number {
+  return kind === "website_preview"
+    ? WEBSITE_PREVIEW_MAX_ANSWER_CHARS
+    : MAX_ANSWER_CHARS;
+}
 
 export interface ResearchSource {
   title: string;
@@ -262,7 +277,10 @@ export function sanitizeResearchSources(raw: unknown): ResearchSource[] {
  * Sonar (`choices[].message.content` + `search_results`) : si Perplexity bascule
  * l'un ou l'autre, on ne casse pas. Ne lève jamais.
  */
-export function parseResearchResponse(payload: unknown): ResearchAnswer {
+export function parseResearchResponse(
+  payload: unknown,
+  maxAnswerChars: number = MAX_ANSWER_CHARS,
+): ResearchAnswer {
   const empty: ResearchAnswer = { text: "", sources: [] };
   if (!payload || typeof payload !== "object") return empty;
   const root = payload as Record<string, unknown>;
@@ -309,7 +327,7 @@ export function parseResearchResponse(payload: unknown): ResearchAnswer {
     }
   }
 
-  return { text: chunks.join("\n\n").slice(0, MAX_ANSWER_CHARS), sources };
+  return { text: chunks.join("\n\n").slice(0, maxAnswerChars), sources };
 }
 
 /**
@@ -343,7 +361,10 @@ export function openaiSearchContext(kind: ResearchKind): "low" | "medium" | "hig
  * `content[].text`) pour qu'un parseur « unifié » extraie le texte OpenAI mais
  * perde ses sources, silencieusement. Ne lève jamais.
  */
-export function parseOpenAiSearchResponse(payload: unknown): ResearchAnswer {
+export function parseOpenAiSearchResponse(
+  payload: unknown,
+  maxAnswerChars: number = MAX_ANSWER_CHARS,
+): ResearchAnswer {
   const empty: ResearchAnswer = { text: "", sources: [] };
   if (!payload || typeof payload !== "object") return empty;
   const root = payload as Record<string, unknown>;
@@ -385,7 +406,7 @@ export function parseOpenAiSearchResponse(payload: unknown): ResearchAnswer {
     }
   }
 
-  return { text: chunks.join("\n\n").slice(0, MAX_ANSWER_CHARS), sources };
+  return { text: chunks.join("\n\n").slice(0, maxAnswerChars), sources };
 }
 
 /**
@@ -393,8 +414,8 @@ export function parseOpenAiSearchResponse(payload: unknown): ResearchAnswer {
  *
  * Une requête ≠ une recherche facturée : en mode agentique, le modèle peut
  * enchaîner plusieurs `web_search_call` dans un seul appel, chacun facturé
- * (10 $ / 1 000 appels d'outil, doc vérifiée le 2026-07-26). `MAX_RESEARCH_PER_DAY`
- * compte des appels `runResearch`, pas des recherches — ce compteur est le seul
+ * (10 $ / 1 000 appels d'outil, doc vérifiée le 2026-07-26). Le compteur quotidien
+ * suit des appels `runResearch`, pas des recherches — ce chiffre est donc le seul
  * moyen de savoir ce qu'on paie vraiment. Il finit au journal.
  */
 export function countWebSearchCalls(payload: unknown): number {

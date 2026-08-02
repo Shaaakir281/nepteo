@@ -9,6 +9,13 @@ const migration = await readFile(
   ),
   "utf8",
 );
+const unlimitedMigration = await readFile(
+  new URL(
+    "../supabase/migrations/0024_unlimited_research_and_structured_preview.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 const orchestration = await readFile(
   new URL("../lib/research/research.ts", import.meta.url),
   "utf8",
@@ -124,4 +131,25 @@ test("quota recherche — cache, réservation, journal puis appel payant", () =>
   );
   assert.doesNotMatch(orchestration, /\.select\("execution_paused"\)/);
   assert.doesNotMatch(orchestration, /release_research|decrement_research/);
+});
+
+test("recherche sans plafond — compteur et pause atomiques restent actifs", () => {
+  assert.match(
+    unlimitedMigration,
+    /p_daily_limit is not null[\s\S]*p_daily_limit < 1/i,
+  );
+  assert.match(
+    unlimitedMigration,
+    /select organization\.execution_paused[\s\S]*for update[\s\S]*insert into public\.research_daily_usage/i,
+  );
+  assert.match(
+    unlimitedMigration,
+    /where p_daily_limit is null\s+or usage\.reserved_calls < p_daily_limit/i,
+  );
+  assert.match(
+    unlimitedMigration,
+    /greatest\(version, 24\)[\s\S]*version >= 24/i,
+  );
+  assert.match(orchestration, /p_daily_limit: RESEARCH_DAILY_LIMIT/);
+  assert.match(orchestration, /RESEARCH_DAILY_LIMIT === null/);
 });

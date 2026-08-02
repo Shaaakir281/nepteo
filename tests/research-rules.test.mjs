@@ -18,10 +18,31 @@ import {
   parseResearchResponse,
   readQuotaReservation,
   readQuotaUsage,
+  researchAnswerLimit,
   renderResearch,
   sanitizeResearchSources,
   subjectKey,
 } from "../lib/research/research-rules.ts";
+
+test("website_preview — conserve une réponse structurée au-delà de 4 000 caractères", () => {
+  assert.equal(researchAnswerLimit("company_profile"), 4000);
+  assert.equal(researchAnswerLimit("website_preview"), 12000);
+
+  const longJson = JSON.stringify({ description: "x".repeat(5000) });
+  const parsed = parseOpenAiSearchResponse(
+    {
+      output: [
+        {
+          type: "message",
+          content: [{ type: "output_text", text: longJson, annotations: [] }],
+        },
+      ],
+    },
+    researchAnswerLimit("website_preview"),
+  );
+  assert.equal(parsed.text, longJson);
+  assert.doesNotThrow(() => JSON.parse(parsed.text));
+});
 
 test("subjectKey — même société, même clé (on ne paie pas deux fois)", () => {
   const expected = "acme-corp-fr";

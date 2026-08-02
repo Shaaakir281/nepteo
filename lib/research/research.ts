@@ -3,7 +3,7 @@ import { askResearch, researchProvider } from "@/lib/research/provider";
 import {
   guardResearch,
   isFresh,
-  MAX_RESEARCH_PER_DAY,
+  RESEARCH_DAILY_LIMIT,
   readQuotaReservation,
   readQuotaUsage,
   sanitizeResearchSources,
@@ -27,8 +27,8 @@ export type ResearchResult =
 
 export interface ResearchQuotaStatus {
   used: number;
-  limit: number;
-  remaining: number;
+  limit: number | null;
+  remaining: number | null;
 }
 
 /** Lecture seule du quota du jour ; aucune réservation n'est effectuée ici. */
@@ -43,8 +43,11 @@ export async function readResearchQuota(
   if (error || used === null) return null;
   return {
     used,
-    limit: MAX_RESEARCH_PER_DAY,
-    remaining: Math.max(0, MAX_RESEARCH_PER_DAY - used),
+    limit: RESEARCH_DAILY_LIMIT,
+    remaining:
+      RESEARCH_DAILY_LIMIT === null
+        ? null
+        : Math.max(0, RESEARCH_DAILY_LIMIT - used),
   };
 }
 
@@ -135,12 +138,13 @@ export async function runResearch(
   }
 
   // 3. Réservation atomique AVANT l'appel. Le compteur d'usage est distinct du
-  // cache : un `force` et un échec fournisseur consomment eux aussi un créneau.
+  // cache : un `force` et un échec fournisseur sont eux aussi comptabilisés.
+  // Une limite nulle mesure l'usage sans jamais le bloquer ; la pause reste active.
   const { data: quotaData, error: quotaError } = await admin.rpc(
     "reserve_research_call",
     {
       p_organization_id: args.orgId,
-      p_daily_limit: MAX_RESEARCH_PER_DAY,
+      p_daily_limit: RESEARCH_DAILY_LIMIT,
     },
   );
   const quota = readQuotaReservation(quotaData);
@@ -174,8 +178,8 @@ export async function runResearch(
 
   const result = await askResearch({ kind: args.kind, query: args.query });
 
-  // 5. Trace du résultat + cache (échec compris : il compte dans le plafond,
-  //    sinon une clé invalide permettrait de boucler indéfiniment).
+  // 5. Trace du résultat + cache (échec compris : il reste visible dans l'usage
+  //    et ne doit jamais devenir un cache réutilisable).
   await admin.from("research_runs").upsert(
     {
       organization_id: args.orgId,
@@ -197,8 +201,8 @@ export async function runResearch(
     actor: "agent",
     actor_id: args.actorId,
     // `searches` = nombre de recherches réellement facturées par l'appel (chez
-    // OpenAI, une requête peut en enchaîner plusieurs). Le plafond quotidien
-    // compte des appels `runResearch` : sans ce chiffre au journal, il mentirait.
+    // OpenAI, une requête peut en enchaîner plusieurs). Le compteur quotidien
+    // suit des appels `runResearch` : sans ce chiffre au journal, il serait ambigu.
     payload: result.ok
       ? {
           kind: args.kind,

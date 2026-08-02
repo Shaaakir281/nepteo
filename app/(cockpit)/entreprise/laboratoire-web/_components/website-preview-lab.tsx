@@ -136,7 +136,9 @@ export function WebsitePreviewLab({
             </p>
           </div>
           <span className="rounded-full bg-tint px-3 py-1 text-[11.5px] font-semibold text-violet-ink">
-            {quota ? `${quota.used}/${quota.limit} appels réservés aujourd'hui` : "Quota indisponible"}
+            {quota
+              ? `${quota.used} analyses lancées aujourd'hui · sans limite`
+              : "Compteur indisponible"}
           </span>
         </div>
 
@@ -172,25 +174,20 @@ export function WebsitePreviewLab({
             </p>
             <p className="mt-1 text-[12.5px] leading-relaxed text-body">
               {pending.force
-                ? "Cette actualisation ignore le cache et réserve un nouvel appel du quota."
-                : "Un résultat frais sera réutilisé sans coût. Sinon, Nepteo réservera un appel du quota avant de contacter le fournisseur."}
+                ? "Cette actualisation ignore le cache et journalise un nouvel appel."
+                : "Un résultat frais sera réutilisé sans coût. Sinon, Nepteo journalisera un nouvel appel avant de contacter le fournisseur."}
               {" "}Une requête OpenAI peut contenir plusieurs recherches web facturées ; leur nombre sera journalisé.
             </p>
             {!quota && (
               <p className="mt-2 text-[12px] font-semibold text-red">
-                Impossible de confirmer tant que le quota n&apos;est pas lisible.
-              </p>
-            )}
-            {pending.force && quota?.remaining === 0 && (
-              <p className="mt-2 text-[12px] font-semibold text-red">
-                Le quota du jour est épuisé : l&apos;actualisation est bloquée.
+                Impossible de confirmer tant que le compteur d&apos;usage n&apos;est pas lisible.
               </p>
             )}
             <div className="mt-3 flex flex-wrap gap-2">
               <button
                 type="button"
                 onClick={() => void confirm()}
-                disabled={running || !quota || (pending.force && quota.remaining === 0)}
+                disabled={running || !quota}
                 className="rounded-[10px] bg-violet px-4 py-2 text-[12.5px] font-semibold text-white hover:bg-violet-deep disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {running ? "Analyse en cours…" : pending.force ? "Confirmer l'actualisation" : "Confirmer et lancer"}

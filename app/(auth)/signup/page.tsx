@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { signup } from "../actions";
+import { resendConfirmation, signup } from "../actions";
 
 const FIELD =
   "mt-1 w-full rounded-[10px] border border-line bg-white px-3.5 py-2.5 text-sm text-ink placeholder:text-faint focus:border-violet focus:outline-none focus:ring-[3px] focus:ring-violet/15";
@@ -54,6 +54,35 @@ export default async function SignupPage({
           Connexion
         </Link>
       </p>
+
+      <section id="resend-confirmation" className="mt-6 border-t border-line-soft pt-5">
+        <h2 className="text-[14px] font-semibold text-ink">Email non reçu ?</h2>
+        <p className="mt-1 text-[12.5px] leading-relaxed text-muted">
+          Renseigne l&apos;adresse utilisée lors de l&apos;inscription. Le message peut
+          aussi se trouver dans les courriers indésirables.
+        </p>
+        <form action={resendConfirmation} className="mt-3 space-y-3">
+          <div>
+            <label htmlFor="resend-email" className="block text-[13px] font-semibold text-ink">
+              Email
+            </label>
+            <input
+              id="resend-email"
+              name="email"
+              type="email"
+              required
+              autoComplete="email"
+              className={FIELD}
+            />
+          </div>
+          <button
+            type="submit"
+            className="w-full rounded-[10px] border border-line bg-white px-4 py-2.5 text-sm font-semibold text-violet transition hover:bg-tint-soft"
+          >
+            Renvoyer le lien de confirmation
+          </button>
+        </form>
+      </section>
     </>
   );
 }

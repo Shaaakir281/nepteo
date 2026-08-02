@@ -12,6 +12,7 @@
 
 | Date | Décision | Raison |
 |------|----------|--------|
+| 2026-08-02 | **Le laboratoire web conserve un compteur quotidien mais aucun plafond bloquant** : `reserve_research_call(..., null)` incrémente toujours sous verrou d'organisation, tandis que la pause, le journal avant appel, le cache, le timeout et l'absence de retry automatique restent inchangés. **La sortie `website_preview` OpenAI utilise `text.format` avec un JSON Schema strict dans le même appel `web_search`**, avec une borne de stockage dédiée de 12 000 caractères ; tout ancien cache marqué `ok` mais inexploitable est reclassé `failed` avant l'unique appel confirmé | Le test réel de `bogasolution.com` a trouvé 6 sources mais la couche applicative a tronqué la réponse à exactement 4 000 caractères, supprimant l'accolade finale puis affichant à tort « aucun résultat structuré ». Le compteur `2/30` et le crédit OpenAI n'étaient pas la cause. Fathi ne souhaite aucune limite budgétaire artificielle ; le suivi atomique est néanmoins conservé pour l'observabilité et la pause d'urgence |
 | 2026-07 | Positionnement entre expert et grand public ; règle vocabulaire (standard gardé, jargon plateforme coupé) | Résolution tension V2 Charly vs mémo |
 | 2026-07 | Stack : Next.js + Supabase EU + Vercel AI SDK multi-fournisseurs + OAuth officiels | Simplicité, réversibilité des modèles, RGPD, un seul déploiement |
 | 2026-07 | Validation humaine par défaut ; exécution directe seulement si réversible et faible risque | Cœur du produit |
