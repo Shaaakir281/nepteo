@@ -23,8 +23,38 @@ const credentialsSchema = z.object({
   password: z.string().min(8),
 });
 
+const emailSchema = z.object({ email: z.email() });
+
 function fail(path: string, message: string): never {
   redirect(`${path}?error=${encodeURIComponent(message)}`);
+}
+
+async function confirmationRedirectUrl(): Promise<string> {
+  const origin = (await headers()).get("origin") ?? "http://localhost:3000";
+  return `${origin}/auth/confirm`;
+}
+
+function emailDeliveryError(code: string | undefined): string {
+  if (code === "email_address_not_authorized") {
+    return "L'envoi des emails de confirmation n'est pas encore disponible. Préviens l'équipe Nepteo.";
+  }
+  if (code === "over_email_send_rate_limit" || code === "over_request_rate_limit") {
+    return "Trop de demandes rapprochées. Attends quelques minutes avant de renvoyer le lien.";
+  }
+  return "L'email de confirmation n'a pas pu être envoyé. Réessaie dans un instant.";
+}
+
+function signupError(code: string | undefined): string {
+  if (code === "user_already_exists" || code === "email_exists") {
+    return "Un compte existe peut-être déjà avec cet email. Connecte-toi ou renvoie le lien de confirmation ci-dessous.";
+  }
+  if (code === "weak_password") {
+    return "Ce mot de passe est trop faible. Choisis un mot de passe plus long et difficile à deviner.";
+  }
+  if (code === "email_provider_disabled" || code === "signup_disabled") {
+    return "Les nouvelles inscriptions sont momentanément désactivées.";
+  }
+  return emailDeliveryError(code);
 }
 
 export async function login(formData: FormData) {
@@ -42,7 +72,7 @@ export async function login(formData: FormData) {
     fail(
       "/login",
       error.code === "email_not_confirmed"
-        ? "Email non confirmé — clique le lien reçu par mail avant de te connecter."
+        ? "Email non confirmé — clique le lien reçu ou utilise « Renvoyer le lien » sur la page Créer un compte."
         : "Identifiants incorrects.",
     );
   }
@@ -61,22 +91,37 @@ export async function signup(formData: FormData) {
     fail("/signup", "Email invalide ou mot de passe trop court (8 caractères minimum).");
   }
 
-  const origin = (await headers()).get("origin") ?? "http://localhost:3000";
   const supabase = await createClient();
   const { error } = await supabase.auth.signUp({
     ...parsed.data,
-    options: { emailRedirectTo: `${origin}/auth/confirm` },
+    options: { emailRedirectTo: await confirmationRedirectUrl() },
   });
   if (error) {
-    fail(
-      "/signup",
-      error.code === "user_already_exists"
-        ? "Un compte existe déjà avec cet email — connecte-toi plutôt."
-        : "Création du compte impossible. Réessaie dans un instant.",
-    );
+    fail("/signup", signupError(error.code));
   }
   redirect(
     `/signup?message=${encodeURIComponent("Compte créé — vérifie ta boîte mail pour confirmer ton adresse.")}`,
+  );
+}
+
+export async function resendConfirmation(formData: FormData) {
+  const parsed = emailSchema.safeParse({ email: formData.get("email") });
+  if (!parsed.success) {
+    fail("/signup", "Saisis une adresse email valide pour renvoyer le lien.");
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.resend({
+    type: "signup",
+    email: parsed.data.email,
+    options: { emailRedirectTo: await confirmationRedirectUrl() },
+  });
+  if (error) fail("/signup", emailDeliveryError(error.code));
+
+  redirect(
+    `/signup?message=${encodeURIComponent(
+      "Si cette adresse correspond à un compte non confirmé, un nouveau lien vient d'être demandé. Vérifie aussi les spams.",
+    )}#resend-confirmation`,
   );
 }
 
