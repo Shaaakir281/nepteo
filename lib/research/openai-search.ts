@@ -8,6 +8,7 @@ import {
   openaiSearchContext,
   parseOpenAiSearchResponse,
   researchAnswerLimit,
+  researchTimeoutMs,
   type ResearchAnswer,
   type ResearchKind,
 } from "@/lib/research/research-rules";
@@ -32,8 +33,6 @@ import {
  */
 
 const ENDPOINT = "https://api.openai.com/v1/responses";
-const TIMEOUT_MS = 45_000;
-
 /**
  * Modèle par défaut : celui que la doc désigne pour « new web search
  * integration » (Responses API + `web_search`). Surchargeable par env pour
@@ -54,13 +53,14 @@ const DEFAULT_MODEL = "gpt-5.5";
 const REASONING_EFFORT = "low";
 
 /**
- * Le laboratoire affiche des sections distinctes : sa réponse doit donc être
- * un objet exploitable, pas seulement un texte auquel le prompt demande du JSON.
+ * Le laboratoire et l'onboarding affichent des sections distinctes : leur
+ * réponse doit être un objet exploitable, pas seulement un texte auquel le
+ * prompt demande du JSON.
  */
-export function websitePreviewTextFormat() {
+export function identityProposalTextFormat() {
   return {
     type: "json_schema",
-    name: "website_preview",
+    name: "identity_proposal",
     strict: true,
     schema: {
       type: "object",
@@ -166,14 +166,14 @@ export async function askOpenAiSearch(args: {
         // contestable).
         include: ["web_search_call.action.sources"],
         reasoning: { effort: REASONING_EFFORT },
-        ...(args.kind === "website_preview"
-          ? { text: { format: websitePreviewTextFormat() } }
+        ...(args.kind === "website_preview" || args.kind === "company_profile"
+          ? { text: { format: identityProposalTextFormat() } }
           : {}),
         // Rien à conserver chez le fournisseur : les résultats vivent dans
         // `research_runs` (hébergement EU).
         store: false,
       }),
-      signal: AbortSignal.timeout(TIMEOUT_MS),
+      signal: AbortSignal.timeout(researchTimeoutMs(args.kind)),
       cache: "no-store",
     });
 

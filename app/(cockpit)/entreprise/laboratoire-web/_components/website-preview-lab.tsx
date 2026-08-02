@@ -27,7 +27,7 @@ const ERRORS: Record<string, string> = {
   retention_unavailable: "La rétention ne peut pas être garantie : aucune analyse n'a été lancée.",
   empty_answer: "Le fournisseur n'a renvoyé aucun résultat exploitable.",
   nothing_found: "Aucun résultat structuré et suffisamment fiable n'a été trouvé.",
-  timeout: "La recherche a dépassé 45 secondes. Aucun nouvel essai automatique n'a été lancé.",
+  timeout: "La recherche n'a pas abouti dans le délai maximal. Aucun nouvel essai automatique n'a été lancé.",
   network_error: "La recherche a rencontré une erreur réseau. Aucun nouvel essai automatique n'a été lancé.",
   forbidden: "Votre rôle ne permet pas de lancer une analyse.",
   confirmation_required: "Confirmez explicitement l'analyse avant de la lancer.",

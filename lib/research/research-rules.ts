@@ -48,13 +48,27 @@ export const CACHE_DAYS = 30;
 /** Bornes de sortie — protège la base et les prompts en aval. */
 export const MAX_ANSWER_CHARS = 4000;
 
-/** Un aperçu structuré riche peut dépasser la borne des réponses narratives. */
+/** Une proposition d'identité structurée peut dépasser la borne narrative. */
 export const WEBSITE_PREVIEW_MAX_ANSWER_CHARS = 12_000;
 
 export function researchAnswerLimit(kind: ResearchKind): number {
-  return kind === "website_preview"
+  return kind === "website_preview" || kind === "company_profile"
     ? WEBSITE_PREVIEW_MAX_ANSWER_CHARS
     : MAX_ANSWER_CHARS;
+}
+
+/**
+ * Les analyses d'identité parcourent plusieurs pages et rendent un objet riche.
+ * Elles disposent de deux minutes ; une fiche prospect courte conserve 45 s.
+ * Ces délais bornent un appel unique et ne déclenchent jamais de retry.
+ */
+export const DEFAULT_RESEARCH_TIMEOUT_MS = 45_000;
+export const IDENTITY_RESEARCH_TIMEOUT_MS = 120_000;
+
+export function researchTimeoutMs(kind: ResearchKind): number {
+  return kind === "company_profile" || kind === "website_preview"
+    ? IDENTITY_RESEARCH_TIMEOUT_MS
+    : DEFAULT_RESEARCH_TIMEOUT_MS;
 }
 
 export interface ResearchSource {
