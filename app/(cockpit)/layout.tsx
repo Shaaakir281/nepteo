@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { getCurrentAuthContext } from "@/lib/auth/context";
 import { readDemoPresentation } from "@/lib/demo/presentation";
 import { icons } from "@/components/icons";
@@ -58,7 +59,15 @@ export default async function CockpitLayout({
             Rechercher une campagne, un prospect…
           </span>
           <div className="flex items-center gap-3.5">
-            <span className="text-[12.5px] text-muted">{today}</span>
+            <Link
+              href="/prise-en-main"
+              className="rounded-[8px] bg-tint px-2.5 py-1.5 text-[11px] font-semibold text-violet-ink lg:hidden"
+            >
+              Prise en main
+            </Link>
+            <span className="hidden text-[12.5px] text-muted sm:inline">
+              {today}
+            </span>
             <span className="grid h-8 w-8 place-items-center rounded-full bg-ink font-display text-[11.5px] font-semibold text-white">
               {initial}
             </span>

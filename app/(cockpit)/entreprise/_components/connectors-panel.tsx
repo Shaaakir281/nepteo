@@ -14,6 +14,7 @@ import {
 import { readDemoPresentation } from "@/lib/demo/presentation";
 import { classifyDemoLoadGuard } from "@/lib/demo/presentation-rules";
 import { DemoPanel } from "../../agent/_components/demo-panel";
+import type { WalkthroughScenario } from "@/lib/onboarding/walkthrough";
 import {
   ConnectorCard,
   type ConnectorStatus,
@@ -32,12 +33,14 @@ export async function ConnectorsPanel({
   canManageDemo,
   orgId,
   saved,
+  guidedScenario,
 }: {
   canEdit: boolean;
   canViewConnectorConfig: boolean;
   canManageDemo: boolean;
   orgId: string;
   saved?: string;
+  guidedScenario?: WalkthroughScenario;
 }) {
   const admin = createAdminClient();
   const rowsResult = canViewConnectorConfig
@@ -104,13 +107,19 @@ export async function ConnectorsPanel({
   const hasRemovableDemoMarker =
     !demoLoadGuard.checkFailed && demoLoadState?.active === true;
   const scenarioPanelTitle =
-    demoPresentation === "certified-demo"
+    guidedScenario && demoPresentation !== "certified-demo"
+      ? "Scénario choisi pour la prise en main"
+      : demoPresentation === "certified-demo"
       ? "Scénario d'exemple actif"
       : demoLoadGuard.canLoad
         ? "Besoin de données pour tester ?"
         : "Scénarios d'exemple Nepteo";
   const scenarioPanelSubtitle =
-    demoPresentation === "certified-demo"
+    guidedScenario
+      ? demoPresentation === "certified-demo"
+        ? "Le scénario est actif. Vous pouvez reprendre la prise en main après avoir vérifié le résultat."
+        : "Le chargement reste volontaire : vérifiez le scénario, puis confirmez l'action ci-dessous."
+      : demoPresentation === "certified-demo"
       ? "Changez de métier ou retirez le scénario actuel en conservant votre fiche d'origine."
       : demoLoadGuard.canLoad
         ? "Chargez un jeu cohérent — identité, prospects, campagnes et ventes en un clic."
@@ -148,10 +157,14 @@ export async function ConnectorsPanel({
                 requiresDemoRemoval: demoLoadGuard.requiresDemoRemoval,
                 categories: loadBlockCategories,
               }}
-              scenarios={DEMO_SCENARIOS.map((s) => ({
-                id: s.id,
-                label: s.label,
-                pitch: s.pitch,
+              guided={Boolean(guidedScenario)}
+              scenarios={DEMO_SCENARIOS.filter(
+                (scenario) =>
+                  !guidedScenario || scenario.id === guidedScenario,
+              ).map((scenario) => ({
+                id: scenario.id,
+                label: scenario.label,
+                pitch: scenario.pitch,
               }))}
             />
           </div>

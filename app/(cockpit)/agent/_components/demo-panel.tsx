@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { clearDemoAction, loadDemoScenarioAction } from "../actions";
@@ -60,11 +61,13 @@ export function DemoPanel({
   canManageDemo,
   hasDemoMarker,
   loadGuard,
+  guided = false,
 }: {
   scenarios: ScenarioChoice[];
   canManageDemo: boolean;
   hasDemoMarker: boolean;
   loadGuard: DemoLoadGuardView;
+  guided?: boolean;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
@@ -78,6 +81,7 @@ export function DemoPanel({
   const [runtimeLoadBlock, setRuntimeLoadBlock] = useState<string[] | null>(
     null,
   );
+  const [showWalkthroughResume, setShowWalkthroughResume] = useState(false);
 
   async function run(
     id: string,
@@ -100,6 +104,7 @@ export function DemoPanel({
     setError(null);
     setDetail(null);
     setStep(0);
+    setShowWalkthroughResume(false);
 
     let current = 0;
     const timer = setInterval(() => {
@@ -113,6 +118,7 @@ export function DemoPanel({
         new Promise((r) => setTimeout(r, STEPS.length * STEP_MS)),
       ]);
       if (result.ok) {
+        setShowWalkthroughResume(guided && id !== "clear");
         const created = result.created ?? 0;
         const failedAnalyses = result.analysis
           ? Object.entries(result.analysis).filter(([, value]) => !value.ok)
@@ -178,7 +184,9 @@ export function DemoPanel({
   return (
     <div>
       <p className="mb-3 rounded-[10px] bg-tint-soft px-3.5 py-2.5 text-[12.5px] leading-relaxed text-body">
-        Les trois scénarios contiennent uniquement des données d&apos;exemple.
+        {scenarios.length === 1
+          ? "Ce scénario contient uniquement des données d’exemple."
+          : "Les trois scénarios contiennent uniquement des données d’exemple."}{" "}
         Votre fiche entreprise sera remplacée pendant le scénario, puis
         restaurée à son retrait. Le chargement est désactivé dès que
         l&apos;organisation contient des données ou outils apportés par le
@@ -233,7 +241,7 @@ export function DemoPanel({
             )}
         </div>
       )}
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className={`grid gap-3 ${scenarios.length > 1 ? "sm:grid-cols-3" : "sm:grid-cols-1"}`}>
         {scenarios.map((s) => (
           <div
             key={s.id}
@@ -285,6 +293,14 @@ export function DemoPanel({
             </p>
           )}
         </div>
+      )}
+      {showWalkthroughResume && (
+        <Link
+          href="/prise-en-main"
+          className="mt-3 inline-flex rounded-[9px] bg-ink px-3 py-2 text-[12px] font-semibold text-white hover:opacity-90"
+        >
+          Reprendre la prise en main →
+        </Link>
       )}
       {error && (
         <div className="mt-4 rounded-[10px] bg-red-tint px-3.5 py-2.5">

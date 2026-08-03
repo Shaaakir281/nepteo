@@ -4,6 +4,12 @@ Une phase = un objectif unique + une porte go/no-go. On ne passe pas la porte, o
 
 > **Lecture au 2026-07-30** : la phase 3A est déployée et recettée en lecture, mais la porte de valeur de la phase 2 reste ouverte faute de preuve commanditaire. L'ordre opérationnel des prochains incréments est défini dans la [roadmap valeur — tests commanditaires](projets/roadmap-valeur-commanditaires.md).
 
+> **Chantier transverse — prise en main** : le parcours guidé est piloté par sa
+> [roadmap dédiée](projets/roadmap-prise-en-main.md), distincte de la roadmap
+> valeur. Au 2026-08-03, une intégration locale est autorisée ; ses critères de
+> compréhension terrain restent ouverts et aucun push, fusion ou déploiement
+> n’est implicite.
+
 ## Phase 1 — Fondations (lecture seule)
 
 **Objectif** : une chaîne de données fiable, en lecture seule.

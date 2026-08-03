@@ -51,6 +51,9 @@ export default async function IdentitePage() {
           Nepteo
         </div>
         <div className="mt-5 rounded-[18px] border border-line-soft bg-white p-6 shadow-card">
+          <p className="mb-3 text-[11px] font-semibold uppercase tracking-[.1em] text-violet">
+            Configuration · étape 2 sur 2 · Bêta recommandée
+          </p>
           <IdentityWizard
             activityOptions={[...ACTIVITY_OPTIONS]}
             audienceOptions={[...AUDIENCE_OPTIONS]}

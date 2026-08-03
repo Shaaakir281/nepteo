@@ -1,0 +1,1981 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nepteo — Prise en main (maquette)</title>
+<style>
+/* ============================================================
+   Nepteo — Prise en main. MAQUETTE HTML, non intégrée.
+   Tokens repris de docs/maquettes/nepteo-cockpit.html et de
+   app/globals.css. Seule la progression simulée est conservée
+   dans le navigateur. « Réinitialiser la maquette » l'efface intégralement.
+   ============================================================ */
+:root{
+  --ink:#191731; --body:#4c4a68; --muted:#84819e; --faint:#a8a5c0;
+  --violet:#5a4fe0; --violet-deep:#4a3fd0; --violet-ink:#3d34ad;
+  --tint:#efeefb; --tint-soft:#f7f6fd;
+  --page:#f4f3fa; --card:#ffffff;
+  --border:#e7e5f1; --border-soft:#efedf7;
+  --green:#177a55; --green-tint:#e9f6f0;
+  --amber:#9a6210; --amber-tint:#fdf3e3;
+  --red:#b3384d; --red-tint:#fdeef1;
+  --shadow-card:0 1px 2px rgba(25,23,49,.05),0 10px 30px rgba(25,23,49,.06);
+  --r-lg:18px; --r-md:13px; --r-sm:10px;
+  --font-body:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  --font-display:"Instrument Sans",Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{font-family:var(--font-body);font-size:14.5px;color:var(--body);background:var(--page);-webkit-font-smoothing:antialiased}
+h1,h2,h3,h4,h5{font-family:var(--font-display);color:var(--ink)}
+button{font:inherit;cursor:pointer;background:none;border:none;color:inherit}
+button:focus-visible,a:focus-visible,summary:focus-visible{outline:2px solid var(--violet);outline-offset:2px}
+[hidden]{display:none !important}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+
+/* ===== Première arrivée ===== */
+.welcome{position:fixed;inset:0;z-index:100;background:
+  linear-gradient(145deg,#f7f6fb 0%,#f1f0f8 55%,#f7f7fa 100%);
+  overflow:auto;padding:32px 20px}
+.welcome-shell{width:min(980px,100%);margin:0 auto;background:#fff;border:1px solid #dedce8;border-radius:20px;box-shadow:0 18px 55px rgba(25,23,49,.11);overflow:hidden}
+.welcome-top{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:20px 24px;border-bottom:1px solid var(--border-soft)}
+.welcome-brand{display:flex;align-items:center;gap:10px;font-family:var(--font-display);font-weight:700;font-size:17px;color:var(--ink)}
+.welcome-safe{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--green);font-weight:600}
+.welcome-body{padding:44px 50px 48px}
+.welcome-kicker{display:inline-flex;align-items:center;gap:7px;border-radius:999px;padding:6px 11px;background:var(--tint);color:var(--violet-ink);font-size:11.5px;font-weight:700;margin-bottom:16px}
+.welcome h1{font-size:clamp(30px,4.5vw,44px);line-height:1.08;letter-spacing:-.03em;max-width:760px}
+.welcome-lead{font-size:16px;line-height:1.68;max-width:740px;margin-top:16px;color:var(--body)}
+.welcome-lead b{color:var(--ink)}
+.resume-box{margin-top:22px;padding:14px 16px;border:1px solid #d8d4f5;border-radius:var(--r-md);background:var(--tint-soft);display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.resume-box p{font-size:13px;line-height:1.5}.resume-box b{color:var(--ink)}
+.path-grid{display:grid;grid-template-columns:1.12fr 1fr;gap:14px;margin-top:28px}
+.path-card{position:relative;text-align:left;padding:23px;border:1px solid var(--border);border-radius:var(--r-lg);background:#fff;min-height:198px;transition:border-color .16s,box-shadow .16s}
+.path-card:hover{border-color:#bdb8e8;box-shadow:0 8px 24px rgba(25,23,49,.08)}
+.path-card.recommended{background:linear-gradient(145deg,#fbfaff,#f0eefd);border-color:#d8d4f5}
+.path-card .badge{display:inline-flex;border-radius:999px;padding:4px 9px;background:var(--violet);color:#fff;font-size:10.5px;font-weight:700;margin-bottom:24px}
+.path-card .path-icon{width:max-content;height:auto;border-radius:999px;display:inline-flex;align-items:center;background:var(--tint);color:var(--violet-ink);font-size:10.5px;font-weight:750;letter-spacing:.06em;text-transform:uppercase;padding:6px 10px;margin-bottom:15px}
+.path-card h2{font-size:19px;margin-bottom:7px}.path-card p{font-size:13.5px;line-height:1.55;color:var(--body)}
+.path-card .path-meta{display:block;margin-top:14px;color:var(--violet-ink);font-size:12px;font-weight:700}
+.free-link{display:inline-flex;margin-top:18px;color:var(--muted);text-decoration:underline;text-underline-offset:3px;font-size:13px}
+.free-link:hover{color:var(--violet-ink)}
+.welcome-panel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:22px}
+.welcome-panel-head h1{font-size:32px}.welcome-panel-head p{font-size:14px;line-height:1.6;margin-top:8px;max-width:650px}
+.scenario-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.scenario-choice{display:flex;flex-direction:column;text-align:left;padding:18px;border:1px solid var(--border);border-radius:var(--r-md);background:#fff;min-height:178px}
+.scenario-choice:hover,.scenario-choice[aria-pressed="true"]{border-color:var(--violet);box-shadow:0 0 0 3px rgba(90,79,224,.11)}
+.scenario-choice[aria-pressed="true"]{background:var(--tint-soft)}
+.scenario-choice .type{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--violet-ink)}
+.scenario-choice h3{font-size:16px;margin:10px 0 6px}.scenario-choice p{font-size:12.5px;line-height:1.55;flex:1}.scenario-choice .counts{font-size:11.5px;color:var(--muted);margin-top:12px}
+.welcome-actions{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:24px;flex-wrap:wrap}
+.real-form{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:20px}
+.field{display:flex;flex-direction:column;gap:7px}.field.full{grid-column:1/-1}.field label{font-size:12.5px;font-weight:700;color:var(--ink)}
+.field .help{font-size:11.5px;color:var(--muted);line-height:1.45}
+.field input,.field textarea{font:inherit;border:1px solid var(--border);border-radius:10px;padding:11px 12px;color:var(--ink);background:#fff;resize:vertical}
+.field input:focus-visible,.field textarea:focus-visible{outline:2px solid var(--violet);outline-offset:1px;border-color:transparent}
+.example-help{margin-top:16px;padding:14px 16px;border:1px solid #d8d4f5;border-radius:var(--r-md);background:var(--tint-soft);font-size:12.5px;line-height:1.55}
+.example-help b{color:var(--ink)}
+.privacy-note{display:flex;gap:8px;margin-top:14px;color:var(--muted);font-size:11.5px;line-height:1.5}
+.path-notice{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:12px 15px;margin-bottom:16px;border:1px solid #d8d4f5;border-radius:var(--r-md);background:var(--tint-soft);font-size:12.5px;line-height:1.5}
+.path-notice b{color:var(--ink)}
+.scenario-picker{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:13px}
+.scenario-mini{padding:11px;text-align:left;border:1px solid var(--border);border-radius:10px;background:#fff;font-size:11.5px;line-height:1.4}
+.scenario-mini b{display:block;margin-bottom:3px}.scenario-mini[aria-pressed="true"]{border-color:var(--violet);background:var(--tint-soft);box-shadow:0 0 0 2px rgba(90,79,224,.1)}
+.active-scenario{display:flex;align-items:center;gap:13px;margin-top:13px;padding:13px 15px;border:1px solid #d8d3f4;border-radius:var(--r-sm);background:#fcfbff}
+.active-scenario .active-mark{flex:none;font-size:10.5px;font-weight:650;letter-spacing:.05em;text-transform:uppercase;color:var(--violet-ink);background:#eeeafd;border-radius:999px;padding:4px 9px}
+.active-scenario .active-copy{display:flex;flex-direction:column;gap:2px;min-width:0}
+.active-scenario .active-copy b{font-size:13px;color:var(--ink)}
+.active-scenario .active-copy span{font-size:11.5px;line-height:1.45;color:var(--muted)}
+.inline-decision{display:none;margin-top:13px}.inline-result{margin-top:9px;font-size:12.5px;line-height:1.5;padding:10px 12px;border-radius:9px;background:var(--tint-soft)}
+@media (max-width:760px){
+  .welcome{padding:0}.welcome-shell{min-height:100%;border:0;border-radius:0}.welcome-top{padding:16px 18px}.welcome-body{padding:28px 20px 36px}
+  .welcome-safe{display:none}.path-grid,.scenario-grid,.real-form{grid-template-columns:1fr}.path-card{min-height:0}.field.full{grid-column:auto}
+  .welcome-panel-head{flex-direction:column}.welcome-panel-head h1{font-size:28px}.scenario-choice{min-height:0}
+}
+
+/* ===== Bandeau de maquette ===== */
+.flag{display:flex;align-items:center;gap:10px;justify-content:center;flex-wrap:wrap;
+  background:var(--amber-tint);border-bottom:1px solid #f0dcb4;color:var(--amber);
+  font-size:12.5px;font-weight:550;padding:9px 20px;text-align:center}
+.flag b{color:#7a4d0b;font-weight:650}
+
+/* ===== Structure ===== */
+.app{display:grid;grid-template-columns:248px 1fr;min-height:100vh}
+.app>*{min-width:0}
+
+/* ===== Barre latérale ===== */
+.side{background:#fff;border-right:1px solid var(--border-soft);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto}
+.side-logo{display:flex;align-items:center;gap:10px;font-family:var(--font-display);font-weight:650;font-size:17px;color:var(--ink);padding:20px 20px 16px}
+.logo-mark{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#6a5cf0,#4a3fd0);display:grid;place-items:center;color:#fff;font-size:14px;font-weight:700;box-shadow:0 4px 10px rgba(90,79,224,.28)}
+.side-workspace{margin:0 14px 14px;padding:9px 12px;border:1px solid var(--border);border-radius:var(--r-sm);font-size:12.5px;color:var(--body);display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--tint-soft)}
+.side-workspace b{font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nav-label{font-size:10.5px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);padding:12px 22px 6px}
+.nav{display:flex;flex-direction:column;gap:2px;padding:0 12px}
+.nav a{display:flex;align-items:center;gap:11px;padding:9px 12px;border-radius:var(--r-sm);font-size:13.5px;font-weight:500;color:var(--body);text-decoration:none;transition:background .15s}
+.nav a svg{flex:none;color:var(--faint)}
+.nav a:hover{background:var(--tint-soft)}
+.side-spacer{flex:1;min-height:18px}
+
+/* Entrée « Prise en main » — volontairement HORS des cinq entrées */
+.pm-entry{margin:0 12px 12px;padding:13px 14px;border:1px solid #d8d4f5;border-radius:var(--r-md);
+  background:linear-gradient(180deg,#fbfbff,#f2f1fc);display:block;width:calc(100% - 24px);text-align:left}
+.pm-entry .r{display:flex;align-items:center;gap:9px;margin-bottom:7px}
+.pm-entry h4{font-size:13px;font-weight:600}
+.pm-entry .ring{flex:none;width:22px;height:22px}
+.pm-entry .bar{display:block;height:4px;border-radius:999px;background:#e3e0f4;overflow:hidden}
+.pm-entry .bar i{display:block;height:100%;background:linear-gradient(90deg,#6a5cf0,#5a4fe0);border-radius:999px;transition:width .45s cubic-bezier(.4,0,.2,1)}
+.pm-entry .c{display:block;font-size:11px;color:var(--muted);margin-top:6px}
+
+.agent-dock{margin:0 14px 14px;padding:13px 15px;border:1px solid var(--border);border-radius:var(--r-md);background:linear-gradient(180deg,#fbfbff,#f5f4fc)}
+.agent-dock .r{display:flex;align-items:center;gap:9px;margin-bottom:3px}
+.agent-dock .pulse{width:9px;height:9px;border-radius:50%;background:var(--green);box-shadow:0 0 0 3px rgba(23,122,85,.15);animation:pulse 2.4s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 3px rgba(23,122,85,.15)}50%{box-shadow:0 0 0 6px rgba(23,122,85,.06)}}
+.agent-dock h4{font-size:13px;font-weight:600}
+.agent-dock p{font-size:11.5px;color:var(--muted);line-height:1.5}
+
+/* ===== Zone principale ===== */
+.mainbar{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:13px 32px;background:#fff;border-bottom:1px solid var(--border-soft);position:sticky;top:0;z-index:15}
+.crumb{font-size:13px;color:var(--muted)}
+.crumb b{color:var(--ink);font-weight:600}
+.mainbar .right{display:flex;align-items:center;gap:13px}
+.avatar{width:32px;height:32px;border-radius:50%;background:var(--ink);color:#fff;display:grid;place-items:center;font-size:12.5px;font-weight:600;font-family:var(--font-display)}
+.view{padding:28px 32px 72px;max-width:1320px}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font-size:13.5px;font-weight:550;border-radius:var(--r-sm);padding:10px 18px;border:1px solid transparent;white-space:nowrap;transition:background .15s,transform .12s,border-color .15s}
+.btn-primary{background:var(--violet);color:#fff;box-shadow:0 1px 2px rgba(61,52,173,.3),0 6px 16px rgba(90,79,224,.25)}
+.btn-primary:hover{background:var(--violet-deep)}
+.btn-primary:active{transform:translateY(1px)}
+.btn-ghost{background:#fff;color:var(--body);border-color:var(--border)}
+.btn-ghost:hover{border-color:#c9c4ea}
+.btn-quiet{background:transparent;color:var(--muted);padding:10px 8px}
+.btn-quiet:hover{color:var(--body)}
+.btn-sm{font-size:12.5px;padding:7px 13px;border-radius:8px}
+.btn:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}
+
+/* ===== En-tête de la prise en main ===== */
+.pm-head{background:#fff;border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--shadow-card);padding:24px 26px;margin-bottom:18px}
+.pm-head .top{display:flex;align-items:flex-start;justify-content:space-between;gap:26px;flex-wrap:wrap}
+.pm-head h1{font-size:25px;font-weight:650;letter-spacing:-.018em;margin-bottom:6px}
+.pm-head .lead{font-size:14.5px;line-height:1.6;color:var(--body);max-width:590px}
+.pm-head .acts{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.pm-meter{margin-top:20px;padding-top:18px;border-top:1px solid var(--border-soft)}
+.pm-meter .line{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin-bottom:9px;flex-wrap:wrap}
+.pm-meter .n{font-family:var(--font-display);font-size:15px;font-weight:600;color:var(--ink)}
+.pm-meter .n span{color:var(--muted);font-weight:500;font-size:13px}
+.pm-meter .stage{font-size:12.5px;color:var(--muted)}
+.pm-meter .stage b{color:var(--violet-ink);font-weight:600}
+.track{height:7px;border-radius:999px;background:#e9e7f6;overflow:hidden}
+.track i{display:block;height:100%;width:0;background:linear-gradient(90deg,#6a5cf0,#5a4fe0);border-radius:999px;transition:width .5s cubic-bezier(.4,0,.2,1)}
+@media (prefers-reduced-motion:reduce){.track i,.pm-entry .bar i{transition:none}}
+.pm-meter .ticks{display:flex;gap:0;margin-top:10px;flex-wrap:wrap}
+.tick{display:flex;align-items:center;gap:7px;font-size:11.5px;font-weight:550;color:var(--faint);padding:4px 11px 4px 0}
+.tick .d{width:16px;height:16px;border-radius:50%;background:#eeecf7;display:grid;place-items:center;color:#fff}
+.tick .d svg{opacity:0}
+.tick.on{color:var(--body)}
+.tick.on .d{background:var(--green)}
+.tick.on .d svg{opacity:1}
+.tick.now{color:var(--violet-ink)}
+.tick.now .d{background:var(--violet);box-shadow:0 0 0 3px rgba(90,79,224,.18)}
+
+/* ===== Grille parcours / aperçu ===== */
+.pm-grid{display:grid;grid-template-columns:minmax(0,1fr) 470px;gap:18px;align-items:start}
+@media (max-width:1240px){
+  .pm-grid{grid-template-columns:1fr}.pm-preview{position:static !important}
+  .inline-decision{display:flex;flex-wrap:wrap}.desktop-decision-note{display:none}
+}
+@media (max-width:900px){
+  .app{grid-template-columns:1fr}.side{display:none}.view{padding:22px 18px 60px}.mainbar{padding:12px 18px}
+  .pm-preview{display:none}.scenario-picker{grid-template-columns:1fr}.path-notice{flex-direction:column}
+  .research-lab-form{grid-template-columns:1fr}.research-lab-form .btn{width:100%}
+}
+@media (max-width:560px){.research-lab-grid{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{scroll-behavior:auto !important;animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important}
+}
+
+/* ===== Niveaux ===== */
+.level{margin-bottom:20px}
+.level-head{display:flex;align-items:center;gap:12px;padding:0 4px 10px}
+.level-head .rank{flex:none;font-family:var(--font-display);font-size:11px;font-weight:650;letter-spacing:.09em;text-transform:uppercase;color:var(--faint)}
+.level-head h2{font-size:16px;font-weight:600;letter-spacing:-.01em}
+.level-head .sub{font-size:12.5px;color:var(--muted)}
+.level-head .state{margin-left:auto;font-size:11.5px;font-weight:600;border-radius:999px;padding:3px 10px;background:var(--tint-soft);color:var(--muted);border:1px solid var(--border-soft);white-space:nowrap}
+.level.done .level-head .state{background:var(--green-tint);color:var(--green);border-color:#cbe8dc}
+.stack{display:flex;flex-direction:column;gap:10px}
+
+/* ===== Carte de mission ===== */
+.mcard{background:#fff;border:1px solid var(--border);border-radius:var(--r-md);box-shadow:0 1px 2px rgba(25,23,49,.04);overflow:hidden;transition:border-color .18s,box-shadow .18s}
+.mcard.open{border-color:#cfc9f2;box-shadow:var(--shadow-card)}
+.mcard.done{background:#fcfffd;border-color:#cbe8dc}
+.mcard.locked{opacity:.72;background:#fbfaff}
+.mcard.featured{border-color:#d8d3f4;background:linear-gradient(180deg,#fff 0%,#fcfbff 100%)}
+.mcard.featured:not(.done) .mstate{border-color:var(--violet)}
+.mtop{display:flex;align-items:flex-start;gap:13px;width:100%;text-align:left;padding:15px 18px}
+.mtop:hover{background:var(--tint-soft)}
+.mcard.done .mtop:hover{background:#f6fdf9}
+.mstate{flex:none;width:26px;height:26px;border-radius:50%;border:1.5px solid #d5d1ea;display:grid;place-items:center;margin-top:1px;background:#fff;color:#fff;transition:background .2s,border-color .2s}
+.mstate svg{opacity:0;transition:opacity .2s}
+.mcard.done .mstate{background:var(--green);border-color:var(--green)}
+.mcard.done .mstate svg{opacity:1}
+.mcard.open:not(.done) .mstate{border-color:var(--violet);box-shadow:0 0 0 3px rgba(90,79,224,.14)}
+.mcard.locked .mstate{border-style:dashed;color:var(--faint)}
+.mcard.locked .mstate svg.lock{opacity:1;color:var(--faint)}
+.mtx{flex:1;min-width:0}
+.mtx h3{font-size:14px;font-weight:600;margin-bottom:2px;font-family:var(--font-display)}
+.mcard.done .mtx h3{color:#0f5c40}
+.mtx .goal{font-size:12.5px;color:var(--muted);line-height:1.5}
+.mtags{display:flex;align-items:center;gap:6px;flex:none;flex-wrap:wrap;justify-content:flex-end;max-width:158px}
+.tag{font-size:10.5px;font-weight:600;border-radius:999px;padding:3px 9px;white-space:nowrap;background:var(--tint-soft);color:var(--muted);border:1px solid var(--border-soft)}
+.tag.opt{background:#fff}
+.tag.mn{background:var(--tint);color:var(--violet-ink);border-color:transparent}
+.tag.beta{background:#eeeafd;color:var(--violet-ink);border-color:#d8d3f4}
+.chev{flex:none;color:var(--faint);margin-top:4px;transition:transform .2s}
+.mcard.open .chev{transform:rotate(180deg)}
+
+.mbody{border-top:1px solid var(--border-soft);padding:16px 18px 18px 57px}
+.mbody p{font-size:13px;line-height:1.62;color:var(--body)}
+.mbody p+p{margin-top:9px}
+.mbody b{color:var(--ink);font-weight:600}
+.blk{margin-top:13px}
+.blk-t{font-size:10.5px;font-weight:650;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin-bottom:6px}
+.steps{list-style:none;display:flex;flex-direction:column;gap:7px}
+.steps li{display:flex;gap:9px;font-size:12.5px;line-height:1.55;color:var(--body)}
+.steps li i{flex:none;width:17px;height:17px;border-radius:50%;background:var(--tint);color:var(--violet-ink);font-size:10px;font-weight:700;font-style:normal;display:grid;place-items:center;margin-top:1px}
+.why{display:flex;gap:10px;align-items:flex-start;background:var(--tint-soft);border:1px solid var(--border-soft);border-radius:var(--r-sm);padding:11px 14px;font-size:12.5px;line-height:1.55;color:var(--body)}
+.why svg{flex:none;margin-top:2px;color:var(--violet)}
+.why b{color:var(--ink)}
+.beta-guard{margin-top:13px;background:#fff;border-style:dashed;color:var(--muted)}
+.research-lab{margin-top:13px;border:1px solid #d8d3f4;border-radius:var(--r-md);background:linear-gradient(180deg,#fff 0%,#f8f7ff 100%);padding:15px}
+.research-lab-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.research-lab-head h4{font-family:var(--font-display);font-size:13.5px;font-weight:600;color:var(--ink);margin:2px 0 3px}
+.research-lab-head p{font-size:12px;line-height:1.5;color:var(--muted)}
+.research-lab-form{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:end;margin-top:12px}
+.research-lab-field{min-width:0}
+.research-lab-field label{display:block;font-size:10.5px;font-weight:650;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);margin-bottom:5px}
+.research-lab-field input{width:100%;height:38px;border:1px solid var(--border);border-radius:9px;background:#fff;padding:0 11px;font:inherit;font-size:12.5px;color:var(--ink);outline:none}
+.research-lab-field input:focus{border-color:var(--violet);box-shadow:0 0 0 3px rgba(90,79,224,.12)}
+.research-lab-field input[aria-invalid="true"]{border-color:var(--red)}
+.research-lab-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:12px}
+.research-lab-item{border:1px solid var(--border-soft);border-radius:9px;background:#fff;padding:9px 10px}
+.research-lab-item b{display:block;font-size:11.5px;margin-bottom:2px}
+.research-lab-item span{display:block;font-size:11px;line-height:1.45;color:var(--muted)}
+.research-lab-result{margin-top:10px;border-left:3px solid var(--green);border-radius:0 8px 8px 0;background:var(--green-tint);padding:9px 11px;font-size:11.5px;line-height:1.5;color:#0f5c40}
+.research-lab-result.error{border-left-color:var(--red);background:var(--red-tint);color:#8c2b3c}
+.research-lab-note{margin-top:9px !important;font-size:11px !important;color:var(--faint) !important}
+.reuse{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.reuse .rp{font-size:11px;font-weight:550;border-radius:999px;padding:3px 10px;background:#fff;border:1px solid var(--border);color:var(--body);display:inline-flex;align-items:center;gap:5px}
+.reuse .rp svg{color:var(--violet)}
+.sample{border-left:3px solid #d8d4f5;background:var(--tint-soft);border-radius:0 var(--r-sm) var(--r-sm) 0;padding:11px 14px;font-size:12.5px;line-height:1.6;color:var(--body)}
+.sample em{font-style:italic}
+.mfoot{display:flex;align-items:center;gap:9px;margin-top:16px;flex-wrap:wrap}
+.mfoot .note{font-size:11.5px;color:var(--faint);margin-left:auto}
+.done-lbl{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;color:var(--green)}
+.lock-note{display:flex;gap:9px;align-items:flex-start;font-size:12.5px;line-height:1.55;color:var(--muted);background:#fff;border:1px dashed var(--border);border-radius:var(--r-sm);padding:11px 14px}
+.lock-note b{color:var(--ink)}
+
+/* ===== Jalon ===== */
+.milestone{display:flex;gap:14px;align-items:flex-start;border:1px solid #cbe8dc;background:linear-gradient(180deg,#f7fdfa,#eef9f3);border-radius:var(--r-md);padding:14px 17px;margin-top:10px}
+.milestone.pending{border-color:var(--border);background:var(--tint-soft)}
+.milestone .ic{flex:none;width:30px;height:30px;border-radius:9px;background:#fff;border:1px solid #cbe8dc;display:grid;place-items:center;color:var(--green)}
+.milestone.pending .ic{border-color:var(--border);border-style:dashed;color:var(--faint);position:relative}
+.milestone.pending .ic svg{display:none}
+.milestone.pending .ic::after{content:"";width:8px;height:8px;border-radius:50%;border:1.5px solid #cfccdf}
+.milestone.pending h4{color:var(--muted)}
+.milestone h4{font-size:13px;font-weight:600;margin-bottom:2px}
+.milestone p{font-size:12.5px;line-height:1.55;color:var(--body)}
+
+/* ===== Aperçu ===== */
+.pm-preview{position:sticky;top:82px}
+.pv-shell{background:#fff;border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--shadow-card);overflow:hidden}
+.pv-bar{display:flex;align-items:center;gap:10px;padding:11px 16px;border-bottom:1px solid var(--border-soft);background:var(--tint-soft)}
+.pv-bar .dots{display:flex;gap:5px}
+.pv-bar .dots i{width:8px;height:8px;border-radius:50%;background:#dcd9ee}
+.pv-bar .loc{font-size:11.5px;font-weight:600;color:var(--muted);letter-spacing:.02em}
+.pv-bar .sim{margin-left:auto;font-size:10px;font-weight:650;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
+.pv-body{padding:18px 18px 20px;min-height:330px}
+.pv{display:none;animation:fadeUp .28s ease both}
+.pv.on{display:block}
+@keyframes fadeUp{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.pv{animation:none}}
+.pv h4{font-size:14px;font-weight:600;margin-bottom:4px}
+.pv .cap{font-size:12px;color:var(--muted);line-height:1.55;margin-bottom:13px}
+.pv-foot{padding:12px 18px;border-top:1px solid var(--border-soft);background:#fdfdff;font-size:11.5px;color:var(--muted);line-height:1.5;display:flex;gap:9px;align-items:flex-start}
+.pv-foot svg{flex:none;margin-top:1px;color:var(--faint)}
+
+/* Fragments simulés */
+.f-field{border:1px solid var(--border);border-radius:var(--r-sm);padding:11px 13px;background:#fff}
+.f-field+.f-field{margin-top:9px}
+.f-field .lab{font-size:10.5px;font-weight:650;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);margin-bottom:5px}
+.f-field .val{font-size:13px;color:var(--ink);line-height:1.55}
+.f-field .val.ph{color:var(--faint)}
+.f-field.filled{border-color:#cfc9f2;background:var(--tint-soft)}
+.kchips{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+.kchip{font-size:11.5px;font-weight:550;border-radius:999px;padding:4px 11px;background:#fff;border:1px solid var(--border);color:var(--body)}
+.kchip.on{background:var(--tint);border-color:transparent;color:var(--violet-ink)}
+
+.pv-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:12px}
+.pv-kpi{border:1px solid var(--border);border-radius:var(--r-sm);padding:11px 12px;background:#fff}
+.pv-kpi .l{font-size:9.5px;font-weight:650;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);margin-bottom:5px}
+.pv-kpi .v{font-family:var(--font-display);font-size:18px;font-weight:650;color:var(--ink);line-height:1}
+.pv-kpi .d{font-size:10.5px;font-weight:600;margin-top:4px}
+.pv-kpi .d.up{color:var(--green)}
+.pv-kpi .d.down{color:var(--red)}
+
+.brief{border-left:3px solid #d8d4f5;background:var(--tint-soft);border-radius:0 var(--r-sm) var(--r-sm) 0;padding:12px 15px;font-size:12.5px;line-height:1.62;color:var(--body)}
+.brief b{color:var(--ink);font-weight:600}
+.brief .src{display:block;margin-top:8px;font-size:11px;color:var(--faint)}
+
+.qrow{display:flex;gap:11px;padding:11px 0}
+.qrow+.qrow{border-top:1px solid var(--border-soft)}
+.qrow .rank{flex:none;width:20px;height:20px;border-radius:6px;background:var(--tint);color:var(--violet-ink);font-size:11px;font-weight:700;display:grid;place-items:center;margin-top:2px;font-family:var(--font-display)}
+.qrow .tx{flex:1;min-width:0}
+.qrow h5{font-family:var(--font-body);font-size:13px;font-weight:600;color:var(--ink);margin-bottom:2px}
+.qrow p{font-size:11.5px;color:var(--muted);line-height:1.5}
+.qrow.hi{background:var(--tint-soft);border-radius:var(--r-sm);padding:11px 12px;margin:0 -12px}
+.qrow.hi+.qrow{border-top:none}
+.pills{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.pill{font-size:10.5px;font-weight:550;border-radius:999px;padding:3px 9px;white-space:nowrap}
+.pill.impact{background:var(--green-tint);color:var(--green)}
+.pill.conf{background:var(--tint);color:var(--violet-ink)}
+.pill.risk{background:var(--amber-tint);color:var(--amber)}
+.pill.time{background:#fff;color:var(--muted);border:1px solid var(--border-soft)}
+
+.reasons{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.reason{border:1px solid var(--border-soft);border-radius:var(--r-sm);padding:9px 11px;background:#fff}
+.reason .l{font-size:9.5px;font-weight:650;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);margin-bottom:4px}
+.reason .v{font-size:12px;line-height:1.5;color:var(--body)}
+.reason .v b{color:var(--ink)}
+.reason.wide{grid-column:1 / -1}
+
+.dbtns{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.dbtn{font-size:12px;font-weight:550;border-radius:8px;padding:7px 13px;border:1px solid var(--border);background:#fff;color:var(--body)}
+.dbtn.v{background:var(--violet);color:#fff;border-color:transparent}
+.dbtn.on{outline:2px solid var(--violet);outline-offset:1px}
+.dres{margin-top:11px;font-size:12px;line-height:1.55;border-radius:var(--r-sm);padding:10px 13px;display:none}
+.dres.on{display:block}
+.dres.ok{background:var(--green-tint);color:#0f5c40;border:1px solid #cbe8dc}
+.dres.edit{background:var(--tint-soft);color:var(--body);border:1px solid var(--border)}
+.dres.no{background:var(--red-tint);color:#8c2b3c;border:1px solid #f2d3da}
+
+.jrow{display:flex;gap:11px;padding:10px 0;align-items:flex-start}
+.jrow+.jrow{border-top:1px solid var(--border-soft)}
+.jrow .t{flex:none;font-size:10.5px;font-weight:650;color:var(--faint);width:38px;padding-top:2px;font-variant-numeric:tabular-nums}
+.jrow .dot{flex:none;width:7px;height:7px;border-radius:50%;background:var(--green);margin-top:6px}
+.jrow .dot.info{background:#8f86ec}
+.jrow .dot.user{background:var(--ink)}
+.jrow .tx{font-size:12px;line-height:1.55;color:var(--body)}
+.jrow .tx b{color:var(--ink);font-weight:600}
+.stat{font-size:10.5px;font-weight:650;border-radius:999px;padding:2px 8px;margin-left:6px;white-space:nowrap}
+.stat.prep{background:var(--amber-tint);color:var(--amber)}
+.banner-safe{display:flex;gap:10px;align-items:flex-start;background:var(--green-tint);border:1px solid #cbe8dc;border-radius:var(--r-sm);padding:11px 14px;font-size:12px;line-height:1.55;color:#0f5c40;margin-top:12px}
+.banner-safe svg{flex:none;margin-top:2px}
+.banner-safe b{color:#0b4630}
+
+.slider{display:flex;gap:7px;margin:10px 0 4px}
+.sl{flex:1;border:1px solid var(--border);border-radius:var(--r-sm);padding:9px 10px;text-align:center;font-size:11.5px;font-weight:600;color:var(--body);background:#fff}
+.sl.on{border-color:var(--violet);background:var(--tint-soft);color:var(--violet-ink);box-shadow:0 0 0 1px var(--violet)}
+.sl.on.paused{opacity:.45;border-style:dashed;box-shadow:none}
+.sl.off{opacity:.5;border-style:dashed}
+.sl .s{display:block;font-size:9.5px;font-weight:600;color:var(--faint);margin-top:3px;text-transform:uppercase;letter-spacing:.05em}
+.stopline{display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid var(--border);border-radius:var(--r-sm);padding:11px 13px;background:#fff;margin-top:10px}
+.stopline .tx{font-size:12px;color:var(--body);line-height:1.5}
+.stopline .tx b{color:var(--ink)}
+
+.scen{display:flex;flex-direction:column;gap:8px}
+.scard{display:flex;gap:11px;align-items:flex-start;border:1px solid var(--border);border-radius:var(--r-sm);padding:11px 13px;background:#fff;text-align:left;width:100%}
+.scard:hover{border-color:#c9c4ea}
+.scard.on{border-color:var(--violet);background:var(--tint-soft);box-shadow:0 0 0 1px var(--violet)}
+.scard .ic{flex:none;width:30px;height:30px;border-radius:9px;background:var(--tint);color:var(--violet-ink);display:grid;place-items:center;font-size:13px}
+.scard h5{font-family:'Inter',sans-serif;font-size:12.5px;font-weight:600;color:var(--ink);margin-bottom:2px}
+.scard p{font-size:11.5px;color:var(--muted);line-height:1.5}
+.scard .rad{flex:none;width:15px;height:15px;border-radius:50%;border:1.5px solid #cfccdf;margin-top:6px}
+.scard.on .rad{border:5px solid var(--violet)}
+.connector-group+.connector-group{margin-top:14px}
+.connector-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:7px}
+.connector-head b{font-size:11px;font-weight:650;letter-spacing:.04em;text-transform:uppercase;color:var(--faint)}
+.status-pill{display:inline-flex;align-items:center;border-radius:999px;padding:2px 7px;font-size:9.5px;font-weight:650;white-space:nowrap;background:var(--tint);color:var(--violet-ink)}
+.status-pill.available{background:var(--green-tint);color:var(--green)}
+.status-pill.gated{background:var(--amber-tint);color:#75520b}
+.connector-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.connector-card{display:flex;gap:9px;align-items:flex-start;border:1px solid var(--border);border-radius:var(--r-sm);padding:10px;background:#fff;min-width:0}
+.connector-card .ic{flex:none;width:26px;height:26px;border-radius:8px;background:var(--tint);color:var(--violet-ink);display:grid;place-items:center;font-size:11px;font-weight:650}
+.connector-card h5{font-size:11.5px;font-weight:600;color:var(--ink);margin-bottom:2px}
+.connector-card p{font-size:10.5px;line-height:1.4;color:var(--muted)}
+@media (max-width:520px){.connector-grid{grid-template-columns:1fr}}
+
+.runlist{list-style:none;margin-top:12px;display:flex;flex-direction:column;gap:8px}
+.runlist li{display:flex;gap:9px;align-items:center;font-size:12px;color:var(--muted)}
+.runlist li i{flex:none;width:15px;height:15px;border-radius:50%;border:1.5px solid #dcd9ee;display:grid;place-items:center;font-style:normal}
+.runlist li.ok{color:var(--body)}
+.runlist li.ok i{background:var(--green);border-color:var(--green)}
+.runlist li.ok i::after{content:"";width:5px;height:8px;border:solid #fff;border-width:0 1.6px 1.6px 0;transform:rotate(45deg) translate(-1px,-1px)}
+
+/* ===== Notes de maquette ===== */
+.notes{margin-top:26px;background:#fff;border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--shadow-card);overflow:hidden}
+.notes>summary{display:flex;align-items:center;gap:11px;padding:16px 22px;cursor:pointer;list-style:none;font-family:'Instrument Sans',sans-serif;font-size:15px;font-weight:600;color:var(--ink)}
+.notes>summary::-webkit-details-marker{display:none}
+.notes>summary .chev{margin-left:auto;transition:transform .2s}
+.notes[open]>summary .chev{transform:rotate(180deg)}
+.notes .inner{padding:0 22px 22px;border-top:1px solid var(--border-soft);padding-top:18px}
+.notes h4{font-size:12.5px;font-weight:650;letter-spacing:.05em;text-transform:uppercase;color:var(--faint);margin:18px 0 8px}
+.notes h4:first-child{margin-top:0}
+.notes ul{padding-left:19px;display:flex;flex-direction:column;gap:7px}
+.notes li{font-size:13px;line-height:1.62;color:var(--body)}
+.notes li b{color:var(--ink);font-weight:600}
+.notes code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;background:var(--tint-soft);border:1px solid var(--border-soft);border-radius:5px;padding:1px 5px;color:var(--violet-ink)}
+</style>
+</head>
+<body>
+
+<!-- Première arrivée : choix explicite entre découverte et configuration réelle. -->
+<main class="welcome" id="welcomeScreen" aria-labelledby="welcomeTitle">
+  <div class="welcome-shell">
+    <div class="welcome-top">
+      <div class="welcome-brand"><span class="logo-mark">N</span> Nepteo</div>
+      <div class="welcome-safe"><span aria-hidden="true">●</span> Démonstration locale · aucun envoi externe</div>
+    </div>
+
+    <section class="welcome-body" id="welcomeHome">
+      <span class="welcome-kicker">Prise en main guidée · 10 minutes</span>
+      <h1 id="welcomeTitle">Découvrez comment Nepteo transforme vos données en décisions marketing maîtrisées.</h1>
+      <p class="welcome-lead">Suivez le parcours complet de l’agent : <b>analyser une situation, hiérarchiser les priorités, préparer une action et vous laisser la décision finale.</b></p>
+
+      <div class="resume-box" id="resumeBox" hidden>
+        <p><b>Une prise en main est déjà commencée.</b><br><span id="resumeSummary">Votre progression locale est disponible.</span></p>
+        <div>
+          <button class="btn btn-primary" id="continueSavedBtn" type="button">Reprendre le parcours</button>
+          <button class="btn btn-quiet" id="resetSavedBtn" type="button">Effacer et recommencer</button>
+        </div>
+      </div>
+
+      <div class="path-grid" aria-label="Choisir un mode de prise en main">
+        <button class="path-card recommended" id="examplePathBtn" type="button">
+          <span class="badge">Recommandé</span>
+          <span class="path-icon" aria-hidden="true">Parcours guidé</span>
+          <h2>Découvrir avec un scénario d’exemple</h2>
+          <p>Parcourez les fonctions essentielles sur un environnement de démonstration cohérent, sans utiliser vos propres données.</p>
+          <span class="path-meta">3 scénarios disponibles · environ 10 min →</span>
+        </button>
+        <button class="path-card" id="realPathBtn" type="button">
+          <span class="path-icon" aria-hidden="true">Configuration personnalisée</span>
+          <h2>Configurer mon entreprise</h2>
+          <p>Renseignez progressivement votre contexte. Des exemples restent consultables sans être enregistrés à votre place.</p>
+          <span class="path-meta">Démarrer la configuration →</span>
+        </button>
+      </div>
+      <button class="free-link" id="freePathBtn" type="button">Accéder directement à l’espace de démonstration</button>
+    </section>
+
+    <section class="welcome-body" id="scenarioPanel" aria-labelledby="scenarioTitle" hidden>
+      <div class="welcome-panel-head">
+        <div>
+          <span class="welcome-kicker">Étape 1 sur 2</span>
+          <h1 id="scenarioTitle">Sélectionnez un scénario d’exemple</h1>
+          <p>Chaque scénario reproduit une situation réaliste, avec des données incomplètes et des priorités différentes. Choisissez le profil le plus proche de votre activité.</p>
+        </div>
+        <button class="btn btn-quiet welcomeBack" type="button">← Retour</button>
+      </div>
+      <div class="scenario-grid" id="welcomeScenarioGrid">
+        <button class="scenario-choice" type="button" data-scenario="artisan" aria-pressed="true">
+          <span class="type">Artisan local</span><h3>Menuiserie Dubreuil</h3>
+          <p>Vend à des particuliers, près de chez lui. Beaucoup de bouche-à-oreille, peu de suivi.</p>
+          <span class="counts">26 contacts · 5 campagnes</span>
+        </button>
+        <button class="scenario-choice" type="button" data-scenario="agence" aria-pressed="false">
+          <span class="type">Agence B2B</span><h3>Atelier Northwind</h3>
+          <p>Vend des prestations aux entreprises. Cycle long et relances indispensables.</p>
+          <span class="counts">30 contacts · 5 campagnes</span>
+        </button>
+        <button class="scenario-choice" type="button" data-scenario="ecommerce" aria-pressed="false">
+          <span class="type">E-commerce</span><h3>Racines &amp; Co</h3>
+          <p>Vend en ligne. Le panier moyen, la fidélité et la publicité pilotent l’activité.</p>
+          <span class="counts">36 contacts · 6 campagnes</span>
+        </button>
+      </div>
+      <div class="welcome-actions">
+        <span class="privacy-note">Données d’exemple uniquement · environnement réinitialisable</span>
+        <button class="btn btn-primary" id="startExampleBtn" type="button">Commencer avec Menuiserie Dubreuil</button>
+      </div>
+    </section>
+
+    <section class="welcome-body" id="realPanel" aria-labelledby="realTitle" hidden>
+      <div class="welcome-panel-head">
+        <div>
+          <span class="welcome-kicker">Configuration accompagnée</span>
+          <h1 id="realTitle">Configurez le contexte de votre entreprise</h1>
+          <p>Ces informations montrent comment Nepteo adapte ses analyses et ses propositions. Dans cette maquette, elles sont supprimées à la fermeture de la page.</p>
+        </div>
+        <button class="btn btn-quiet welcomeBack" type="button">← Retour</button>
+      </div>
+      <div class="real-form">
+        <div class="field">
+          <label for="realName">Nom de l’entreprise</label>
+          <input id="realName" type="text" autocomplete="organization" placeholder="Ex. Atelier Martin">
+          <span class="help">Sert à nommer votre espace de travail.</span>
+        </div>
+        <div class="field">
+          <label for="realOffer">Que vendez-vous, et à qui ?</label>
+          <input id="realOffer" type="text" placeholder="Ex. J’accompagne les PME…">
+          <span class="help">Sert à adapter les priorités et le vocabulaire.</span>
+        </div>
+        <div class="field full">
+          <label for="realVoice">Quelle règle décrit votre manière de travailler ?</label>
+          <textarea id="realVoice" rows="3" placeholder="Ex. Je préfère refuser une mission plutôt que promettre un délai impossible."></textarea>
+          <span class="help">Sert à guider le ton des messages préparés.</span>
+        </div>
+      </div>
+      <button class="btn btn-ghost btn-sm" id="realExampleToggle" type="button" aria-expanded="false">Voir un exemple rempli</button>
+      <div class="example-help" id="realExamplePreview" hidden>
+        <b>Exemple — Menuiserie Dubreuil</b><br>
+        « Nous fabriquons et posons des fenêtres sur mesure pour des propriétaires en rénovation. Je préfère perdre un chantier que promettre un délai impossible. »
+        <br><small>Cet exemple est seulement affiché. Il ne remplit et n’enregistre aucun champ.</small>
+      </div>
+      <p class="privacy-note"><span aria-hidden="true">●</span> Aucune réponse saisie ici n’est envoyée, enregistrée à distance ou mélangée à un scénario d’exemple.</p>
+      <div class="welcome-actions">
+        <span></span>
+        <button class="btn btn-primary" id="startRealBtn" type="button">Continuer avec mes réponses</button>
+      </div>
+    </section>
+  </div>
+  <div class="sr-only" id="welcomeStatus" aria-live="polite"></div>
+</main>
+
+<div class="flag">
+  <b>Maquette HTML</b> — écran « Prise en main » proposé, <b>non intégré au produit</b>. Aucune donnée réelle, aucun appel réseau, aucun envoi. En attente de validation de Fathi.
+</div>
+
+<div class="app" id="appShell" aria-hidden="true" inert>
+
+  <!-- ===================== Barre latérale ===================== -->
+  <aside class="side">
+    <div class="side-logo"><span class="logo-mark">N</span> Nepteo</div>
+    <div class="side-workspace"><b id="workspaceName">Menuiserie Dubreuil</b>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#a8a5c0" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+
+    <div class="nav-label">Cockpit</div>
+    <nav class="nav" aria-label="Navigation principale (simulée)">
+      <a href="#" onclick="return false"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.1 8.6 22 9.6 17 14.5 18.2 21.4 12 18.1 5.8 21.4 7 14.5 2 9.6 8.9 8.6 12 2"/></svg> Aujourd’hui</a>
+      <a href="#" onclick="return false"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg> Prospects</a>
+      <a href="#" onclick="return false"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Campagnes</a>
+      <a href="#" onclick="return false"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5 12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><polyline points="9 21 9 13 15 13 15 21"/></svg> Mon entreprise</a>
+      <a href="#" onclick="return false"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h13l3 3v13H4z"/><line x1="8" y1="9" x2="15" y2="9"/><line x1="8" y1="13" x2="15" y2="13"/><line x1="8" y1="17" x2="12" y2="17"/></svg> Journal</a>
+    </nav>
+
+    <div class="side-spacer"></div>
+
+    <!-- Proposition : la prise en main n'est PAS une sixième entrée de navigation. -->
+    <button class="pm-entry" id="openWelcomeBtn" type="button" aria-current="page" aria-label="Ouvrir les choix de prise en main">
+      <span class="r">
+        <svg class="ring" viewBox="0 0 36 36" aria-hidden="true">
+          <circle cx="18" cy="18" r="15" fill="none" stroke="#e3e0f4" stroke-width="4"/>
+          <circle id="ringArc" cx="18" cy="18" r="15" fill="none" stroke="#5a4fe0" stroke-width="4" stroke-linecap="round"
+                  stroke-dasharray="94.2" stroke-dashoffset="94.2" transform="rotate(-90 18 18)" style="transition:stroke-dashoffset .5s ease"/>
+        </svg>
+        <h4>Prise en main</h4>
+      </span>
+      <span class="bar"><i id="sideBar" style="width:0%"></i></span>
+      <span class="c" id="sideCount">0 mission sur 11</span>
+    </button>
+
+    <div class="agent-dock">
+      <div class="r"><span class="pulse"></span><h4>Agent actif</h4></div>
+      <p>Mode sûr : il prépare, il n’envoie pas.</p>
+    </div>
+  </aside>
+
+  <!-- ===================== Zone principale ===================== -->
+  <div class="main">
+    <header class="mainbar">
+      <div class="crumb">Nepteo · <b>Prise en main</b></div>
+      <div class="right">
+        <button class="btn btn-ghost btn-sm" type="button" onclick="return false">Aller au cockpit</button>
+        <div class="avatar">FM</div>
+      </div>
+    </header>
+
+    <div class="view">
+
+      <div class="path-notice" id="pathNotice">
+        <span><b>Mode découverte.</b> Vous travaillez sur les données d’exemple de <span id="pathScenarioName">Menuiserie Dubreuil</span>. Elles restent séparées de vos propres données.</span>
+        <button class="btn btn-quiet btn-sm" id="changePathBtn" type="button">Changer de voie</button>
+      </div>
+
+      <!-- ============ En-tête ============ -->
+      <section class="pm-head">
+        <div class="top">
+          <div>
+            <h1>Prise en main</h1>
+            <p class="lead" id="mainLead">Onze missions guidées pour comprendre le cycle complet : analyser la situation, identifier une priorité, examiner la recommandation, décider et contrôler le résultat. Aucun envoi externe n’est activé.</p>
+          </div>
+          <div class="acts">
+            <button class="btn btn-primary" id="resumeBtn" type="button">Commencer</button>
+            <button class="btn btn-quiet" id="resetBtn" type="button">Réinitialiser la maquette</button>
+          </div>
+        </div>
+
+        <div class="pm-meter" id="progressMeter" role="progressbar" aria-label="Progression de la prise en main" aria-valuemin="0" aria-valuemax="11" aria-valuenow="0">
+          <div class="line">
+            <div class="n" id="meterCount" aria-live="polite">0 mission terminée <span>sur 11</span></div>
+            <div class="stage" id="meterStage" aria-live="polite">Étape en cours : <b>Définir le contexte</b></div>
+          </div>
+          <div class="track"><i id="meterBar"></i></div>
+          <div class="ticks" id="ticks">
+            <span class="tick now" data-lvl="0"><span class="d"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>Définir le contexte</span>
+            <span class="tick" data-lvl="1"><span class="d"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>Analyser la situation</span>
+            <span class="tick" data-lvl="2"><span class="d"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>Identifier une priorité</span>
+            <span class="tick" data-lvl="3"><span class="d"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>Prendre une décision</span>
+            <span class="tick" data-lvl="4"><span class="d"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>Contrôler l’exécution</span>
+            <span class="tick" data-lvl="5"><span class="d"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>Connecter vos données</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ Grille ============ -->
+      <div class="pm-grid">
+
+        <!-- ---------- Colonne parcours ---------- -->
+        <div class="pm-list">
+
+          <!-- ===== Niveau 0 ===== -->
+          <section class="level" data-lvl="0">
+            <div class="level-head">
+              <span class="rank">Étape 1</span>
+              <div><h2>Définir le contexte</h2><div class="sub">Ces informations structurent les analyses et les propositions de l’agent.</div></div>
+              <span class="state">0 / 3</span>
+            </div>
+            <div class="stack">
+
+              <!-- M1 -->
+              <article class="mcard" data-m="1" data-lvl="0">
+                <button class="mtop" type="button" aria-expanded="false">
+                  <span class="mstate"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+                  <span class="mtx"><h3>Décrire votre activité</h3><span class="goal">Cette description permet d’identifier vos offres, vos audiences et votre vocabulaire.</span></span>
+                  <span class="mtags"><span class="tag">2 min</span></span>
+                  <svg class="chev" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+                <div class="mbody" hidden>
+                  <div class="why">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                    <span><b>Utilité de cette information.</b> L’agent l’utilise comme référence avant de préparer une relance, un contenu ou une recommandation.</span>
+                  </div>
+                  <div class="blk">
+                    <div class="blk-t">Un exemple, si vous préférez commencer par là</div>
+                    <div class="sample"><em>« Nous fabriquons et posons des fenêtres, portes et escaliers sur mesure. Nos clients sont des propriétaires qui rénovent, souvent sur recommandation d’un voisin ou d’un architecte. »</em></div>
+                  </div>
+                  <div class="blk">
+                    <div class="blk-t">Où ça resservira</div>
+                    <div class="reuse">
+                      <span class="rp"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M4 4h16v16H4z"/></svg> Messages de relance</span>
+                      <span class="rp"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="12" r="9"/></svg> Briefs de contenu</span>
+                      <span class="rp"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M3 12h18"/></svg> Choix des canaux</span>
+                    </div>
+                  </div>
+                  <div class="mfoot">
+                    <button class="btn btn-primary btn-sm act" type="button">Utiliser cet exemple</button>
+                    <button class="btn btn-ghost btn-sm skip" type="button">Écrire la mienne</button>
+                  </div>
+                </div>
+              </article>
+
+              <!-- M2 -->
+              <article class="mcard" data-m="2" data-lvl="0">
+                <button class="mtop" type="button" aria-expanded="false">
+                  <span class="mstate"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+                  <span class="mtx"><h3>Définir vos principes de communication</h3><span class="goal">Vos limites et vos exigences orientent le ton des propositions préparées.</span></span>
+                  <span class="mtags"><span class="tag mn">fort impact</span></span>
+                  <svg class="chev" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+                <div class="mbody" hidden>
+                  <div class="why">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                    <span><b>Utilité de cette information.</b> Votre activité indique ce que vous vendez ; vos principes précisent la manière dont l’agent doit communiquer et les pratiques qu’il doit éviter.</span>
+                  </div>
+                  <div class="blk">
+                    <div class="blk-t">Un exemple, si vous préférez commencer par là</div>
+                    <div class="sample"><em>« Je préfère perdre un chantier que promettre un délai que je ne tiendrai pas. Le devis est gratuit et sans relance insistante : si le client hésite, c’est souvent qu’il a raison d’attendre. »</em></div>
+                  </div>
+                  <div class="blk">
+                    <div class="blk-t">Où ça resservira</div>
+                    <div class="reuse">
+                      <span class="rp"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M4 4h16v16H4z"/></svg> Ton de tous les brouillons</span>
+                      <span class="rp"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="12" r="9"/></svg> Ce que l’agent s’interdit</span>
+                    </div>
+                  </div>
+                  <div class="mfoot">
+                    <button class="btn btn-primary btn-sm act" type="button">Utiliser cet exemple</button>
+                    <button class="btn btn-ghost btn-sm skip" type="button">Écrire la mienne</button>
+                  </div>
+                </div>
+              </article>
+
+              <!-- M3 -->
+              <article class="mcard featured" data-m="3" data-lvl="0">
+                <button class="mtop" type="button" aria-expanded="false">
+                  <span class="mstate"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+                  <span class="mtx"><h3>Enrichir automatiquement votre fiche depuis votre site</h3><span class="goal">Accélérez la saisie et évaluez ce que l’agent sait extraire, sourcer et qualifier.</span></span>
+                  <span class="mtags"><span class="tag beta">Bêta · recommandé</span></span>
+                  <svg class="chev" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+                <div class="mbody" hidden>
+                  <div class="why">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                    <span><b>Pourquoi nous le recommandons.</b> À partir des pages publiques de votre site, l’agent prépare une première lecture de vos offres, de vos cibles et de votre positionnement. Vous gagnez du temps sur la saisie et testez immédiatement la qualité de son analyse.</span>
+                  </div>
+                  <div class="research-lab">
+                    <div class="research-lab-head">
+                      <div>
+                        <div class="blk-t">Laboratoire d’enrichissement</div>
+                        <h4>Tester un site public de votre choix</h4>
+                        <p>Utilisez votre propre site ou un autre site public pour comprendre ce que Nepteo peut repérer. Chaque domaine est testé séparément.</p>
+                      </div>
+                      <span class="tag beta">Bêta</span>
+                    </div>
+                    <div class="research-lab-form">
+                      <div class="research-lab-field">
+                        <label for="researchLabUrl">Adresse du site</label>
+                        <input id="researchLabUrl" type="url" inputmode="url" autocomplete="url" placeholder="https://exemple.fr" aria-describedby="researchLabHelp researchLabResult">
+                      </div>
+                      <button class="btn btn-primary btn-sm" id="researchLabBtn" type="button">Préparer ce test</button>
+                    </div>
+                    <div class="research-lab-grid" id="researchLabHelp">
+                      <div class="research-lab-item"><b>Offres et positionnement</b><span>Produits, services, promesses et éléments différenciants.</span></div>
+                      <div class="research-lab-item"><b>Publics et territoire</b><span>Cibles mentionnées, zone servie et vocabulaire employé.</span></div>
+                      <div class="research-lab-item"><b>Ton et preuves</b><span>Style de communication, prix, réalisations et signaux vérifiables.</span></div>
+                      <div class="research-lab-item"><b>Manques et sources</b><span>Informations introuvables, incertitudes et pages consultées.</span></div>
+                    </div>
+                    <div class="research-lab-result" id="researchLabResult" role="status" aria-live="polite" hidden></div>
+                    <p class="research-lab-note"><b>Dans cette maquette :</b> vous préparez le test et découvrez le format du résultat ; aucun site n’est interrogé. La version intégrée lancera l’analyse réelle après confirmation du coût.</p>
+                  </div>
+                  <div class="blk">
+                    <div class="blk-t">Ce que vous pourrez évaluer</div>
+                    <ul class="steps">
+                      <li><i>1</i> L’extraction : offres, cibles, ton et preuves repérés sur votre site.</li>
+                      <li><i>2</i> La traçabilité : chaque élément est relié à sa page source.</li>
+                      <li><i>3</i> La prudence : l’agent distingue ce qu’il trouve de ce qu’il ignore.</li>
+                      <li><i>4</i> Le contrôle : vous conservez, modifiez ou excluez chaque section.</li>
+                    </ul>
+                  </div>
+                  <div class="why beta-guard">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
+                    <span><b>Une bêta encadrée.</b> La recherche web est facturée à la requête, plafonnée et tracée. Rien n’est enregistré sans votre validation et aucune information existante n’est remplacée automatiquement.</span>
+                  </div>
+                  <div class="mfoot">
+                    <button class="btn btn-ghost btn-sm skip" type="button">Voir seulement le rendu d’exemple</button>
+                    <span class="note">Recommandé pour évaluer la capacité d’analyse de l’agent</span>
+                  </div>
+                </div>
+              </article>
+
+            </div>
+            <div class="milestone pending" data-ms="0">
+              <span class="ic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+              <div><h4>Jalon — contexte de l’entreprise défini</h4><p id="ms0">Renseignez l’activité et les principes de communication nécessaires aux premières propositions.</p></div>
+            </div>
+          </section>
+
+          <!-- ===== Niveau 1 ===== -->
+          <section class="level" data-lvl="1">
+            <div class="level-head">
+              <span class="rank">Étape 2</span>
+              <div><h2>Analyser la situation</h2><div class="sub">L’analyse s’appuie sur le scénario choisi au démarrage.</div></div>
+              <span class="state">0 / 2</span>
+            </div>
+            <div class="stack">
+
+              <!-- M4 -->
+              <article class="mcard" data-m="4" data-lvl="1">
+                <button class="mtop" type="button" aria-expanded="false">
+                  <span class="mstate"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+                  <span class="mtx"><h3 id="mission4Title">Examiner le scénario actif</h3><span class="goal" id="mission4Goal">Repérez les données et anomalies que Nepteo va analyser.</span></span>
+                  <span class="mtags"><span class="tag">1 min</span></span>
+                  <svg class="chev" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+                <div class="mbody" hidden>
+                  <p id="mission4Intro">Vous avez déjà choisi <b>Menuiserie Dubreuil</b>. Ses données d’exemple contiennent des anomalies représentatives afin de montrer ce que Nepteo sait détecter.</p>
+                  <div class="why" style="margin-top:13px">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    <span><b>Séparation des environnements.</b> Un environnement utilise soit un scénario d’exemple Nepteo, soit vos propres données. Le retrait du scénario exige toujours une confirmation explicite.</span>
+                  </div>
+                  <div class="active-scenario" id="activeScenarioSummary" aria-live="polite">
+                    <span class="active-mark">Scénario actif</span>
+                    <span class="active-copy"><b id="activeScenarioName">Menuiserie Dubreuil</b><span id="activeScenarioMeta">Artisan local · 26 contacts · 5 campagnes</span></span>
+                  </div>
+                  <div class="scenario-picker" id="missionScenarioPicker" aria-label="Comparer les entreprises d’exemple" hidden>
+                    <button class="scenario-mini" type="button" data-scenario="artisan" aria-pressed="true"><b>Menuiserie Dubreuil</b>Artisan local</button>
+                    <button class="scenario-mini" type="button" data-scenario="agence" aria-pressed="false"><b>Atelier Northwind</b>Agence B2B</button>
+                    <button class="scenario-mini" type="button" data-scenario="ecommerce" aria-pressed="false"><b>Racines &amp; Co</b>E-commerce</button>
+                  </div>
+                  <p class="privacy-note" id="missionScenarioNote">Ce scénario est déjà actif. Pour en changer, revenez aux choix de prise en main.</p>
+                  <div class="mfoot">
+                    <button class="btn btn-primary btn-sm act" id="mission4ActionBtn" type="button">Examiner les données de Menuiserie Dubreuil</button>
+                    <span class="note">Réinitialisable à tout moment</span>
+                  </div>
+                </div>
+              </article>
+
+              <!-- M5 -->
+              <article class="mcard" data-m="5" data-lvl="1">
+                <button class="mtop" type="button" aria-expanded="false">
+                  <span class="mstate"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+                  <span class="mtx"><h3>Consulter la synthèse de l’agent</h3><span class="goal">Une lecture concise de la situation, fondée uniquement sur les données disponibles.</span></span>
+                  <span class="mtags"><span class="tag">2 min</span></span>
+                  <svg class="chev" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+                <div class="mbody" hidden>
+                  <p>Lancez l’analyse. L’agent lit les contacts, les campagnes et les ventes, puis résume. Chaque chiffre cité vient des données, jamais du modèle.</p>
+                  <div class="blk">
+                    <div class="blk-t">Points à examiner</div>
+                    <ul class="steps">
+                      <li><i>1</i> Le <b>point de l’agent</b> : où en est l’entreprise, en trois phrases.</li>
+                      <li><i>2</i> Le <b>cap du mois</b> : la direction. Ce sont des conseils — rien ne s’exécute depuis là.</li>
+                      <li><i>3</i> La <b>file à valider</b> : le seul endroit où vous décidez. La distinction est volontaire.</li>
+                    </ul>
+                  </div>
+                  <div class="mfoot">
+                    <button class="btn btn-primary btn-sm act" type="button">Lancer l’analyse</button>
+                  </div>
+                </div>
+              </article>
+
+            </div>
+            <div class="milestone pending" data-ms="1">
+              <span class="ic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+              <div><h4>Jalon — analyse disponible</h4><p id="ms1">Sélectionnez un scénario et lancez l’analyse pour consulter la première synthèse.</p></div>
+            </div>
+          </section>
+
+          <!-- ===== Niveau 2 ===== -->
+          <section class="level" data-lvl="2">
+            <div class="level-head">
+              <span class="rank">Étape 3</span>
+              <div><h2>Identifier une priorité</h2><div class="sub">Nepteo retient jusqu’à cinq actions et explique leur ordre.</div></div>
+              <span class="state">0 / 2</span>
+            </div>
+            <div class="stack">
+
+              <!-- M6 -->
+              <article class="mcard" data-m="6" data-lvl="2">
+                <button class="mtop" type="button" aria-expanded="false">
+                  <span class="mstate"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+                  <span class="mtx"><h3>Examiner les priorités du jour</h3><span class="goal">Comprendre les actions retenues et les critères utilisés pour les classer.</span></span>
+                  <span class="mtags"><span class="tag">2 min</span></span>
+                  <svg class="chev" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+                <div class="mbody" hidden>
+                  <p>L’agent a examiné toutes les propositions autorisées, puis n’en a gardé que cinq. Le classement favorise ce qui est <b>proche d’un résultat</b> : couper une perte avant de chercher un nouveau contact.</p>
+                  <div class="why" style="margin-top:13px">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                    <span><b>Ce qui n’entre pas dans le classement.</b> Le volume. Une proposition qui touche 200 contacts ne passe pas devant une autre pour cette seule raison.</span>
+                  </div>
+                  <div class="mfoot">
+                    <button class="btn btn-primary btn-sm act" type="button">Voir la file</button>
+                  </div>
+                </div>
+              </article>
+
+              <!-- M7 -->
+              <article class="mcard" data-m="7" data-lvl="2">
+                <button class="mtop" type="button" aria-expanded="false">
+                  <span class="mstate"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+                  <span class="mtx"><h3>Consulter « Pourquoi maintenant »</h3><span class="goal">Chaque priorité doit être justifiée par un fait identifiable et daté.</span></span>
+                  <span class="mtags"><span class="tag">2 min</span></span>
+                  <svg class="chev" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+                <div class="mbody" hidden>
+                  <p>Ouvrez « Pourquoi maintenant » sur la première action. La justification doit s’appuyer sur un fait daté et identifiable.</p>
+                  <div class="blk">
+                    <div class="blk-t">La question à vous poser</div>
+                    <div class="sample">Cet ordre correspond-il à votre lecture de la situation ? Si ce n’est pas le cas, indiquez le critère qui devrait modifier la priorité.</div>
+                  </div>
+                  <div class="mfoot">
+                    <button class="btn btn-primary btn-sm act" type="button">Afficher la justification</button>
+                  </div>
+                </div>
+              </article>
+
+            </div>
+          </section>
+
+          <!-- ===== Niveau 3 ===== -->
+          <section class="level" data-lvl="3">
+            <div class="level-head">
+              <span class="rank">Étape 4</span>
+              <div><h2>Prendre une décision</h2><div class="sub">L’agent prépare la proposition ; vous conservez la décision finale.</div></div>
+              <span class="state">0 / 2</span>
+            </div>
+            <div class="stack">
+
+              <!-- M8 -->
+              <article class="mcard" data-m="8" data-lvl="3">
+                <button class="mtop" type="button" aria-expanded="false">
+                  <span class="mstate"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+                  <span class="mtx"><h3>Examiner et personnaliser la proposition</h3><span class="goal">Vérifiez le raisonnement, puis adaptez le message avec le contexte propre à chaque prospect.</span></span>
+                  <span class="mtags"><span class="tag">3 min</span></span>
+                  <svg class="chev" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+                <div class="mbody" hidden>
+                  <p>Chaque proposition suit la même structure de justification. Pour une relance, Nepteo peut ensuite préparer un brouillon par prospect à partir des données disponibles et du contexte que vous ajoutez.</p>
+                  <div class="blk">
+                    <div class="blk-t">Trois niveaux de personnalisation</div>
+                    <ul class="steps">
+                      <li><i>1</i> <span><b>Données du prospect — disponible.</b> Prénom, entreprise, statut et dernier contact cadrent le brouillon.</span></li>
+                      <li><i>2</i> <span><b>Note de contexte — disponible.</b> Une information utile saisie dans Nepteo reste attachée au prospect et alimente la prochaine génération.</span></li>
+                      <li><i>3</i> <span><b>Recherche web sur la société — bêta.</b> Une activation manuelle peut compléter le contexte public de l’entreprise, jamais rechercher la personne.</span></li>
+                    </ul>
+                  </div>
+                  <div class="why" style="margin-top:13px">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                    <span><b>État actuel honnête.</b> Les notes personnalisent déjà les brouillons. L’enrichissement web de la société est présenté ici comme une bêta à finaliser ; son activation devra rester explicite, plafonnée et tracée.</span>
+                  </div>
+                  <div class="mfoot">
+                    <button class="btn btn-primary btn-sm act" type="button">Examiner la proposition personnalisée</button>
+                  </div>
+                </div>
+              </article>
+
+              <!-- M9 -->
+              <article class="mcard" data-m="9" data-lvl="3">
+                <button class="mtop" type="button" aria-expanded="false">
+                  <span class="mstate"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+                  <span class="mtx"><h3>Valider, modifier ou refuser</h3><span class="goal">Chaque décision est enregistrée, y compris lorsqu’une proposition est refusée.</span></span>
+                  <span class="mtags"><span class="tag mn">décision centrale</span></span>
+                  <svg class="chev" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+                <div class="mbody" hidden>
+                  <p>Testez les trois options. Les modifications apportées à un brouillon permettent d’affiner progressivement les préférences de rédaction.</p>
+                  <div class="why" style="margin-top:13px">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    <span><b>Effet actuel de la validation.</b> Le message passe au statut <b>Préparé</b>. Aucun envoi externe n’est activé.</span>
+                  </div>
+                  <div class="mfoot">
+                    <div class="dbtns inline-decision" aria-label="Choisir une décision simulée">
+                      <button class="dbtn v" type="button" data-dec="ok">Valider</button>
+                      <button class="dbtn" type="button" data-dec="edit">Modifier</button>
+                      <button class="dbtn" type="button" data-dec="no">Refuser</button>
+                    </div>
+                    <div class="inline-result" id="inlineDecisionResult" aria-live="polite" hidden></div>
+                    <span class="note desktop-decision-note" style="margin-left:0">Utilisez les trois boutons de l’aperçu →</span>
+                  </div>
+                </div>
+              </article>
+
+            </div>
+            <div class="milestone pending" data-ms="3">
+              <span class="ic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+              <div><h4>Jalon — décision enregistrée</h4><p id="ms3">Examinez une proposition et enregistrez une décision pour terminer le premier cycle.</p></div>
+            </div>
+          </section>
+
+          <!-- ===== Niveau 4 ===== -->
+          <section class="level" data-lvl="4">
+            <div class="level-head">
+              <span class="rank">Étape 5</span>
+              <div><h2>Contrôler l’exécution</h2><div class="sub">Le journal et les commandes d’arrêt rendent chaque action vérifiable.</div></div>
+              <span class="state">0 / 2</span>
+            </div>
+            <div class="stack">
+
+              <!-- M10 -->
+              <article class="mcard" data-m="10" data-lvl="4">
+                <button class="mtop" type="button" aria-expanded="false">
+                  <span class="mstate"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+                  <span class="mtx"><h3>Contrôler l’historique des actions</h3><span class="goal">Le journal conserve les préparations, les validations et les refus.</span></span>
+                  <span class="mtags"><span class="tag">2 min</span></span>
+                  <svg class="chev" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+                <div class="mbody" hidden>
+                  <p>Chaque action est inscrite au journal <b>avant</b> son exécution. Cette trace est immuable afin de permettre un contrôle fiable.</p>
+                  <div class="blk">
+                    <div class="blk-t">Éléments à contrôler</div>
+                    <ul class="steps">
+                      <li><i>1</i> Vos décisions, avec leur heure et leur auteur.</li>
+                      <li><i>2</i> Les messages au statut <b>Préparé</b> — aucun n’est parti.</li>
+                      <li><i>3</i> Les refus, tracés comme le reste.</li>
+                    </ul>
+                  </div>
+                  <div class="mfoot">
+                    <button class="btn btn-primary btn-sm act" type="button">Ouvrir le journal</button>
+                  </div>
+                </div>
+              </article>
+
+              <!-- M11 -->
+              <article class="mcard" data-m="11" data-lvl="4">
+                <button class="mtop" type="button" aria-expanded="false">
+                  <span class="mstate"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+                  <span class="mtx"><h3>Suspendre l’agent</h3><span class="goal">Vérifiez la mise en pause et le niveau d’autonomie configuré.</span></span>
+                  <span class="mtags"><span class="tag mn">confiance</span></span>
+                  <svg class="chev" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+                <div class="mbody" hidden>
+                  <p>Mettez l’agent en pause, puis simulez l’exécution d’une action déjà validée. L’action est <b>refusée</b> et ce refus est enregistré dans le journal.</p>
+                  <div class="why" style="margin-top:13px">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    <span><b>Contrôles appliqués côté serveur.</b> Les limites d’exécution restent actives indépendamment de l’état affiché par l’interface.</span>
+                  </div>
+                  <div class="inline-result" id="inlineStopResult" aria-live="polite" hidden><b>Agent en pause.</b> L’action simulée est refusée et le refus est ajouté au journal. Vous gardez la main.</div>
+                  <div class="mfoot">
+                    <button class="btn btn-primary btn-sm act" type="button">Tester le bouton d’arrêt</button>
+                  </div>
+                </div>
+              </article>
+
+            </div>
+            <div class="milestone pending" data-ms="4">
+              <span class="ic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>
+              <div><h4>Jalon — contrôle opérationnel vérifié</h4><p id="ms4">Consultez le journal et testez la mise en pause avant de connecter vos propres données.</p></div>
+            </div>
+          </section>
+
+          <!-- ===== Niveau 5 — déblocage ===== -->
+          <section class="level" data-lvl="5">
+            <div class="level-head">
+              <span class="rank">Étape 6</span>
+              <div><h2>Connecter vos données</h2><div class="sub">Cette étape devient disponible après la vérification des contrôles.</div></div>
+              <span class="state" id="unlockState">verrouillé</span>
+            </div>
+            <div class="stack">
+
+              <article class="mcard locked" data-m="12" data-lvl="5" data-lock="1">
+                <button class="mtop" type="button" aria-expanded="false">
+                  <span class="mstate">
+                    <svg class="lock" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="opacity:1"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" style="display:none"><polyline points="20 6 9 17 4 12"/></svg>
+                  </span>
+                  <span class="mtx"><h3>Connecter les sources utiles à votre activité</h3><span class="goal">Distinguez les données disponibles aujourd’hui des connexions prévues pour agir et mesurer.</span></span>
+                  <span class="mtags"><span class="tag" id="unlockTag">verrouillé</span></span>
+                  <svg class="chev" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+                <div class="mbody" hidden>
+                  <div class="lock-note" id="lockNote">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none;margin-top:2px"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+                    <span><b>Condition préalable.</b> Vérifiez d’abord le journal, la validation humaine et la mise en pause. La connexion devient ensuite disponible.</span>
+                  </div>
+                  <p style="margin-top:13px">Le scénario d’exemple est retiré avant la connexion : un environnement ne mélange jamais les données d’exemple et vos propres données.</p>
+                  <div class="blk">
+                    <div class="blk-t">Ce que les connexions doivent débloquer</div>
+                    <ul class="steps">
+                      <li><i>1</i> <span><b>Contacts et notes — disponible.</b> Sheets, Notion et CSV alimentent l’analyse des prospects et la personnalisation des brouillons.</span></li>
+                      <li><i>2</i> <span><b>Boîte mail — prochaine roadmap.</b> Lire l’historique utile, puis permettre un envoi supervisé uniquement après validation et activation sécurisée de l’envoi réel.</span></li>
+                      <li><i>3</i> <span><b>Ventes et analytique — prochaine roadmap.</b> Relier les recommandations et les campagnes aux ventes, aux revenus et aux résultats observés.</span></li>
+                      <li><i>4</i> <span><b>Campagnes — prochaine priorité.</b> Préparer, valider, activer sous plafond, mesurer et optimiser sans passer à une autonomie totale.</span></li>
+                    </ul>
+                  </div>
+                  <div class="why" style="margin-top:13px">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    <span><b>État actuel.</b> Seuls Google Sheets, Notion et l’import CSV sont proposés ici. La messagerie, les sources de vente et l’activation de campagnes restent des chantiers de roadmap ; aucun envoi externe n’est actif.</span>
+                  </div>
+                  <div class="mfoot">
+                    <button class="btn btn-primary btn-sm act" type="button" disabled>Retirer le scénario et choisir une source disponible</button>
+                  </div>
+                </div>
+              </article>
+
+            </div>
+          </section>
+
+        </div>
+
+        <!-- ---------- Colonne aperçu ---------- -->
+        <aside class="pm-preview">
+          <div class="pv-shell">
+            <div class="pv-bar">
+              <span class="dots"><i></i><i></i><i></i></span>
+              <span class="loc" id="pvLoc">Aperçu</span>
+              <span class="sim">simulation</span>
+            </div>
+            <div class="pv-body">
+
+              <!-- Aperçu par défaut -->
+              <div class="pv on" id="pv-0">
+                <h4>Ce que vous allez faire</h4>
+                <p class="cap">Ouvrez une mission : l’aperçu présente l’écran concerné et les actions simulées.</p>
+                <ul class="runlist">
+                  <li><i></i> Définir le contexte — activité et principes</li>
+                  <li><i></i> Analyser la situation — scénario d’exemple</li>
+                  <li><i></i> Identifier une priorité — file du jour</li>
+                  <li><i></i> Prendre une décision — valider, modifier ou refuser</li>
+                  <li><i></i> Contrôler l’exécution — journal et mise en pause</li>
+                  <li><i></i> Connecter les sources — comprendre, agir et mesurer</li>
+                </ul>
+                <div class="banner-safe" style="margin-top:16px">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                  <span><b>Mode sûr.</b> Pendant toute la prise en main, l’agent prépare des messages et ne les envoie pas.</span>
+                </div>
+              </div>
+
+              <!-- M1 -->
+              <div class="pv" id="pv-1">
+                <h4>Onboarding — votre activité</h4>
+                <p class="cap">Le formulaire existant, avec l’exemple prêt à être repris.</p>
+                <div class="f-field" id="f1a"><div class="lab">Ce que vous vendez</div><div class="val ph">Décrivez votre activité en une ou deux phrases…</div></div>
+                <div class="f-field"><div class="lab">Zone</div><div class="val">Eure-et-Loir et sud de l’Île-de-France</div></div>
+                <div class="kchips">
+                  <span class="kchip on">Services</span><span class="kchip on">Particuliers</span><span class="kchip">Entreprises</span><span class="kchip">E-commerce</span>
+                </div>
+                <div class="brief" style="margin-top:14px" id="f1b" hidden>
+                  <b>L’agent a compris :</b> trois offres, une cible « propriétaires en rénovation », un vocabulaire d’artisan. Il l’utilisera dès la première relance.
+                </div>
+              </div>
+
+              <!-- M2 -->
+              <div class="pv" id="pv-2">
+                <h4>Onboarding — votre philosophie</h4>
+                <p class="cap">Champ libre, facultatif, et pourtant le plus déterminant.</p>
+                <div class="f-field" id="f2a"><div class="lab">Votre philosophie</div><div class="val ph">Ce à quoi vous tenez, ce que vous refusez de faire…</div></div>
+                <div class="brief" style="margin-top:14px" id="f2b" hidden>
+                  <b>Effet immédiat sur les brouillons.</b><br>
+                  Avant : <em>« Nous n’avons pas eu de retour, souhaitez-vous avancer ? »</em><br>
+                  Après : <em>« Je ne vous relance pas pour vous presser — si le moment n’est pas le bon, dites-le-moi et je vous laisse tranquille. »</em>
+                  <span class="src">La voix vient du champ « philosophie », pas d’un réglage de ton générique.</span>
+                </div>
+              </div>
+
+              <!-- M3 -->
+              <div class="pv" id="pv-3">
+                <h4>Enrichissement web — proposition de l’agent</h4>
+                <p class="cap" id="researchPreviewCap">Une première lecture sourcée, à vérifier et à valider section par section.</p>
+                <div class="why" id="researchPreviewNotice" style="margin-bottom:11px">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                  <span><b>Exemple simulé.</b> Aucun site n’a été interrogé par cette maquette.</span>
+                </div>
+                <div class="brief">
+                  <b>Offres repérées</b><br>
+                  Fenêtres sur mesure — à partir de 850 € posé<br>
+                  Escalier bois — à partir de 3 200 €<br>
+                  Visite conseil à domicile — gratuite
+                  <span class="src" id="researchPreviewSource">Exemple de source : page « Nos réalisations » du site fourni.</span>
+                </div>
+                <div class="brief" style="margin-top:9px;border-left-color:#f0dcb4;background:var(--amber-tint)">
+                  <b>Ce que je n’ai pas trouvé</b><br>
+                  Aucun délai d’intervention annoncé, aucune zone géographique explicite.
+                  <span class="src">L’agent le dit plutôt que de le deviner.</span>
+                </div>
+                <div class="kchips"><span class="kchip">Conserver</span><span class="kchip">Modifier</span><span class="kchip">Exclure</span></div>
+              </div>
+
+              <!-- M4 -->
+              <div class="pv" id="pv-4">
+                <h4 id="preview4Title">Données du scénario actif</h4>
+                <p class="cap" id="preview4Caption">Le scénario choisi au démarrage est déjà chargé et clairement identifié.</p>
+                <div class="active-scenario" id="previewActiveScenario" aria-live="polite">
+                  <span class="active-mark">Scénario actif</span>
+                  <span class="active-copy"><b id="previewActiveScenarioName">Menuiserie Dubreuil</b><span id="previewActiveScenarioMeta">Artisan local · 26 contacts · 5 campagnes</span></span>
+                </div>
+                <div class="scen" id="previewScenarioPicker" hidden>
+                  <button class="scard on" type="button" data-scenario="artisan" aria-pressed="true"><span class="rad"></span><div><h5>Menuiserie Dubreuil</h5><p>Artisan, vend à des particuliers, près de chez lui. Cycle court, peu de suivi.</p></div></button>
+                  <button class="scard" type="button" data-scenario="agence" aria-pressed="false"><span class="rad"></span><div><h5>Atelier Northwind</h5><p>Agence qui vend à des entreprises. Cycle long, relances indispensables.</p></div></button>
+                  <button class="scard" type="button" data-scenario="ecommerce" aria-pressed="false"><span class="rad"></span><div><h5>Racines &amp; Co</h5><p>E-commerce. Gros volume de contacts, la publicité pilote tout.</p></div></button>
+                </div>
+                <ul class="runlist" id="f4run" hidden>
+                  <li class="ok"><i></i> <span id="scenarioContactCount">26 contacts chargés — dont 4 sans email, 2 doublons</span></li>
+                  <li class="ok"><i></i> <span id="scenarioCampaignCount">5 campagnes, dont 2 arrêtées</span></li>
+                  <li class="ok"><i></i> Cockpit remis à zéro avant chargement</li>
+                </ul>
+              </div>
+
+              <!-- M5 -->
+              <div class="pv" id="pv-5">
+                <h4>Aujourd’hui — le point de l’agent</h4>
+                <p class="cap">Les chiffres viennent des données, pas du modèle.</p>
+                <div class="pv-kpis">
+                  <div class="pv-kpi"><div class="l">Contacts</div><div class="v">26</div><div class="d">4 sans email</div></div>
+                  <div class="pv-kpi"><div class="l">Prêts à relancer</div><div class="v">15</div><div class="d up">+3</div></div>
+                  <div class="pv-kpi"><div class="l">Perte / jour</div><div class="v">30 €</div><div class="d down">une campagne</div></div>
+                </div>
+                <div class="brief" id="f5a" hidden>
+                  <b>Le point de l’agent.</b> Le carnet est correct mais mal suivi : quinze contacts n’ont rien reçu depuis plus de trois semaines. Côté publicité, une campagne de notoriété consomme environ 30 € par jour sans produire un seul devis depuis 45 jours. Le reste tient la route.
+                  <span class="src">Calculé sur les 30 derniers jours, comparés aux 30 précédents.</span>
+                </div>
+                <ul class="runlist" id="f5run">
+                  <li><i></i> Lecture des contacts</li>
+                  <li><i></i> Lecture des campagnes</li>
+                  <li><i></i> Rapprochement des ventes</li>
+                  <li><i></i> Rédaction du point</li>
+                </ul>
+              </div>
+
+              <!-- M6 -->
+              <div class="pv" id="pv-6">
+                <h4>Aujourd’hui — à valider</h4>
+                <p class="cap">Jusqu’à cinq actions, classées selon leur proximité avec un résultat attendu.</p>
+                <div class="qrow hi"><span class="rank">1</span><div class="tx"><h5>Couper « Facebook — Nos réalisations en vidéo »</h5><p>45 jours, 14 000 vues par jour, zéro devis.</p><div class="pills"><span class="pill impact">≈ 30 €/jour économisés</span><span class="pill conf">confiance haute</span><span class="pill risk">réversible</span></div></div></div>
+                <div class="qrow"><span class="rank">2</span><div class="tx"><h5>Relancer 15 devis sans réponse</h5><p>Silence de plus de 21 jours, dernier contact connu.</p></div></div>
+                <div class="qrow"><span class="rank">3</span><div class="tx"><h5>Compléter 4 fiches sans email</h5><p>Injoignables tant que le champ est vide.</p></div></div>
+                <div class="qrow"><span class="rank">4</span><div class="tx"><h5>Fusionner 2 contacts en double</h5><p>Deux fiches, une même personne.</p></div></div>
+                <div class="qrow"><span class="rank">5</span><div class="tx"><h5>Publier une réalisation récente</h5><p>Alimente le haut du funnel — effet plus lent.</p></div></div>
+              </div>
+
+              <!-- M7 -->
+              <div class="pv" id="pv-7">
+                <h4>Pourquoi celui-là, maintenant</h4>
+                <p class="cap">Un fait daté, pas une intuition.</p>
+                <div class="qrow hi"><span class="rank">1</span><div class="tx"><h5>Couper « Facebook — Nos réalisations en vidéo »</h5><p>Premier de la file depuis l’analyse de ce matin.</p></div></div>
+                <div class="brief" style="margin-top:12px">
+                  <b>Pourquoi maintenant.</b> C’est la seule proposition dont l’effet est immédiat et certain : chaque journée où la campagne tourne coûte environ 30 € et n’a produit aucun devis en 45 jours. Les relances viennent après, parce que leur résultat dépend d’une réponse qu’on ne contrôle pas.
+                  <span class="src">Fondé sur : dépense quotidienne observée, 0 conversion sur 45 jours, campagne encore active.</span>
+                </div>
+                <div class="brief" style="margin-top:9px;border-left-color:#dcd9ee">
+                  <b>Ce qui la ferait descendre.</b> Un objectif de notoriété assumé et déclaré, ou une saisonnalité connue. L’agent ne les connaît pas — dites-le-lui et l’ordre change.
+                </div>
+              </div>
+
+              <!-- M8 -->
+              <div class="pv" id="pv-8">
+                <h4>Relancer 15 devis sans réponse</h4>
+                <p class="cap">Le raisonnement reste vérifiable ; le message s’adapte ensuite prospect par prospect.</p>
+                <div class="reasons">
+                  <div class="reason wide"><div class="l">Constat</div><div class="v">15 contacts au statut <b>Devis envoyé</b> n’ont eu aucun échange depuis 21 jours ou plus.</div></div>
+                  <div class="reason wide"><div class="l">Raison</div><div class="v">Un devis sans relance se perd. Après trois semaines, un rappel court remet le sujet sur la table sans insister.</div></div>
+                  <div class="reason"><div class="l">Données utilisées</div><div class="v">Statut, dernier contact, note source et note interne.</div></div>
+                  <div class="reason"><div class="l">Impact estimé</div><div class="v">2 à 4 réponses</div></div>
+                  <div class="reason"><div class="l">Confiance</div><div class="v">Moyenne</div></div>
+                  <div class="reason"><div class="l">Risque</div><div class="v">Faible, réversible</div></div>
+                </div>
+                <div class="brief" style="margin-top:11px;border-left-color:#8b7ff0">
+                  <b>Contexte de Julie.</b> « Rénovation prévue en septembre ; souhaite être rappelée après validation du prêt. »
+                  <span class="src">Note interne Nepteo — conservée lors des synchronisations et utilisée pour régénérer le brouillon.</span>
+                </div>
+                <div class="brief" style="margin-top:9px;border-left-color:#d9b45b;background:var(--amber-tint)">
+                  <b>Recherche web sur la société — bêta.</b> Si elle est activée, l’agent peut compléter le contexte public de l’entreprise et citer ses sources avant de proposer une nouvelle version.
+                  <span class="src">Activation explicite · société uniquement · recherche plafonnée et tracée.</span>
+                </div>
+                <div class="brief" style="margin-top:11px">
+                  <em>« Bonjour Julie, je reviens vers vous au sujet du devis pour vos fenêtres. Je ne vous relance pas pour vous presser : si le moment n’est pas le bon, dites-le-moi simplement et je vous laisse tranquille. Le chiffrage reste valable jusqu’à fin septembre. »</em>
+                  <span class="src">Message personnalisable contact par contact — prénom, statut, date du dernier contact et notes disponibles.</span>
+                </div>
+              </div>
+
+              <!-- M9 -->
+              <div class="pv" id="pv-9">
+                <h4>Votre décision</h4>
+                <p class="cap">Les trois réponses sont légitimes. Essayez-les.</p>
+                <div class="reasons">
+                  <div class="reason wide"><div class="l">Action</div><div class="v"><b>Relancer 15 devis sans réponse</b> — cohorte figée à l’approbation.</div></div>
+                </div>
+                <div class="dbtns">
+                  <button class="dbtn v" type="button" data-dec="ok">Valider</button>
+                  <button class="dbtn" type="button" data-dec="edit">Modifier le message</button>
+                  <button class="dbtn" type="button" data-dec="no">Refuser</button>
+                </div>
+                <div class="dres ok" id="dres-ok"><b>Validé.</b> 15 messages passent au statut <b>Préparé</b> et attendent dans le journal. Aucun n’est parti : l’envoi extérieur n’est pas branché. La liste des 15 contacts est figée maintenant — elle ne bougera plus, même si la base change.</div>
+                <div class="dres edit" id="dres-edit"><b>Modifié.</b> Votre version remplace celle de l’agent et la correction est enregistrée comme retour. L’apprentissage automatisé à partir de ces corrections n’est pas encore activé.</div>
+                <div class="dres no" id="dres-no"><b>Refusé.</b> Rien n’est préparé. Le refus est écrit au journal avec son heure : il compte autant qu’une validation pour comprendre où l’agent se trompe.</div>
+              </div>
+
+              <!-- M10 -->
+              <div class="pv" id="pv-10">
+                <h4>Journal</h4>
+                <p class="cap">Écrit avant, pas après. Ni modifiable, ni effaçable.</p>
+                <div class="jrow"><span class="t">09:42</span><span class="dot user"></span><span class="tx"><b>Vous</b> avez validé « Relancer 15 devis sans réponse »</span></div>
+                <div class="jrow"><span class="t">09:42</span><span class="dot"></span><span class="tx">15 messages préparés <span class="stat prep">Préparé</span></span></div>
+                <div class="jrow"><span class="t">09:41</span><span class="dot user"></span><span class="tx"><b>Vous</b> avez refusé « Publier une réalisation récente »</span></div>
+                <div class="jrow"><span class="t">09:38</span><span class="dot info"></span><span class="tx">Analyse terminée — 6 propositions, 5 retenues</span></div>
+                <div class="jrow"><span class="t">09:36</span><span class="dot info"></span><span class="tx" id="journalScenario">Terrain d’essai chargé — Menuiserie Dubreuil</span></div>
+                <div class="banner-safe">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                  <span><b>0 message envoyé.</b> Les 15 messages sont prêts et arrêtés au statut « Préparé ».</span>
+                </div>
+              </div>
+
+              <!-- M11 -->
+              <div class="pv" id="pv-11">
+                <h4>Mon entreprise — Agent</h4>
+                <p class="cap">Le curseur d’autonomie et le bouton d’arrêt.</p>
+                <div class="slider">
+                  <div class="sl on">Propose<span class="s">actif</span></div>
+                  <div class="sl">Prépare<span class="s">disponible</span></div>
+                  <div class="sl off">Envoie<span class="s">bientôt</span></div>
+                </div>
+                <p style="font-size:11.5px;color:var(--muted);line-height:1.5">Plafonds appliqués côté serveur : 50 messages par exécution, 200 par jour.</p>
+                <div class="stopline">
+                  <span class="tx"><b>Bouton d’arrêt</b><br>Suspend tout, immédiatement.</span>
+                  <button class="dbtn v" type="button" id="stopBtn">Mettre en pause</button>
+                </div>
+                <div class="dres no" id="dres-stop"><b>Agent en pause.</b> Tentative d’exécution d’une action pourtant validée : <b>refusée</b>. Le refus est écrit au journal. Le blocage est côté serveur — l’interface ne fait que l’afficher.</div>
+              </div>
+
+              <!-- M12 -->
+              <div class="pv" id="pv-12">
+                <h4>Connecter pour comprendre, agir et mesurer</h4>
+                <p class="cap">Chaque famille porte un statut clair : disponible ou prochaine roadmap.</p>
+                <div class="connector-group">
+                  <div class="connector-head"><b>Contacts et contexte</b><span class="status-pill available">Disponible</span></div>
+                  <div class="connector-grid">
+                    <div class="connector-card"><span class="ic">S</span><div><h5>Google Sheets</h5><p>Contacts, notes et date du dernier contact via un mapping configurable.</p></div></div>
+                    <div class="connector-card"><span class="ic">N</span><div><h5>Notion</h5><p>Base de prospects synchronisée en lecture seule.</p></div></div>
+                    <div class="connector-card"><span class="ic">C</span><div><h5>Fichier CSV</h5><p>Import borné et retirable, sans connexion permanente.</p></div></div>
+                  </div>
+                </div>
+                <div class="connector-group">
+                  <div class="connector-head"><b>Agir et mesurer</b><span class="status-pill gated">Prochaine roadmap · supervisée</span></div>
+                  <div class="connector-grid">
+                    <div class="connector-card"><span class="ic">M</span><div><h5>Boîte mail professionnelle</h5><p>Gmail ou Microsoft 365 : historique d’abord, envoi après validation et activation sécurisée.</p></div></div>
+                    <div class="connector-card"><span class="ic">V</span><div><h5>Ventes et analytique</h5><p>Relier les actions aux ventes, aux revenus et aux résultats observés.</p></div></div>
+                    <div class="connector-card"><span class="ic">P</span><div><h5>Publicité et campagnes</h5><p>Préparer, valider, activer sous plafond, mesurer puis optimiser.</p></div></div>
+                  </div>
+                </div>
+                <div class="banner-safe" style="margin-top:12px">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                  <span><b>Aucun envoi externe n’est actif aujourd’hui.</b> Les connexions d’action restent soumises à validation humaine, plafonds serveur et journalisation.</span>
+                </div>
+              </div>
+
+            </div>
+            <div class="pv-foot">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+              <span>Aperçu simulé pour la maquette. Les écrans réels du cockpit font foi.</span>
+            </div>
+          </div>
+        </aside>
+
+      </div>
+
+      <!-- ============ Notes de maquette ============ -->
+      <details class="notes">
+        <summary>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5a4fe0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h13l3 3v13H4z"/><line x1="8" y1="10" x2="15" y2="10"/><line x1="8" y1="14" x2="15" y2="14"/></svg>
+          Notes de maquette — propositions, limites, questions ouvertes
+          <svg class="chev" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#a8a5c0" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </summary>
+        <div class="inner">
+
+          <h4>Ce que cette maquette propose</h4>
+          <ul>
+            <li><b>La prise en main n’est pas une sixième entrée de navigation.</b> Elle vit en pied de barre latérale, au-dessus du dock agent, avec un anneau de progression. La décision du 2026-07-26 (« navigation à cinq entrées ») n’est donc pas amendée.</li>
+            <li><b>Onze missions en cinq étapes, plus un déblocage.</b> L’ordre suit la boucle du produit : comprendre la situation → repérer une priorité → comprendre pourquoi → décider → vérifier ce qui a été préparé.</li>
+            <li><b>L’onboarding devient l’étape 1 du parcours</b>, pas un couloir séparé. Chaque question porte trois choses : <i>pourquoi on la pose</i>, <i>une donnée d’exemple réutilisable en un clic</i>, <i>où la réponse resservira</i>.</li>
+            <li><b>Une seule mission est verrouillée</b> : brancher ses vraies données, tant que l’étape « Vérifier » n’est pas faite. Le verrou est justifié en clair dans la carte, pas subi.</li>
+            <li><b>Gamification volontairement pauvre</b> : progression, coches, jalons, déblocage. Aucun point, aucun classement, aucune série quotidienne, aucun score de compétence marketing.</li>
+            <li><b>Le mode sûr est répété à chaque étape sensible</b> — « l’agent prépare, il n’envoie pas ». C’est le message que le parcours doit graver.</li>
+          </ul>
+
+          <h4>Limites assumées de la maquette</h4>
+          <ul>
+            <li>Fichier HTML autonome : aucun appel réseau et aucune donnée réelle. Seuls la voie choisie, le scénario et les missions terminées sont conservés dans <code>localStorage</code> pour simuler la reprise. Les réponses libres sur l’entreprise ne sont jamais persistées. « Réinitialiser la maquette » efface cet état local.</li>
+            <li>Les aperçus de droite sont des <b>reconstitutions</b>, pas des captures du produit livré. Les chiffres reprennent le scénario <code>artisan</code> de <code>lib/demo/scenarios.ts</code> mais ne sont pas recalculés.</li>
+            <li>Aucun fichier sous <code>app/</code>, <code>lib/</code>, <code>components/</code>, <code>supabase/</code> ou <code>tests/</code> n’a été touché.</li>
+            <li>Les libellés de surface suivent la décision du 2026-07-31 : « scénario d’exemple » et « données d’exemple ». Ce vocabulaire est utilisé de manière uniforme dans la maquette.</li>
+          </ul>
+
+          <h4>Questions qui attendent une décision de Fathi</h4>
+          <ul>
+            <li>Le terme « <b>mission</b> » convient-il, ou faut-il privilégier « étape » ? Le choix doit conserver la dimension progressive sans donner une tonalité trop ludique.</li>
+            <li>Onze missions, est-ce trop pour un solopreneur ? Une version courte à six est possible en fusionnant les niveaux 2 et 3.</li>
+            <li>La condition préalable à la connexion des données est-elle perçue comme une protection utile ou comme une contrainte excessive ?</li>
+            <li>« <b>Terrain d’essai</b> » plutôt que « scénario d’exemple » dans le parcours : cohérence de vocabulaire à trancher.</li>
+            <li>La prise en main disparaît-elle une fois terminée, ou reste-t-elle consultable comme une aide ? La maquette suppose qu’elle reste.</li>
+          </ul>
+
+          <h4>Si la maquette est validée</h4>
+          <ul>
+            <li>Consigner les arbitrages retenus dans <code>docs/DECISIONS.md</code> avant d’écrire la moindre ligne de code.</li>
+            <li>Vérifier que l’entrée en pied de barre latérale ne rouvre pas le débat de la sixième entrée avec Charly.</li>
+            <li>Décider si la progression est persistée côté serveur (donc journalisée) ou seulement dans le navigateur.</li>
+          </ul>
+
+        </div>
+      </details>
+
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var STORAGE_KEY = "nepteo_walkthrough_v1";
+  var TOTAL = 11;                 // la mission verrouillée (12) ne compte pas
+  var LEVELS = [
+    {id:0, name:"Définir le contexte", ms:[1,2,3], req:[1,2]},
+    {id:1, name:"Analyser la situation",  ms:[4,5],   req:[4,5]},
+    {id:2, name:"Identifier une priorité", ms:[6,7], req:[6,7]},
+    {id:3, name:"Prendre une décision",            ms:[8,9],   req:[8,9]},
+    {id:4, name:"Contrôler l’exécution",           ms:[10,11], req:[10,11]},
+    {id:5, name:"Connecter vos données",        ms:[12],    req:[12]}
+  ];
+  var SCENARIOS = {
+    artisan: {
+      name:"Menuiserie Dubreuil", type:"Artisan local", contacts:26, missing:4, duplicates:2, campaigns:5, stopped:2,
+      offer:"Nous fabriquons et posons des fenêtres, portes et escaliers sur mesure. Nos clients sont des propriétaires qui rénovent, souvent sur recommandation.",
+      voice:"Je préfère perdre un chantier que promettre un délai que je ne tiendrai pas. Devis gratuit, sans relance insistante."
+    },
+    agence: {
+      name:"Atelier Northwind", type:"Agence B2B", contacts:30, missing:4, duplicates:2, campaigns:5, stopped:2,
+      offer:"Nous accompagnons des PME industrielles dans leur positionnement, leur identité et leur site. Les missions durent de trois à six mois.",
+      voice:"On refuse les missions où l’on n’apporte rien. Un diagnostic honnête vaut mieux qu’un contrat que l’on n’assumera pas."
+    },
+    ecommerce: {
+      name:"Racines & Co", type:"E-commerce", contacts:36, missing:6, duplicates:3, campaigns:6, stopped:2,
+      offer:"Nous vendons en ligne des cafés de spécialité torréfiés en France, en sachets et en abonnement mensuel.",
+      voice:"On dit d’où vient chaque lot et ce que l’on paie au producteur. Pas de fausse rareté ni de compte à rebours."
+    }
+  };
+
+  function readSavedState(){
+    try{
+      var raw = window.localStorage.getItem(STORAGE_KEY);
+      if(!raw) return {};
+      var parsed = JSON.parse(raw);
+      return parsed && typeof parsed === "object" ? parsed : {};
+    }catch(error){ return {}; }
+  }
+
+  var savedState = readSavedState();
+  var done = {};
+  if(savedState.done && typeof savedState.done === "object"){
+    Object.keys(savedState.done).forEach(function(m){
+      if(/^([1-9]|1[0-2])$/.test(m) && savedState.done[m] === true) done[m] = true;
+    });
+  }
+  var currentPath = ["example","real","free"].indexOf(savedState.path) >= 0 ? savedState.path : null;
+  var selectedScenario = SCENARIOS[savedState.scenario] ? savedState.scenario : "artisan";
+  var realProfile = {name:"", offer:"", voice:""};
+
+  function saveState(){
+    try{
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        version:1,
+        path:currentPath,
+        scenario:selectedScenario,
+        done:done
+      }));
+    }catch(error){ /* La maquette reste utilisable sans stockage local. */ }
+  }
+
+  function setWelcomePanel(panelId){
+    ["welcomeHome","scenarioPanel","realPanel"].forEach(function(id){
+      document.getElementById(id).hidden = id !== panelId;
+    });
+    var heading = document.querySelector("#" + panelId + " h1");
+    if(heading) heading.setAttribute("tabindex","-1");
+    if(heading) heading.focus();
+  }
+
+  function updateResumeBox(){
+    var count = Object.keys(done).filter(function(m){ return +m <= TOTAL; }).length;
+    var hasProgress = Boolean(currentPath) || count > 0;
+    document.getElementById("resumeBox").hidden = !hasProgress;
+    if(!hasProgress) return;
+    var context = currentPath === "example" ? SCENARIOS[selectedScenario].name
+      : currentPath === "real" ? "votre entreprise"
+      : "l’exploration libre";
+    document.getElementById("resumeSummary").textContent = count + " mission" + (count > 1 ? "s" : "") + " sur " + TOTAL + " · " + context + ".";
+  }
+
+  function showWelcome(){
+    updateResumeBox();
+    document.getElementById("welcomeScreen").hidden = false;
+    setWelcomePanel("welcomeHome");
+    document.getElementById("appShell").setAttribute("aria-hidden","true");
+    document.getElementById("appShell").setAttribute("inert","");
+  }
+
+  function hideWelcome(){
+    document.getElementById("welcomeScreen").hidden = true;
+    document.getElementById("appShell").removeAttribute("aria-hidden");
+    document.getElementById("appShell").removeAttribute("inert");
+    document.getElementById("resumeBtn").focus();
+  }
+
+  function applyPath(){
+    var notice = document.querySelector("#pathNotice > span");
+    var workspace = document.getElementById("workspaceName");
+    var lead = document.getElementById("mainLead");
+    var mission4Title = document.getElementById("mission4Title");
+    var mission4Goal = document.getElementById("mission4Goal");
+    var mission4Intro = document.getElementById("mission4Intro");
+    var mission4Note = document.getElementById("missionScenarioNote");
+    var mission4Action = document.getElementById("mission4ActionBtn");
+    var mission4Picker = document.getElementById("missionScenarioPicker");
+    var activeScenarioSummary = document.getElementById("activeScenarioSummary");
+    var previewScenarioPicker = document.getElementById("previewScenarioPicker");
+    var previewActiveScenario = document.getElementById("previewActiveScenario");
+    var preview4Title = document.getElementById("preview4Title");
+    var preview4Caption = document.getElementById("preview4Caption");
+    if(currentPath === "real"){
+      workspace.textContent = realProfile.name || "Votre entreprise";
+      notice.innerHTML = "<b>Mode configuration.</b> Vos réponses alimentent cette simulation seulement. Les exemples restent visibles mais ne sont jamais enregistrés à votre place.";
+      lead.textContent = "Onze missions guidées pour comprendre comment votre contexte structure les analyses, les propositions et vos décisions. Aucun envoi externe n’est activé.";
+      mission4Title.textContent = "Vérifier la séparation des données";
+      mission4Goal.textContent = "Consultez les scénarios sans les charger dans votre environnement.";
+      mission4Intro.innerHTML = "Les scénarios ci-dessous restent des <b>références de démonstration</b>. Aucune donnée d’exemple n’est chargée ou mélangée à vos réponses.";
+      mission4Note.textContent = "La sélection d’un aperçu ne modifie ni vos réponses ni votre environnement.";
+      if(mission4Action) mission4Action.textContent = "Confirmer la séparation";
+      mission4Picker.hidden = false;
+      activeScenarioSummary.hidden = true;
+      previewScenarioPicker.hidden = false;
+      previewActiveScenario.hidden = true;
+      preview4Title.textContent = "Scénarios d’exemple — aperçu";
+      preview4Caption.textContent = "Vous pouvez les comparer sans charger leurs données dans votre entreprise.";
+    }else if(currentPath === "free"){
+      workspace.textContent = "Exploration libre";
+      notice.innerHTML = "<b>Exploration libre.</b> Vous pouvez ouvrir toutes les missions. La progression reste locale et aucune donnée n’est envoyée.";
+      lead.textContent = "Consultez les missions dans l’ordre de votre choix. Chaque carte présente une action, son objectif et les limites actuelles du produit.";
+      mission4Title.textContent = "Comparer les scénarios d’exemple";
+      mission4Goal.textContent = "Consultez les trois contextes sans charger de données.";
+      mission4Intro.innerHTML = "Les scénarios contiennent des <b>anomalies représentatives</b> afin d’illustrer les capacités d’analyse de Nepteo.";
+      mission4Note.textContent = "La sélection change uniquement l’aperçu affiché.";
+      if(mission4Action) mission4Action.textContent = "Continuer avec cet aperçu";
+      mission4Picker.hidden = false;
+      activeScenarioSummary.hidden = true;
+      previewScenarioPicker.hidden = false;
+      previewActiveScenario.hidden = true;
+      preview4Title.textContent = "Scénarios d’exemple — comparaison";
+      preview4Caption.textContent = "Trois contextes contrastés, consultés sans chargement de données.";
+    }else{
+      workspace.textContent = SCENARIOS[selectedScenario].name;
+      notice.innerHTML = "<b>Mode découverte.</b> Vous travaillez sur les données d’exemple de <span id=\"pathScenarioName\"></span>. Elles restent séparées de vos propres données.";
+      document.getElementById("pathScenarioName").textContent = SCENARIOS[selectedScenario].name;
+      lead.textContent = "Onze missions guidées pour analyser une situation, identifier une priorité, examiner une proposition, décider et contrôler le résultat. Aucun envoi externe n’est activé.";
+      mission4Title.textContent = "Examiner le scénario actif";
+      mission4Goal.textContent = "Repérez les données et anomalies que Nepteo va analyser.";
+      mission4Intro.innerHTML = "Vous avez déjà choisi <b>" + SCENARIOS[selectedScenario].name + "</b>. Ses données d’exemple contiennent des anomalies représentatives afin de montrer ce que Nepteo sait détecter.";
+      mission4Note.textContent = "Ce scénario est déjà actif. Pour en changer, revenez aux choix de prise en main.";
+      if(mission4Action) mission4Action.textContent = "Examiner les données de " + SCENARIOS[selectedScenario].name;
+      mission4Picker.hidden = true;
+      activeScenarioSummary.hidden = false;
+      previewScenarioPicker.hidden = true;
+      previewActiveScenario.hidden = false;
+      preview4Title.textContent = "Données du scénario actif";
+      preview4Caption.textContent = "Le scénario choisi au démarrage est déjà chargé et clairement identifié.";
+    }
+    updateScenarioCountCopy(SCENARIOS[selectedScenario]);
+    var pathJournalScenario = document.getElementById("journalScenario");
+    if(pathJournalScenario){
+      pathJournalScenario.textContent = currentPath === "real"
+        ? "Aucun scénario chargé — aperçu consulté : " + SCENARIOS[selectedScenario].name
+        : currentPath === "free"
+          ? "Aperçu consulté — " + SCENARIOS[selectedScenario].name
+          : "Scénario d’exemple chargé — " + SCENARIOS[selectedScenario].name;
+    }
+  }
+
+  function enterPath(path){
+    currentPath = path;
+    applyPath();
+    saveState();
+    hideWelcome();
+  }
+
+  function updateScenarioCountCopy(scenario){
+    var contacts = document.getElementById("scenarioContactCount");
+    var campaigns = document.getElementById("scenarioCampaignCount");
+    if(currentPath === "real"){
+      contacts.textContent = "Aperçu seulement — " + scenario.contacts + " contacts dans le scénario, aucun chargé";
+      campaigns.textContent = "Vos réponses restent séparées de ses " + scenario.campaigns + " campagnes";
+    }else if(currentPath === "free"){
+      contacts.textContent = "Aperçu — " + scenario.contacts + " contacts, dont " + scenario.missing + " sans email";
+      campaigns.textContent = "Aperçu — " + scenario.campaigns + " campagnes, dont " + scenario.stopped + " arrêtées";
+    }else{
+      contacts.textContent = scenario.contacts + " contacts chargés — dont " + scenario.missing + " sans email, " + scenario.duplicates + " doublons";
+      campaigns.textContent = scenario.campaigns + " campagnes, dont " + scenario.stopped + " arrêtées";
+    }
+  }
+
+  function applyScenario(id){
+    if(!SCENARIOS[id]) return;
+    selectedScenario = id;
+    var scenario = SCENARIOS[id];
+    document.querySelectorAll("[data-scenario]").forEach(function(button){
+      var active = button.dataset.scenario === id;
+      button.setAttribute("aria-pressed", active ? "true" : "false");
+      if(button.classList.contains("scard")) button.classList.toggle("on", active);
+    });
+    document.getElementById("startExampleBtn").textContent = "Commencer avec " + scenario.name;
+    var mission4ActionButton = document.getElementById("mission4ActionBtn");
+    if(mission4ActionButton){
+      mission4ActionButton.textContent = currentPath === "real"
+        ? "Confirmer la séparation"
+        : currentPath === "free"
+          ? "Continuer avec cet aperçu"
+          : "Examiner les données de " + scenario.name;
+    }
+    var scenarioMeta = scenario.type + " · " + scenario.contacts + " contacts · " + scenario.campaigns + " campagnes";
+    document.getElementById("activeScenarioName").textContent = scenario.name;
+    document.getElementById("activeScenarioMeta").textContent = scenarioMeta;
+    document.getElementById("previewActiveScenarioName").textContent = scenario.name;
+    document.getElementById("previewActiveScenarioMeta").textContent = scenarioMeta;
+    updateScenarioCountCopy(scenario);
+    var journalScenario = document.getElementById("journalScenario");
+    if(journalScenario){
+      journalScenario.textContent = currentPath === "real"
+        ? "Aucun scénario chargé — aperçu consulté : " + scenario.name
+        : currentPath === "free"
+          ? "Aperçu consulté — " + scenario.name
+          : "Scénario d’exemple chargé — " + scenario.name;
+    }
+    if(currentPath === "example") applyPath();
+    saveState();
+  }
+
+  var cards = Array.prototype.slice.call(document.querySelectorAll(".mcard"));
+  var byId = {};
+  cards.forEach(function(c){ byId[c.dataset.m] = c; });
+
+  /* ---------- Aperçu ---------- */
+  var LOC = {
+    "0":"Aperçu","1":"Onboarding","2":"Onboarding","3":"Onboarding · enrichissement web (bêta)",
+    "4":"Mon entreprise","5":"Aujourd’hui","6":"Aujourd’hui","7":"Aujourd’hui",
+    "8":"Aujourd’hui · proposition","9":"Aujourd’hui · décision","10":"Journal",
+    "11":"Mon entreprise · Agent","12":"Mon entreprise · Connecteurs"
+  };
+  function showPreview(id){
+    var wanted = document.getElementById("pv-" + id);
+    if(!wanted) return;
+    document.querySelectorAll(".pv.on").forEach(function(p){ p.classList.remove("on"); });
+    wanted.classList.add("on");
+    document.getElementById("pvLoc").textContent = LOC[id] || "Aperçu";
+  }
+
+  /* ---------- Ouverture / fermeture ---------- */
+  function openCard(card, scroll){
+    cards.forEach(function(c){
+      if(c === card) return;
+      c.classList.remove("open");
+      c.querySelector(".mtop").setAttribute("aria-expanded","false");
+      c.querySelector(".mbody").hidden = true;
+    });
+    var isOpen = card.classList.toggle("open");
+    card.querySelector(".mtop").setAttribute("aria-expanded", isOpen ? "true" : "false");
+    card.querySelector(".mbody").hidden = !isOpen;
+    showPreview(isOpen ? card.dataset.m : "0");
+    if(isOpen && scroll !== false){
+      var reducedMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      card.scrollIntoView({behavior:reducedMotion ? "auto" : "smooth", block:"center"});
+    }
+  }
+
+  cards.forEach(function(card){
+    card.querySelector(".mtop").addEventListener("click", function(){ openCard(card); });
+  });
+
+  /* ---------- Laboratoire d’enrichissement simulé ---------- */
+  var researchLabUrl = document.getElementById("researchLabUrl");
+  var researchLabBtn = document.getElementById("researchLabBtn");
+  var researchLabResult = document.getElementById("researchLabResult");
+
+  function prepareResearchLab(){
+    var raw = researchLabUrl.value.trim();
+    var candidate = /^https?:\/\//i.test(raw) ? raw : "https://" + raw;
+    var parsed;
+    try{ parsed = new URL(candidate); }catch(error){ parsed = null; }
+
+    if(!parsed || !raw || (parsed.protocol !== "https:" && parsed.protocol !== "http:") || !parsed.hostname){
+      researchLabUrl.setAttribute("aria-invalid", "true");
+      researchLabResult.hidden = false;
+      researchLabResult.classList.add("error");
+      researchLabResult.textContent = "Saisissez l’adresse complète d’un site public, par exemple https://exemple.fr.";
+      researchLabUrl.focus();
+      return;
+    }
+
+    researchLabUrl.setAttribute("aria-invalid", "false");
+    researchLabUrl.value = parsed.origin;
+    researchLabResult.hidden = false;
+    researchLabResult.classList.remove("error");
+    researchLabResult.textContent = "Test préparé pour " + parsed.hostname + ". Dans la version intégrée, Nepteo lancera ici une analyse réelle et restituera les faits, les manques et les pages sources.";
+
+    var notice = document.querySelector("#researchPreviewNotice span");
+    var cap = document.getElementById("researchPreviewCap");
+    var source = document.getElementById("researchPreviewSource");
+    if(notice) notice.textContent = "Aperçu du format pour " + parsed.hostname + " — aucune recherche réelle n’a été lancée dans la maquette.";
+    if(cap) cap.textContent = "Le test réel présentera une lecture sourcée de " + parsed.hostname + ", à vérifier section par section.";
+    if(source) source.textContent = "Exemple pédagogique indépendant de " + parsed.hostname + ". Le résultat réel citera les pages effectivement consultées.";
+
+    showPreview("3");
+    complete("3");
+  }
+
+  if(researchLabBtn) researchLabBtn.addEventListener("click", prepareResearchLab);
+  if(researchLabUrl){
+    researchLabUrl.addEventListener("input", function(){
+      researchLabUrl.removeAttribute("aria-invalid");
+      if(researchLabResult.classList.contains("error")) researchLabResult.hidden = true;
+    });
+    researchLabUrl.addEventListener("keydown", function(event){
+      if(event.key === "Enter"){
+        event.preventDefault();
+        prepareResearchLab();
+      }
+    });
+  }
+
+  /* ---------- Effets simulés par mission ---------- */
+  function currentProfileValue(field){
+    if(currentPath === "real"){
+      if(realProfile[field]) return realProfile[field];
+      return field === "offer"
+        ? "Aucune description enregistrée dans cette maquette. Ajoutez votre réponse lors de la prochaine étape."
+        : "Aucune règle de ton enregistrée dans cette maquette. Vos exemples restent seulement des aides visuelles.";
+    }
+    return SCENARIOS[selectedScenario][field];
+  }
+
+  var EFFECTS = {
+    "1": function(){
+      var f = document.getElementById("f1a");
+      f.classList.add("filled");
+      f.querySelector(".val").classList.remove("ph");
+      f.querySelector(".val").textContent = currentProfileValue("offer");
+      document.getElementById("f1b").hidden = false;
+    },
+    "2": function(){
+      var f = document.getElementById("f2a");
+      f.classList.add("filled");
+      f.querySelector(".val").classList.remove("ph");
+      f.querySelector(".val").textContent = currentProfileValue("voice");
+      document.getElementById("f2b").hidden = false;
+    },
+    "4": function(){ applyScenario(selectedScenario); document.getElementById("f4run").hidden = false; },
+    "5": function(){
+      var items = document.querySelectorAll("#f5run li");
+      items.forEach(function(li, i){
+        setTimeout(function(){ li.classList.add("ok"); }, 180 * (i + 1));
+      });
+      setTimeout(function(){ document.getElementById("f5a").hidden = false; }, 180 * (items.length + 1));
+    },
+    "11": function(){ setAgentPaused(true); }
+  };
+
+  /* ---------- Validation d'une mission ---------- */
+  function markCompleteUI(m){
+    var card = byId[m];
+    if(card){
+      card.classList.add("done");
+      var foot = card.querySelector(".mfoot");
+      if(foot && m !== "9"){
+        foot.innerHTML =
+          '<span class="done-lbl"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Mission terminée</span>' +
+          '<span class="note">Vous pouvez la rouvrir quand vous voulez</span>';
+      }else if(foot && !foot.querySelector(".mission-complete-note")){
+        var note = document.createElement("span");
+        note.className = "done-lbl mission-complete-note";
+        note.textContent = "Mission terminée · vous pouvez essayer une autre décision";
+        foot.appendChild(note);
+      }
+    }
+  }
+
+  function complete(m){
+    if(done[m]) return;
+    done[m] = true;
+    markCompleteUI(m);
+    if(EFFECTS[m]) EFFECTS[m]();
+    saveState();
+    render();
+  }
+
+  cards.forEach(function(card){
+    var m = card.dataset.m;
+    card.querySelectorAll(".act, .skip").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        if(btn.disabled) return;
+        complete(m);
+      });
+    });
+  });
+
+  /* ---------- Mission 9 : les trois décisions ---------- */
+  document.querySelectorAll(".dbtn[data-dec]").forEach(function(btn){
+    btn.addEventListener("click", function(){
+      document.querySelectorAll(".dbtn[data-dec]").forEach(function(b){
+        b.classList.toggle("on", b.dataset.dec === btn.dataset.dec);
+      });
+      document.querySelectorAll("#pv-9 .dres").forEach(function(r){ r.classList.remove("on"); });
+      var box = document.getElementById("dres-" + btn.dataset.dec);
+      if(box) box.classList.add("on");
+      var inline = document.getElementById("inlineDecisionResult");
+      if(inline && box){
+        inline.innerHTML = box.innerHTML;
+        inline.hidden = false;
+      }
+      complete("9");
+    });
+  });
+
+  /* ---------- Mission 11 : bouton d'arrêt ---------- */
+  function setAgentPaused(paused){
+    var stop = document.getElementById("stopBtn");
+    var result = document.getElementById("dres-stop");
+    var inlineResult = document.getElementById("inlineStopResult");
+    var activeLevel = document.querySelector("#pv-11 .slider .sl.on");
+    if(result) result.classList.toggle("on", paused);
+    if(inlineResult) inlineResult.hidden = !paused;
+    if(stop){
+      stop.dataset.paused = paused ? "true" : "false";
+      stop.textContent = paused ? "Reprendre" : "Mettre en pause";
+    }
+    if(activeLevel) activeLevel.classList.toggle("paused", paused);
+  }
+
+  var stop = document.getElementById("stopBtn");
+  if(stop){
+    stop.addEventListener("click", function(){
+      var nextPaused = stop.dataset.paused !== "true";
+      setAgentPaused(nextPaused);
+      if(nextPaused) complete("11");
+    });
+  }
+
+  /* ---------- Déblocage de la mission 12 ---------- */
+  function updateLock(){
+    var card = byId["12"];
+    var ready = done["10"] && done["11"];
+    var tag = document.getElementById("unlockTag");
+    var state = document.getElementById("unlockState");
+    var note = document.getElementById("lockNote");
+    var btn = card.querySelector(".act");
+    if(ready && card.dataset.lock === "1"){
+      card.dataset.lock = "0";
+      card.classList.remove("locked");
+      card.querySelector(".mstate .lock").style.display = "none";
+      card.querySelector(".mstate svg:not(.lock)").style.display = "";
+      tag.textContent = "débloqué";
+      tag.className = "tag mn";
+      state.textContent = "débloqué";
+      note.innerHTML =
+        '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#177a55" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none;margin-top:2px"><path d="M20 6 9 17l-5-5"/></svg>' +
+        '<span><b>Connexion disponible.</b> Le journal et la mise en pause ont été vérifiés. Vous pouvez maintenant retirer le scénario d’exemple avant de connecter vos données.</span>';
+      note.style.borderStyle = "solid";
+      note.style.borderColor = "#cbe8dc";
+      note.style.background = "#f7fdfa";
+      btn.disabled = false;
+    }
+  }
+
+  /* ---------- Rendu global ---------- */
+  function render(){
+    var n = 0;
+    for(var i = 1; i <= TOTAL; i++){ if(done[i]) n++; }
+    var pct = Math.round((n / TOTAL) * 100);
+
+    document.getElementById("meterBar").style.width = pct + "%";
+    document.getElementById("meterCount").innerHTML =
+      n + (n > 1 ? " missions terminées" : " mission terminée") + " <span>sur " + TOTAL + "</span>";
+    document.getElementById("sideBar").style.width = pct + "%";
+    document.getElementById("sideCount").textContent =
+      n + (n > 1 ? " missions" : " mission") + " sur " + TOTAL;
+    document.getElementById("progressMeter").setAttribute("aria-valuenow", String(n));
+    document.getElementById("progressMeter").setAttribute("aria-valuetext", n + " mission" + (n > 1 ? "s" : "") + " terminée" + (n > 1 ? "s" : "") + " sur " + TOTAL);
+    var arc = document.getElementById("ringArc");
+    arc.setAttribute("stroke-dashoffset", (94.2 * (1 - n / TOTAL)).toFixed(1));
+
+    // Niveaux
+    var current = LEVELS[LEVELS.length - 1];
+    LEVELS.forEach(function(lv){
+      var sec = document.querySelector('.level[data-lvl="' + lv.id + '"]');
+      if(!sec) return;
+      var d = lv.ms.filter(function(m){ return done[m]; }).length;
+      var full = lv.req.every(function(m){ return done[m]; });
+      var badge = sec.querySelector(".level-head .state");
+      if(lv.id !== 5) badge.textContent = d + " / " + lv.ms.length;
+      sec.classList.toggle("done", full);
+      var ms = sec.querySelector(".milestone");
+      if(ms) ms.classList.toggle("pending", !full);
+    });
+    for(var k = 0; k < LEVELS.length; k++){
+      if(!LEVELS[k].req.every(function(m){ return done[m]; })){ current = LEVELS[k]; break; }
+    }
+    document.getElementById("meterStage").innerHTML =
+      n === TOTAL ? "Parcours terminé — <b>la connexion de vos données est disponible</b>"
+                  : "Étape en cours : <b>" + current.name + "</b>";
+
+    document.querySelectorAll(".tick").forEach(function(t){
+      var lv = LEVELS[+t.dataset.lvl];
+      var full = lv.req.every(function(m){ return done[m]; });
+      t.classList.toggle("on", full);
+      t.classList.toggle("now", !full && lv.id === current.id);
+    });
+
+    // Jalons atteints
+    setMs("ms0", done[1] && done[2], "Contexte défini — l’agent dispose des informations nécessaires pour préparer des propositions adaptées.");
+    setMs("ms1", done[4] && done[5], "Analyse disponible — la synthèse repose sur un scénario cohérent et ses anomalies identifiées.");
+    setMs("ms3", done[8] && done[9], "Décision enregistrée — le cycle constat, justification et validation est terminé.");
+    setMs("ms4", done[10] && done[11], "Contrôle vérifié — l’historique et la mise en pause sont accessibles.");
+
+    updateLock();
+
+    // Bouton principal
+    var btn = document.getElementById("resumeBtn");
+    btn.textContent = n === 0 ? "Commencer" : (n === TOTAL ? "Parcours terminé" : "Reprendre");
+    btn.disabled = (n === TOTAL);
+  }
+
+  function setMs(id, ok, txt){
+    var el = document.getElementById(id);
+    if(el && ok) el.textContent = txt;
+  }
+
+  /* ---------- Choix de voie et reprise ---------- */
+  document.querySelectorAll("[data-scenario]").forEach(function(button){
+    button.addEventListener("click", function(){
+      applyScenario(button.dataset.scenario);
+      document.getElementById("welcomeStatus").textContent = SCENARIOS[selectedScenario].name + " sélectionnée.";
+    });
+  });
+
+  document.getElementById("examplePathBtn").addEventListener("click", function(){
+    setWelcomePanel("scenarioPanel");
+  });
+  document.getElementById("realPathBtn").addEventListener("click", function(){
+    setWelcomePanel("realPanel");
+  });
+  document.getElementById("freePathBtn").addEventListener("click", function(){
+    enterPath("free");
+  });
+  document.querySelectorAll(".welcomeBack").forEach(function(button){
+    button.addEventListener("click", function(){ setWelcomePanel("welcomeHome"); });
+  });
+  document.getElementById("startExampleBtn").addEventListener("click", function(){
+    enterPath("example");
+  });
+  document.getElementById("startRealBtn").addEventListener("click", function(){
+    realProfile = {
+      name:document.getElementById("realName").value.trim(),
+      offer:document.getElementById("realOffer").value.trim(),
+      voice:document.getElementById("realVoice").value.trim()
+    };
+    enterPath("real");
+  });
+  document.getElementById("realExampleToggle").addEventListener("click", function(){
+    var preview = document.getElementById("realExamplePreview");
+    preview.hidden = !preview.hidden;
+    this.setAttribute("aria-expanded", preview.hidden ? "false" : "true");
+    this.textContent = preview.hidden ? "Voir un exemple rempli" : "Masquer l’exemple";
+  });
+  document.getElementById("continueSavedBtn").addEventListener("click", function(){
+    enterPath(currentPath || "example");
+  });
+  document.getElementById("openWelcomeBtn").addEventListener("click", showWelcome);
+  document.getElementById("changePathBtn").addEventListener("click", showWelcome);
+
+  /* ---------- Reprendre / réinitialiser ---------- */
+  document.getElementById("resumeBtn").addEventListener("click", function(){
+    for(var i = 1; i <= TOTAL; i++){
+      if(!done[i]){ openCard(byId[i]); return; }
+    }
+  });
+
+  function resetPrototype(){
+    try{ window.localStorage.removeItem(STORAGE_KEY); }catch(error){}
+    window.location.reload();
+  }
+  document.getElementById("resetBtn").addEventListener("click", resetPrototype);
+  document.getElementById("resetSavedBtn").addEventListener("click", resetPrototype);
+
+  applyScenario(selectedScenario);
+  if(currentPath) applyPath();
+  Object.keys(done).forEach(function(m){
+    markCompleteUI(m);
+    if(EFFECTS[m]) EFFECTS[m]();
+  });
+  render();
+  showPreview("0");
+  showWelcome();
+})();
+</script>
+</body>
+</html>
