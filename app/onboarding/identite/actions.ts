@@ -179,11 +179,11 @@ export async function applyIdentity(formData: FormData) {
     redirect(`/entreprise?error=${encodeURIComponent(message)}`);
   }
 
-  redirect("/");
+  redirect("/prise-en-main?depart=real");
 }
 
 /** « Passer cette étape » — aucune écriture, on entre simplement dans le cockpit. */
 export async function skipIdentity() {
   await requireEditorMembership();
-  redirect("/");
+  redirect("/prise-en-main?depart=real");
 }

@@ -2,6 +2,7 @@ import { icons } from "@/components/icons";
 import { logout } from "@/app/(auth)/actions";
 import type { DemoPresentation } from "@/lib/demo/presentation-rules";
 import { CockpitNav } from "./nav";
+import { WalkthroughSidebarLink } from "./walkthrough-link";
 
 /**
  * Cinq entrées, pas neuf. « Plan du mois » a rejoint Aujourd'hui (bandeau de
@@ -48,6 +49,8 @@ export function Sidebar({
       <CockpitNav canViewFinancials={canViewFinancials} />
 
       <div className="min-h-4 flex-1" />
+
+      <WalkthroughSidebarLink />
 
       <div className="mx-3.5 flex-none rounded-[13px] border border-line bg-tint-soft p-3.5">
         <div className="flex items-center gap-2">

@@ -8,8 +8,11 @@ import {
 import { IdentityPanel } from "./_components/identity-panel";
 import { ConnectorsPanel } from "./_components/connectors-panel";
 import { AgentPanel } from "./_components/agent-panel";
-import { CoachBubble } from "@/components/ui/coach-bubble";
 import { readDemoPresentation } from "@/lib/demo/presentation";
+import {
+  isWalkthroughScenario,
+  type WalkthroughScenario,
+} from "@/lib/onboarding/walkthrough";
 
 /** Chaque onglet garde l'introduction de l'écran dont il vient. */
 const INTRO: Record<TabId, string> = {
@@ -24,14 +27,24 @@ const INTRO: Record<TabId, string> = {
 export default async function EntreprisePage({
   searchParams,
 }: {
-  searchParams: Promise<{ onglet?: string; saved?: string; error?: string }>;
+  searchParams: Promise<{
+    onglet?: string;
+    saved?: string;
+    error?: string;
+    prise_en_main?: string;
+    scenario?: string;
+  }>;
 }) {
-  const { onglet, saved, error } = await searchParams;
+  const { onglet, saved, error, prise_en_main, scenario } = await searchParams;
   const { user, membership } = await getCurrentAuthContext();
   if (!user) redirect("/login");
   if (!membership) redirect("/onboarding");
   const canEdit = membership.canEdit;
   const canManageDemo = membership.role === "admin";
+  const guidedScenario: WalkthroughScenario | undefined =
+    prise_en_main === "1" && isWalkthroughScenario(scenario)
+      ? scenario
+      : undefined;
 
   const tab = resolveTab(onglet);
   // `hasDemoMarker` échoue prudemment à vrai si la preuve ne peut pas être
@@ -48,8 +61,6 @@ export default async function EntreprisePage({
 
   return (
     <>
-      {/* La bulle suit l'onglet : celle de l'agent parlait des garde-fous. */}
-      <CoachBubble id={tab === "agent" ? "agent" : "entreprise"} />
       <div className="mb-5">
         <h1 className="text-[22px] font-semibold tracking-tight">
           Mon entreprise
@@ -81,6 +92,7 @@ export default async function EntreprisePage({
           canManageDemo={canManageDemo}
           orgId={membership.organizationId}
           saved={saved}
+          guidedScenario={guidedScenario}
         />
       )}
       {tab === "agent" && <AgentPanel canEdit={canEdit} />}

@@ -16,7 +16,6 @@ import {
 } from "@/lib/ads/metrics-rules";
 import { analyzeAdsForm } from "./actions";
 import { NewCampaignModal } from "./_components/new-campaign-modal";
-import { CoachBubble } from "@/components/ui/coach-bubble";
 import { readDemoPresentation } from "@/lib/demo/presentation";
 
 const eur = (n: number) =>
@@ -85,7 +84,6 @@ export default async function CampagnesPage({
 
   return (
     <>
-      <CoachBubble id="campagnes" />
       <div className="mb-6 flex items-end justify-between gap-4">
         <div>
           <h1 className="text-[22px] font-semibold tracking-tight">Campagnes</h1>

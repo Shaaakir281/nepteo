@@ -12,7 +12,6 @@ import {
 } from "@/lib/ads/metrics-rules";
 import { buildCreativeSuggestions } from "@/lib/creative-template";
 import { CreativeWorkspace } from "./_components/creative-workspace";
-import { CoachBubble } from "@/components/ui/coach-bubble";
 import {
   createSupabaseProspectReader,
   DEFAULT_PROSPECT_MAX_ROWS,
@@ -67,7 +66,6 @@ export default async function ContenuPage() {
 
   return (
     <>
-      <CoachBubble id="contenu" />
       <div className="mb-6">
         <h1 className="text-[22px] font-semibold tracking-tight">Contenu</h1>
         <p className="mt-1.5 max-w-2xl text-[13.5px] leading-relaxed text-muted">

@@ -11,6 +11,8 @@ import { resolveSingleMembership } from "@/lib/auth/membership-rules";
 const orgSchema = z.object({
   name: z.string().trim().min(2).max(80),
   activity: z.string().trim().max(300).optional(),
+  onboardingPath: z.enum(["example", "real"]).default("real"),
+  scenario: z.enum(["artisan", "agence", "ecommerce"]).optional(),
 });
 
 export async function createOrganization(formData: FormData) {
@@ -23,12 +25,24 @@ export async function createOrganization(formData: FormData) {
   const parsed = orgSchema.safeParse({
     name: formData.get("name"),
     activity: formData.get("activity") || undefined,
+    onboardingPath: formData.get("onboarding_path") || "real",
+    scenario: formData.get("scenario") || undefined,
   });
-  if (!parsed.success) {
+  if (
+    !parsed.success ||
+    (parsed.data.onboardingPath === "example" && !parsed.data.scenario)
+  ) {
     redirect(
       `/onboarding?error=${encodeURIComponent("Nom invalide (entre 2 et 80 caractères).")}`,
     );
   }
+
+  const nextDestination =
+    parsed.data.onboardingPath === "example"
+      ? `/prise-en-main?depart=example&scenario=${parsed.data.scenario}`
+      : researchConfigured()
+        ? "/onboarding/identite"
+        : "/prise-en-main?depart=real";
 
   // Écritures via service-role (RLS contournée) — toujours journalisées.
   const admin = createAdminClient();
@@ -51,7 +65,7 @@ export async function createOrganization(formData: FormData) {
   }
 
   const existing = resolveSingleMembership(existingMemberships ?? []);
-  if (existing) redirect("/");
+  if (existing) redirect(nextDestination);
 
   const { data: org, error: orgError } = await admin
     .from("organizations")
@@ -91,7 +105,7 @@ export async function createOrganization(formData: FormData) {
         !concurrentMembershipError &&
         resolveSingleMembership(concurrentMemberships ?? [])
       ) {
-        redirect("/");
+        redirect(nextDestination);
       }
     }
 
@@ -105,7 +119,10 @@ export async function createOrganization(formData: FormData) {
     event: "organization_created",
     actor: "user",
     actor_id: user.id,
-    payload: { name: parsed.data.name },
+    payload: {
+      name: parsed.data.name,
+      onboarding_path: parsed.data.onboardingPath,
+    },
   });
 
   // Philosophie : champ facultatif du formulaire → section de mémoire.
@@ -136,5 +153,5 @@ export async function createOrganization(formData: FormData) {
   // 2e écran, facultatif : l'agent propose une identité à partir du site.
   // Sans recherche web configurée, il n'aurait rien à proposer — on l'évite
   // plutôt que de montrer un écran qui ne peut pas aboutir.
-  redirect(researchConfigured() ? "/onboarding/identite" : "/");
+  redirect(nextDestination);
 }

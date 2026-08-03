@@ -24,7 +24,6 @@ import {
   type DiagnosticMemory,
 } from "@/lib/diagnostic";
 import { readMemory } from "@/lib/memory-store";
-import { CoachBubble } from "@/components/ui/coach-bubble";
 import { isCommercialSafeActionKind } from "@/lib/auth/roles";
 import { prioritizeTodayActions } from "@/lib/today-priority-rules";
 import { DormantPlayLauncher } from "./_components/dormant-play-launcher";
@@ -243,7 +242,6 @@ export default async function TodayPage() {
 
   return (
     <>
-      <CoachBubble id="today" />
       <div className="mb-6">
         <h1 className="text-[22px] font-semibold tracking-tight">Bonjour</h1>
         {/* Cette phrase n'est vraie que tant qu'aucune donnée n'est branchée —
