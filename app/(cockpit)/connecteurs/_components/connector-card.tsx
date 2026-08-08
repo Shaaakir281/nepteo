@@ -33,6 +33,10 @@ export function ConnectorCard({
   demoPresentation?: DemoPresentation;
   justRequested?: boolean;
 }) {
+  const isOauth = isOauthProvider(tool.provider);
+  const isImport = isImportProvider(tool.provider);
+  const isProposal = !isOauth && !isImport;
+
   return (
     <div
       className={`flex flex-col rounded-[13px] border bg-white p-4 shadow-card ${
@@ -59,6 +63,15 @@ export function ConnectorCard({
       <p className="mt-2.5 flex-1 text-[12.5px] leading-relaxed text-body">
         {tool.description}
       </p>
+      {status === "available" && (
+        <p className="mt-2 text-[11.5px] font-medium text-muted">
+          {isOauth
+            ? "Connexion OAuth disponible"
+            : isImport
+              ? "Import disponible"
+              : "Intégration proposée — non connectée"}
+        </p>
+      )}
       <div className="mt-3.5">
         {status === "connected" && (
           <span className="inline-flex items-center gap-3">
@@ -77,16 +90,16 @@ export function ConnectorCard({
             )}
           </span>
         )}
-        {status !== "connected" && isOauthProvider(tool.provider) && canEdit && (
+        {status !== "connected" && isOauth && canEdit && (
           <a
             href={`/api/connectors/${tool.provider}/authorize`}
             className="inline-block rounded-[7px] bg-tint px-3.5 py-1.5 text-[12px] font-semibold text-violet transition hover:bg-violet hover:text-white"
           >
-            Connecter
+            Connecter via OAuth
           </a>
         )}
         {status === "available" &&
-          isOauthProvider(tool.provider) &&
+          isOauth &&
           !canEdit &&
           blockedByDemo && (
             <span className="text-[12px] font-medium text-amber">
@@ -96,7 +109,7 @@ export function ConnectorCard({
             </span>
           )}
         {status === "available" &&
-          isImportProvider(tool.provider) &&
+          isImport &&
           canEdit && (
             <Link
               href={`/connecteurs/${tool.provider}`}
@@ -106,22 +119,23 @@ export function ConnectorCard({
             </Link>
           )}
         {status === "available" &&
-          isImportProvider(tool.provider) &&
+          isImport &&
           !canEdit &&
           blockedByDemo && (
             <span className="text-[12px] font-medium text-amber">
               Retirez d&apos;abord le scénario Nepteo pour importer ce fichier.
             </span>
           )}
-        {status === "requested" && !isOauthProvider(tool.provider) && (
+        {status === "requested" && isProposal && (
           <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-amber">
             <i className="h-[7px] w-[7px] rounded-full bg-amber" />
-            {justRequested ? "Demande enregistrée ✓" : "Demandé — bientôt disponible"}
+            {justRequested
+              ? "Demande enregistrée — non connectée"
+              : "Demande en attente — non connectée"}
           </span>
         )}
         {status === "available" &&
-          !isOauthProvider(tool.provider) &&
-          !isImportProvider(tool.provider) &&
+          isProposal &&
           (canEdit ? (
             <form action={requestConnector}>
               <input type="hidden" name="provider" value={tool.provider} />
@@ -129,11 +143,13 @@ export function ConnectorCard({
                 type="submit"
                 className="rounded-[7px] bg-tint px-3.5 py-1.5 text-[12px] font-semibold text-violet transition hover:bg-violet hover:text-white"
               >
-                Connecter
+                Demander l&apos;intégration
               </button>
             </form>
           ) : (
-            <span className="text-[12px] text-faint">Disponible bientôt</span>
+            <span className="text-[12px] text-faint">
+              Intégration proposée — demande par un administrateur
+            </span>
           ))}
       </div>
     </div>

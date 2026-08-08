@@ -130,10 +130,10 @@ export async function ConnectorsPanel({
       <div className="mb-5 flex items-start gap-2.5 rounded-[13px] border border-line bg-tint-soft px-4 py-3 text-[12.5px] leading-relaxed text-body">
         <span className="mt-0.5 flex-none">{icons.info}</span>
         <span>
-          Les connexions ouvrent <b>progressivement</b>. Cliquez «&nbsp;Connecter&nbsp;»
-          sur les outils que vous utilisez : votre demande est enregistrée et
-          vous serez prévenu dès que le branchement est prêt — les plus
-          demandés arrivent en premier.
+          Ce catalogue distingue les <b>connexions réellement disponibles</b>{" "}
+          des intégrations proposées. «&nbsp;Demander l&apos;intégration&nbsp;»
+          enregistre uniquement votre intérêt : aucun accès, synchronisation ou
+          échange de données n&apos;est ouvert par cette action.
         </span>
       </div>
 
