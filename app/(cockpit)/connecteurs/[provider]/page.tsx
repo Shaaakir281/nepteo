@@ -16,6 +16,8 @@ import {
   type ProspectPreview,
 } from "./_components/sync-section";
 import { loadRemoteMetadata } from "./_lib/load-remote-metadata";
+import { MetaAdsSection } from "./_components/meta-ads-section";
+import { readSelectedMetaAdAccount } from "@/lib/connectors/meta-ads";
 
 const fmtDate = new Intl.DateTimeFormat("fr-FR", {
   day: "numeric",
@@ -75,10 +77,14 @@ export default async function ConnectorDetailPage({
   const connected = presentation === "connected";
   const authorized = connected || hasConnectorConsent(config);
   const paused = isConnectorPaused(config);
+  const sourceProvider =
+    provider === "google_sheets" || provider === "notion" ? provider : null;
   const configured =
-    provider === "google_sheets"
-      ? Boolean(config.spreadsheet_id)
-      : Boolean(config.database_id);
+    provider === "meta_ads"
+      ? Boolean(readSelectedMetaAdAccount(config))
+      : provider === "google_sheets"
+        ? Boolean(config.spreadsheet_id)
+        : Boolean(config.database_id);
 
   let prospectCount = 0;
   let preview: ProspectPreview[] = [];
@@ -98,9 +104,9 @@ export default async function ConnectorDetailPage({
     preview = rows ?? [];
   }
 
-  const remoteMetadata = connector
+  const remoteMetadata = connector && sourceProvider
     ? await loadRemoteMetadata({
-        provider,
+        provider: sourceProvider,
         connectorId: connector.id,
         connected: authorized,
         configured,
@@ -176,8 +182,9 @@ export default async function ConnectorDetailPage({
       {!authorized ? (
         <div className="rounded-[18px] border border-line-soft bg-white p-6 shadow-card">
           <p className="text-[13.5px] text-body">
-            Autorisez Nepteo à lire vos données — lecture seule, jetons chiffrés,
-            accès révocable ici à tout moment.
+            {provider === "meta_ads"
+              ? "Autorisez uniquement la lecture Meta Ads (ads_read) : aucun budget, campagne, créa ou pause publicitaire ne peut être modifié par Nepteo."
+              : "Autorisez Nepteo à lire vos données — lecture seule, jetons chiffrés, accès révocable ici à tout moment."}
           </p>
           {canEdit && (
             <a
@@ -190,32 +197,40 @@ export default async function ConnectorDetailPage({
         </div>
       ) : (
         <div className="space-y-4">
-          {membership.canViewFinancials && (
-            <SourceConfiguration
-              provider={provider}
-              config={config}
-              canEdit={canEdit}
-              databases={remoteMetadata.databases}
-            />
-          )}
+          {provider === "meta_ads" ? (
+            membership.canViewFinancials && (
+              <MetaAdsSection config={config} canEdit={canEdit} paused={paused} />
+            )
+          ) : (
+            <>
+              {membership.canViewFinancials && (
+                <SourceConfiguration
+                  provider={provider}
+                  config={config}
+                  canEdit={canEdit}
+                  databases={remoteMetadata.databases}
+                />
+              )}
 
-          {configured && canEdit && (
-            <MappingSection
-              provider={provider}
-              state={remoteMetadata.columns}
-              mapping={remoteMetadata.mapping}
-              canEdit={canEdit}
-            />
-          )}
+              {configured && canEdit && (
+                <MappingSection
+                  provider={provider}
+                  state={remoteMetadata.columns}
+                  mapping={remoteMetadata.mapping}
+                  canEdit={canEdit}
+                />
+              )}
 
-          <SyncSection
-            provider={provider}
-            configured={configured}
-            paused={paused}
-            canEdit={canEdit}
-            prospectCount={prospectCount}
-            preview={preview}
-          />
+              <SyncSection
+                provider={provider}
+                configured={configured}
+                paused={paused}
+                canEdit={canEdit}
+                prospectCount={prospectCount}
+                preview={preview}
+              />
+            </>
+          )}
         </div>
       )}
     </>

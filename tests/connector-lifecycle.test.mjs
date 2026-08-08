@@ -30,7 +30,7 @@ test("CONN-1 — chaque carte a une capacité explicite, lecture seule", () => {
   );
   assert.deepEqual(
     providers.filter((provider) => !isRequestableConnector(provider)).sort(),
-    ["csv", "google_sheets", "notion"],
+    ["csv", "google_sheets", "meta_ads", "notion"],
   );
 });
 

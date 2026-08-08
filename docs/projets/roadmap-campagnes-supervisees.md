@@ -217,6 +217,22 @@ quand sa preuve est complète, mais peut contenir plusieurs étapes cohérentes 
 Les sous-étapes historiques restent des repères d'audit. Elles ne créent plus
 une publication autonome si le lot regroupé n'est pas entièrement vérifiable.
 
+### META-READ — lecture Meta Ads bornée (local, à publier)
+
+- OAuth demande exclusivement `ads_read` ; le retour vérifie ce droit côté
+  serveur avant de chiffrer le jeton ;
+- aucun compte n'est choisi par défaut : la liste courte (25 maximum) est lue
+  seulement sur geste explicite, puis la sélection est revalidée côté serveur ;
+- une lecture explicite demande 7, 14 ou 30 jours et au plus 100 lignes. Toute
+  pagination ou valeur ambiguë échoue fermée : aucun résultat partiel n'est
+  affiché ;
+- le snapshot persisté est normalisé et minimisé (compte, devise, campagne,
+  jour, impressions, clics, dépense). Il n'alimente pas `ad_metrics` ni les
+  propositions CAMP tant que revenu/conversions et contrat d'ingestion ne sont
+  pas explicitement établis ;
+- pause, révocation, rôles et verrou d'isolation démo sont ceux de CONN-1 ;
+  aucun endpoint de mutation Meta Ads n'est introduit.
+
 ### REL-0 — Release de rattrapage CAMP-0/1/2
 
 **But** : publier, après nouvelle autorisation, l'état local déjà validé.
