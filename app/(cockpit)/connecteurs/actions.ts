@@ -20,9 +20,10 @@ function fail(message: string): never {
 }
 
 /**
- * Phase 1 : les connexions OAuth ne sont pas encore ouvertes.
- * « Connecter » enregistre la demande (visible par l'équipe) et la journalise —
- * le branchement réel arrivera connecteur par connecteur.
+ * Une demande de catalogue n'est jamais une connexion : elle est journalisée,
+ * reste `disconnected` et n'ouvre aucun accès OAuth, MCP ou de synchronisation.
+ * Les parcours réellement disponibles sont traités séparément, connecteur par
+ * connecteur.
  */
 export async function requestConnector(formData: FormData) {
   const { user, membership } = await getCurrentAuthContext();
