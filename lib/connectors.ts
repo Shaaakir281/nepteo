@@ -105,7 +105,9 @@ export const CONNECTOR_CAPABILITIES = {
   matomo: { activation: "proposal", read: false, write: false, sync: "none" },
   posthog: { activation: "proposal", read: false, write: false, sync: "none" },
   website: { activation: "proposal", read: false, write: false, sync: "none" },
-  meta_ads: { activation: "proposal", read: false, write: false, sync: "none" },
+  // META-READ : OAuth et lectures manuelles bornées uniquement. Aucun endpoint
+  // de création, mise à jour, pause ou lancement Ads n'est enregistré ici.
+  meta_ads: { activation: "oauth", read: true, write: false, sync: "manual" },
   google_ads: { activation: "proposal", read: false, write: false, sync: "none" },
   linkedin_ads: { activation: "proposal", read: false, write: false, sync: "none" },
   brevo: { activation: "proposal", read: false, write: false, sync: "none" },

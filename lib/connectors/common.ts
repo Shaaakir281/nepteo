@@ -24,11 +24,19 @@ export const PROSPECT_FIELDS = [
 export type ProspectField = (typeof PROSPECT_FIELDS)[number];
 export type FieldMapping = Partial<Record<ProspectField, string | null>>;
 
-export const OAUTH_PROVIDERS = ["google_sheets", "notion"] as const;
+export const OAUTH_PROVIDERS = ["google_sheets", "notion", "meta_ads"] as const;
 export type OauthProvider = (typeof OAUTH_PROVIDERS)[number];
 
 export function isOauthProvider(p: string): p is OauthProvider {
   return (OAUTH_PROVIDERS as readonly string[]).includes(p);
+}
+
+/** Les synchronisations de prospects ne concernent jamais les connecteurs Ads. */
+export const PROSPECT_SYNC_PROVIDERS = ["google_sheets", "notion"] as const;
+export type ProspectSyncProvider = (typeof PROSPECT_SYNC_PROVIDERS)[number];
+
+export function isProspectSyncProvider(p: string): p is ProspectSyncProvider {
+  return (PROSPECT_SYNC_PROVIDERS as readonly string[]).includes(p);
 }
 
 export const IMPORT_PROVIDERS = ["csv"] as const;
