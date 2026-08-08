@@ -9,6 +9,12 @@ import {
 import { fetchNotionProspects, type NotionCreds } from "./notion";
 import type { FieldMapping } from "./common";
 import { withRealDataMutationLock } from "@/lib/demo/lock";
+import {
+  hasConnectorConsent,
+  isConnectorPaused,
+  recordReadFailure,
+  recordReadSuccess,
+} from "@/lib/connectors/lifecycle";
 
 type Admin = ReturnType<typeof createAdminClient>;
 
@@ -25,7 +31,8 @@ export const CONNECTOR_SELECT =
   "id, organization_id, provider, status, config, encrypted_credentials";
 
 export function isSyncable(c: ConnectorRow): boolean {
-  if (c.status !== "connected" || !c.encrypted_credentials) return false;
+  if (!c.encrypted_credentials || isConnectorPaused(c.config)) return false;
+  if (c.status !== "connected" && !hasConnectorConsent(c.config)) return false;
   const cfg = c.config ?? {};
   if (c.provider === "google_sheets") return Boolean(cfg.spreadsheet_id);
   if (c.provider === "notion") return Boolean(cfg.database_id);
@@ -83,10 +90,18 @@ async function syncConnectorRowUnlocked(
     if (error) throw new Error(error.message);
   }
 
+  const nextConfig = hasConnectorConsent(config)
+    ? recordReadSuccess(config, now)
+    : config;
   await admin
     .from("connectors")
     .update({
-      config: { ...config, last_synced_at: now, last_sync_count: prospects.length },
+      status: "connected",
+      config: {
+        ...nextConfig,
+        last_synced_at: now,
+        last_sync_count: prospects.length,
+      },
     })
     .eq("id", c.id);
 
@@ -130,6 +145,29 @@ export async function syncConnectorRow(
     if (!fresh || !isSyncable(fresh)) {
       throw new Error("Connecteur non connecté ou incomplet.");
     }
-    return syncConnectorRowUnlocked(admin, fresh, actor, actorId);
+    try {
+      return await syncConnectorRowUnlocked(admin, fresh, actor, actorId);
+    } catch (error) {
+      const config = fresh.config ?? {};
+      if (hasConnectorConsent(config)) {
+        const now = new Date().toISOString();
+        await admin
+          .from("connectors")
+          .update({ config: recordReadFailure(config, now) })
+          .eq("id", fresh.id);
+        await admin.from("journal").insert({
+          organization_id: fresh.organization_id,
+          event: "connector_sync_failed",
+          actor,
+          actor_id: actorId,
+          payload: {
+            provider: fresh.provider,
+            name: findTool(fresh.provider)?.name,
+            error: "Lecture impossible.",
+          },
+        });
+      }
+      throw error;
+    }
   });
 }

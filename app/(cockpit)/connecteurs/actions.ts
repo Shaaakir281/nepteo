@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentAuthContext } from "@/lib/auth/context";
-import { findTool } from "@/lib/connectors";
+import { findTool, isRequestableConnector } from "@/lib/connectors";
 import {
   DemoBusyError,
   DemoDataMutationBlockedError,
@@ -36,6 +36,9 @@ export async function requestConnector(formData: FormData) {
   const provider = String(formData.get("provider") ?? "");
   const tool = findTool(provider);
   if (!tool) fail("Connecteur inconnu.");
+  if (!isRequestableConnector(tool.provider)) {
+    fail("Ce connecteur possède déjà son parcours dédié.");
+  }
 
   const admin = createAdminClient();
   try {

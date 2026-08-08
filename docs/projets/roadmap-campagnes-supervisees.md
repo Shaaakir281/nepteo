@@ -200,6 +200,23 @@ illustré.
 
 ## 5. Séquence exécutable
 
+### Cadence regroupée pour les intégrateurs
+
+Les lots suivants ne sont plus découpés artificiellement lorsqu'ils partagent
+le même contrat et la même recette mobile. Un lot reste publiable seulement
+quand sa preuve est complète, mais peut contenir plusieurs étapes cohérentes :
+
+| Lot regroupé | Contenu | Porte avant publication |
+|---|---|---|
+| **CONN-1** | consentement, chiffrement, état de lecture vérifiée, erreur, pause et révocation des connecteurs existants | aucun jeton restant après révocation ; aucune lecture pendant une pause |
+| **META-READ** | contrat officiel, OAuth lecture seule, sélection explicite du compte et première lecture bornée des métriques | identité distante, scopes et métriques relues côté serveur ; aucune écriture Ads |
+| **REV-READ** | connecteurs Stripe et PostHog, chacun seulement si le pilote fournit l'accès de recette | rapprochement lecture seule et données minimisées ; aucune mutation financière ou produit |
+| **OUTBOUND-READ** | cadrage puis lecture HeyReach/Resend, après les gates outbound | aucun envoi, séquence ou handoff ; erreurs et révocation prouvées |
+| **AUTOMATION-LATE** | n8n et MCP personnalisé après les connecteurs officiels | allowlist, egress borné et outil par outil ; jamais d'activation globale |
+
+Les sous-étapes historiques restent des repères d'audit. Elles ne créent plus
+une publication autonome si le lot regroupé n'est pas entièrement vérifiable.
+
 ### REL-0 — Release de rattrapage CAMP-0/1/2
 
 **But** : publier, après nouvelle autorisation, l'état local déjà validé.
@@ -255,6 +272,11 @@ ne promet plus que l'état persistant vérifié.
 
 Ce lot ne construit pas encore de framework MCP générique et ne modifie aucun
 fournisseur.
+
+**Regroupement décidé** : CONN-1 porte ensemble le consentement distinct de la
+connexion vérifiée, la preuve de dernière lecture, l'erreur expurgée, la pause,
+la révocation et les tests de contrat des 22 cartes. Il ne publie aucun nouveau
+connecteur et ne lance aucun appel fournisseur de recette.
 
 **Test en ligne Fathi** : connecteur de recette simulé localement puis état
 connecté/déconnecté/erreur ; aucune donnée métier ni appel payant.

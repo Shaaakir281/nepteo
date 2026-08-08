@@ -22,6 +22,11 @@ import {
   withRealDataMutationLock,
 } from "@/lib/demo/lock";
 import { parseNotionDatabaseChoice } from "./_lib/detail-rules";
+import {
+  hasConnectorConsent,
+  isConnectorPaused,
+  setConnectorPaused,
+} from "@/lib/connectors/lifecycle";
 
 /** Liste des connecteurs = onglet de « Mon entreprise » depuis C4. La fiche
  *  par outil (`/connecteurs/<provider>`) reste, elle, un écran à part entière. */
@@ -83,7 +88,7 @@ async function saveConfig(
   const ctx = await requireEditor(provider);
   await mutateConnector(provider, ctx.orgId, async (admin) => {
     const { connector } = await loadConnector(ctx.orgId, provider, admin);
-    if (!connector) {
+    if (!connector || !hasConnectorConsent(connector.config)) {
       throw new ConnectorActionError("Connecteur non connecté.");
     }
     const config = { ...(connector.config as Record<string, unknown>), ...patch };
@@ -140,8 +145,11 @@ export async function syncNow(formData: FormData) {
   if (!isOauthProvider(provider)) redirect(CONNECTORS_TAB);
   const ctx = await requireEditor(provider);
   const { admin, connector } = await loadConnector(ctx.orgId, provider);
-  if (!connector || connector.status !== "connected") {
+  if (!connector || !hasConnectorConsent(connector.config)) {
     fail(provider, "Connecteur non connecté.");
+  }
+  if (isConnectorPaused(connector.config)) {
+    fail(provider, "Connecteur en pause. Reprenez-le avant de synchroniser.");
   }
   if (!isSyncable(connector)) {
     fail(provider, "Configurez d'abord la source à lire ci-dessus.");
@@ -171,9 +179,15 @@ export async function disconnectConnector(formData: FormData) {
   await mutateConnector(provider, ctx.orgId, async (admin) => {
     const { connector } = await loadConnector(ctx.orgId, provider, admin);
     if (!connector) return;
+    const config = { ...(connector.config ?? {}) };
+    delete config.connection;
     const updated = await admin
       .from("connectors")
-      .update({ status: "disconnected", encrypted_credentials: null })
+      .update({
+        status: "disconnected",
+        encrypted_credentials: null,
+        config,
+      })
       .eq("id", connector.id);
     if (updated.error) throw new Error(updated.error.message);
     const journal = await admin.from("journal").insert({
@@ -186,4 +200,37 @@ export async function disconnectConnector(formData: FormData) {
     if (journal.error) throw new Error(journal.error.message);
   });
   redirect(CONNECTORS_TAB);
+}
+
+export async function setConnectorPause(formData: FormData) {
+  const provider = String(formData.get("provider") ?? "");
+  const pause = String(formData.get("pause") ?? "") === "true";
+  if (!isOauthProvider(provider)) redirect(CONNECTORS_TAB);
+  const ctx = await requireEditor(provider);
+  await mutateConnector(provider, ctx.orgId, async (admin) => {
+    const { connector } = await loadConnector(ctx.orgId, provider, admin);
+    if (!connector || !hasConnectorConsent(connector.config)) {
+      throw new ConnectorActionError("Connecteur non autorisé.");
+    }
+    const updated = await admin
+      .from("connectors")
+      .update({
+        config: setConnectorPaused(
+          connector.config ?? {},
+          pause,
+          new Date().toISOString(),
+        ),
+      })
+      .eq("id", connector.id);
+    if (updated.error) throw new Error(updated.error.message);
+    const journal = await admin.from("journal").insert({
+      organization_id: ctx.orgId,
+      event: pause ? "connector_paused" : "connector_resumed",
+      actor: "user",
+      actor_id: ctx.userId,
+      payload: { provider, name: findTool(provider)?.name },
+    });
+    if (journal.error) throw new Error(journal.error.message);
+  });
+  redirect(`/connecteurs/${provider}?saved=1`);
 }
