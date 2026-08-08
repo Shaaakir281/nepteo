@@ -90,7 +90,7 @@ export function ConnectorCard({
             )}
           </span>
         )}
-        {status !== "connected" && isOauth && canEdit && (
+        {status !== "connected" && isOauthProvider(tool.provider) && canEdit && (
           <a
             href={`/api/connectors/${tool.provider}/authorize`}
             className="inline-block rounded-[7px] bg-tint px-3.5 py-1.5 text-[12px] font-semibold text-violet transition hover:bg-violet hover:text-white"
@@ -99,7 +99,7 @@ export function ConnectorCard({
           </a>
         )}
         {status === "available" &&
-          isOauth &&
+          isOauthProvider(tool.provider) &&
           !canEdit &&
           blockedByDemo && (
             <span className="text-[12px] font-medium text-amber">
