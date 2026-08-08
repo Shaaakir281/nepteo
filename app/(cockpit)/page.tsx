@@ -44,7 +44,12 @@ import { briefingDataSourceLabel } from "@/lib/demo/presentation-rules";
 const VALUE_EVENT_PAGE_SIZE = 1000;
 const MAX_VALUE_SCORECARD_EVENTS = 5000;
 
-export default async function TodayPage() {
+export default async function TodayPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ decision_error?: string }>;
+}) {
+  const { decision_error: decisionError } = await searchParams;
   const { supabase, membership } = await getCurrentAuthContext();
   const { data } = await supabase
     .from("journal")
@@ -76,7 +81,7 @@ export default async function TodayPage() {
 
   const { data: decidedRows } = await supabase
     .from("actions")
-    .select("id, kind, title, status, decided_at")
+    .select("id, kind, title, status, decided_at, decision_reason")
     .in("status", ["approved", "rejected", "postponed", "executed", "failed"])
     .order("decided_at", { ascending: false })
     .limit(50);
@@ -257,6 +262,12 @@ export default async function TodayPage() {
           </p>
         )}
       </div>
+
+      {decisionError === "rejection_reason" && (
+        <div role="alert" className="mb-5 rounded-[12px] bg-red-tint px-4 py-3 text-[12.5px] text-red">
+          Le refus n&apos;a pas été enregistré : indiquez une raison de 3 à 500 caractères.
+        </div>
+      )}
 
       {/* Briefing de l'agent — résumé en langage naturel du funnel */}
       {briefing && (

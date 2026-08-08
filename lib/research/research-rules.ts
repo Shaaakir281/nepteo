@@ -14,7 +14,8 @@
 export type ResearchKind =
   | "company_profile"
   | "prospect_company"
-  | "website_preview";
+  | "website_preview"
+  | "campaign_competition";
 
 /**
  * Presets de l'Agent API Perplexity, du moins cher au plus profond.
@@ -28,6 +29,7 @@ export const RESEARCH_PRESETS: Record<ResearchKind, ResearchPreset> = {
   company_profile: "low",
   prospect_company: "fast",
   website_preview: "low",
+  campaign_competition: "fast",
 };
 
 /**
@@ -350,11 +352,13 @@ export function parseResearchResponse(
  *
  * `ResearchPreset` reste la notion PRODUIT (calée sur Perplexity) : on ne la
  * remplace pas, on la traduit au bord. L'identité de l'entreprise du client
- * mérite plus de contexte qu'une fiche société de prospect, qui se contente
- * d'un survol.
+ * mérite plus de contexte qu'une fiche société de prospect ou une veille
+ * concurrentielle de campagne, qui se contentent d'un survol sourcé.
  */
 export function openaiSearchContext(kind: ResearchKind): "low" | "medium" | "high" {
-  return kind === "prospect_company" ? "low" : "medium";
+  return kind === "prospect_company" || kind === "campaign_competition"
+    ? "low"
+    : "medium";
 }
 
 /**

@@ -17,7 +17,13 @@ Jeu de données : `docs/tests/prospects-test.csv` (24 prospects, 5 sans email, s
    - `0018_atomic_action_decisions.sql` ;
    - `0019_commercial_rls_catchup.sql` ;
    - `0020_value_events.sql` ;
-   - `0021_atomic_csv_import.sql`.
+    - `0021_atomic_csv_import.sql` ;
+    - `0022_website_preview.sql` ;
+    - `0023_website_preview_apply.sql` ;
+    - `0024_unlimited_research_and_structured_preview.sql` ;
+    - `0025_campaign_proposals.sql` ;
+    - `0026_campaign_studio.sql` ;
+    - `0027_campaign_decision_cockpit.sql`.
 
    Avant `0013`, contrôler les doublons :
 
@@ -28,7 +34,7 @@ Jeu de données : `docs/tests/prospects-test.csv` (24 prospects, 5 sans email, s
    having count(*) > 1;
    ```
 
-   Si la requête renvoie une ligne, arrêter et arbitrer explicitement les memberships concernés. `0013` échoue volontairement sans modifier les données ; ne pas supprimer automatiquement une appartenance. Après `0015`, exécuter le [smoke authentifié/RLS](tests/SMOKE-AUTH-RLS.md), puis compléter par une recette manuelle du rôle commercial ; le smoke automatisé actuel couvre le rôle lecture. `0016` crée le marqueur de readiness après avoir vérifié les prérequis critiques ; `0017`, `0018`, `0019`, `0020` puis `0021` doivent le porter à `21`. (« Success. No rows returned » est normal pour une migration de schéma.)
+   Si la requête renvoie une ligne, arrêter et arbitrer explicitement les memberships concernés. `0013` échoue volontairement sans modifier les données ; ne pas supprimer automatiquement une appartenance. Après `0015`, exécuter le [smoke authentifié/RLS](tests/SMOKE-AUTH-RLS.md), puis compléter par une recette manuelle du rôle commercial ; le smoke automatisé actuel couvre le rôle lecture. `0016` crée le marqueur de readiness après avoir vérifié les prérequis critiques ; les migrations suivantes le portent progressivement à 27. REL-0 exige l'ordre strict `0022 → 0023 → 0024 → 0025 → 0026 → 0027` pour une production déjà à 21 : 0025 exige 24, 0026 exige 25 et 0027 exige 26. (« Success. No rows returned » est normal pour une migration de schéma.)
 2. **`CONNECTOR_TOKEN_ENCRYPTION_KEY` et `CRON_SECRET`** : ces clés ne se « trouvent » nulle part — **c'est toi qui les fabriques**. Ouvre PowerShell et lance **deux fois** :
 
    ```powershell
@@ -58,7 +64,9 @@ Jeu de données : `docs/tests/prospects-test.csv` (24 prospects, 5 sans email, s
 > `nepteoacr27de3b.azurecr.io/nepteo:704efabd80de434ea2619cd993ae87427c114838`,
 > digest `sha256:fe6cafbe991c45952262e33be965e4ba09239ff421a86dce80231117a3504425`,
 > état Healthy/Provisioned/RunningAtMaxScale. Supabase reste à
-> `app_schema_version = 21`.
+> `app_schema_version = 21`. C'est l'état de production historique : REL-0,
+> encore local, ne doit être publié qu'après les migrations `0022` à `0027` et
+> la preuve `app_schema_version = 27`.
 
 ### Deux voies de données, jamais mélangées
 

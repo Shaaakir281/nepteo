@@ -8,6 +8,7 @@ export interface DecidedAction {
   title: string;
   status: string;
   decided_at: string | null;
+  decision_reason: string | null;
 }
 
 const DECISION_BADGE: Record<string, { label: string; cls: string }> = {
@@ -18,8 +19,7 @@ const DECISION_BADGE: Record<string, { label: string; cls: string }> = {
   failed: { label: "Échec", cls: "bg-red-tint text-red" },
 };
 
-const isExecutable = (kind: string) =>
-  isRelanceKind(kind) || kind.startsWith("ads_pause_");
+const isExecutable = (kind: string) => isRelanceKind(kind);
 
 const fmt = new Intl.DateTimeFormat("fr-FR", {
   day: "numeric",
@@ -47,10 +47,17 @@ export function DecisionsHistory({
   return (
     <ul>
       {actions.map((a) => {
-        const badge = DECISION_BADGE[a.status] ?? {
-          label: a.status,
-          cls: "bg-tint-soft text-body",
-        };
+        const badge =
+          a.kind.startsWith("ads_pause_") && a.status === "approved"
+            ? { label: "Validée — non appliquée", cls: "bg-green-tint text-green" }
+            : a.kind.startsWith("ads_pause_") && a.status === "executed"
+              ? { label: "Préparation historique — non appliquée", cls: "bg-tint-soft text-body" }
+          : a.kind === "launch_campaign" && a.status === "approved"
+            ? { label: "Validée — non lancée", cls: "bg-green-tint text-green" }
+            : DECISION_BADGE[a.status] ?? {
+                label: a.status,
+                cls: "bg-tint-soft text-body",
+              };
         const canDeclareOutcomes =
           canEdit &&
           isRelanceKind(a.kind) &&
@@ -73,6 +80,11 @@ export function DecisionsHistory({
                 {a.decided_at && (
                   <span className="block text-[11.5px] text-faint">
                     {fmt.format(new Date(a.decided_at))} · Vous
+                  </span>
+                )}
+                {a.status === "rejected" && a.decision_reason && (
+                  <span className="mt-1 block text-[11.5px] leading-relaxed text-body">
+                    Raison : {a.decision_reason}
                   </span>
                 )}
               </span>

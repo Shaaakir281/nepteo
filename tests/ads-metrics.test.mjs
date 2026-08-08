@@ -86,8 +86,29 @@ test("buildAdsProposals — propose de couper les campagnes en perte (au-dessus 
   assert.equal(props.length, 1);
   assert.equal(props[0].kind, "ads_pause_lose");
   assert.equal(props[0].risk, "low");
+  assert.equal(props[0].confidence, null);
+  assert.deepEqual(props[0].data_sources, ["Meta Ads — métriques observées"]);
+  assert.match(props[0].expected_impact, /montant non estimé/i);
+  assert.doesNotMatch(props[0].expected_impact, /7 jours|~/i);
   assert.equal(props[0].payload.campaign_id, "lose");
   assert.ok(/pause/i.test(props[0].title));
+
+  const demo = buildAdsProposals(campaigns, { demo: true });
+  assert.match(demo[0].data_sources[0], /scénario d'exemple Nepteo/);
+});
+
+test("buildAdsProposals — écarte une pseudo-perte arrondie à un ROAS de 1,00", () => {
+  const almostEven = deriveKpis(
+    m({
+      campaign_id: "rounds-to-one",
+      campaign_name: "Quasi équilibre",
+      spend: 100,
+      revenue: 99.99,
+      conversions: 1,
+    }),
+  );
+  assert.equal(almostEven.roas < 1, true);
+  assert.deepEqual(buildAdsProposals([almostEven]), []);
 });
 
 // ===== Fenêtre d'analyse, statut et comparaison =====
@@ -107,23 +128,29 @@ const dated = (id, date, over = {}) => ({
 
 test("windowBounds — deux périodes contiguës de même durée", () => {
   const b = windowBounds(NOW, 30);
-  assert.equal(b.currentFrom, "2026-06-25");
-  assert.equal(b.previousFrom, "2026-05-26");
+  assert.deepEqual(b, {
+    currentFrom: "2026-06-26",
+    currentTo: "2026-07-25",
+    previousFrom: "2026-05-27",
+    previousTo: "2026-06-25",
+  });
 });
 
 test("splitByPeriod — range chaque ligne dans la bonne période", () => {
   const b = windowBounds(NOW, 30);
   const rows = [
     dated("a", "2026-07-20"), // courante
-    dated("a", "2026-06-25"), // courante (borne incluse)
-    dated("a", "2026-06-24"), // précédente
-    dated("a", "2026-05-26"), // précédente (borne incluse)
-    dated("a", "2026-05-25"), // plus ancienne
+    dated("a", "2026-06-26"), // courante (borne incluse)
+    dated("a", "2026-06-25"), // précédente
+    dated("a", "2026-05-27"), // précédente (borne incluse)
+    dated("a", "2026-05-26"), // plus ancienne
+    dated("a", "2026-07-26"), // future, exclue
   ];
   const s = splitByPeriod(rows, b);
   assert.equal(s.current.length, 2);
   assert.equal(s.previous.length, 2);
   assert.equal(s.older.length, 1);
+  assert.equal(s.future.length, 1);
 });
 
 test("rollupWithStatus — distingue en cours et terminée, et change de périmètre", () => {

@@ -6,6 +6,7 @@ import { runAdsAnalysis } from "../lib/ads/analysis.ts";
 const failure = (message) => ({ message });
 
 const losingMetric = () => ({
+  provider: "meta_ads",
   campaign_id: "campaign-losing",
   campaign_name: "Campagne en perte",
   date: new Date().toISOString().slice(0, 10),
@@ -14,14 +15,17 @@ const losingMetric = () => ({
   spend: "100",
   conversions: 1,
   revenue: "20",
+  synced_at: new Date().toISOString(),
 });
 
 function createAdmin(overrides = {}) {
   const responses = {
-    "ad_metrics:select": { data: [losingMetric()], error: null },
-    "actions:select": { data: [], error: null },
-    "actions:insert": { data: null, error: null },
-    "journal:insert": { data: null, error: null },
+    "ad_metrics:select": { data: [losingMetric()], error: null, count: 1 },
+    "actions:select": { data: [], error: null, count: 0 },
+    "rpc:propose_ads_pause_actions": {
+      data: { created_count: 1, results: [] },
+      error: null,
+    },
     ...overrides,
   };
   const calls = [];
@@ -30,7 +34,6 @@ function createAdmin(overrides = {}) {
     calls,
     from(table) {
       let operation = null;
-      let payload;
       const builder = {
         select() {
           operation = "select";
@@ -42,14 +45,21 @@ function createAdmin(overrides = {}) {
         like() {
           return builder;
         },
-        insert(value) {
-          operation = "insert";
-          payload = value;
+        gte() {
+          return builder;
+        },
+        lte() {
+          return builder;
+        },
+        order() {
+          return builder;
+        },
+        limit() {
           return builder;
         },
         then(resolve, reject) {
           const key = `${table}:${operation}`;
-          calls.push({ key, payload });
+          calls.push({ key });
           if (!(key in responses)) {
             return Promise.reject(
               new Error(`Réponse Supabase factice absente pour ${key}`),
@@ -59,6 +69,16 @@ function createAdmin(overrides = {}) {
         },
       };
       return builder;
+    },
+    rpc(name, args) {
+      const key = `rpc:${name}`;
+      calls.push({ key, args });
+      if (!(key in responses)) {
+        return Promise.reject(
+          new Error(`Réponse Supabase factice absente pour ${key}`),
+        );
+      }
+      return Promise.resolve(responses[key]);
     },
   };
 }
@@ -81,69 +101,161 @@ test("analyse Ads — une erreur de lecture des métriques remonte", async () =>
   );
 });
 
-test("analyse Ads — une erreur de déduplication des actions remonte", async () => {
+test("analyse Ads — une erreur de la transaction action+journal remonte", async () => {
   const admin = createAdmin({
-    "actions:select": {
+    "rpc:propose_ads_pause_actions": {
       data: null,
-      error: failure("actions illisibles"),
+      error: failure("transaction annulée"),
     },
   });
 
   await assert.rejects(
     runAdsAnalysis(admin, "org-1", "user-1"),
-    /\[ads-analysis\] lecture actions existantes: actions illisibles/,
+    /\[ads-analysis\] proposition atomique actions\+journal: transaction annulée/,
   );
   assert.equal(
-    admin.calls.some(({ key }) => key === "actions:insert"),
+    admin.calls.some(({ key }) => key === "actions:insert" || key.startsWith("journal:")),
     false,
   );
 });
 
-test("analyse Ads — une erreur d'insertion des propositions remonte", async () => {
+test("analyse Ads — une réponse transactionnelle ambiguë échoue fermé", async () => {
   const admin = createAdmin({
-    "actions:insert": {
-      data: null,
-      error: failure("actions non écrites"),
+    "rpc:propose_ads_pause_actions": {
+      data: { created_count: "1" },
+      error: null,
     },
   });
 
   await assert.rejects(
     runAdsAnalysis(admin, "org-1", "user-1"),
-    /\[ads-analysis\] insertion actions: actions non écrites/,
+    /\[ads-analysis\] résultat atomique invalide/,
+  );
+});
+
+test("analyse Ads — une lecture tronquée échoue avant toute proposition", async () => {
+  const admin = createAdmin({
+    "ad_metrics:select": {
+      data: [losingMetric()],
+      error: null,
+      count: 2,
+    },
+  });
+  await assert.rejects(
+    runAdsAnalysis(admin, "org-1", "user-1"),
+    /\[ads-analysis\] lecture ad_metrics: résultat tronqué/,
   );
   assert.equal(
-    admin.calls.some(({ key }) => key === "journal:insert"),
+    admin.calls.some(({ key }) => key === "rpc:propose_ads_pause_actions"),
     false,
   );
 });
 
-test("analyse Ads — la traçabilité journalisée est obligatoire", async () => {
-  const admin = createAdmin({
-    "journal:insert": {
-      data: null,
-      error: failure("journal non écrit"),
-    },
-  });
-
-  await assert.rejects(
-    runAdsAnalysis(admin, "org-1", "user-1"),
-    /\[ads-analysis\] insertion journal: journal non écrit/,
-  );
-});
-
-test("analyse Ads — le succès écrit les traces en un lot et retourne le compte", async () => {
+test("analyse Ads — le succès délègue un lot borné à l'unique RPC atomique", async () => {
   const admin = createAdmin();
 
   const created = await runAdsAnalysis(admin, "org-1", "user-1");
 
   assert.equal(created, 1);
-  const journalCall = admin.calls.find(({ key }) => key === "journal:insert");
-  assert.ok(journalCall);
-  assert.equal(journalCall.payload.length, 1);
-  assert.deepEqual(journalCall.payload[0].payload, {
-    kind: "ads_pause_campaign-losing",
-    title: "Mettre en pause « Campagne en perte »",
+  const rpcCall = admin.calls.find(
+    ({ key }) => key === "rpc:propose_ads_pause_actions",
+  );
+  assert.ok(rpcCall);
+  assert.equal(rpcCall.args.p_organization_id, "org-1");
+  assert.equal(rpcCall.args.p_actor_id, "user-1");
+  assert.equal(rpcCall.args.p_proposals.length, 1);
+  assert.equal(rpcCall.args.p_proposals[0].confidence, null);
+  assert.equal(rpcCall.args.p_proposals[0].kind, "ads_pause_campaign-losing");
+  assert.equal(
+    rpcCall.args.p_proposals[0].title,
+    "Examiner la mise en pause de « Campagne en perte »",
+  );
+  assert.equal(
+    admin.calls.some(({ key }) => key === "actions:insert" || key.startsWith("journal:")),
+    false,
+  );
+});
+
+test("analyse Ads — les décisions existantes ne privent pas les campagnes au-delà des 20 premières", async () => {
+  const rows = Array.from({ length: 21 }, (_, index) => ({
+    ...losingMetric(),
+    campaign_id: `campaign-${String(index + 1).padStart(2, "0")}`,
+    campaign_name: `Campagne ${index + 1}`,
+  }));
+  const existingActions = rows.slice(0, 20).map((row) => ({
+    kind: `ads_pause_${row.campaign_id}`,
+    confidence: null,
+  }));
+  const admin = createAdmin({
+    "ad_metrics:select": { data: rows, error: null, count: rows.length },
+    "actions:select": {
+      data: existingActions,
+      error: null,
+      count: existingActions.length,
+    },
   });
+
+  assert.equal(await runAdsAnalysis(admin, "org-1", "user-1"), 1);
+  const rpcCall = admin.calls.find(
+    ({ key }) => key === "rpc:propose_ads_pause_actions",
+  );
+  assert.deepEqual(
+    rpcCall.args.p_proposals.map(({ kind }) => kind),
+    ["ads_pause_campaign-21"],
+  );
+});
+
+test("analyse Ads — une mémoire de décisions tronquée échoue avant la transaction", async () => {
+  const admin = createAdmin({
+    "actions:select": {
+      data: [{ kind: "ads_pause_campaign-losing", confidence: null }],
+      error: null,
+      count: 2,
+    },
+  });
+
+  await assert.rejects(
+    runAdsAnalysis(admin, "org-1", "user-1"),
+    /\[ads-analysis\] lecture actions: résultat tronqué/,
+  );
+  assert.equal(
+    admin.calls.some(({ key }) => key === "rpc:propose_ads_pause_actions"),
+    false,
+  );
+});
+
+test("analyse Ads — un rejeu idempotent identique retourne zéro création", async () => {
+  const admin = createAdmin({
+    "rpc:propose_ads_pause_actions": {
+      data: { created_count: 0, results: [{ created: false }] },
+      error: null,
+    },
+  });
+
+  assert.equal(await runAdsAnalysis(admin, "org-1", "user-1"), 0);
+});
+
+test("analyse Ads — une confiance legacy repasse par la RPC d'adoption", async () => {
+  const admin = createAdmin({
+    "actions:select": {
+      data: [{ kind: "ads_pause_campaign-losing", confidence: 0.8 }],
+      error: null,
+      count: 1,
+    },
+    "rpc:propose_ads_pause_actions": {
+      data: {
+        created_count: 0,
+        results: [{ created: false, upgraded: true }],
+      },
+      error: null,
+    },
+  });
+
+  assert.equal(await runAdsAnalysis(admin, "org-1", "user-1"), 0);
+  assert.equal(
+    admin.calls.filter(({ key }) => key === "rpc:propose_ads_pause_actions").length,
+    1,
+  );
 });
 
 test("analyse manuelle — toute exception Ads devient l'avertissement ads_failed", async () => {

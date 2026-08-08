@@ -155,6 +155,14 @@ function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
 }
 
+export function sourceFixtureSha256(bytes) {
+  const normalizedBytes = Buffer.from(
+    bytes.toString("utf8").replace(/\r\n/g, "\n"),
+    "utf8",
+  );
+  return sha256(normalizedBytes);
+}
+
 function stableValue(value) {
   if (Array.isArray(value)) return value.map(stableValue);
   if (!isPlainObject(value)) return value;
@@ -1552,7 +1560,7 @@ export async function main(argv = process.argv.slice(2), env = process.env) {
   const serviceRoleKey = requiredEnv(env, "SUPABASE_SERVICE_ROLE_KEY");
   const supabaseOrigin = validateSupabaseUrl(url);
   const fixtureBytes = await readFile(fileURLToPath(SOURCE_FIXTURE_URL));
-  const fixtureSha = sha256(fixtureBytes);
+  const fixtureSha = sourceFixtureSha256(fixtureBytes);
   invariant(
     fixtureSha === SOURCE_FIXTURE_SHA256,
     "Le CSV de référence a changé : revue opératoire obligatoire.",

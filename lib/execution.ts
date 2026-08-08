@@ -101,37 +101,10 @@ async function executeApprovedActionUnderLock(
 
   try {
     const claimedAction = claim.action;
-    const adsPause = claimedAction.kind.startsWith("ads_pause_");
-    if (!isRelanceKind(claimedAction.kind) && !adsPause) {
+    if (!isRelanceKind(claimedAction.kind)) {
       return { ok: false, reason: "not_executable" };
     }
     const payload = (claimedAction.payload ?? {}) as Record<string, unknown>;
-
-    // Action ads (couper une campagne) — mode sûr : on ENREGISTRE le changement
-    // voulu (journalisé), AUCUN appel externe. L'API Meta réelle viendra ici.
-    if (adsPause) {
-      const finished = await finishExecution(
-        admin,
-        orgId,
-        actorId,
-        actionId,
-        idem,
-        "succeeded",
-        {
-          intended: "pause_campaign",
-          campaign_name: payload.campaign_name ?? null,
-          provider: payload.provider ?? "meta_ads",
-          note: "mode sûr — changement préparé, non appliqué",
-        },
-      );
-      if (!finished) {
-        return {
-          ok: false,
-          reason: "execution_finalize_failed_recovery_required",
-        };
-      }
-      return { ok: true, prepared: 1, skippedNoEmail: 0, capped: false };
-    }
 
     const loadedProspects = await loadRelaunchProspects(
       admin,

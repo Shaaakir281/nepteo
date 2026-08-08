@@ -1,5 +1,4 @@
 import assert from "node:assert/strict";
-import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import {
@@ -19,6 +18,7 @@ import {
   fixtureRowsFromCsv,
   legacyIdentityFingerprint,
   parseArgs,
+  sourceFixtureSha256,
   validateSupabaseUrl,
 } from "../scripts/rebuild-showcase-v2.mjs";
 
@@ -167,10 +167,18 @@ test("rebuild showcase — le CSV figé contient exactement 24 lignes", async ()
   const bytes = await readFile(
     new URL("../docs/tests/prospects-test.csv", import.meta.url),
   );
-  assert.equal(
-    createHash("sha256").update(bytes).digest("hex"),
-    SOURCE_FIXTURE_SHA256,
+  const lfBytes = Buffer.from(
+    bytes.toString("utf8").replace(/\r\n/g, "\n"),
+    "utf8",
   );
+  const crlfBytes = Buffer.from(
+    lfBytes.toString("utf8").replace(/\n/g, "\r\n"),
+    "utf8",
+  );
+
+  assert.equal(sourceFixtureSha256(bytes), SOURCE_FIXTURE_SHA256);
+  assert.equal(sourceFixtureSha256(lfBytes), SOURCE_FIXTURE_SHA256);
+  assert.equal(sourceFixtureSha256(crlfBytes), SOURCE_FIXTURE_SHA256);
   assert.equal(fixtureRowsFromCsv(bytes.toString("utf8")).length, 24);
 });
 

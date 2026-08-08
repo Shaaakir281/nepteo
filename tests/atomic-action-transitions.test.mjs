@@ -29,6 +29,13 @@ const transitionMigration = await readFile(
   ),
   "utf8",
 );
+const campaignDecisionMigration = await readFile(
+  new URL(
+    "../supabase/migrations/0027_campaign_decision_cockpit.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 
 function exportedFunctionSource(source, name) {
   const start = source.indexOf(`export async function ${name}`);
@@ -37,10 +44,26 @@ function exportedFunctionSource(source, name) {
   return source.slice(start, next === -1 ? undefined : next);
 }
 
+function sqlFunction(source, name) {
+  const start = source.indexOf(`create or replace function public.${name}(`);
+  assert.notEqual(start, -1, `fonction SQL absente : ${name}`);
+  const end = source.indexOf("\n$$;", start);
+  assert.notEqual(end, -1, `fin de fonction SQL absente : ${name}`);
+  return source.slice(start, end + 4);
+}
+
 test("décisions — la RPC transactionnelle désigne l'unique gagnant", () => {
   const decide = exportedFunctionSource(decisions, "decideAction");
   assert.match(decide, /await transitionAction\(/);
   assert.match(decide, /decision as ActionTransition/);
+  assert.match(
+    decisions,
+    /\.rpc\(\s*"transition_action_decision_v2"[\s\S]*p_transition: transition[\s\S]*p_reason: reason/,
+  );
+  assert.match(
+    decide,
+    /decision === "reject"[\s\S]*normalizedRejectionReason\(formData\.get\("reason"\)\)[\s\S]*transitionAction\([\s\S]*reason/,
+  );
   assert.match(decide, /if \(!changed\) redirect\("\/"\)/);
   assert.doesNotMatch(decide, /\.from\("actions"\)/);
   assert.doesNotMatch(decide, /\.from\("journal"\)/);
@@ -92,6 +115,40 @@ test("migration décisions — CAS et journal partagent une transaction PostgreS
   );
 });
 
+test("migration CAMP-2 — transition v2 exige et journalise le motif de rejet", () => {
+  const transitionV2 = sqlFunction(
+    campaignDecisionMigration,
+    "transition_action_decision_v2",
+  );
+
+  assert.match(transitionV2, /security definer[\s\S]*set search_path = ''/i);
+  assert.match(
+    transitionV2,
+    /p_transition = 'reject'[\s\S]*v_reason is null[\s\S]*char_length\(v_reason\) not between 3 and 500/i,
+  );
+  const update = transitionV2.indexOf("update public.actions");
+  const reason = transitionV2.indexOf("decision_reason =", update);
+  const statusGuard = transitionV2.indexOf(
+    "and status = v_expected_status",
+    update,
+  );
+  const journal = transitionV2.indexOf("insert into public.journal", update);
+  assert.ok(update >= 0 && update < reason);
+  assert.ok(reason < statusGuard && statusGuard < journal);
+  assert.match(
+    transitionV2.slice(journal),
+    /jsonb_build_object\([\s\S]*'reason', v_action\.decision_reason/i,
+  );
+  assert.match(
+    campaignDecisionMigration,
+    /revoke execute on function public\.transition_action_decision_v2\([\s\S]*from public, anon, authenticated/i,
+  );
+  assert.match(
+    campaignDecisionMigration,
+    /grant execute on function public\.transition_action_decision_v2\([\s\S]*to service_role/i,
+  );
+});
+
 test("exécution — le claim transactionnel précède toute préparation", () => {
   assert.match(
     execution,
@@ -100,12 +157,15 @@ test("exécution — le claim transactionnel précède toute préparation", () =
 
   const claim = execution.indexOf('"claim_action_execution"');
   const parsed = execution.indexOf("readExecutionClaim(claimData)", claim);
-  const adsPreparation = execution.indexOf("if (adsPause)", parsed);
+  const relaunchGuard = execution.indexOf(
+    "if (!isRelanceKind(claimedAction.kind))",
+    parsed,
+  );
   const outboxPreparation = execution.indexOf('.from("outbox_messages")', claim);
 
   assert.ok(claim >= 0 && claim < parsed);
-  assert.ok(parsed < adsPreparation);
-  assert.ok(parsed < outboxPreparation);
+  assert.ok(parsed < relaunchGuard && relaunchGuard < outboxPreparation);
+  assert.doesNotMatch(execution, /adsPause|isAdsPauseAction|ads_pause_/);
   assert.doesNotMatch(execution, /event: "execution_started"/);
   assert.doesNotMatch(execution, /\.update\(\{ idempotency_key: idem \}\)/);
 });
@@ -118,20 +178,24 @@ test("exécution — le perdant et une reprise ambiguë échouent fermé", () =>
 });
 
 test("migration exécution — garde org, claim et journal sont atomiques", () => {
+  const currentClaim = sqlFunction(
+    campaignDecisionMigration,
+    "claim_action_execution",
+  );
   assert.match(
-    transitionMigration,
+    currentClaim,
     /create or replace function public\.claim_action_execution\([\s\S]*security definer[\s\S]*set search_path = ''/i,
   );
-  const orgLock = transitionMigration.indexOf(
+  const orgLock = currentClaim.indexOf(
     "from public.organizations as organization",
   );
-  const forUpdate = transitionMigration.indexOf("for update", orgLock);
-  const pause = transitionMigration.indexOf("if v_paused then", forUpdate);
-  const claim = transitionMigration.indexOf(
+  const forUpdate = currentClaim.indexOf("for update", orgLock);
+  const pause = currentClaim.indexOf("if v_paused then", forUpdate);
+  const claim = currentClaim.indexOf(
     "update public.actions as action",
     pause,
   );
-  const journal = transitionMigration.indexOf(
+  const journal = currentClaim.indexOf(
     "insert into public.journal",
     claim,
   );
@@ -139,15 +203,16 @@ test("migration exécution — garde org, claim et journal sont atomiques", () =
   assert.ok(forUpdate < pause && pause < claim);
   assert.ok(claim < journal);
   assert.match(
-    transitionMigration.slice(claim, journal),
-    /action\.status = 'approved'[\s\S]*action\.idempotency_key is null/i,
+    currentClaim.slice(claim, journal),
+    /action\.status = 'approved'[\s\S]*action\.idempotency_key is null[\s\S]*action\.kind = 'relaunch_priority'[\s\S]*action\.kind = 'relaunch_dormant'[\s\S]*left\(action\.kind, 15\) = 'relaunch_stage_'/i,
   );
   assert.match(
-    transitionMigration.slice(journal),
+    currentClaim.slice(journal),
     /'execution_started'/,
   );
+  assert.doesNotMatch(currentClaim, /ads_pause_/);
   assert.match(
-    transitionMigration,
+    campaignDecisionMigration,
     /grant execute on function public\.claim_action_execution\([\s\S]*to service_role/i,
   );
 });
@@ -162,15 +227,15 @@ test("exécution — chaque issue utilise la finalisation transactionnelle", () 
   assert.doesNotMatch(execution, /event: "execution_(?:succeeded|failed)"/);
 
   const finishCalls = [...execution.matchAll(/await finishExecution\(/g)];
-  assert.equal(finishCalls.length, 3, "deux succès et un échec");
+  assert.equal(finishCalls.length, 2, "un succès relance et un échec");
   assert.equal(
     [...execution.matchAll(/idem,\s*"succeeded",/g)].length,
-    2,
-    "branches ads et relance",
+    1,
+    "seule la branche relance est exécutable",
   );
   assert.equal([...execution.matchAll(/idem,\s*"failed",/g)].length, 1);
 
-  for (const call of finishCalls.slice(0, 2)) {
+  for (const call of finishCalls.slice(0, 1)) {
     const callIndex = call.index;
     const guard = execution.indexOf("if (!finished)", callIndex);
     const successReturn = execution.indexOf("return { ok: true", guard);
@@ -188,33 +253,42 @@ test("exécution — chaque issue utilise la finalisation transactionnelle", () 
 });
 
 test("migration exécution — état final et journal partagent une transaction", () => {
+  const currentFinish = sqlFunction(
+    campaignDecisionMigration,
+    "finish_action_execution",
+  );
   assert.match(
-    transitionMigration,
+    currentFinish,
     /create or replace function public\.finish_action_execution\([\s\S]*security definer[\s\S]*set search_path = ''/i,
   );
-  const functionStart = transitionMigration.indexOf(
+  const functionStart = currentFinish.indexOf(
     "create or replace function public.finish_action_execution",
   );
-  const update = transitionMigration.indexOf(
+  const update = currentFinish.indexOf(
     "update public.actions",
     functionStart,
   );
-  const claimGuard = transitionMigration.indexOf(
-    "and idempotency_key = p_idempotency_key",
+  const claimGuard = currentFinish.indexOf(
+    "and action.idempotency_key = p_idempotency_key",
     update,
   );
-  const journal = transitionMigration.indexOf(
-    "insert into public.journal",
+  const kindGuard = currentFinish.indexOf(
+    "action.kind = 'relaunch_priority'",
     claimGuard,
   );
+  const journal = currentFinish.indexOf(
+    "insert into public.journal",
+    kindGuard,
+  );
   assert.ok(functionStart >= 0 && functionStart < update);
-  assert.ok(update < claimGuard && claimGuard < journal);
+  assert.ok(update < claimGuard && claimGuard < kindGuard && kindGuard < journal);
   assert.match(
-    transitionMigration.slice(functionStart, update),
+    currentFinish.slice(functionStart, update),
     /when 'succeeded'[\s\S]*v_target_status := 'executed'[\s\S]*when 'failed'[\s\S]*v_target_status := 'failed'/i,
   );
+  assert.doesNotMatch(currentFinish, /ads_pause_/i);
   assert.match(
-    transitionMigration,
+    campaignDecisionMigration,
     /grant execute on function public\.finish_action_execution\([\s\S]*to service_role/i,
   );
 });
