@@ -28,6 +28,7 @@ import {
 test("propositions d'identité — conservent le JSON structuré au-delà de 4 000 caractères", () => {
   assert.equal(researchAnswerLimit("company_profile"), 12000);
   assert.equal(researchAnswerLimit("website_preview"), 12000);
+  assert.equal(researchAnswerLimit("campaign_competition"), 4000);
 
   const longJson = JSON.stringify({ description: "x".repeat(5000) });
   const parsed = parseOpenAiSearchResponse(
@@ -49,6 +50,8 @@ test("timeout — les identités riches ont deux minutes sans allonger les fiche
   assert.equal(researchTimeoutMs("company_profile"), 120000);
   assert.equal(researchTimeoutMs("website_preview"), 120000);
   assert.equal(researchTimeoutMs("prospect_company"), 45000);
+  assert.equal(researchTimeoutMs("campaign_competition"), 45000);
+  assert.equal(openaiSearchContext("campaign_competition"), "low");
 });
 
 test("subjectKey — même société, même clé (on ne paie pas deux fois)", () => {

@@ -195,8 +195,10 @@ offre, hypothèse, budget, mesure, diagnostic, décision et apprentissage. La pr
 en main ne doit pas apprendre des capacités qui ne sont pas encore livrées.
 
 Ce lot ne constitue pas la roadmap de construction des campagnes. La phase 4 de
-`docs/ROADMAP.md` donne aujourd’hui le cap stratégique, mais la roadmap détaillée
-« Campagnes supervisées » reste à créer avec le commanditaire.
+`docs/ROADMAP.md` donne le cap stratégique et la
+[roadmap Campagnes supervisées et intégrateurs](roadmap-campagnes-supervisees.md)
+porte désormais les micro-lots de construction. G6 n'apprend que les capacités
+déjà livrées et recettées ; il n'anticipe ni connexion ni exécution fournisseur.
 
 ## Ordre de décision
 

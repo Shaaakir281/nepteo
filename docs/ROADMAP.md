@@ -40,11 +40,13 @@ Livrables : 1 ou 2 types d'action réels (ex. email de relance), idempotence + j
 
 ## Phase 4 — Campagnes & contenu
 
-**Objectif** : préparer des campagnes complètes (brief → proposition → validation).
+**Objectif** : préparer puis superviser une première campagne complète (brief → proposition → validation → lecture fournisseur → action bornée).
 
-Livrables : modal nouvelle campagne, variantes de messages, typologie (acquisition, retargeting, conversion, nurturing, réactivation…), génération de contenus texte.
+Livrables : modal nouvelle campagne, variantes de messages, typologie (acquisition, retargeting, conversion, nurturing, réactivation…), génération de contenus texte, cockpit fondé sur des faits inspectables, puis un fournisseur Ads pilote en lecture avant toute écriture.
 
-**Porte** : une campagne proposée par l'agent est lancée et mesurée.
+Le détail exécutable, les micro-lots CAMP-0 à CAMP-10 et le backlog des intégrateurs visibles dans la maquette sont définis dans la [roadmap Campagnes supervisées et intégrateurs](projets/roadmap-campagnes-supervisees.md). CAMP-0, CAMP-1 et le socle CAMP-2 sont validés localement ; CAMP-3 à CAMP-5 restent nécessaires pour franchir la porte. Chaque intégrateur suit `contrat → connexion → lecture → vérité UI` avant une permission d'écriture séparée.
+
+**Porte** : une campagne proposée par l'agent est validée, lancée sur un fournisseur pilote et mesurée avec un statut et un coût vérifiables des deux côtés.
 
 ## Phase 5 — Passage à l'échelle
 

@@ -12,7 +12,7 @@ cp .env.example .env.local   # puis remplir les clés
 npm run dev
 ```
 
-Base de données : appliquer **toutes** les migrations de `supabase/migrations/` dans l'ordre, idéalement avec `supabase db push`. Les migrations `0012` à `0021` ont été appliquées manuellement à la production Supabase ; `0021_atomic_csv_import.sql` a porté `app_schema_version` à `21` le 2026-07-30 à `17:40:26Z`. La release actuelle exige au minimum le schéma `21`. Ne pas déployer une version applicative sans ses migrations associées.
+Base de données : appliquer **toutes** les migrations de `supabase/migrations/` dans l'ordre, idéalement avec `supabase db push`. La production attestée porte aujourd'hui les migrations `0012` à `0021` et `app_schema_version = 21`. REL-0 est seulement local : il ajoute `0022` à `0027` et l'application locale exige le schéma `27`. Avant sa publication, appliquer exactement `0022 → 0023 → 0024 → 0025 → 0026 → 0027`, contrôler `app_schema_version = 27`, puis seulement déployer l'application. Ne jamais déployer une version applicative sans ses migrations associées ni modifier le marqueur à la main.
 
 État fonctionnel déployé : R1A ajoute la preuve terrain structurée dans `value_events` et fige les cohortes de relance à l'approbation ; R1B limite « Aujourd'hui » aux cinq actions les plus proches de la valeur, avec une raison explicite. Le play R2 « prospects dormants » reste supervisé. C7 demeure fermé et aucun envoi externe n'est activé.
 
@@ -48,7 +48,7 @@ docker run -p 3000:3000 --env-file .env.local nepteo
 Le workflow a promu le lot schéma 20 le 2026-07-30. La release schéma 21 issue de la PR #13 a été promue le 2026-07-31 avec les mêmes contrôles, par build ACR puis mise à jour directe de Container Apps.
 
 - **CI** (`.github/workflows/ci.yml`) : tests + lint + typecheck + build sur chaque PR et push `main`.
-- **Deploy** (`.github/workflows/deploy.yml`) : lancement manuel protégé ; préflight du schéma Supabase `>= 21` avant toute mutation Azure → image immutable dans ACR → Azure Container Apps (région EU) → contrôles `/api/health` et `/api/ready`.
+- **Deploy** (`.github/workflows/deploy.yml`) : lancement manuel protégé ; pour REL-0, préflight du schéma Supabase `>= 27` avant toute mutation Azure → image immutable dans ACR → Azure Container Apps (région EU) → contrôles `/api/health` et `/api/ready`.
 - **Mode opératoire complet** : [docs/DEPLOIEMENT-AZURE.md](docs/DEPLOIEMENT-AZURE.md), avec verrou compte/tenant/souscription, Bicep, OIDC, variables, Supabase Auth et smoke test.
 
 ## Documentation

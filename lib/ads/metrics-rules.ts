@@ -95,8 +95,12 @@ export interface DatedMetric extends CampaignMetric {
 export interface PeriodBounds {
   /** Début de la période courante (incluse). */
   currentFrom: string;
+  /** Fin de la période courante (incluse) ; toute date future est exclue. */
+  currentTo: string;
   /** Début de la période précédente, de même durée (incluse). */
   previousFrom: string;
+  /** Fin de la période précédente (incluse). */
+  previousTo: string;
 }
 
 function isoDaysAgo(now: Date, days: number): string {
@@ -112,8 +116,10 @@ export function windowBounds(
   days: number = ANALYSIS_WINDOW_DAYS,
 ): PeriodBounds {
   return {
-    currentFrom: isoDaysAgo(now, days),
-    previousFrom: isoDaysAgo(now, days * 2),
+    currentFrom: isoDaysAgo(now, days - 1),
+    currentTo: isoDaysAgo(now, 0),
+    previousFrom: isoDaysAgo(now, days * 2 - 1),
+    previousTo: isoDaysAgo(now, days),
   };
 }
 
@@ -122,16 +128,26 @@ export interface PeriodSplit {
   previous: DatedMetric[];
   /** Plus ancien que les deux périodes — sert l'historique, pas les KPI. */
   older: DatedMetric[];
+  /** Postérieur à la date d'observation — jamais compté dans un KPI. */
+  future: DatedMetric[];
 }
 
 export function splitByPeriod(
   rows: DatedMetric[],
   bounds: PeriodBounds,
 ): PeriodSplit {
-  const split: PeriodSplit = { current: [], previous: [], older: [] };
+  const split: PeriodSplit = {
+    current: [],
+    previous: [],
+    older: [],
+    future: [],
+  };
   for (const r of rows) {
-    if (r.date >= bounds.currentFrom) split.current.push(r);
-    else if (r.date >= bounds.previousFrom) split.previous.push(r);
+    if (r.date > bounds.currentTo) split.future.push(r);
+    else if (r.date >= bounds.currentFrom) split.current.push(r);
+    else if (r.date >= bounds.previousFrom && r.date <= bounds.previousTo) {
+      split.previous.push(r);
+    }
     else split.older.push(r);
   }
   return split;
@@ -169,7 +185,7 @@ export function rollupWithStatus(
   today: string = new Date().toISOString().slice(0, 10),
 ): CampaignHistory[] {
   const byCampaign = new Map<string, DatedMetric[]>();
-  for (const r of rows) {
+  for (const r of rows.filter((row) => row.date <= bounds.currentTo)) {
     const list = byCampaign.get(r.campaign_id);
     if (list) list.push(r);
     else byCampaign.set(r.campaign_id, [r]);
@@ -183,7 +199,9 @@ export function rollupWithStatus(
     const status: CampaignStatus =
       lastDate >= bounds.currentFrom ? "active" : "ended";
     const scope = status === "active"
-      ? list.filter((r) => r.date >= bounds.currentFrom)
+      ? list.filter(
+          (r) => r.date >= bounds.currentFrom && r.date <= bounds.currentTo,
+        )
       : list;
     out.push({
       ...deriveKpis(rollupByCampaign(scope)[0]),
@@ -248,7 +266,11 @@ export interface AdFinding {
 
 const eur = (n: number) =>
   `${n.toLocaleString("fr-FR", { maximumFractionDigits: 0 })} €`;
-const x = (n: number) => `${n.toFixed(1)}×`;
+const x = (n: number) =>
+  `${n.toLocaleString("fr-FR", {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 4,
+  })}×`;
 
 /**
  * Constats sur un ensemble de campagnes (déjà agrégées par campagne) :
@@ -359,7 +381,7 @@ export interface AdProposal {
   rationale: string;
   data_sources: string[];
   expected_impact: string;
-  confidence: number;
+  confidence: number | null;
   risk: "low" | "medium" | "high";
   payload: Record<string, unknown>;
 }
@@ -367,32 +389,61 @@ export interface AdProposal {
 /**
  * Propositions d'action à partir des KPI de campagnes — pour l'instant :
  * mettre en pause les campagnes en perte (ROAS < 1) au-delà d'un seuil de
- * dépense. Action **réversible et à faible risque** (réactivable), donc idéale
- * comme première action ads exécutable. Un `kind` unique par campagne (dédup).
+ * dépense. CAMP-2 en fait uniquement une demande d'arbitrage humain : elle
+ * n'est jamais claimable ni appliquée chez le fournisseur. Un `kind` unique
+ * par campagne porte la déduplication et la mémoire de ce qui a déjà été jugé.
  */
 export function buildAdsProposals(
-  campaigns: (CampaignKpis & { status?: CampaignStatus })[],
+  campaigns: (Pick<
+    CampaignKpis,
+    "campaign_id" | "campaign_name" | "spend" | "revenue" | "roas"
+  > & {
+    status?: CampaignStatus;
+    firstDate?: string;
+    lastDate?: string;
+  })[],
+  options: { demo?: boolean } = {},
 ): AdProposal[] {
   const losers = campaigns
     // Une campagne déjà terminée n'a rien à couper : la proposer serait faux.
-    .filter((c) => c.status !== "ended" && c.spend >= 50 && c.roas < 1)
+    // Le serveur persiste un ROAS canonique à deux décimales. Un ratio brut
+    // comme 0,9999 deviendrait 1,00 et ferait échouer tout le lot ; on l'écarte
+    // donc plutôt que d'afficher une perte arrondie contradictoire.
+    .filter(
+      (c) =>
+        c.status !== "ended" &&
+        c.spend >= 50 &&
+        Math.round(c.roas * 100) / 100 < 1,
+    )
     .sort((a, b) => a.roas - b.roas);
-  return losers.map((c) => ({
-    kind: `ads_pause_${c.campaign_id}`,
-    title: `Mettre en pause « ${c.campaign_name} »`,
-    finding: `ROAS ${x(c.roas)} sur ${eur(c.spend)} dépensés — la campagne perd de l'argent (${eur(c.revenue)} de revenu).`,
-    rationale: `Chaque euro investi n'en rapporte que ${x(c.roas)}. La mettre en pause stoppe la perte immédiatement ; l'action est réversible, on peut la réactiver à tout moment.`,
-    data_sources: ["Meta Ads (scénario d'exemple)"],
-    expected_impact: `~${eur(c.spend)} de dépense évitée sur 7 jours`,
-    confidence: 0.8,
-    risk: "low",
-    payload: {
-      campaign_id: c.campaign_id,
-      campaign_name: c.campaign_name,
-      roas: Math.round(c.roas * 100) / 100,
-      spend: c.spend,
-      revenue: c.revenue,
-      provider: "meta_ads",
-    },
-  }));
+  return losers.map((c) => {
+    const canonicalRoas = Math.round(c.roas * 100) / 100;
+    return {
+      kind: `ads_pause_${c.campaign_id}`,
+      title: `Examiner la mise en pause de « ${c.campaign_name} »`,
+      finding: `ROAS ${x(canonicalRoas)} sur ${eur(c.spend)} dépensés — le revenu enregistré est inférieur à la dépense (${eur(c.revenue)}).`,
+      rationale:
+        `Chaque euro observé correspond à ${x(canonicalRoas)} de revenu enregistré. Ces métriques justifient un examen humain ; ` +
+        `elles ne prouvent ni un statut fournisseur actif ni qu'une pause a été appliquée.`,
+      data_sources: [
+        options.demo
+          ? `Meta Ads — données du scénario d'exemple Nepteo${c.firstDate && c.lastDate ? ` du ${c.firstDate} au ${c.lastDate}` : ""}`
+          : `Meta Ads — métriques observées${c.firstDate && c.lastDate ? ` du ${c.firstDate} au ${c.lastDate}` : ""}`,
+      ],
+      expected_impact:
+        "Dépense future potentiellement réduite ; montant non estimé sans statut fournisseur actif.",
+      confidence: null,
+      risk: "low",
+      payload: {
+        campaign_id: c.campaign_id,
+        campaign_name: c.campaign_name,
+        roas: canonicalRoas,
+        spend: c.spend,
+        revenue: c.revenue,
+        provider: "meta_ads",
+        ...(c.firstDate ? { observation_from: c.firstDate } : {}),
+        ...(c.lastDate ? { observation_to: c.lastDate } : {}),
+      },
+    };
+  });
 }

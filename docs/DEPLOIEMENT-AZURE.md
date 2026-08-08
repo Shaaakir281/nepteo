@@ -13,8 +13,10 @@ images dans ACR, région UE et GitHub Actions en OIDC.
 > `nepteoacr27de3b.azurecr.io/nepteo:704efabd80de434ea2619cd993ae87427c114838`,
 > digest `sha256:fe6cafbe991c45952262e33be965e4ba09239ff421a86dce80231117a3504425`.
 > Supabase production porte les migrations `0012` à `0021` et
-> `app_schema_version = 21`. Le workflow ne lance aucune migration : leur
-> application manuelle reste un préalable obligatoire à tout code qui les exige.
+> `app_schema_version = 21`. REL-0 reste local et exige `0022` à `0027`, donc
+> `app_schema_version = 27`, avant toute publication. Le workflow ne lance
+> aucune migration : leur application manuelle reste un préalable obligatoire à
+> tout code qui les exige.
 >
 > **Historique — ne pas confondre avec la release courante** : la PR #16 a été
 > attestée sur `nepteo-prod--0000010`, au merge
@@ -248,9 +250,9 @@ OAuth doivent utiliser le domaine principal.
 
 ### Préalable Supabase
 
-Appliquer manuellement toutes les migrations dans l'ordre. Pour une base à jour
-jusqu'à `0011`, appliquer `0012` à `0021` sans en sauter. Contrôler ensuite avec
-le service role :
+Appliquer manuellement toutes les migrations dans l'ordre. Pour une base de
+production actuellement à `21`, REL-0 impose `0022` à `0027` sans en sauter,
+dans cet ordre. Contrôler ensuite avec le service role :
 
 ```sql
 select version
@@ -258,12 +260,11 @@ from public.app_schema_version
 where id = 1;
 ```
 
-La valeur doit être au moins `21`. `0016` introduit ce marqueur et prouve les
-prérequis critiques ; `0017`, `0018`, le rattrapage additif `0019`, `0020`, puis
-`0021` le font progresser à la version actuellement requise. `0020` crée les
-cohortes figées de relance et les événements de valeur structurés ; `0021`
-ajoute les RPC atomiques d'import et de retrait CSV. Ne jamais modifier le
-marqueur à la main pour contourner une migration absente.
+La valeur doit être au moins `27` pour REL-0. `0016` introduit ce marqueur et
+les migrations ultérieures le font progresser ; `0025` crée les propositions
+Campagnes atomiques, `0026` le studio, puis `0027` le cockpit et le cycle de
+décision. `0025` exige le schéma 24, `0026` le 25 et `0027` le 26. Ne jamais
+modifier le marqueur à la main pour contourner une migration absente.
 
 Le workflow `.github/workflows/deploy.yml` est volontairement
 `workflow_dispatch` uniquement pour le premier déploiement :
@@ -278,7 +279,7 @@ Le job :
 1. compare la saisie à `AZURE_SUBSCRIPTION_ID` ;
 2. se connecte par OIDC ;
 3. revalide en lecture seule souscription, tenant et région ;
-4. vérifie que Supabase est joignable et que `app_schema_version >= 21` ;
+4. vérifie que Supabase est joignable et que `app_schema_version >= 27` ;
 5. seulement alors, construit l’image Node 22 dans ACR, taguée avec le SHA Git ;
 6. configure secrets et variables runtime ;
 7. déploie une révision Container Apps ;
@@ -380,5 +381,5 @@ Ne lancer `POST /api/llm/status` que si un ping LLM facturé est souhaité.
 - la révision est en région `AZURE_LOCATION` ;
 - les URLs Supabase et OAuth utilisent exactement le domaine de production ;
 - `CONNECTOR_TOKEN_ENCRYPTION_KEY` est sauvegardée durablement ;
-- `app_schema_version.version >= 21` ;
+- `app_schema_version.version >= 27` ;
 - `/api/health` et `/api/ready` répondent tous deux 200.

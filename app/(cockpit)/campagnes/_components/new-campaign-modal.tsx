@@ -4,57 +4,64 @@ import { useCallback, useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useDialogFocus } from "@/components/ui/use-dialog-focus";
 import {
-  CAMPAIGN_OBJECTIVES,
-  CAMPAIGN_CHANNELS,
-  CAMPAIGN_BUDGETS,
-  type CampaignBrief,
-  type CampaignPlan,
+  validateCampaignBrief,
+  type CampaignValidationErrors,
 } from "@/lib/campaign-plan";
+import { validateCampaignStudioIntent } from "@/lib/campaign-studio";
 import { buildCampaignAction, submitCampaignAction } from "../actions";
+import {
+  CampaignBriefForm,
+  EMPTY_CAMPAIGN_BRIEF,
+  campaignBriefInput,
+  type CampaignBriefDraft,
+} from "./campaign-brief-form";
+import {
+  CampaignGuards,
+  CampaignProposalReview,
+  CampaignProposalSummary,
+} from "./campaign-proposal-review";
+import type { CampaignBuild } from "../actions";
 
-const STEPS = ["Brief", "Construction", "Proposition", "Garde-fous"];
-const BUILD_STEPS = [
-  "Lecture de votre historique…",
-  "Analyse de ce qui fonctionne…",
-  "Rédaction de 2 messages et choix de l'audience…",
-  "Prévision du coût par contact…",
-];
+const STEPS = ["Brief", "Construction", "Studio", "Limites"];
 
 export function NewCampaignModal() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(1);
+  const [draft, setDraft] = useState<CampaignBriefDraft>(EMPTY_CAMPAIGN_BRIEF);
+  const [errors, setErrors] = useState<CampaignValidationErrors>({});
+  const [proposal, setProposal] = useState<CampaignBuild | null>(null);
+  const [requestKey, setRequestKey] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [researching, setResearching] = useState(false);
+  const [done, setDone] = useState<"created" | "duplicate" | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const titleId = useId();
-  const contextId = useId();
-
-  const [objectif, setObjectif] = useState<string>(CAMPAIGN_OBJECTIVES[0].value);
-  const [canal, setCanal] = useState<string>(CAMPAIGN_CHANNELS[0].value);
-  const [budgetJour, setBudgetJour] = useState<number>(CAMPAIGN_BUDGETS[0]);
-  const [contexte, setContexte] = useState("");
-
-  const [buildStep, setBuildStep] = useState(0);
-  const [plan, setPlan] = useState<CampaignPlan | null>(null);
-  const [variants, setVariants] = useState<string[]>([]);
-  const [submitting, setSubmitting] = useState(false);
-  const [done, setDone] = useState(false);
 
   const reset = useCallback(() => {
     setStep(1);
-    setPlan(null);
-    setVariants([]);
-    setBuildStep(0);
-    setDone(false);
+    setDraft(EMPTY_CAMPAIGN_BRIEF);
+    setErrors({});
+    setProposal(null);
+    setRequestKey("");
+    setSubmitting(false);
+    setResearching(false);
+    setDone(null);
+    setMessage(null);
   }, []);
 
   const close = useCallback(() => {
+    if (step === 2 || submitting || researching) return;
     setOpen(false);
     reset();
-  }, [reset]);
+  }, [reset, researching, step, submitting]);
 
   function show() {
+    reset();
+    setRequestKey(crypto.randomUUID());
     setOpen(true);
   }
 
@@ -66,45 +73,78 @@ export function NewCampaignModal() {
     returnFocusRef: triggerRef,
   });
 
-  async function build() {
-    setStep(2);
-    setBuildStep(0);
-    let i = 0;
-    const timer = setInterval(() => {
-      i = Math.min(i + 1, BUILD_STEPS.length - 1);
-      setBuildStep(i);
-    }, 800);
-    const minDelay = new Promise((r) => setTimeout(r, BUILD_STEPS.length * 800));
-    try {
-      const [res] = await Promise.all([
-        buildCampaignAction(objectif, canal, budgetJour, contexte),
-        minDelay,
-      ]);
-      if (res.ok && res.build) {
-        setPlan(res.build.plan);
-        setVariants(res.build.variants);
-        setStep(3);
-      } else {
-        setStep(1);
+  function updateDraft(patch: Partial<CampaignBriefDraft>) {
+    setDraft((current) => ({ ...current, ...patch }));
+    setErrors((current) => {
+      const next = { ...current };
+      for (const field of Object.keys(patch)) {
+        delete next[field as keyof CampaignValidationErrors];
       }
-    } finally {
-      clearInterval(timer);
+      return next;
+    });
+    setMessage(null);
+  }
+
+  async function build() {
+    const input = campaignBriefInput(draft);
+    const localValidation = validateCampaignBrief(input);
+    if (!localValidation.ok) {
+      setErrors(localValidation.errors);
+      setMessage("Complétez les champs signalés avant de construire la proposition.");
+      return;
     }
+
+    setMessage(null);
+    setStep(2);
+    const result = await buildCampaignAction(input);
+    if (!result.ok) {
+      if (result.errors) setErrors(result.errors);
+      setMessage(
+        result.reason === "forbidden"
+          ? "Votre rôle ne permet pas de gérer les campagnes."
+          : result.reason === "invalid_brief"
+            ? "Le serveur a refusé le brief. Vérifiez les champs signalés."
+            : "La construction n'a pas abouti. Aucun nouvel essai automatique n'a été lancé.",
+      );
+      setStep(1);
+      return;
+    }
+
+    setProposal(result.build);
+    setStep(3);
   }
 
   async function submit() {
-    if (!plan) return;
+    if (!proposal || !requestKey || submitting) return;
     setSubmitting(true);
-    const brief: CampaignBrief = { objectif, canal, budgetJour, contexte };
+    setMessage(null);
     try {
-      const res = await submitCampaignAction(brief, plan, variants);
-      if (res.ok) {
-        setDone(true);
+      const result = await submitCampaignAction(
+        proposal.brief,
+        proposal.studio,
+        requestKey,
+      );
+      if (result.ok) {
+        setDone(result.duplicate ? "duplicate" : "created");
         router.refresh();
+        return;
       }
+      if (result.errors) setErrors(result.errors);
+      setMessage(submissionError(result.reason, result.message));
     } finally {
       setSubmitting(false);
     }
+  }
+
+  function reviewLimits() {
+    if (!proposal) return;
+    const validation = validateCampaignStudioIntent(proposal.studio);
+    if (!validation.ok) {
+      setMessage(validation.issues[0]?.message ?? "La proposition doit être corrigée.");
+      return;
+    }
+    setMessage(null);
+    setStep(4);
   }
 
   return (
@@ -128,241 +168,92 @@ export function NewCampaignModal() {
             role="dialog"
             aria-modal="true"
             aria-labelledby={titleId}
-            aria-busy={step === 2 || submitting}
+            aria-busy={step === 2 || submitting || researching}
             tabIndex={-1}
-            className="w-full max-w-[640px] rounded-[18px] bg-white shadow-[0_30px_80px_rgba(25,23,49,.3)]"
-            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-[980px] rounded-[18px] bg-white shadow-[0_30px_80px_rgba(25,23,49,.3)]"
+            onClick={(event) => event.stopPropagation()}
           >
-            <div className="flex items-center justify-between border-b border-line-soft px-6 py-4">
-              <h3
-                id={titleId}
-                className="font-display text-[16px] font-semibold"
-              >
-                Nouvelle campagne — l&apos;agent construit, vous arbitrez
-              </h3>
-              <button
-                ref={closeButtonRef}
-                type="button"
-                onClick={close}
-                className="px-2 text-[15px] text-muted hover:text-ink"
-                aria-label="Fermer"
-              >
-                ✕
-              </button>
-            </div>
+            <ModalHeader
+              titleId={titleId}
+              closeButtonRef={closeButtonRef}
+              onClose={close}
+              disabled={step === 2 || submitting || researching}
+            />
+            <StepRail step={step} />
 
-            {/* Fil des étapes */}
-            <ol
-              aria-label="Étapes de création de la campagne"
-              className="flex gap-1.5 border-b border-line-soft px-6 py-2.5"
-            >
-              {STEPS.map((s, i) => (
-                <li
-                  key={s}
-                  aria-current={step === i + 1 ? "step" : undefined}
-                  className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
-                    step === i + 1
-                      ? "bg-tint text-violet-ink"
-                      : step > i + 1
-                        ? "text-green"
-                        : "text-faint"
-                  }`}
-                >
-                  {i + 1} · {s}
-                </li>
-              ))}
-            </ol>
-
-            <p
-              role="status"
-              aria-live="polite"
-              aria-atomic="true"
-              className="sr-only"
-            >
+            <p role="status" aria-live="polite" className="sr-only">
               {done
-                ? "Campagne ajoutée à votre file."
+                ? "Campagne proposée, non lancée."
                 : step === 2
-                  ? BUILD_STEPS[buildStep]
+                  ? "Construction de la proposition en cours."
                   : submitting
-                    ? "Ajout de la campagne à votre file."
-                    : ""}
+                    ? "Ajout atomique de la proposition à votre file."
+                    : message ?? ""}
             </p>
 
-            <div className="max-h-[62vh] overflow-y-auto px-6 py-5">
+            <div className="max-h-[68vh] overflow-y-auto px-6 py-5">
               {done ? (
-                <div className="py-8 text-center">
-                  <p className="text-[15px] font-semibold text-ink">
-                    Campagne ajoutée à votre file ✓
-                  </p>
-                  <p className="mx-auto mt-1.5 max-w-sm text-[13px] leading-relaxed text-muted">
-                    Retrouvez-la dans « À valider » sur Aujourd&apos;hui. Rien
-                    n&apos;est lancé sans votre accord.
-                  </p>
-                </div>
+                <DoneState duplicate={done === "duplicate"} />
               ) : step === 1 ? (
-                <>
-                  <Picks
-                    label="Objectif"
-                    options={CAMPAIGN_OBJECTIVES.map((o) => ({ v: o.value, l: o.label }))}
-                    value={objectif}
-                    onPick={setObjectif}
-                  />
-                  <Picks
-                    label="Canal"
-                    options={CAMPAIGN_CHANNELS.map((c) => ({ v: c.value, l: c.label }))}
-                    value={canal}
-                    onPick={setCanal}
-                  />
-                  <Picks
-                    label="Budget quotidien"
-                    options={CAMPAIGN_BUDGETS.map((b) => ({ v: String(b), l: `${b} € / jour` }))}
-                    value={String(budgetJour)}
-                    onPick={(v) => setBudgetJour(Number(v))}
-                  />
-                  <label
-                    htmlFor={contextId}
-                    className="mb-1.5 mt-4 block text-[11px] font-semibold uppercase tracking-[.08em] text-faint"
-                  >
-                    Contexte pour l&apos;agent
-                  </label>
-                  <textarea
-                    id={contextId}
-                    value={contexte}
-                    onChange={(e) => setContexte(e.target.value)}
-                    rows={3}
-                    placeholder="Ex. mettre en avant l'offre découverte auprès des dirigeants de PME, reprendre le ton de nos meilleurs posts."
-                    className="w-full resize-y rounded-[10px] border border-line bg-white px-3.5 py-2.5 text-[13px] text-body placeholder:text-faint focus:border-violet focus:outline-none focus:ring-[3px] focus:ring-violet/15"
-                  />
-                  <p className="mt-3 text-[12px] text-muted">
-                    Le brief prend 30 secondes — l&apos;agent fait le reste, à
-                    partir de votre mémoire d&apos;entreprise.
-                  </p>
-                </>
+                <CampaignBriefForm
+                  draft={draft}
+                  errors={errors}
+                  idPrefix={titleId}
+                  onChange={updateDraft}
+                />
               ) : step === 2 ? (
-                <ul className="space-y-2.5">
-                  {BUILD_STEPS.map((s, i) => (
-                    <li key={s} className="flex items-center gap-2.5 text-[13px]">
-                      <span
-                        className={`grid h-5 w-5 flex-none place-items-center rounded-full text-[11px] font-bold ${
-                          i <= buildStep
-                            ? "bg-green-tint text-green"
-                            : "bg-tint-soft text-faint"
-                        }`}
-                      >
-                        {i < buildStep ? "✓" : i === buildStep ? "…" : ""}
-                      </span>
-                      <span className={i <= buildStep ? "text-ink" : "text-faint"}>
-                        {s}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              ) : step === 3 && plan ? (
+                <BuildingState />
+              ) : step === 3 && proposal ? (
+                <CampaignProposalReview
+                  brief={proposal.brief}
+                  plan={proposal.plan}
+                  evidence={proposal.evidence}
+                  projection={proposal.projection}
+                  studio={proposal.studio}
+                  expectedFormats={proposal.expectedFormats}
+                  generation={proposal.generation}
+                  demo={proposal.demo}
+                  onResearchBusyChange={setResearching}
+                  onStudioChange={(studio) =>
+                    setProposal((current) =>
+                      current ? { ...current, studio } : current,
+                    )
+                  }
+                />
+              ) : step === 4 && proposal ? (
                 <>
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                    <Metric l="Budget total" v={`${plan.budgetTotal} €`} />
-                    <Metric l="Durée" v={`${plan.dureeJours} j`} />
-                    <Metric l="Coût / contact" v={`≈ ${plan.coutContact} €`} />
-                    <Metric l="Confiance" v={`${Math.round(plan.confiance * 100)} %`} />
-                  </div>
-                  <p className="mb-1.5 mt-4 text-[11px] font-semibold uppercase tracking-[.08em] text-faint">
-                    2 messages proposés — modifiables, testés l&apos;un contre l&apos;autre
-                  </p>
-                  <div className="space-y-2.5">
-                    {variants.map((v, i) => (
-                      <div key={i} className="flex items-start gap-2">
-                        <label
-                          htmlFor={`${titleId}-variant-${i}`}
-                          className="mt-2 flex-none text-[12px] font-bold text-violet"
-                        >
-                          <span aria-hidden="true">{i === 0 ? "A" : "B"}</span>
-                          <span className="sr-only">
-                            Message {i === 0 ? "A" : "B"}
-                          </span>
-                        </label>
-                        <textarea
-                          id={`${titleId}-variant-${i}`}
-                          value={v}
-                          onChange={(e) =>
-                            setVariants((prev) =>
-                              prev.map((x, j) => (j === i ? e.target.value : x)),
-                            )
-                          }
-                          rows={2}
-                          className="w-full resize-y rounded-[10px] border border-line bg-white px-3 py-2 text-[13px] leading-relaxed text-body focus:border-violet focus:outline-none focus:ring-[3px] focus:ring-violet/15"
-                        />
-                      </div>
-                    ))}
-                  </div>
-                  <p className="mt-3 text-[12px] text-muted">
-                    Résultat attendu : <b className="text-ink">{plan.contactsMin}–{plan.contactsMax} contacts</b>.
-                    Prévision prudente, calibrée sur vos données. Retouchez les
-                    messages ici — ils partiront tels quels.
-                  </p>
+                  <CampaignProposalSummary
+                    brief={proposal.brief}
+                    plan={proposal.plan}
+                    evidence={proposal.evidence}
+                    projection={proposal.projection}
+                    studio={proposal.studio}
+                    expectedFormats={proposal.expectedFormats}
+                  />
+                  <CampaignGuards plan={proposal.plan} />
                 </>
-              ) : step === 4 && plan ? (
-                <div className="space-y-3">
-                  <Guard
-                    label="Plafond strict"
-                    detail="L'agent ne peut jamais le dépasser, quelles que soient ses optimisations."
-                    value={`${plan.capJour} € / j`}
-                  />
-                  <Guard
-                    label="Arrêt automatique"
-                    detail="Si le coût par contact dépasse ce seuil sur 3 jours, la campagne est coupée et vous êtes prévenu."
-                    value={`${plan.arretContact} € / contact`}
-                  />
-                  <Guard
-                    label="Votre validation d'abord"
-                    detail="La campagne rejoint votre file — rien n'est lancé sans votre accord."
-                    value="Requis"
-                  />
-                </div>
               ) : null}
+              {message && (
+                <p className="mt-4 rounded-[10px] bg-red-tint px-3 py-2.5 text-[12.5px] text-red">
+                  {message}
+                </p>
+              )}
             </div>
 
-            {/* Pied */}
             {!done && (
-              <div className="flex items-center justify-between gap-3 border-t border-line-soft px-6 py-4">
-                <button
-                  type="button"
-                  onClick={() => (step > 1 && step !== 2 ? setStep(step - 1) : close())}
-                  className="rounded-[9px] px-3 py-2 text-[13px] font-semibold text-muted hover:text-ink"
-                >
-                  {step > 1 && step !== 2 ? "Retour" : "Annuler"}
-                </button>
-                {step === 1 && (
-                  <button
-                    type="button"
-                    onClick={build}
-                    className="rounded-[10px] bg-violet px-5 py-2.5 text-[13px] font-semibold text-white transition hover:bg-violet-deep"
-                  >
-                    Lancer la construction
-                  </button>
-                )}
-                {step === 2 && (
-                  <span className="text-[12px] text-muted">L&apos;agent construit…</span>
-                )}
-                {step === 3 && (
-                  <button
-                    type="button"
-                    onClick={() => setStep(4)}
-                    className="rounded-[10px] bg-violet px-5 py-2.5 text-[13px] font-semibold text-white transition hover:bg-violet-deep"
-                  >
-                    Voir les garde-fous
-                  </button>
-                )}
-                {step === 4 && (
-                  <button
-                    type="button"
-                    onClick={submit}
-                    disabled={submitting}
-                    className="rounded-[10px] bg-violet px-5 py-2.5 text-[13px] font-semibold text-white transition hover:bg-violet-deep disabled:opacity-50"
-                  >
-                    {submitting ? "Ajout…" : "Ajouter à ma file"}
-                  </button>
-                )}
-              </div>
+              <ModalFooter
+                step={step}
+                submitting={submitting}
+                onCancel={close}
+                onEditBrief={() => {
+                  setProposal(null);
+                  setStep(1);
+                }}
+                onBack={() => setStep(3)}
+                onBuild={build}
+                onGuards={reviewLimits}
+                onSubmit={submit}
+              />
             )}
           </div>
         </div>
@@ -371,65 +262,146 @@ export function NewCampaignModal() {
   );
 }
 
-function Picks({
-  label,
-  options,
-  value,
-  onPick,
-}: {
-  label: string;
-  options: { v: string; l: string }[];
-  value: string;
-  onPick: (v: string) => void;
-}) {
-  return (
-    <fieldset className="mt-4 min-w-0 first:mt-0">
-      <legend className="mb-1.5 text-[11px] font-semibold uppercase tracking-[.08em] text-faint">
-        {label}
-      </legend>
-      <div className="flex flex-wrap gap-2">
-        {options.map((o) => (
-          <button
-            key={o.v}
-            type="button"
-            onClick={() => onPick(o.v)}
-            aria-pressed={value === o.v}
-            className={`rounded-full border px-3.5 py-2 text-[12.5px] font-medium transition ${
-              value === o.v
-                ? "border-violet bg-tint-soft text-violet-ink"
-                : "border-line bg-white text-ink hover:border-violet/40"
-            }`}
-          >
-            {o.l}
-          </button>
-        ))}
-      </div>
-    </fieldset>
-  );
+function submissionError(reason: string, detail?: string): string {
+  if (reason === "forbidden") return "Votre rôle ne permet pas de gérer les campagnes.";
+  if (reason === "invalid_studio") return detail ?? "La structure, l'allocation ou les hooks sont invalides.";
+  if (reason === "invalid_brief") return "Le serveur a refusé le brief.";
+  if (reason === "invalid_request_key") return "La clé de requête est invalide. Rouvrez la modale.";
+  if (reason === "busy") return "Une autre mutation de cet environnement est en cours. Réessayez explicitement plus tard.";
+  return "L'ajout n'a pas abouti. Aucun état partiel n'a été conservé.";
 }
 
-function Metric({ l, v }: { l: string; v: string }) {
+function ModalHeader({
+  titleId,
+  closeButtonRef,
+  onClose,
+  disabled,
+}: {
+  titleId: string;
+  closeButtonRef: React.RefObject<HTMLButtonElement | null>;
+  onClose: () => void;
+  disabled: boolean;
+}) {
   return (
-    <div className="rounded-[10px] border border-line-soft bg-tint-soft/50 px-3 py-2.5">
-      <p className="text-[10.5px] font-semibold uppercase tracking-[.06em] text-faint">{l}</p>
-      <p className="mt-0.5 font-display text-[17px] font-semibold text-ink">{v}</p>
+    <div className="flex items-center justify-between border-b border-line-soft px-6 py-4">
+      <h3 id={titleId} className="font-display text-[16px] font-semibold">
+        Nouvelle campagne — l&apos;agent construit, vous arbitrez
+      </h3>
+      <button
+        ref={closeButtonRef}
+        type="button"
+        onClick={onClose}
+        disabled={disabled}
+        className="px-2 text-[15px] text-muted hover:text-ink disabled:opacity-40"
+        aria-label="Fermer"
+      >
+        ✕
+      </button>
     </div>
   );
 }
 
-function Guard({ label, detail, value }: { label: string; detail: string; value: string }) {
+function StepRail({ step }: { step: number }) {
   return (
-    <div className="flex items-start gap-3 rounded-[12px] border border-line-soft px-4 py-3">
-      <span className="mt-0.5 grid h-5 w-5 flex-none place-items-center rounded-full bg-green-tint text-[11px] font-bold text-green">
-        ✓
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="text-[13px] font-semibold text-ink">{label}</p>
-        <p className="mt-0.5 text-[12px] leading-relaxed text-muted">{detail}</p>
-      </div>
-      <span className="flex-none rounded-full bg-tint px-2.5 py-1 text-[11px] font-semibold text-violet">
-        {value}
-      </span>
+    <ol aria-label="Étapes de création" className="flex gap-1.5 overflow-x-auto border-b border-line-soft px-4 py-2.5 sm:px-6">
+      {STEPS.map((label, index) => (
+        <li
+          key={label}
+          aria-current={step === index + 1 ? "step" : undefined}
+          className={`flex-none rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+            step === index + 1
+              ? "bg-tint text-violet-ink"
+              : step > index + 1
+                ? "text-green"
+                : "text-faint"
+          }`}
+        >
+          {index + 1} · {label}
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+function BuildingState() {
+  return (
+    <div className="py-8 text-center">
+      <span className="mx-auto block h-7 w-7 animate-spin rounded-full border-2 border-violet/20 border-t-violet motion-reduce:animate-none" />
+      <p className="mt-3 text-[14px] font-semibold text-ink">Construction en cours…</p>
+      <p className="mx-auto mt-1 max-w-md text-[12.5px] leading-relaxed text-muted">
+        Lecture de la fenêtre publicitaire de 30 jours, vérification de la
+        suffisance, dérivation du plan et un seul appel de rédaction borné.
+        Aucun retry automatique et aucune recherche concurrentielle implicite.
+      </p>
+    </div>
+  );
+}
+
+function DoneState({ duplicate }: { duplicate: boolean }) {
+  return (
+    <div className="py-8 text-center">
+      <p className="text-[15px] font-semibold text-ink">
+        {duplicate ? "Cette proposition est déjà dans votre file." : "Campagne proposée ✓"}
+      </p>
+      <p className="mx-auto mt-1.5 max-w-md text-[13px] leading-relaxed text-muted">
+        Une seule action et sa trace ont été conservées. Retrouvez-la dans « À
+        valider » sur Aujourd&apos;hui. Aucune campagne, publication ou dépense
+        n&apos;a été lancée.
+      </p>
+    </div>
+  );
+}
+
+function ModalFooter({
+  step,
+  submitting,
+  onCancel,
+  onEditBrief,
+  onBack,
+  onBuild,
+  onGuards,
+  onSubmit,
+}: {
+  step: number;
+  submitting: boolean;
+  onCancel: () => void;
+  onEditBrief: () => void;
+  onBack: () => void;
+  onBuild: () => void;
+  onGuards: () => void;
+  onSubmit: () => void;
+}) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line-soft px-4 py-4 sm:px-6">
+      <button
+        type="button"
+        onClick={step === 3 ? onEditBrief : step === 4 ? onBack : onCancel}
+        disabled={step === 2 || submitting}
+        className="rounded-[9px] px-3 py-2 text-[13px] font-semibold text-muted hover:text-ink disabled:opacity-50"
+      >
+        {step === 3 ? "Modifier le brief" : step === 4 ? "Retour" : "Annuler"}
+      </button>
+      {step === 1 && (
+        <button type="button" onClick={onBuild} className="rounded-[10px] bg-violet px-5 py-2.5 text-[13px] font-semibold text-white transition hover:bg-violet-deep">
+          Construire la proposition
+        </button>
+      )}
+      {step === 2 && <span className="text-[12px] text-muted">Construction…</span>}
+      {step === 3 && (
+        <button type="button" onClick={onGuards} className="rounded-[10px] bg-violet px-5 py-2.5 text-[13px] font-semibold text-white transition hover:bg-violet-deep">
+          Relire le récapitulatif
+        </button>
+      )}
+      {step === 4 && (
+        <button
+          type="button"
+          onClick={onSubmit}
+          disabled={submitting}
+          className="rounded-[10px] bg-violet px-5 py-2.5 text-[13px] font-semibold text-white transition hover:bg-violet-deep disabled:opacity-50"
+        >
+          {submitting ? "Ajout atomique…" : "Ajouter à ma file — sans lancer"}
+        </button>
+      )}
     </div>
   );
 }
