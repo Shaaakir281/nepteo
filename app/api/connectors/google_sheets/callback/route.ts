@@ -33,7 +33,9 @@ export async function GET(request: NextRequest) {
       request.url,
     ).toString();
     const creds = await googleExchangeCode(code, redirectUri);
-    await storeConnection(ctx.orgId, ctx.userId, "google_sheets", creds);
+    await storeConnection(ctx.orgId, ctx.userId, "google_sheets", creds, {}, [
+      "spreadsheets.readonly",
+    ]);
   } catch {
     return fail("Échange de jetons Google impossible. Réessayez.");
   }

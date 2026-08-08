@@ -4,6 +4,11 @@ import { getCurrentAuthContext } from "@/lib/auth/context";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { findTool } from "@/lib/connectors";
 import { isOauthProvider } from "@/lib/connectors/common";
+import {
+  connectionPresentation,
+  hasConnectorConsent,
+  isConnectorPaused,
+} from "@/lib/connectors/lifecycle";
 import { SourceConfiguration } from "./_components/source-configuration";
 import { MappingSection } from "./_components/mapping-section";
 import {
@@ -63,7 +68,13 @@ export default async function ConnectorDetailPage({
           .maybeSingle()
       ).data) as VisibleConnector | null;
   const config = (connector?.config ?? {}) as Record<string, unknown>;
-  const connected = connector?.status === "connected";
+  const presentation = connectionPresentation(
+    connector?.status ?? "disconnected",
+    config,
+  );
+  const connected = presentation === "connected";
+  const authorized = connected || hasConnectorConsent(config);
+  const paused = isConnectorPaused(config);
   const configured =
     provider === "google_sheets"
       ? Boolean(config.spreadsheet_id)
@@ -91,7 +102,7 @@ export default async function ConnectorDetailPage({
     ? await loadRemoteMetadata({
         provider,
         connectorId: connector.id,
-        connected,
+        connected: authorized,
         configured,
         canEdit,
         config,
@@ -131,6 +142,12 @@ export default async function ConnectorDetailPage({
                     new Date(config.last_synced_at),
                   )}`}
               </>
+            ) : presentation === "configured" ? (
+              "Accès autorisé — source à vérifier"
+            ) : presentation === "paused" ? (
+              "Lecture en pause"
+            ) : presentation === "error" ? (
+              "Dernière lecture en erreur"
             ) : (
               "Non connecté"
             )}
@@ -156,7 +173,7 @@ export default async function ConnectorDetailPage({
         </p>
       )}
 
-      {!connected ? (
+      {!authorized ? (
         <div className="rounded-[18px] border border-line-soft bg-white p-6 shadow-card">
           <p className="text-[13.5px] text-body">
             Autorisez Nepteo à lire vos données — lecture seule, jetons chiffrés,
@@ -194,6 +211,7 @@ export default async function ConnectorDetailPage({
           <SyncSection
             provider={provider}
             configured={configured}
+            paused={paused}
             canEdit={canEdit}
             prospectCount={prospectCount}
             preview={preview}

@@ -25,6 +25,19 @@ export interface CatalogGroup {
   tools: CatalogTool[];
 }
 
+/**
+ * Un connecteur proposé n'est pas un connecteur activable. Ce registre est la
+ * source de vérité des parcours réellement exposés par l'application.
+ */
+export type ConnectorActivation = "oauth" | "import" | "proposal";
+
+export interface ConnectorCapability {
+  activation: ConnectorActivation;
+  read: boolean;
+  write: false;
+  sync: "manual" | "none";
+}
+
 export const CONNECTOR_CATALOG: CatalogGroup[] = [
   {
     title: "Trouver et suivre les prospects",
@@ -79,6 +92,41 @@ export const CONNECTOR_CATALOG: CatalogGroup[] = [
     ],
   },
 ];
+
+export const CONNECTOR_CAPABILITIES = {
+  hubspot: { activation: "proposal", read: false, write: false, sync: "none" },
+  pipedrive: { activation: "proposal", read: false, write: false, sync: "none" },
+  salesforce: { activation: "proposal", read: false, write: false, sync: "none" },
+  airtable: { activation: "proposal", read: false, write: false, sync: "none" },
+  csv: { activation: "import", read: true, write: false, sync: "manual" },
+  google_sheets: { activation: "oauth", read: true, write: false, sync: "manual" },
+  notion: { activation: "oauth", read: true, write: false, sync: "manual" },
+  google_analytics: { activation: "proposal", read: false, write: false, sync: "none" },
+  matomo: { activation: "proposal", read: false, write: false, sync: "none" },
+  posthog: { activation: "proposal", read: false, write: false, sync: "none" },
+  website: { activation: "proposal", read: false, write: false, sync: "none" },
+  meta_ads: { activation: "proposal", read: false, write: false, sync: "none" },
+  google_ads: { activation: "proposal", read: false, write: false, sync: "none" },
+  linkedin_ads: { activation: "proposal", read: false, write: false, sync: "none" },
+  brevo: { activation: "proposal", read: false, write: false, sync: "none" },
+  mailchimp: { activation: "proposal", read: false, write: false, sync: "none" },
+  activecampaign: { activation: "proposal", read: false, write: false, sync: "none" },
+  gmail: { activation: "proposal", read: false, write: false, sync: "none" },
+  stripe: { activation: "proposal", read: false, write: false, sync: "none" },
+  shopify: { activation: "proposal", read: false, write: false, sync: "none" },
+  woocommerce: { activation: "proposal", read: false, write: false, sync: "none" },
+  invoicing: { activation: "proposal", read: false, write: false, sync: "none" },
+} as const satisfies Record<string, ConnectorCapability>;
+
+export function connectorCapability(
+  provider: string,
+): ConnectorCapability | undefined {
+  return CONNECTOR_CAPABILITIES[provider as keyof typeof CONNECTOR_CAPABILITIES];
+}
+
+export function isRequestableConnector(provider: string): boolean {
+  return connectorCapability(provider)?.activation === "proposal";
+}
 
 export function findTool(provider: string): CatalogTool | undefined {
   for (const g of CONNECTOR_CATALOG) {

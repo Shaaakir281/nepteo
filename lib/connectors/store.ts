@@ -2,6 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { encryptJson } from "@/lib/crypto";
 import { findTool } from "@/lib/connectors";
 import { withRealDataMutationLock } from "@/lib/demo/lock";
+import { recordConsent } from "@/lib/connectors/lifecycle";
 
 /**
  * Vérification sérialisée au départ et au retour d'un flux OAuth. La vraie
@@ -12,13 +13,18 @@ export async function assertConnectorFlowAllowed(orgId: string): Promise<void> {
   await withRealDataMutationLock(admin, orgId, async () => undefined);
 }
 
-/** Enregistre une connexion OAuth : credentials chiffrés + journal. */
+/**
+ * Enregistre un consentement OAuth, pas encore une connexion vérifiée.
+ * La carte ne passe à « Connecté vérifié » qu'après une lecture complète de la
+ * source choisie. Les credentials restent chiffrés et hors de `config`.
+ */
 export async function storeConnection(
   orgId: string,
   userId: string,
   provider: string,
   creds: unknown,
   extraConfig: Record<string, unknown> = {},
+  grantedScopes: readonly string[] = [],
 ): Promise<void> {
   const tool = findTool(provider);
   if (!tool) throw new Error(`Provider inconnu : ${provider}`);
@@ -32,11 +38,11 @@ export async function storeConnection(
       .maybeSingle();
     if (readError) throw new Error(readError.message);
 
-    const config = {
+    const now = new Date().toISOString();
+    const config = recordConsent({
       ...((existing?.config as Record<string, unknown>) ?? {}),
       ...extraConfig,
-      connected_at: new Date().toISOString(),
-    };
+    }, grantedScopes, now);
     delete (config as { requested?: unknown }).requested;
 
     const { error } = await admin.from("connectors").upsert(
@@ -44,7 +50,7 @@ export async function storeConnection(
         organization_id: orgId,
         type: tool.type,
         provider,
-        status: "connected",
+        status: "disconnected",
         encrypted_credentials: encryptJson(creds),
         config,
       },
@@ -54,10 +60,10 @@ export async function storeConnection(
 
     const journal = await admin.from("journal").insert({
       organization_id: orgId,
-      event: "connector_connected",
+      event: "connector_authorized",
       actor: "user",
       actor_id: userId,
-      payload: { provider, name: tool.name },
+      payload: { provider, name: tool.name, scopes: grantedScopes.length },
     });
     if (journal.error) throw new Error(journal.error.message);
   });

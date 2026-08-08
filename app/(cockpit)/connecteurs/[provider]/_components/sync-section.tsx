@@ -1,5 +1,9 @@
 import { SAVE_BTN } from "@/components/ui/styles";
-import { disconnectConnector, syncNow } from "../actions";
+import {
+  disconnectConnector,
+  setConnectorPause,
+  syncNow,
+} from "../actions";
 
 export interface ProspectPreview {
   name: string | null;
@@ -10,12 +14,14 @@ export interface ProspectPreview {
 export function SyncSection({
   provider,
   configured,
+  paused,
   canEdit,
   prospectCount,
   preview,
 }: {
   provider: "google_sheets" | "notion";
   configured: boolean;
+  paused: boolean;
   canEdit: boolean;
   prospectCount: number;
   preview: ProspectPreview[];
@@ -53,7 +59,7 @@ export function SyncSection({
                 <input type="hidden" name="provider" value={provider} />
                 <button
                   type="submit"
-                  disabled={!configured}
+                  disabled={!configured || paused}
                   className={`${SAVE_BTN} disabled:cursor-not-allowed disabled:opacity-40`}
                 >
                   Synchroniser maintenant
@@ -64,21 +70,38 @@ export function SyncSection({
                   Configurez d&apos;abord la source ci-dessus.
                 </span>
               )}
+              {paused && (
+                <span className="text-[12.5px] text-amber">
+                  Lecture en pause : aucune synchronisation ne démarre.
+                </span>
+              )}
             </div>
           )}
         </div>
       </div>
 
       {canEdit && (
-        <form action={disconnectConnector}>
-          <input type="hidden" name="provider" value={provider} />
-          <button
-            type="submit"
-            className="text-[12.5px] font-semibold text-red hover:underline"
-          >
-            Déconnecter et supprimer les jetons d&apos;accès
-          </button>
-        </form>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <form action={setConnectorPause}>
+            <input type="hidden" name="provider" value={provider} />
+            <input type="hidden" name="pause" value={paused ? "false" : "true"} />
+            <button
+              type="submit"
+              className="text-[12.5px] font-semibold text-amber hover:underline"
+            >
+              {paused ? "Reprendre la lecture" : "Mettre la lecture en pause"}
+            </button>
+          </form>
+          <form action={disconnectConnector}>
+            <input type="hidden" name="provider" value={provider} />
+            <button
+              type="submit"
+              className="text-[12.5px] font-semibold text-red hover:underline"
+            >
+              Déconnecter et supprimer les jetons d&apos;accès
+            </button>
+          </form>
+        </div>
       )}
     </>
   );

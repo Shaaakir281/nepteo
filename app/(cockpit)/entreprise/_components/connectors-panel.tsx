@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { icons } from "@/components/icons";
 import { CONNECTOR_CATALOG } from "@/lib/connectors";
+import { connectionPresentation } from "@/lib/connectors/lifecycle";
 import { DEMO_SCENARIOS } from "@/lib/demo/scenarios";
 import {
   DEMO_PROVIDER,
@@ -79,7 +80,11 @@ export async function ConnectorsPanel({
   const statusOf = (provider: string): ConnectorStatus => {
     const row = rows?.find((r) => r.provider === provider);
     if (!row) return "available";
-    if (row.status === "connected") return "connected";
+    const presentation = connectionPresentation(
+      row.status,
+      "config" in row ? row.config : undefined,
+    );
+    if (presentation !== "available") return presentation;
     if (
       "config" in row &&
       (row.config as { requested?: boolean } | null)?.requested

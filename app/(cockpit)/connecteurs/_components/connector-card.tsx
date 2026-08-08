@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { CatalogTool } from "@/lib/connectors";
+import { connectorCapability, type CatalogTool } from "@/lib/connectors";
 import {
   isImportProvider,
   isOauthProvider,
@@ -16,7 +16,13 @@ const TYPE_LABELS: Record<string, string> = {
   files: "Contenus & documents",
 };
 
-export type ConnectorStatus = "connected" | "requested" | "available";
+export type ConnectorStatus =
+  | "connected"
+  | "configured"
+  | "paused"
+  | "error"
+  | "requested"
+  | "available";
 
 export function ConnectorCard({
   tool,
@@ -33,14 +39,19 @@ export function ConnectorCard({
   demoPresentation?: DemoPresentation;
   justRequested?: boolean;
 }) {
-  const isOauth = isOauthProvider(tool.provider);
-  const isImport = isImportProvider(tool.provider);
-  const isProposal = !isOauth && !isImport;
+  const capability = connectorCapability(tool.provider);
+  const isOauth = capability?.activation === "oauth";
+  const isImport = capability?.activation === "import";
+  const isProposal = capability?.activation === "proposal";
 
   return (
     <div
       className={`flex flex-col rounded-[13px] border bg-white p-4 shadow-card ${
-        status === "connected" ? "border-green/40" : "border-line-soft"
+        status === "connected"
+          ? "border-green/40"
+          : status === "error"
+            ? "border-red/40"
+            : "border-line-soft"
       }`}
     >
       <div className="flex items-center gap-3">
@@ -72,6 +83,21 @@ export function ConnectorCard({
               : "Intégration proposée — non connectée"}
         </p>
       )}
+      {status === "configured" && (
+        <p className="mt-2 text-[11.5px] font-medium text-amber">
+          Accès autorisé — source à vérifier
+        </p>
+      )}
+      {status === "paused" && (
+        <p className="mt-2 text-[11.5px] font-medium text-amber">
+          Lecture en pause — aucune synchronisation
+        </p>
+      )}
+      {status === "error" && (
+        <p className="mt-2 text-[11.5px] font-medium text-red">
+          Dernière lecture en erreur — vérification requise
+        </p>
+      )}
       <div className="mt-3.5">
         {status === "connected" && (
           <span className="inline-flex items-center gap-3">
@@ -91,12 +117,21 @@ export function ConnectorCard({
           </span>
         )}
         {status !== "connected" && isOauthProvider(tool.provider) && canEdit && (
-          <a
-            href={`/api/connectors/${tool.provider}/authorize`}
-            className="inline-block rounded-[7px] bg-tint px-3.5 py-1.5 text-[12px] font-semibold text-violet transition hover:bg-violet hover:text-white"
-          >
-            Connecter via OAuth
-          </a>
+          status === "available" ? (
+            <a
+              href={`/api/connectors/${tool.provider}/authorize`}
+              className="inline-block rounded-[7px] bg-tint px-3.5 py-1.5 text-[12px] font-semibold text-violet transition hover:bg-violet hover:text-white"
+            >
+              Connecter via OAuth
+            </a>
+          ) : (
+            <Link
+              href={`/connecteurs/${tool.provider}`}
+              className="inline-block rounded-[7px] bg-tint px-3.5 py-1.5 text-[12px] font-semibold text-violet transition hover:bg-violet hover:text-white"
+            >
+              {status === "configured" ? "Configurer la source" : "Gérer"}
+            </Link>
+          )
         )}
         {status === "available" &&
           isOauthProvider(tool.provider) &&
