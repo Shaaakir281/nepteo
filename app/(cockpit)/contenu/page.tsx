@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import Link from "next/link";
+import { z } from "zod";
 import { getCurrentAuthContext } from "@/lib/auth/context";
 import { readMemory } from "@/lib/memory-store";
 import { memoText } from "@/lib/draft-template";
@@ -11,6 +11,16 @@ import {
   type CampaignMetric,
 } from "@/lib/ads/metrics-rules";
 import { buildCreativeSuggestions } from "@/lib/creative-template";
+import {
+  campaignCreativeSource,
+  type CampaignCreativeSource,
+} from "@/lib/campaign-creative-rules";
+import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  FREE_CREATIVE_PAGE_SIZE,
+  loadCampaignCreativeAssets,
+  loadFreeCreativeAssets,
+} from "@/lib/creative-assets";
 import { CreativeWorkspace } from "./_components/creative-workspace";
 import {
   createSupabaseProspectReader,
@@ -18,11 +28,20 @@ import {
   loadProspectCohort,
 } from "@/lib/prospect-cohort-loader";
 
-export default async function ContenuPage() {
+export default async function ContenuPage({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    campagne?: string;
+    libre?: string;
+    creatives_page?: string;
+  }>;
+}) {
   const { supabase, user, membership } = await getCurrentAuthContext();
   if (!user) redirect("/login");
   if (!membership) redirect("/onboarding");
   const canEdit = membership.canEdit;
+  const params = await searchParams;
 
   // Idées proposées par l'agent, à partir de ce qu'il sait déjà.
   const memCtx = await readMemory(supabase, ["offres", "activite"]);
@@ -64,17 +83,90 @@ export default async function ContenuPage() {
     losingCampaigns,
   });
 
+  const campaignColumns = "id, kind, title, status, payload";
+  const [{ data: activeCampaignRows }, { data: approvedCampaignRows }] =
+    await Promise.all([
+      supabase
+        .from("actions")
+        .select(campaignColumns)
+        .eq("kind", "launch_campaign")
+        .in("status", ["proposed", "postponed"])
+        .order("created_at", { ascending: false })
+        .limit(12),
+      supabase
+        .from("actions")
+        .select(campaignColumns)
+        .eq("kind", "launch_campaign")
+        .eq("status", "approved")
+        .order("created_at", { ascending: false })
+        .limit(12),
+    ]);
+  const requestedCampaignId = z.string().uuid().safeParse(params.campagne).data;
+  const recentRows = [...(activeCampaignRows ?? []), ...(approvedCampaignRows ?? [])];
+  let requestedCampaignRow: (typeof recentRows)[number] | null = null;
+  if (
+    requestedCampaignId &&
+    !recentRows.some((row) => row.id === requestedCampaignId)
+  ) {
+    const { data } = await supabase
+      .from("actions")
+      .select(campaignColumns)
+      .eq("id", requestedCampaignId)
+      .eq("kind", "launch_campaign")
+      .in("status", ["proposed", "postponed", "approved"])
+      .maybeSingle();
+    requestedCampaignRow = data;
+  }
+  const campaignRows = [
+    ...recentRows,
+    ...(requestedCampaignRow ? [requestedCampaignRow] : []),
+  ].filter(
+    (row, index, rows) => rows.findIndex((item) => item.id === row.id) === index,
+  );
+  const candidateCampaigns = campaignRows
+    .map(campaignCreativeSource)
+    .filter((campaign): campaign is CampaignCreativeSource => campaign !== null)
+    .sort(
+      (left, right) =>
+        Number(left.status === "approved") - Number(right.status === "approved"),
+    );
+  const admin = createAdminClient();
+  const requestedFreePage = Number(params.creatives_page);
+  const freePage =
+    Number.isSafeInteger(requestedFreePage) && requestedFreePage > 0
+      ? Math.min(requestedFreePage, 10_000)
+      : 1;
+  const [campaignAssets, freeAssetsPage] = await Promise.all([
+    loadCampaignCreativeAssets(
+      admin,
+      membership.organizationId,
+      candidateCampaigns.map((campaign) => campaign.id),
+    ),
+    membership.canViewFinancials
+      ? loadFreeCreativeAssets(admin, membership.organizationId, freePage)
+      : Promise.resolve({
+          assets: [],
+          total: 0,
+          page: 1,
+          pageSize: FREE_CREATIVE_PAGE_SIZE,
+        }),
+  ]);
+  const campaigns = candidateCampaigns;
+  const creativeAssets = [...campaignAssets, ...freeAssetsPage.assets];
+
   return (
     <>
-      <div className="mb-6">
-        <h1 className="text-[22px] font-semibold tracking-tight">Contenu</h1>
-        <p className="mt-1.5 max-w-2xl text-[13.5px] leading-relaxed text-muted">
-          L&apos;agent prépare un conseil créatif à partir de votre{" "}
-          <Link href="/entreprise" className="font-semibold text-violet hover:underline">
-            mémoire d&apos;entreprise
-          </Link>{" "}
-          : angles, accroches et brief prêts à transmettre. Aucun lancement, aucune
-          dépense — juste du contenu que vous validez.
+      <div className="mb-5">
+        <p className="mb-1 text-[10.5px] font-semibold uppercase tracking-[.12em] text-[#8a232d]">
+          Créer
+        </p>
+        <h1 className="font-display text-[27px] font-light tracking-[-.02em] text-ink">
+          Votre contenu, prêt à publier
+        </h1>
+        <p className="mt-1 max-w-xl text-[12.5px] leading-relaxed text-muted">
+          Reprenez une campagne : son brief, son message et le format conseillé
+          sont déjà prêts. Vous gardez la main sur chaque version ; rien n&apos;est
+          lancé ni publié sans votre validation.
         </p>
       </div>
 
@@ -89,7 +181,17 @@ export default async function ContenuPage() {
         </div>
       )}
 
-      <CreativeWorkspace canEdit={canEdit} suggestions={suggestions} />
+      <CreativeWorkspace
+        canEdit={canEdit}
+        suggestions={suggestions}
+        campaigns={campaigns}
+        initialCreativeAssets={creativeAssets}
+        initialCampaignId={params.campagne}
+        initialFreeMode={params.libre === "1"}
+        initialFreeAssetTotal={freeAssetsPage.total}
+        initialFreeAssetPage={freeAssetsPage.page}
+        freeAssetPageSize={freeAssetsPage.pageSize}
+      />
     </>
   );
 }

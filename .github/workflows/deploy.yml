@@ -50,6 +50,7 @@ jobs:
           CONNECTOR_TOKEN_ENCRYPTION_KEY: ${{ secrets.CONNECTOR_TOKEN_ENCRYPTION_KEY }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_IMAGE_MODEL: ${{ vars.OPENAI_IMAGE_MODEL }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
           MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
@@ -102,10 +103,18 @@ jobs:
             exit 1
           fi
 
-          if [[ -z "${OPENAI_API_KEY:-}" && -z "${ANTHROPIC_API_KEY:-}" ]]; then
-            echo "::error::Configure OPENAI_API_KEY and/or ANTHROPIC_API_KEY."
+          if [[ -z "${OPENAI_API_KEY:-}" ]]; then
+            echo "::error::OPENAI_API_KEY is required for the campaign Story studio."
             exit 1
           fi
+
+          case "${OPENAI_IMAGE_MODEL:-gpt-image-2}" in
+            gpt-image-*) ;;
+            *)
+              echo "::error::OPENAI_IMAGE_MODEL must be a GPT Image model."
+              exit 1
+              ;;
+          esac
 
           if [[ -n "${GOOGLE_OAUTH_CLIENT_ID:-}" && -z "${GOOGLE_OAUTH_CLIENT_SECRET:-}" ]] ||
              [[ -z "${GOOGLE_OAUTH_CLIENT_ID:-}" && -n "${GOOGLE_OAUTH_CLIENT_SECRET:-}" ]]; then
@@ -266,7 +275,7 @@ jobs:
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          REQUIRED_SCHEMA_VERSION: "27"
+          REQUIRED_SCHEMA_VERSION: "28"
         run: |
           set -euo pipefail
 
@@ -384,6 +393,7 @@ jobs:
           LANGFUSE_PUBLIC_KEY: ${{ vars.LANGFUSE_PUBLIC_KEY }}
           LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
           LANGFUSE_BASE_URL: ${{ vars.LANGFUSE_BASE_URL }}
+          OPENAI_IMAGE_MODEL: ${{ vars.OPENAI_IMAGE_MODEL }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
@@ -436,7 +446,7 @@ jobs:
             LLM_TASK_RECOMMEND_ACTION LLM_TASK_CAMPAIGN_BRIEF
             GOOGLE_OAUTH_CLIENT_ID NOTION_OAUTH_CLIENT_ID
             RESEARCH_PROVIDER RESEARCH_OPENAI_MODEL PERPLEXITY_PRESET
-            LANGFUSE_PUBLIC_KEY LANGFUSE_BASE_URL
+            LANGFUSE_PUBLIC_KEY LANGFUSE_BASE_URL OPENAI_IMAGE_MODEL
           )
           for name in "${optional_values[@]}"; do
             add_value "$name" "${!name:-}"

@@ -1,11 +1,6 @@
 import Link from "next/link";
 import { getCurrentAuthContext } from "@/lib/auth/context";
 import {
-  entryDetail,
-  entryTitle,
-  type JournalEntry,
-} from "@/lib/journal";
-import {
   ValidationQueue,
   type QueueAction,
 } from "./_components/validation-queue";
@@ -40,6 +35,11 @@ import {
 } from "@/lib/prospect-cohort-loader";
 import { readDemoPresentation } from "@/lib/demo/presentation";
 import { briefingDataSourceLabel } from "@/lib/demo/presentation-rules";
+import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  creativesByCampaign,
+  loadCampaignCreativeAssets,
+} from "@/lib/creative-assets";
 
 const VALUE_EVENT_PAGE_SIZE = 1000;
 const MAX_VALUE_SCORECARD_EVENTS = 5000;
@@ -51,13 +51,6 @@ export default async function TodayPage({
 }) {
   const { decision_error: decisionError } = await searchParams;
   const { supabase, membership } = await getCurrentAuthContext();
-  const { data } = await supabase
-    .from("journal")
-    .select("id, event, actor, actor_id, payload, created_at")
-    .order("created_at", { ascending: false })
-    .limit(6);
-  const journal = (data ?? []) as JournalEntry[];
-
   const canEdit = membership?.canEdit ?? false;
   const canViewFinancials = membership?.canViewFinancials ?? false;
 
@@ -74,10 +67,24 @@ export default async function TodayPage({
   ).filter(
     (action) => canViewFinancials || isCommercialSafeActionKind(action.kind),
   );
-  const queue = prioritizeTodayActions(
+  const prioritizedQueue = prioritizeTodayActions(
     authorizedQueue,
     new Date().toISOString(),
   );
+  const campaignAssets = membership
+    ? await loadCampaignCreativeAssets(
+        createAdminClient(),
+        membership.organizationId,
+        prioritizedQueue
+          .filter((action) => action.kind === "launch_campaign")
+          .map((action) => action.id),
+      )
+    : [];
+  const assetsByCampaign = creativesByCampaign(campaignAssets);
+  const queue = prioritizedQueue.map((action) => ({
+    ...action,
+    creatives: assetsByCampaign[action.id] ?? [],
+  }));
 
   const { data: decidedRows } = await supabase
     .from("actions")
@@ -89,11 +96,13 @@ export default async function TodayPage({
     (action) => canViewFinancials || isCommercialSafeActionKind(action.kind),
   );
 
-  const { data: org } = await supabase
+  const { data: org, error: organizationReadError } = await supabase
     .from("organizations")
     .select("execution_paused")
     .maybeSingle();
-  const executionPaused = Boolean(org?.execution_paused);
+  const executionPaused = organizationReadError
+    ? null
+    : Boolean(org?.execution_paused);
 
   const { data: briefingRow } = await supabase
     .from("briefings")
@@ -247,11 +256,17 @@ export default async function TodayPage({
 
   return (
     <>
-      <div className="mb-6">
-        <h1 className="text-[22px] font-semibold tracking-tight">Bonjour</h1>
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="mb-1 text-[10.5px] font-semibold uppercase tracking-[.12em] text-[#8a232d]">
+            Aujourd&apos;hui
+          </p>
+          <h1 className="font-display text-[28px] font-light tracking-[-.02em] text-ink">
+            Bonjour, par quoi commence-t-on ?
+          </h1>
         {/* Cette phrase n'est vraie que tant qu'aucune donnée n'est branchée —
             elle disparaît dès que l'agent a de la matière. */}
-        {diagnostic && (
+          {diagnostic && (
           <p className="mt-1.5 max-w-2xl text-[13.5px] leading-relaxed text-muted">
             Nepteo apprend votre entreprise. Complétez la{" "}
             <Link href="/entreprise" className="font-semibold text-violet hover:underline">
@@ -260,6 +275,18 @@ export default async function TodayPage({
             — les données de votre organisation apparaîtront ici dès le premier
             connecteur.
           </p>
+          )}
+        </div>
+        {canEdit && (
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <ExecutionSwitch paused={executionPaused} />
+            <Link
+              href="/contenu"
+              className="rounded-[9px] bg-[#8a232d] px-4 py-2.5 text-[12.5px] font-semibold text-white shadow-[0_6px_16px_rgba(138,35,45,.14)] transition hover:bg-[#741d25]"
+            >
+              ✦ Créer une story
+            </Link>
+          </div>
         )}
       </div>
 
@@ -356,104 +383,48 @@ export default async function TodayPage({
         </div>
       )}
 
-      {!diagnostic && canEdit && valueScorecard && (
-        <div className="mt-5">
-          <ValueScorecard scorecard={valueScorecard} />
-        </div>
-      )}
-
-      {!diagnostic && canEdit && valueScorecardIncomplete && (
-        <div className="mt-5 rounded-[18px] border border-line-soft bg-white p-5 text-[12.5px] text-muted shadow-card">
-          La scorecard est suspendue au-delà de 5 000 événements : une
-          agrégation complète est requise avant d&apos;afficher des taux ou de
-          conclure sur les gates.
-        </div>
-      )}
-
-      {!diagnostic && canEdit && valueScorecardReadFailed && (
-        <div className="mt-5 rounded-[18px] border border-line-soft bg-white p-5 text-[12.5px] text-muted shadow-card">
-          Scorecard indisponible : la lecture des événements terrain a échoué.
-          Aucun taux ni gate n&apos;est affiché tant que la migration et les
-          permissions ne sont pas vérifiées.
-        </div>
-      )}
-
-      <div className="mt-7 grid gap-4 lg:grid-cols-2">
-        {/* File de validation */}
-        <div className="rounded-[18px] border border-line-soft bg-white shadow-card">
+      <div className="mt-7">
+        <div className="rounded-[12px] border border-line bg-white shadow-card">
           <div className="flex items-center justify-between border-b border-line-soft px-[22px] py-4">
             <h3 className="font-display text-[15px] font-semibold">
-              À valider
+              Vos prochaines décisions
             </h3>
             <span className="text-[12px] text-muted">
-              L&apos;agent propose, vous décidez
+              {queue.length} à valider
             </span>
           </div>
           <ValidationQueue actions={queue} canEdit={canEdit} />
         </div>
+      </div>
 
-        {/* Journal */}
-        <div className="rounded-[18px] border border-line-soft bg-white shadow-card">
-          <div className="flex items-center justify-between border-b border-line-soft px-[22px] py-4">
-            <h3 className="font-display text-[15px] font-semibold">Journal</h3>
-            <Link
-              href="/journal"
-              className="text-[12px] font-semibold text-violet hover:underline"
-            >
-              Voir tout →
-            </Link>
+      <details className="group mt-4 rounded-[12px] border border-line bg-white">
+        <summary className="flex cursor-pointer items-center justify-between gap-3 px-5 py-3.5 text-[12.5px] font-semibold text-ink">
+          <span>Suivi et historique</span>
+          <span className="text-muted transition group-open:rotate-180">⌄</span>
+        </summary>
+        <div className="border-t border-line-soft p-4">
+          <div className="overflow-hidden rounded-[11px] border border-line-soft bg-white">
+            <div className="border-b border-line-soft px-[18px] py-3">
+              <h3 className="font-display text-[14px] font-semibold">
+                Décisions récentes
+              </h3>
+            </div>
+            <DecisionsHistory actions={decided} canEdit={canEdit} />
           </div>
-          {journal.length > 0 ? (
-            <ul>
-              {journal.map((j) => (
-                <li
-                  key={j.id}
-                  className="flex items-start gap-3 border-t border-line-soft px-[22px] py-3 first:border-t-0"
-                >
-                  <span
-                    className={`mt-1.5 h-1.5 w-1.5 flex-none rounded-full ${
-                      j.actor === "agent" ? "bg-faint" : "bg-violet"
-                    }`}
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[13px] font-medium text-ink">
-                      {entryTitle(j)}
-                      {entryDetail(j) && (
-                        <span className="text-muted"> · {entryDetail(j)}</span>
-                      )}
-                    </p>
-                    <p className="text-[11.5px] text-faint">
-                      {fmt.format(new Date(j.created_at))} ·{" "}
-                      {j.actor === "agent" ? "Agent" : "Vous"}
-                    </p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <div className="px-[22px] py-8 text-center text-[12.5px] text-muted">
-              Aucun événement pour l&apos;instant.
+
+          {!diagnostic && canEdit && valueScorecard && (
+            <div className="mt-4">
+              <ValueScorecard scorecard={valueScorecard} />
             </div>
           )}
-        </div>
-      </div>
-
-      {/* Décisions récentes — boucle de feedback visible */}
-      <div className="mt-4 rounded-[18px] border border-line-soft bg-white shadow-card">
-        <div className="flex items-center justify-between border-b border-line-soft px-[22px] py-4">
-          <h3 className="font-display text-[15px] font-semibold">
-            Décisions récentes
-          </h3>
-          {canEdit ? (
-            <ExecutionSwitch paused={executionPaused} />
-          ) : (
-            <span className="text-[12px] text-muted">
-              Reportées, validées, exécutées
-            </span>
+          {!diagnostic && canEdit && (valueScorecardIncomplete || valueScorecardReadFailed) && (
+            <p className="mt-4 rounded-[10px] bg-tint-soft px-4 py-3 text-[12px] text-muted">
+              Scorecard indisponible : une agrégation complète et des permissions
+              à jour sont requises avant d&apos;afficher les résultats.
+            </p>
           )}
         </div>
-        <DecisionsHistory actions={decided} canEdit={canEdit} />
-      </div>
+      </details>
     </>
   );
 }

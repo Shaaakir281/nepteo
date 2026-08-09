@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getCurrentAuthContext } from "@/lib/auth/context";
 import { readDemoPresentation } from "@/lib/demo/presentation";
-import { icons } from "@/components/icons";
 import { Sidebar } from "./_components/sidebar";
 import { MobileCockpitNav } from "./_components/nav";
 
@@ -39,24 +38,25 @@ export default async function CockpitLayout({
   const today = raw.charAt(0).toUpperCase() + raw.slice(1); // « Dimanche 19 juillet »
 
   return (
-    <div className="grid min-h-screen grid-cols-[248px_1fr] max-lg:grid-cols-1">
+    <div className="grid min-h-screen grid-cols-[224px_1fr] max-lg:grid-cols-1">
       <Sidebar
         orgName={membership.organizationName ?? "Mon entreprise"}
         email={user.email ?? ""}
         roleLabel={ROLE_LABELS[membership.role] ?? membership.role}
         initial={initial}
+        canEdit={membership.canEdit}
         canViewFinancials={membership.canViewFinancials}
         demoPresentation={demoPresentation}
       />
 
       <div className="min-w-0">
-        <div className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-line-soft bg-white px-7 py-3">
+        <div className="sticky top-0 z-20 flex items-center justify-between gap-4 border-b border-line bg-page/90 px-7 py-3 backdrop-blur-xl">
           <span className="font-display text-[15px] font-semibold text-ink lg:hidden">
             Nepteo
           </span>
-          <span className="hidden items-center gap-2 text-[13px] text-faint lg:flex">
-            {icons.search}
-            Rechercher une campagne, un prospect…
+          <span className="hidden items-center gap-2 text-[12.5px] text-muted lg:flex">
+            <span className="h-1.5 w-1.5 rounded-full bg-green" />
+            L&apos;agent est prêt
           </span>
           <div className="flex items-center gap-3.5">
             <Link
@@ -73,7 +73,7 @@ export default async function CockpitLayout({
             </span>
           </div>
         </div>
-        <main className="mx-auto max-w-[1060px] px-4 pb-28 pt-6 sm:px-7 sm:pt-8 lg:pb-8">
+        <main className="mx-auto max-w-[1120px] px-4 pb-28 pt-6 sm:px-7 sm:pt-8 lg:pb-12">
           {demoPresentation === "certified-demo" && (
             <div className="mb-5 rounded-[12px] border border-amber/25 bg-amber-tint px-4 py-3 text-[12.5px] leading-relaxed text-body">
               <b>Scénario d&apos;exemple Nepteo.</b> Ce jeu versionné contient

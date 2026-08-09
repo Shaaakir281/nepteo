@@ -1,5 +1,6 @@
 import { icons } from "@/components/icons";
 import { logout } from "@/app/(auth)/actions";
+import Link from "next/link";
 import type { DemoPresentation } from "@/lib/demo/presentation-rules";
 import { CockpitNav } from "./nav";
 import { WalkthroughSidebarLink } from "./walkthrough-link";
@@ -16,6 +17,7 @@ export function Sidebar({
   email,
   roleLabel,
   initial,
+  canEdit,
   canViewFinancials,
   demoPresentation,
 }: {
@@ -23,16 +25,17 @@ export function Sidebar({
   email: string;
   roleLabel: string;
   initial: string;
+  canEdit: boolean;
   canViewFinancials: boolean;
   demoPresentation: DemoPresentation;
 }) {
   return (
-    <aside className="sticky top-0 flex h-screen flex-col overflow-y-auto border-r border-line-soft bg-white max-lg:hidden">
-      <div className="flex items-center gap-2.5 px-5 pb-4 pt-5 font-display text-[17px] font-bold text-ink">
-        <span className="grid h-7 w-7 flex-none place-items-center rounded-lg bg-gradient-to-br from-[#6a5cf0] to-[#4a3fd0] text-sm font-bold text-white shadow-[0_4px_10px_rgba(90,79,224,.28)]">
-          N
+    <aside className="sticky top-0 flex h-screen flex-col overflow-y-auto border-r border-line bg-white max-lg:hidden">
+      <div className="flex items-baseline gap-2 px-5 pb-5 pt-5 font-display text-[20px] font-light tracking-[.02em] text-ink">
+        nept<span className="-ml-2 text-[#c9a7a0]">e</span>o
+        <span className="rounded border border-line px-1.5 py-0.5 font-sans text-[8px] font-semibold uppercase tracking-[.13em] text-muted">
+          Growth
         </span>
-        Nepteo
       </div>
       <div className="mx-3.5 mb-3.5 rounded-[10px] border border-line bg-tint-soft px-3 py-[9px] text-[12.5px]">
         <b className="block truncate font-semibold text-ink">{orgName}</b>
@@ -45,27 +48,30 @@ export function Sidebar({
         )}
       </div>
 
-      <div className="pt-2" />
+      {canEdit && (
+        <Link
+          href="/contenu"
+          className="mx-3.5 mb-4 flex items-center justify-center gap-2 rounded-[9px] bg-[#8a232d] px-3 py-2.5 text-[12.5px] font-semibold text-white shadow-[0_6px_16px_rgba(138,35,45,.16)] transition hover:bg-[#741d25]"
+        >
+          {icons.sparkle}
+          Créer une story
+        </Link>
+      )}
       <CockpitNav canViewFinancials={canViewFinancials} />
 
       <div className="min-h-4 flex-1" />
 
       <WalkthroughSidebarLink />
 
-      <div className="mx-3.5 flex-none rounded-[13px] border border-line bg-tint-soft p-3.5">
+      <div className="mx-3.5 flex-none rounded-[10px] border border-line bg-tint-soft p-3">
         <div className="flex items-center gap-2">
           <span className="h-2 w-2 flex-none rounded-full bg-green" />
-          <h4 className="font-display text-[13px] font-semibold">
-            Agent Nepteo — mode sûr
+          <h4 className="font-display text-[12.5px] font-semibold">
+            Agent en mode sûr
           </h4>
         </div>
-        <p className="mt-1.5 text-[12px] leading-relaxed text-muted">
-          L&apos;agent prépare sous votre validation — aucun envoi externe. Réglez
-          l&apos;autonomie dans{" "}
-          <span className="font-semibold text-ink">
-            Mon entreprise → Agent
-          </span>
-          .
+        <p className="mt-1 text-[11.5px] leading-relaxed text-muted">
+          Il prépare. Vous validez avant tout envoi.
         </p>
       </div>
 

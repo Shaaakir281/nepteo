@@ -239,6 +239,8 @@ function emptyOperationalTables() {
     revenue_events: [],
     action_target_snapshots: [],
     action_target_snapshot_members: [],
+    creative_generation_requests: [],
+    creative_assets: [],
   };
 }
 
@@ -250,7 +252,7 @@ test("rebuild showcase — les postconditions exigent un socle neutre", () => {
     value_events: [{ id: "v1" }],
   };
   const before = {
-    schema_version: 21,
+    schema_version: 28,
     organization: {
       id: TARGET_ORGANIZATION_ID,
       name: TARGET_ORGANIZATION_NAME,
@@ -266,7 +268,7 @@ test("rebuild showcase — les postconditions exigent un socle neutre", () => {
     },
   };
   const after = {
-    schema_version: 21,
+    schema_version: 28,
     organization: { ...before.organization, activity: null },
     tables: {
       ...emptyOperationalTables(),

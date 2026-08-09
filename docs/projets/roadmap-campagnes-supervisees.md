@@ -1,10 +1,11 @@
 # Roadmap — Campagnes supervisées et intégrateurs
 
-> **Statut au 2026-08-08** : CAMP-0, CAMP-1 et le socle CAMP-2 sont
-> implémentés et validés dans le worktree local, sans publication ni migration
-> distante. Cette roadmap devient l'autorité du chantier Campagnes et reprend
-> les intégrateurs montrés dans `nepteo-growth-cockpit-v2.html` sans considérer
-> ses connexions, URLs, outils ou métriques comme réels.
+> **Statut au 2026-08-09** : CAMP-0, CAMP-1, CAMP-2, CONN-0, CONN-1 et
+> META-READ sont fusionnés dans `main`. Le projet Supabase lié est vérifié à la
+> version 27. Le worktree est aligné sur le dernier `origin/main` et le lot
+> créatif campagne-first y est implémenté localement, mais il n'est ni fusionné
+> dans `main`, ni déployé ; il ajoute `0028_creative_assets.sql`. Les états fusionné, migré, déployé et
+> recetté restent distincts.
 >
 > Elle ne remplace pas la
 > [roadmap valeur — tests commanditaires](roadmap-valeur-commanditaires.md) :
@@ -21,10 +22,10 @@ La première ligne d'arrivée Campagnes est la porte de la phase 4 :
 Le chemin minimal est :
 
 ```text
-CAMP-0 brief fiable et non-lancement                  livré localement
-  → CAMP-1 studio arbitrable                          livré localement
-  → CAMP-2 cockpit reproductible                      livré localement
-  → CAMP-3 un fournisseur Ads en lecture seule        à construire
+CAMP-0 brief fiable et non-lancement                  fusionné, recette en ligne à attester
+  → CAMP-1 studio arbitrable                          fusionné, recette en ligne à attester
+  → CAMP-2 cockpit reproductible                      fusionné, recette en ligne à attester
+  → CAMP-3 lecture Meta bornée                        socle fusionné, recette en ligne à attester
   → CAMP-4 pause réelle supervisée                    après preuve CAMP-3
   → CAMP-5 lancement mono-fournisseur contrôlé        ferme la phase 4
 ```
@@ -112,13 +113,13 @@ ouverte depuis un autre checkout est déclarée invalide et recréée depuis l'�
 correct ; Fathi n'a pas à retransmettre lui-même les fichiers déjà présents. Le
 lot n'est considéré comme lancé qu'après cette concordance.
 
-### Exception de rattrapage
+### Exception de rattrapage — état fusionné
 
-Le worktree actuel contient déjà CAMP-0, CAMP-1 et CAMP-2 avec les migrations
-séquentielles `0025`, `0026` et `0027`, et l'application exige la readiness 27.
-Ils forment donc une **release de rattrapage unique**. Après son éventuelle
-publication, Fathi joue séparément les parcours CAMP-0, CAMP-1 puis CAMP-2 avant
-que le chantier des intégrateurs commence.
+CAMP-0, CAMP-1 et CAMP-2 sont fusionnés dans `main` avec les migrations
+séquentielles `0025`, `0026` et `0027` ; le projet Supabase lié est vérifié à 27.
+Ils restent une **release de rattrapage unique à attester en ligne** : la fusion
+et la migration ne prouvent ni le déploiement de l'application ni les trois
+recettes. CONN-0, CONN-1 et META-READ ont depuis été fusionnés à leur tour.
 
 ## 3. Contrat commun de tout intégrateur
 
@@ -217,7 +218,7 @@ quand sa preuve est complète, mais peut contenir plusieurs étapes cohérentes 
 Les sous-étapes historiques restent des repères d'audit. Elles ne créent plus
 une publication autonome si le lot regroupé n'est pas entièrement vérifiable.
 
-### META-READ — lecture Meta Ads bornée (local, à publier)
+### META-READ — lecture Meta Ads bornée (fusionné dans `main` ; déploiement et recette à attester)
 
 - OAuth demande exclusivement `ads_read` ; le retour vérifie ce droit côté
   serveur avant de chiffrer le jeton ;
@@ -233,13 +234,12 @@ une publication autonome si le lot regroupé n'est pas entièrement vérifiable.
 - pause, révocation, rôles et verrou d'isolation démo sont ceux de CONN-1 ;
   aucun endpoint de mutation Meta Ads n'est introduit.
 
-### REL-0 — Release de rattrapage CAMP-0/1/2
+### REL-0 — Release de rattrapage CAMP-0/1/2 (fusionnée ; déploiement à attester)
 
-**But** : publier, après nouvelle autorisation, l'état local déjà validé.
+**But** : attester en ligne, après autorisation, l'état fusionné déjà validé localement.
 
 - réconcilier les documents et l'inventaire exact des fichiers ;
-- préparer les migrations `0025` à `0027` dans l'ordre ;
-- vérifier readiness 27 avant mutation applicative ;
+- vérifier les migrations `0025` à `0027` et la readiness 27 ;
 - déployer un seul artefact reproductible ;
 - ne lancer aucun appel IA payant ni appel Ads pendant le déploiement.
 
@@ -250,7 +250,7 @@ du journal. La procédure mobile détaillée est
 
 **Porte** : exactement les actions et journaux attendus, zéro effet externe.
 
-### CONN-0 — Catalogue honnête et registre de capacités
+### CONN-0 — Catalogue honnête et registre de capacités (fusionné ; déploiement à attester)
 
 **But** : rendre visibles les intégrateurs de la maquette sans inventer leur
 connexion.
@@ -276,7 +276,7 @@ mobile et l'absence de prétendue connexion.
 **Porte** : aucune catégorie ni proposition existante ne manque et aucune carte
 ne promet plus que l'état persistant vérifié.
 
-### CONN-1 — Noyau de connexion et de révocation
+### CONN-1 — Noyau de connexion et de révocation (fusionné ; déploiement à attester)
 
 **But** : partager seulement les primitives réellement communes.
 
@@ -515,10 +515,34 @@ Le MCP personnalisé ne signifie jamais « coller une URL et faire confiance ».
 - CAMP-9 : prévisions uniquement calibrées sur des campagnes closes ;
 - CAMP-10 : multi-canal, reporting consolidé et autonomie réversible.
 
-## 13. Prochain micro-lot recommandé
+## 13. Lot local à intégrer — CREATIVE-1
 
-Après la release de rattrapage et son test en ligne, commencer par
-**CONN-0 — Catalogue honnête et registre de capacités**. C'est un lot visible,
-sans secret, migration, fournisseur, coût ou effet externe. Il permet à Fathi de
-valider en ligne la traduction fidèle de la maquette avant toute connexion
-réelle.
+**But** : terminer une campagne avec un visuel fini sans confondre génération,
+publication et performance fournisseur.
+
+- conserver l'alignement déjà réalisé sur le dernier `main`, CAMP-0/1/2 ainsi
+  que CONN-0/1/META-READ ;
+- sélectionner une campagne récente par défaut et préremplir message et format ;
+- générer explicitement via `gpt-image-2`, sans appel automatique ;
+- stocker le JPEG dans un bucket privé, avec quotas, versions et sélection ;
+- valider campagne et visuel sélectionné dans la même transaction via
+  `transition_action_decision_v2` ;
+- permettre à une campagne approuvée sans visuel d'en finaliser un plus tard par
+  un choix explicite, toujours sans publication ;
+- libérer le verrou organisation pendant l'appel OpenAI et réconcilier par cron
+  tout chemin Storage pending abandonné ;
+- porter le schéma de 27 à 28 avec `0028_creative_assets.sql`.
+
+**Frontière** : aucun asset n'est publié chez Meta ou un autre fournisseur. Les
+créatifs ne sont pas injectés dans `ad_metrics` et ne constituent pas encore un
+audit de performance créative. Toute écriture Ads reste dans les lots ultérieurs.
+
+**Ordre de sortie** : commit/relecture puis intégration sur `main` → application
+de `0028` sur une base Supabase de staging/recette distincte déjà à 27 → preuves
+réelles RLS/JWT, concurrence, bucket privé, pending/cron, validation atomique et
+recette croisée Story + Connecteurs → autorisation explicite → application de
+`0028` en production → preuve du schéma 28 → déploiement de l'application
+exigeant 28 → recette de production. La production ne constitue jamais la
+première exécution de `0028`. Si une
+migration parallèle prend entre-temps le numéro 28, renuméroter ce lot avant
+fusion.

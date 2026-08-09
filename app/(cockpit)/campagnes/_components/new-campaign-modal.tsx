@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useId, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useDialogFocus } from "@/components/ui/use-dialog-focus";
 import {
@@ -35,6 +36,7 @@ export function NewCampaignModal() {
   const [submitting, setSubmitting] = useState(false);
   const [researching, setResearching] = useState(false);
   const [done, setDone] = useState<"created" | "duplicate" | null>(null);
+  const [actionId, setActionId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -50,6 +52,7 @@ export function NewCampaignModal() {
     setSubmitting(false);
     setResearching(false);
     setDone(null);
+    setActionId(null);
     setMessage(null);
   }, []);
 
@@ -125,6 +128,7 @@ export function NewCampaignModal() {
         requestKey,
       );
       if (result.ok) {
+        setActionId(result.actionId);
         setDone(result.duplicate ? "duplicate" : "created");
         router.refresh();
         return;
@@ -193,7 +197,11 @@ export function NewCampaignModal() {
 
             <div className="max-h-[68vh] overflow-y-auto px-6 py-5">
               {done ? (
-                <DoneState duplicate={done === "duplicate"} />
+                <DoneState
+                  duplicate={done === "duplicate"}
+                  actionId={actionId}
+                  onClose={close}
+                />
               ) : step === 1 ? (
                 <CampaignBriefForm
                   draft={draft}
@@ -337,7 +345,15 @@ function BuildingState() {
   );
 }
 
-function DoneState({ duplicate }: { duplicate: boolean }) {
+function DoneState({
+  duplicate,
+  actionId,
+  onClose,
+}: {
+  duplicate: boolean;
+  actionId: string | null;
+  onClose: () => void;
+}) {
   return (
     <div className="py-8 text-center">
       <p className="text-[15px] font-semibold text-ink">
@@ -348,6 +364,22 @@ function DoneState({ duplicate }: { duplicate: boolean }) {
         valider » sur Aujourd&apos;hui. Aucune campagne, publication ou dépense
         n&apos;a été lancée.
       </p>
+      {actionId && (
+        <Link
+          href={`/contenu?campagne=${actionId}`}
+          onClick={onClose}
+          className="mx-auto mt-5 inline-flex rounded-[10px] bg-[#8a232d] px-5 py-2.5 text-[13px] font-semibold text-white transition hover:bg-[#741d25]"
+        >
+          Créer le visuel de cette campagne
+        </Link>
+      )}
+      <button
+        type="button"
+        onClick={onClose}
+        className="mx-auto mt-3 block text-[12px] font-semibold text-muted hover:text-ink"
+      >
+        Le faire plus tard
+      </button>
     </div>
   );
 }

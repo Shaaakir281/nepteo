@@ -1,6 +1,6 @@
 # Projet — Génération de contenu fini par l'IA (le solopreneur n'a besoin de personne)
 
-> **Statut** : cadré, non commencé. Idée de Fathi (2026-07-23).
+> **Statut** : le worktree est aligné sur le dernier `origin/main` ; campagne → Story/Post versionné → validation atomique y est implémentée localement, mais le lot n'est ni fusionné dans `main`, ni déployé (2026-08-09).
 > **Cible** : le **solopreneur** — objectif « outil magique, plus besoin de personne ».
 
 ## Pourquoi
@@ -37,21 +37,33 @@ Entre le **brief** et le **lancement**, il y a une étape de **production** : le
 
 ## Roadmap (étapes)
 
-1. **1 visuel depuis le brief** (Contenu) — proposition + régénérer + valider.
-2. **Variantes & formats par canal**.
-3. **Créatif fini attaché à « Nouvelle campagne »** (texte + visuel) → prêt à lancer.
+1. **Fait — 1 visuel depuis le brief** (Contenu) — proposition + régénérer + valider.
+2. **Partiel — versions et formats Story/carré/paysage faits** ; variantes créatives sémantiques et conversationnelles encore à construire.
+3. **Fait — créatif fini attaché à « Nouvelle campagne »** (texte + visuel), avec validation commune.
 4. **(Backlog) Vidéo** via générateur.
 
 ## Porte / critère de succès
 
 Un solopreneur peut, depuis un objectif, obtenir un **créatif fini (texte + visuel)** qu'il valide et pourrait publier — **sans faire appel à personne**. Le seul geste manuel restant : valider (et, tant que le lancement réel n'est pas branché, publier lui-même ou via le futur lancement API).
 
-## Questions ouvertes
+## Décisions implémentées
 
-- Quelle API image par défaut (OpenAI) et quels garde-fous de coût ?
-- Génère-t-on le visuel **à la demande** (bouton) ou **automatiquement** avec le brief ?
-- Formats : lesquels prioriser (Meta feed/story, LinkedIn) ?
+- **Déclenchement à la demande** : aucun appel image automatique lors de la création d'une campagne.
+- **Fournisseur par défaut** : OpenAI `gpt-image-2`, exclusivement côté serveur.
+- **Formats** : Story 9:16 recommandée pour Meta ; carré et paysage disponibles.
+- **Point de départ** : une campagne récente est sélectionnée et préremplit message et format ; la création libre reste possible mais secondaire.
+- **Coûts bornés** : réservation avant appel payant, vingt tentatives par organisation/jour ; cinq réservations actives ou réussies bornent les versions d'une campagne, tandis qu'un échec libère sa place de campagne sans effacer son coût quotidien.
+
+## Coordination avec les connecteurs
+
+CONN-0, CONN-1 et META-READ sont déjà fusionnés dans `main` et ne créent aucune migration après `0027`. Ils réutilisent `connectors`, `journal`, `ad_metrics` et `connectors.config` sans toucher aux tables créatives. `0028_creative_assets.sql` reste donc compatible avec l'état actuel et le Supabase lié vérifié à la version 27.
+
+L'intégration Git a été rejouée sur les versions CAMP-0/1/2 et Connecteurs du dernier `main` dans la branche de préparation. Les ajouts de journal, de variables d'environnement, de readiness et d'écrans Campagnes sont cumulés. Le numéro `0028` doit encore être recontrôlé juste avant fusion si un nouveau chantier parallèle ajoute une migration.
+
+Les assets créatifs ne prouvent pas encore la performance d'une publicité : ils n'alimentent ni `ad_metrics` ni l'audit créatif Meta et ne sont publiés chez aucun fournisseur.
 
 ## Suivi (journal des sessions)
 
 - **2026-07-23** — Idée cadrée avec Fathi (solopreneur, OpenAI images OK, vidéo en option plus tard), document créé. Rien codé. À reprendre à froid.
+- **2026-08-09** — Studio visuel livré sur `/contenu` : une campagne récente est sélectionnée par défaut, son message et le format recommandé sont préremplis (Story pour Meta, paysage ailleurs), avec accès direct depuis la création et la validation de campagne. La génération `gpt-image-2`, l’aperçu avec texte net côté application, le téléchargement et le journal rattaché à l’action campagne sont prêts. Les variantes conversationnelles restent à faire.
+- **2026-08-09** — Persistance ajoutée : bucket privé, métadonnées versionnées et paginées, sélection d’une version, miniature dans la validation et approbation atomique campagne + visuel quand une version est déjà retenue. Une campagne approuvée sans visuel peut encore en créer puis en valider un explicitement. L'appel OpenAI ne garde pas le verrou organisation ; le chemin pending et le cron permettent de nettoyer un upload abandonné après claim SQL sous verrou, relecture d'absence d'asset et confirmation par token. Quotas réservés avant l’appel payant : 20 tentatives par organisation/jour pour le coût, 5 réservations actives ou réussies par campagne pour les versions ; un échec libère la place de campagne. Smoke test réel `gpt-image-2` réussi en 32,4 s (JPEG Story valide). Le Supabase lié est déjà à 27 ; `0028_creative_assets.sql` n'a pas été appliquée et reste conditionnée au contrôle final du numéro puis à une première exécution sur une base de staging/recette distincte, avec preuves RLS/JWT, concurrence, Storage et recette croisée. La production exige ensuite une autorisation explicite.

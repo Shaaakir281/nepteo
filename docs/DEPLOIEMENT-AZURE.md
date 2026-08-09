@@ -12,11 +12,12 @@ images dans ACR, région UE et GitHub Actions en OIDC.
 > Healthy/Provisioned/RunningAtMaxScale, image
 > `nepteoacr27de3b.azurecr.io/nepteo:704efabd80de434ea2619cd993ae87427c114838`,
 > digest `sha256:fe6cafbe991c45952262e33be965e4ba09239ff421a86dce80231117a3504425`.
-> Supabase production porte les migrations `0012` à `0021` et
-> `app_schema_version = 21`. REL-0 reste local et exige `0022` à `0027`, donc
-> `app_schema_version = 27`, avant toute publication. Le workflow ne lance
-> aucune migration : leur application manuelle reste un préalable obligatoire à
-> tout code qui les exige.
+> La release applicative historiquement attestée utilisait
+> `app_schema_version = 21`. Le projet Supabase lié a depuis été vérifié à 27,
+> sans que cela atteste le déploiement des lots fusionnés dans `main`. Le lot
+> créatif local ajoute `0028`, non appliquée, et exige
+> `app_schema_version = 28` avant sa publication. Le workflow ne lance aucune
+> migration : leur application manuelle reste un préalable obligatoire.
 >
 > **Historique — ne pas confondre avec la release courante** : la PR #16 a été
 > attestée sur `nepteo-prod--0000010`, au merge
@@ -193,7 +194,8 @@ publiques par nature et sont injectées au build Next.js **et** au runtime.
 | `SUPABASE_SERVICE_ROLE_KEY` | serveur uniquement |
 | `CONNECTOR_TOKEN_ENCRYPTION_KEY` | 32 octets base64 ; ne plus la faire tourner après connexion de connecteurs |
 | `CRON_SECRET` | aléatoire, même si le cron reste désactivé au départ |
-| `OPENAI_API_KEY` et/ou `ANTHROPIC_API_KEY` | au moins une clé correspondant aux modèles configurés |
+| `OPENAI_API_KEY` | obligatoire pour cette release : génération Story côté serveur |
+| `ANTHROPIC_API_KEY` | obligatoire seulement si un modèle Anthropic est configuré pour le texte |
 
 ### Configuration optionnelle
 
@@ -201,6 +203,7 @@ Variables :
 
 - `GOOGLE_OAUTH_CLIENT_ID`, `NOTION_OAUTH_CLIENT_ID` ;
 - `RESEARCH_PROVIDER`, `RESEARCH_OPENAI_MODEL`, `PERPLEXITY_PRESET` ;
+- `OPENAI_IMAGE_MODEL` — propagé au runtime ; absent = `gpt-image-2` ;
 - `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_BASE_URL` ;
 - les overrides `LLM_TASK_*` listés dans `.env.example`.
 
@@ -253,9 +256,16 @@ OAuth doivent utiliser le domaine principal.
 
 ### Préalable Supabase
 
-Appliquer manuellement toutes les migrations dans l'ordre. Pour une base de
-production actuellement à `21`, REL-0 impose `0022` à `0027` sans en sauter,
-dans cet ordre. Contrôler ensuite avec le service role :
+Appliquer manuellement toutes les migrations dans l'ordre. Depuis une base à
+`21`, le lot intégré impose `0022` à `0028` sans en sauter. Le projet lié étant
+déjà vérifié à `27`, le lot créatif n'ajoute que `0028`, après avoir recontrôlé
+qu'aucune migration parallèle n'a pris ce numéro. Exécuter impérativement
+`0028` d'abord sur une base Supabase de staging/recette distincte au schéma 27.
+Y valider RLS/JWT, quotas et accès concurrents, bucket privé, réconciliation
+pending/cron et validation atomique campagne + visuel. La production ne doit
+jamais constituer la première exécution de `0028` ; son application reste une
+opération séparée soumise à autorisation explicite. Contrôler ensuite avec le
+service role :
 
 ```sql
 select version
@@ -263,11 +273,26 @@ from public.app_schema_version
 where id = 1;
 ```
 
-La valeur doit être au moins `27` pour REL-0. `0016` introduit ce marqueur et
-les migrations ultérieures le font progresser ; `0025` crée les propositions
-Campagnes atomiques, `0026` le studio, puis `0027` le cockpit et le cycle de
-décision. `0025` exige le schéma 24, `0026` le 25 et `0027` le 26. Ne jamais
+La valeur doit être au moins `28` pour le lot créatif. `0016` introduit ce
+marqueur ; `0025` crée les propositions Campagnes atomiques, `0026` le studio,
+`0027` le cockpit et le cycle de décision, puis `0028` ajoute le bucket privé,
+les quotas, les versions et la validation atomique campagne + visuel. Ne jamais
 modifier le marqueur à la main pour contourner une migration absente.
+
+Le bucket contient des objets hors des tables PostgreSQL. Avant toute suppression
+d'organisation ou de métadonnées créatives, supprimer explicitement les objets
+`campaign-creatives` concernés avec le service role, puis les lignes SQL. Les
+clés étrangères de `0028` bloquent volontairement une cascade qui laisserait des
+JPEG orphelins.
+
+Le cron quotidien appelle aussi la réconciliation créative. Vérifier dans sa
+réponse `creative_storage_retention` : un upload interrompu conserve d'abord son
+chemin pending, puis le cron supprime l'objet et remet ce chemin à `null`. Un
+échec non nul reste un incident Storage à traiter avant de supprimer les lignes.
+Tout le travail encore possible est exécuté, puis la route renvoie 503 si une
+rétention, la lecture ou la synchronisation d'un connecteur, ou l'analyse
+post-sync a échoué. Le workflow planifié passe ainsi au rouge au lieu de masquer
+l'incident, tout en conservant les résultats détaillés dans la réponse.
 
 Le workflow `.github/workflows/deploy.yml` est volontairement
 `workflow_dispatch` uniquement pour le premier déploiement :
@@ -282,7 +307,7 @@ Le job :
 1. compare la saisie à `AZURE_SUBSCRIPTION_ID` ;
 2. se connecte par OIDC ;
 3. revalide en lecture seule souscription, tenant et région ;
-4. vérifie que Supabase est joignable et que `app_schema_version >= 27` ;
+4. vérifie que Supabase est joignable et que `app_schema_version >= 28` ;
 5. seulement alors, construit l’image Node 22 dans ACR, taguée avec le SHA Git ;
 6. configure secrets et variables runtime ;
 7. déploie une révision Container Apps ;
@@ -372,6 +397,12 @@ Le test public automatique ne remplace pas ce parcours authentifié :
    - clé du fournisseur sélectionné à `true` ;
    - fournisseur de recherche attendu ou `null` s’il est volontairement
      désactivé.
+8. préparer une campagne, ouvrir la Story préremplie, générer deux versions,
+   en sélectionner une puis approuver ; vérifier le journal, la miniature et
+   l'absence de publication fournisseur ;
+9. recetter ensuite les connecteurs : Google Sheets/Notion, pause/reprise/
+   révocation, puis lecture Meta bornée sans écriture Ads ni alimentation
+   implicite de `ad_metrics`.
 
 Ne lancer `POST /api/llm/status` que si un ping LLM facturé est souhaité.
 
@@ -384,5 +415,5 @@ Ne lancer `POST /api/llm/status` que si un ping LLM facturé est souhaité.
 - la révision est en région `AZURE_LOCATION` ;
 - les URLs Supabase et OAuth utilisent exactement le domaine de production ;
 - `CONNECTOR_TOKEN_ENCRYPTION_KEY` est sauvegardée durablement ;
-- `app_schema_version.version >= 27` ;
+- `app_schema_version.version >= 28` pour le lot créatif ;
 - `/api/health` et `/api/ready` répondent tous deux 200.

@@ -6,9 +6,8 @@ Une phase = un objectif unique + une porte go/no-go. On ne passe pas la porte, o
 
 > **Chantier transverse — prise en main** : le parcours guidé est piloté par sa
 > [roadmap dédiée](projets/roadmap-prise-en-main.md), distincte de la roadmap
-> valeur. Au 2026-08-03, une intégration locale est autorisée ; ses critères de
-> compréhension terrain restent ouverts et aucun push, fusion ou déploiement
-> n’est implicite.
+> valeur. Il est fusionné dans `main` ; ses critères de compréhension terrain,
+> son déploiement et sa recette restent des preuves séparées à consigner.
 
 ## Phase 1 — Fondations (lecture seule)
 
@@ -42,9 +41,9 @@ Livrables : 1 ou 2 types d'action réels (ex. email de relance), idempotence + j
 
 **Objectif** : préparer puis superviser une première campagne complète (brief → proposition → validation → lecture fournisseur → action bornée).
 
-Livrables : modal nouvelle campagne, variantes de messages, typologie (acquisition, retargeting, conversion, nurturing, réactivation…), génération de contenus texte, cockpit fondé sur des faits inspectables, puis un fournisseur Ads pilote en lecture avant toute écriture.
+Livrables : modal nouvelle campagne, variantes de messages, typologie (acquisition, retargeting, conversion, nurturing, réactivation…), génération de contenus texte et d'un visuel Story/carré/paysage rattaché à la campagne, cockpit fondé sur des faits inspectables, puis un fournisseur Ads pilote en lecture avant toute écriture. Le visuel est implémenté localement via `0028`, sans publication fournisseur.
 
-Le détail exécutable, les micro-lots CAMP-0 à CAMP-10 et le backlog des intégrateurs visibles dans la maquette sont définis dans la [roadmap Campagnes supervisées et intégrateurs](projets/roadmap-campagnes-supervisees.md). CAMP-0, CAMP-1 et le socle CAMP-2 sont validés localement ; CAMP-3 à CAMP-5 restent nécessaires pour franchir la porte. Chaque intégrateur suit `contrat → connexion → lecture → vérité UI` avant une permission d'écriture séparée.
+Le détail exécutable, les micro-lots CAMP-0 à CAMP-10 et le backlog des intégrateurs visibles dans la maquette sont définis dans la [roadmap Campagnes supervisées et intégrateurs](projets/roadmap-campagnes-supervisees.md). CAMP-0, CAMP-1 et le socle CAMP-2 sont fusionnés dans `main`, mais leur déploiement et leur recette en ligne restent à attester ; CAMP-3 à CAMP-5 restent nécessaires pour franchir la porte. Chaque intégrateur suit `contrat → connexion → lecture → vérité UI` avant une permission d'écriture séparée.
 
 **Porte** : une campagne proposée par l'agent est validée, lancée sur un fournisseur pilote et mesurée avec un statut et un coût vérifiables des deux côtés.
 
@@ -65,4 +64,4 @@ Tous les canaux, les deux écosystèmes email en parallèle, attribution complex
 Deux features ont été cadrées avec Fathi (2026-07-23), chacune avec son document projet. **Cible commune : le solopreneur**. **Contrainte : rester très simple, garder les formulaires existants, ne rien perdre.**
 
 - **Onboarding enrichi par IA — partiellement livré** : philosophie, ingestion de page web, identité synthétisée et diagnostic initial. Les réseaux restent en backlog. Voir `docs/projets/onboarding-ia.md`.
-- **Génération de contenu fini par l'IA — non commencée** : génération du visuel, puis vidéo éventuelle plus tard. Voir `docs/projets/generation-creative-ia.md`.
+- **Génération de contenu fini par l'IA — implémentée localement, intégration et déploiement en attente** : Story/carré/paysage versionnés et liés à la campagne ; vidéo et variantes conversationnelles plus tard. Voir `docs/projets/generation-creative-ia.md`.
