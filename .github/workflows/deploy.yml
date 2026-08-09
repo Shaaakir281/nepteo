@@ -43,6 +43,7 @@ jobs:
         env:
           REQUESTED_SUBSCRIPTION_ID: ${{ inputs.target_subscription_id }}
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          APP_URL: ${{ vars.APP_URL }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -79,7 +80,7 @@ jobs:
           required=(
             REQUESTED_SUBSCRIPTION_ID EXPECTED_SUBSCRIPTION_ID EXPECTED_TENANT_ID
             AZURE_CLIENT_ID ACR_NAME IMAGE_NAME RESOURCE_GROUP CONTAINER_APP
-            AZURE_LOCATION NEXT_PUBLIC_SUPABASE_URL
+            AZURE_LOCATION APP_URL NEXT_PUBLIC_SUPABASE_URL
             NEXT_PUBLIC_SUPABASE_ANON_KEY SUPABASE_SERVICE_ROLE_KEY
             CONNECTOR_TOKEN_ENCRYPTION_KEY CRON_SECRET
             LLM_MODEL LLM_MODEL_LIGHT LLM_MODEL_PREMIUM
@@ -90,6 +91,11 @@ jobs:
               exit 1
             fi
           done
+
+          if [[ ! "$APP_URL" =~ ^https://[^/?#]+/?$ ]]; then
+            echo "::error::APP_URL must be a public HTTPS origin without a path, query or fragment."
+            exit 1
+          fi
 
           if [[ "${REQUESTED_SUBSCRIPTION_ID,,}" != "${EXPECTED_SUBSCRIPTION_ID,,}" ]]; then
             echo "::error::The manually confirmed subscription does not match AZURE_SUBSCRIPTION_ID."
@@ -351,6 +357,7 @@ jobs:
       - name: Deploy image and runtime environment
         shell: bash
         env:
+          APP_URL: ${{ vars.APP_URL }}
           NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           LLM_MODEL: ${{ vars.LLM_MODEL }}
@@ -385,6 +392,7 @@ jobs:
           set -euo pipefail
 
           runtime_env=(
+            "APP_URL=$APP_URL"
             "NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL"
             "NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY"
             "SUPABASE_SERVICE_ROLE_KEY=secretref:supabase-service-role-key"

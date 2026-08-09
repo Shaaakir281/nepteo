@@ -171,14 +171,17 @@ de protection.
 | `RESOURCE_GROUP` | `nepteo-prod-rg` |
 | `CONTAINER_APP` | `nepteo-prod` |
 | `AZURE_LOCATION` | `francecentral` |
+| `APP_URL` | `https://nepteo.bogasolution.com` |
 | `NEXT_PUBLIC_SUPABASE_URL` | `https://….supabase.co` |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | clé publishable/anon |
 | `LLM_MODEL` | `openai:gpt-5.4` ou modèle choisi |
 | `LLM_MODEL_LIGHT` | modèle choisi |
 | `LLM_MODEL_PREMIUM` | modèle choisi |
 
-Les deux variables `NEXT_PUBLIC_*` sont publiques par nature et sont injectées
-au build Next.js **et** au runtime.
+`APP_URL` est l'origine publique utilisée pour les liens d'authentification ;
+elle est obligatoire en production afin qu'un proxy ne puisse pas injecter
+l'adresse interne du conteneur. Les deux variables `NEXT_PUBLIC_*` sont
+publiques par nature et sont injectées au build Next.js **et** au runtime.
 
 ### Secrets obligatoires
 
