@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { buildConfirmationRedirectUrl } from "@/lib/auth/confirmation-url";
 import { createClient } from "@/lib/supabase/server";
 
 /**
@@ -30,8 +31,18 @@ function fail(path: string, message: string): never {
 }
 
 async function confirmationRedirectUrl(): Promise<string> {
-  const origin = (await headers()).get("origin") ?? "http://localhost:3000";
-  return `${origin}/auth/confirm`;
+  try {
+    return buildConfirmationRedirectUrl({
+      appUrl: process.env.APP_URL,
+      requestOrigin: (await headers()).get("origin"),
+      isProduction: process.env.NODE_ENV === "production",
+    });
+  } catch {
+    fail(
+      "/signup",
+      "L'inscription est momentanément indisponible. Préviens l'équipe Nepteo.",
+    );
+  }
 }
 
 function emailDeliveryError(code: string | undefined): string {
