@@ -13,10 +13,10 @@ images dans ACR, région UE et GitHub Actions en OIDC.
 > `nepteoacr27de3b.azurecr.io/nepteo:704efabd80de434ea2619cd993ae87427c114838`,
 > digest `sha256:fe6cafbe991c45952262e33be965e4ba09239ff421a86dce80231117a3504425`.
 > La release applicative historiquement attestée utilisait
-> `app_schema_version = 21`. Le projet Supabase lié a depuis été vérifié à 27,
-> sans que cela atteste le déploiement des lots fusionnés dans `main`. Le lot
-> créatif local ajoute `0028`, non appliquée, et exige
-> `app_schema_version = 28` avant sa publication. Le workflow ne lance aucune
+> `app_schema_version = 21`. Le projet Supabase lié `hrqnzorapjnosjphftur` est
+> désormais vérifié à 28, avec les tables, le bucket privé et les cinq RPC de
+> `0028`, sans que cela atteste le déploiement des lots fusionnés dans `main` ni
+> les smokes RLS/concurrence/Storage. Le workflow ne lance aucune
 > migration : leur application manuelle reste un préalable obligatoire.
 >
 > **Historique — ne pas confondre avec la release courante** : la PR #16 a été
@@ -257,10 +257,10 @@ OAuth doivent utiliser le domaine principal.
 ### Préalable Supabase
 
 Appliquer manuellement toutes les migrations dans l'ordre. Depuis une base à
-`21`, le lot intégré impose `0022` à `0028` sans en sauter. Le projet lié étant
-déjà vérifié à `27`, le lot créatif n'ajoute que `0028`, après avoir recontrôlé
-qu'aucune migration parallèle n'a pris ce numéro. Exécuter impérativement
-`0028` d'abord sur une base Supabase de staging/recette distincte au schéma 27.
+`21`, le lot intégré impose `0022` à `0028` sans en sauter. Le projet lié est
+déjà vérifié à `28` : ne pas rejouer `0028`. Sur tout autre environnement encore
+à 27, exécuter impérativement `0028` d'abord sur une base Supabase de
+staging/recette distincte.
 Y valider RLS/JWT, quotas et accès concurrents, bucket privé, réconciliation
 pending/cron et validation atomique campagne + visuel. La production ne doit
 jamais constituer la première exécution de `0028` ; son application reste une

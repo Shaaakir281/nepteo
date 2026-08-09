@@ -66,9 +66,10 @@ Jeu de données : `docs/tests/prospects-test.csv` (24 prospects, 5 sans email, s
 > `nepteoacr27de3b.azurecr.io/nepteo:704efabd80de434ea2619cd993ae87427c114838`,
 > digest `sha256:fe6cafbe991c45952262e33be965e4ba09239ff421a86dce80231117a3504425`,
 > état Healthy/Provisioned/RunningAtMaxScale. Cette release applicative reste
-> l'attestation historique au schéma 21. Le projet Supabase lié est désormais
-> vérifié à 27, sans preuve implicite de déploiement applicatif ; le lot créatif
-> local exige `0028` et la preuve `app_schema_version = 28`.
+> l'attestation historique au schéma 21. Le projet Supabase lié
+> `hrqnzorapjnosjphftur` est désormais vérifié à 28, avec tables, bucket privé et
+> cinq RPC créatives visibles ; cette lecture ne prouve ni le déploiement
+> applicatif, ni les RLS JWT, ni la concurrence ou les effets Storage réels.
 
 ### Deux voies de données, jamais mélangées
 

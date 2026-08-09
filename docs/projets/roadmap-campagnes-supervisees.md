@@ -2,7 +2,8 @@
 
 > **Statut au 2026-08-09** : CAMP-0, CAMP-1, CAMP-2, CONN-0, CONN-1 et
 > META-READ sont fusionnés dans `main`. Le projet Supabase lié est vérifié à la
-> version 27. Le worktree est aligné sur le dernier `origin/main` et le lot
+> version 28 après `0028`, avec tables, bucket privé et cinq RPC visibles. Le
+> worktree est aligné sur le dernier `origin/main` et le lot
 > créatif campagne-first y est implémenté localement, mais il n'est ni fusionné
 > dans `main`, ni déployé ; il ajoute `0028_creative_assets.sql`. Les états fusionné, migré, déployé et
 > recetté restent distincts.
@@ -116,7 +117,8 @@ lot n'est considéré comme lancé qu'après cette concordance.
 ### Exception de rattrapage — état fusionné
 
 CAMP-0, CAMP-1 et CAMP-2 sont fusionnés dans `main` avec les migrations
-séquentielles `0025`, `0026` et `0027` ; le projet Supabase lié est vérifié à 27.
+séquentielles `0025`, `0026` et `0027` ; le projet Supabase lié est désormais
+vérifié à 28 après l'ajout créatif `0028`.
 Ils restent une **release de rattrapage unique à attester en ligne** : la fusion
 et la migration ne prouvent ni le déploiement de l'application ni les trois
 recettes. CONN-0, CONN-1 et META-READ ont depuis été fusionnés à leur tour.
@@ -537,12 +539,10 @@ publication et performance fournisseur.
 créatifs ne sont pas injectés dans `ad_metrics` et ne constituent pas encore un
 audit de performance créative. Toute écriture Ads reste dans les lots ultérieurs.
 
-**Ordre de sortie** : commit/relecture puis intégration sur `main` → application
-de `0028` sur une base Supabase de staging/recette distincte déjà à 27 → preuves
-réelles RLS/JWT, concurrence, bucket privé, pending/cron, validation atomique et
-recette croisée Story + Connecteurs → autorisation explicite → application de
-`0028` en production → preuve du schéma 28 → déploiement de l'application
-exigeant 28 → recette de production. La production ne constitue jamais la
-première exécution de `0028`. Si une
-migration parallèle prend entre-temps le numéro 28, renuméroter ce lot avant
-fusion.
+**Ordre de sortie actualisé** : le projet lié est déjà vérifié au schéma 28 →
+attester une recette distincte et y jouer réellement RLS/JWT, concurrence,
+bucket privé, pending/cron, validation atomique et Story + Connecteurs →
+commit/relecture puis intégration sur `main` → déploiement de l'application
+exigeant 28 → recette de production. `0028` est désormais verrouillée ; toute
+nouvelle migration commence à `0029` ou au numéro supérieur présent dans
+`main`.
