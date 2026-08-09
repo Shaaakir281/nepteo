@@ -35,7 +35,7 @@ Jeu de données : `docs/tests/prospects-test.csv` (24 prospects, 5 sans email, s
    having count(*) > 1;
    ```
 
-   Si la requête renvoie une ligne, arrêter et arbitrer explicitement les memberships concernés. `0013` échoue volontairement sans modifier les données ; ne pas supprimer automatiquement une appartenance. Après `0015`, exécuter le [smoke authentifié/RLS](tests/SMOKE-AUTH-RLS.md), puis compléter par une recette manuelle du rôle commercial ; le smoke automatisé actuel couvre le rôle lecture. `0016` crée le marqueur de readiness après avoir vérifié les prérequis critiques ; les migrations suivantes le portent progressivement à 28. Depuis une base à 21, respecter `0022 → 0023 → 0024 → 0025 → 0026 → 0027 → 0028`. Le lot créatif local n'ajoute que `0028` après contrôle du numéro, mais cette migration doit d'abord être appliquée sur une base Supabase de staging/recette distincte déjà à 27. La production ne doit jamais constituer sa première exécution et son application exige une autorisation explicite. (« Success. No rows returned » est normal pour une migration de schéma.)
+   Si la requête renvoie une ligne, arrêter et arbitrer explicitement les memberships concernés. `0013` échoue volontairement sans modifier les données ; ne pas supprimer automatiquement une appartenance. Après `0015`, exécuter le [smoke authentifié/RLS](tests/SMOKE-AUTH-RLS.md), puis compléter par une recette manuelle du rôle commercial ; le smoke automatisé actuel couvre le rôle lecture. `0016` crée le marqueur de readiness après avoir vérifié les prérequis critiques ; les migrations suivantes le portent progressivement à 28. Depuis une base à 21, respecter `0022 → 0023 → 0024 → 0025 → 0026 → 0027 → 0028`. Le projet lié est déjà à 28 : ne jamais rejouer `0028`. Toute nouvelle base doit recevoir la migration d'abord en staging/recette, dans l'ordre, avant une promotion explicitement autorisée. (« Success. No rows returned » est normal pour une migration de schéma.)
 2. **`CONNECTOR_TOKEN_ENCRYPTION_KEY` et `CRON_SECRET`** : ces clés ne se « trouvent » nulle part — **c'est toi qui les fabriques**. Ouvre PowerShell et lance **deux fois** :
 
    ```powershell
@@ -56,20 +56,15 @@ Jeu de données : `docs/tests/prospects-test.csv` (24 prospects, 5 sans email, s
    Pour cette release, `OPENAI_API_KEY` est obligatoire dans l'environnement de déploiement afin d'activer la Story. `OPENAI_IMAGE_MODEL` est facultative, propagée au runtime et vaut `gpt-image-2` par défaut. L'analyse utilise la tâche `recommend_action` → niveau premium, d'où les trois lignes `LLM_MODEL*`. Sans clé de texte compatible, l'analyse retombe sur ses templates, mais la génération d'image ne dispose pas de ce repli.
 4. Redémarrer `npm run dev` après toute modif d'env.
 
-> **État au 31 juillet 2026 — release courante attestée** : la PR #17 est
-> fusionnée dans `main` au SHA `704efabd80de434ea2619cd993ae87427c114838`.
-> Sa CI `30620564365` est verte sur le head
-> `28781aad52564f02fcee1c0dda4b5ee5291836b8` ; la CI `main` `30620691704`
-> et le déploiement `30620812901` sont verts. La révision
-> `nepteo-prod--0000011`, latest et ready, sert à 100 %, avec une réplique,
-> l'image
-> `nepteoacr27de3b.azurecr.io/nepteo:704efabd80de434ea2619cd993ae87427c114838`,
-> digest `sha256:fe6cafbe991c45952262e33be965e4ba09239ff421a86dce80231117a3504425`,
-> état Healthy/Provisioned/RunningAtMaxScale. Cette release applicative reste
-> l'attestation historique au schéma 21. Le projet Supabase lié
-> `hrqnzorapjnosjphftur` est désormais vérifié à 28, avec tables, bucket privé et
-> cinq RPC créatives visibles ; cette lecture ne prouve ni le déploiement
-> applicatif, ni les RLS JWT, ni la concurrence ou les effets Storage réels.
+> **État au 9 août 2026 — release courante attestée** : la PR #29 est fusionnée
+> dans `main` au SHA `c5e7148ad62908a52536f6b2b52fd32ed0c357c0` après la CI
+> `31332578671`. Le déploiement `31332676182` est vert et la révision
+> `nepteo-prod--0000022`, latest et ready, sert 100 % du trafic avec l'image
+> `nepteoacr27de3b.azurecr.io/nepteo:c5e7148ad62908a52536f6b2b52fd32ed0c357c0`.
+> Supabase et l'application sont alignés sur le schéma 28. La recette Story
+> authentifiée, le JWT/RLS positif et négatif et le Storage privé signé sont
+> attestés ; la concurrence et l'isolation inter-tenant complètes restent des
+> recettes séparées.
 
 ### Deux voies de données, jamais mélangées
 
@@ -80,7 +75,7 @@ Choisir exactement une voie par organisation :
 
 Les événements `is_demo = true` de la voie A sont toujours exclus des gates terrain. Un scénario actif doit bloquer OAuth, synchronisation et import ; aucun test ne doit superposer une feuille ou un CSV au scénario.
 
-### Contrat PR #17 attesté en production
+### Historique — contrat PR #17 attesté en production
 
 La release courante inclut ce contrat et sa preuve de production :
 
@@ -120,12 +115,11 @@ npm run lint
 npm run build
 ```
 
-Passage de référence de la release actuelle : **385/385 tests**, typecheck,
-lint et build verts, **24 pages/routes** générées et aucun défaut P1 ou P2 lors
-de la relecture finale. PR #17 est fusionnée au SHA
-`704efabd80de434ea2619cd993ae87427c114838`, avec la CI de PR `30620564365`
-verte sur le head `28781aad52564f02fcee1c0dda4b5ee5291836b8`, la CI de `main`
-`30620691704` verte, puis le déploiement `30620812901` vert.
+Passage de référence de la release actuelle : **571/571 tests**, typecheck,
+lint et build verts, **29 pages/routes** générées et aucun défaut P1 ou P2 lors
+de la relecture finale. PR #29 est fusionnée au SHA
+`c5e7148ad62908a52536f6b2b52fd32ed0c357c0`, avec la CI de PR `31332578671`
+verte, puis le déploiement `31332676182` vert.
 
 **Historique — lot livré jusqu'à la PR #11** : **341/341 tests**, lint,
 typecheck et build Next.js 16.2.10 verts ; **23 pages/routes** générées.
@@ -134,7 +128,7 @@ Les tests couvrent notamment :
 
 - la matrice de rôles et le filtrage RLS fail-closed de `0015`, réappliqués par `0019` : le commercial ne voit aucun contenu libre/dérivé (mémoire, recherches, briefings, actions, journal, outbox), seulement les colonnes prospects expurgées, le nom de l'organisation et les métadonnées non sensibles des connecteurs non financiers ; `organizations.activity`, `connectors.config` et les credentials restent côté serveur ;
 - l'isolation des deux voies : administrateur uniquement pour le scénario, organisation vide au seed, certification V2 fail-closed, retrait obligatoire avant import, sauvegarde validée, verrou partagé avec les mutations de données apportées et nettoyage sélectif ;
-- `/api/health` sans dépendance base et `/api/ready` exigeant le marqueur de schéma `>= 28` pour le lot créatif local ;
+- `/api/health` sans dépendance base et `/api/ready` exigeant le marqueur de schéma `>= 28` pour le lot créatif déployé ;
 - le quota de recherche atomique de `0017`, séparé du cache et sérialisé avec la pause : une pause gagnante ne réserve rien ; les appels forcés ou échoués après claim consomment une réservation, mais seul `status = ok` sert une réponse en cache ;
 - les RPC transactionnelles de `0018` pour décisions, claim, finalisation, pause et autonomie, avec reprise fail-closed en cas d'état ambigu ;
 - le Top 5 de R1B : filtre d'autorisation avant classement, plafond strict de cinq actions et justification « Pourquoi maintenant » déterministe ;
@@ -155,16 +149,24 @@ Après application sur une base de recette, vérifier séparément :
 6. « Aujourd'hui » affiche au plus cinq propositions autorisées, ordonnées, chacune avec sa raison « Pourquoi maintenant » ;
 7. l'approbation d'une relance fige ses cibles, puis les suites terrain sont déclarées prospect par prospect sans aucun envoi externe.
 
-### Recette croisée Story et Connecteurs
+### Recette croisée Story et Connecteurs — post-déploiement
 
-Après application de `0028` sur la base de staging/recette distincte et déploiement de l'application de recette exigeant 28 :
+La production est alignée sur le schéma 28 et l'application `0000022`. État de la recette :
 
-1. préparer une campagne, ouvrir le studio Story prérempli, générer une version, en générer une seconde, en sélectionner une puis approuver la campagne ; vérifier la miniature, le journal et l'absence de publication fournisseur ;
-2. approuver une autre campagne sans visuel, rouvrir le studio, générer puis choisir une version ; vérifier que ce choix devient le visuel validé sans lancement ni publication ;
-3. provoquer en recette un échec Storage après réservation, vérifier le chemin pending, puis lancer le cron et constater la suppression de l'objet abandonné et la remise à zéro du chemin ;
-4. vérifier ensuite Google Sheets/Notion puis les états pause, reprise et révocation ; pour Meta Ads, relire un snapshot borné et confirmer qu'il n'alimente ni `ad_metrics` ni le visuel validé.
+1. **Vert en production** : campagne → studio Story prérempli → génération `gpt-image-2` → rechargement de l'objet privé signé → sélection → approbation atomique campagne + visuel. Miniature, journal, statut final et absence de publication fournisseur vérifiés ;
+2. **À jouer** : approuver une autre campagne sans visuel, rouvrir le studio, générer puis choisir une version ; vérifier que ce choix devient le visuel validé sans lancement ni publication ;
+3. **À jouer sur staging/recette** : provoquer un échec Storage après réservation, vérifier le chemin pending, puis lancer uniquement la rétention créative contrôlée et constater la suppression de l'objet abandonné et la remise à zéro du chemin ;
+4. **Partiel** : la surface Connecteurs et les liens OAuth Google Sheets/Notion/Meta sont verts sans erreur. Les callbacks, lectures réelles, puis les états pause, reprise et révocation restent à recetter ; aucun OAuth n'a été déclenché pendant la recette Story.
 
-Les tests Node contrôlent les contrats statiques, mais ne remplacent pas l'exécution de `0028` sur PostgreSQL/Supabase. Avant production, la recette doit réellement appliquer la migration sur cette base distincte, tester les RLS avec JWT, deux réservations/sélections/approbations concurrentes et les opérations du bucket privé. La production ne reçoit `0028` qu'après ces preuves et une autorisation explicite.
+Les tests Node contrôlent les contrats statiques. La recette production a ajouté la preuve JWT : asset propre visible, `creative_generation_requests` et update direct refusés en `42501`, Storage direct refusé en 404 et URL signée lisible en 200. Elle ne remplace pas les tests PostgreSQL à deux sessions, l'isolation inter-tenant complète, les courses de réservation/sélection/approbation ni la panne Storage ; ces scénarios restent obligatoires sur staging/recette avant de déclarer la porte base entièrement fermée.
+
+Pour toute prochaine recette Story, créer une fixture persistante distincte
+`E2E_CREATIVE_*`, avec son organisation marquée, son acteur `.invalid` dédié et
+un inventaire qui couvre explicitement `creative_assets`,
+`creative_generation_requests` et le bucket. Ne plus réutiliser
+`E2E_RLS_CSV_OWN` : cette organisation reste réservée au smoke CSV et exige un
+acteur admin stable. Les données de chaque run créatif restent éphémères ; la
+fixture et le journal append-only restent identifiables pour l'audit.
 
 ### Smoke réel des RPC CSV
 
@@ -189,7 +191,45 @@ Résultat de production du 31 juillet 2026 : smoke vert sur
 `E2E_RLS_CSV_OWN` et `E2E_RLS_CSV_OTHER`, avec refus inter-tenant, import
 valide, rollback, rejeu idempotent et retrait vérifiés.
 
-### Recette de production de la release
+Contrôle du 9 août 2026 : après le retrait de l'acteur temporairement utilisé
+par la recette Story, un nouvel acteur `.invalid` dédié et son membership admin
+ont été provisionnés sur `E2E_RLS_CSV_OWN`. Le smoke officiel a ensuite repassé
+au schéma 28 ses six contrôles : refus inter-tenant, import valide, rollback,
+rejeu idempotent, retrait et second retrait `not_found`. Les deux organisations,
+l'acteur dédié et le journal append-only restent conservés ; les tables métier
+de la fixture sont revenues à zéro.
+
+### Recette technique de production — PR #29
+
+- PR [#29](https://github.com/Shaaakir281/nepteo/pull/29) fusionnée au SHA
+  `c5e7148ad62908a52536f6b2b52fd32ed0c357c0` ;
+- CI `31332578671` et déploiement `31332676182` verts ;
+- 571/571 tests, typecheck, lint et build verts, 29 pages/routes générées ;
+- révision `nepteo-prod--0000022`, latest et ready, état
+  `Succeeded`/`Running`, 100 % du trafic, image
+  `nepteoacr27de3b.azurecr.io/nepteo:c5e7148ad62908a52536f6b2b52fd32ed0c357c0` ;
+- schéma Supabase 28 ; tables créatives accessibles et bucket privé conforme ;
+- contrôles directs sur le domaine public : `/` répond 307 vers `/login`, puis
+  la réponse finale est 200 ; `/api/health` et `/api/ready` répondent 200.
+  Health/readiness sont également verts sur le FQDN Azure ;
+- contrôle responsive desktop 1280 × 720 et mobile 390 × 844 sans débordement,
+  puis un unique parcours authentifié : campagne préremplie, Story 9:16 générée
+  par `gpt-image-2`, version persistée, sélectionnée et validée avec la campagne ;
+- JPEG 1008 × 1792, 146 743 octets, rechargé via URL signée ; accès direct au
+  bucket privé refusé, lecture des requêtes internes et update direct refusés ;
+- artefacts du run nettoyés : objet, asset, requête de génération,
+  action/campagne et acteur synthétiques supprimés ; connecteurs, prospects,
+  outbox et métriques Ads inchangés. L'organisation-coquille et le journal
+  append-only restent ; l'acteur CSV dédié a été reprovisionné et vérifié ;
+- catalogue Connecteurs chargé sans erreur avec Google Sheets, Notion et Meta
+  Ads disponibles en OAuth, mais aucun callback ni fournisseur Connecteurs réel déclenché.
+
+Cette recette ferme la promotion technique et le happy path Story de PR #29.
+Elle ne ferme pas les OAuth réels, l'isolation inter-tenant et la concurrence
+complètes, le scénario d'échec Storage ni les parcours terrain commanditaires.
+C7 reste fermé : aucun envoi externe n'est activé.
+
+### Historique — recette de production PR #17
 
 - PR [#17](https://github.com/Shaaakir281/nepteo/pull/17) fusionnée au SHA
   `704efabd80de434ea2619cd993ae87427c114838` ;
