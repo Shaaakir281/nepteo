@@ -376,7 +376,7 @@ export default async function CampagnesPage({
               href="/contenu"
               className="rounded-[10px] border border-line px-3.5 py-2 text-[12.5px] font-semibold text-body transition hover:bg-tint-soft hover:text-ink"
             >
-              Idées de contenu
+              Créer une story
             </Link>
             <NewCampaignModal />
             {metricsComplete && metricsResult.data.length > 0 && (

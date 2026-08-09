@@ -17,8 +17,10 @@ import type { CampaignProjectionResult } from "@/lib/campaign-evidence";
 import { decideAction } from "../actions";
 import { ActionDraftEditor } from "./action-draft-editor";
 import { ActionValueFeedback } from "./action-value-feedback";
+import { CampaignCreativeDetails } from "./campaign-details";
 import { ProspectDrafts } from "./prospect-drafts";
 import { ValidationSection } from "./validation-section";
+import type { CreativeAsset } from "@/lib/creative-asset-rules";
 
 export interface QueueAction {
   id: string;
@@ -31,6 +33,7 @@ export interface QueueAction {
   confidence: number | null;
   risk: string;
   payload?: Record<string, unknown> | null;
+  creatives?: CreativeAsset[];
 }
 
 const RISK_LABELS: Record<string, string> = {
@@ -218,6 +221,10 @@ export function ValidationDrawer({
                     expectedImpact={action.expected_impact}
                   />
                   <CampaignProposalDetails payload={action.payload} />
+                  <CampaignCreativeDetails
+                    actionId={action.id}
+                    creatives={action.creatives ?? []}
+                  />
                 </>
               )}
 
@@ -255,7 +262,11 @@ export function ValidationDrawer({
                 <DecisionButtons id={action.id} />
                 <p className="mt-2.5 text-[11px] text-faint">
                   {action.kind === "launch_campaign"
-                    ? "La validation conserve cette proposition comme validée — non lancée. CAMP-1 ne fournit aucune exécution."
+                    ? action.creatives?.some(
+                        (creative) => creative.status === "selected",
+                      )
+                      ? "La campagne et le visuel retenu seront validés ensemble, sans lancement ni publication. CAMP-1 ne fournit aucune exécution."
+                      : "La campagne sera validée — non lancée. Vous pourrez encore créer puis retenir son visuel dans le studio, sans publication. CAMP-1 ne fournit aucune exécution."
                     : action.kind.startsWith("ads_pause_")
                       ? "La validation conserve cette recommandation comme non appliquée. CAMP-2 ne fournit aucun bouton d'exécution publicitaire."
                     : "Après validation, vous pourrez demander la préparation sous garde-fous. Aucun envoi externe."}

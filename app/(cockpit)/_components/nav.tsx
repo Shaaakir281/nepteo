@@ -55,10 +55,10 @@ export function CockpitNav({
             key={it.label}
             href={it.href}
             aria-current={on ? "page" : undefined}
-            className={`flex items-center gap-[11px] rounded-[10px] px-3 py-[9px] text-[13.5px] transition ${
+            className={`flex items-center gap-[11px] border-l-2 px-3 py-[9px] text-[13px] transition ${
               on
-                ? "bg-tint font-semibold text-violet-ink"
-                : "font-medium text-body hover:bg-tint-soft"
+                ? "border-body bg-tint-soft font-semibold text-ink"
+                : "border-transparent font-medium text-body hover:bg-tint-soft"
             }`}
           >
             <span className={`flex-none ${on ? "text-violet" : "text-faint"}`}>

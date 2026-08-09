@@ -323,6 +323,7 @@ export async function submitCampaignAction(
         return { ok: false, reason: "submission_failed" };
       }
       revalidatePath("/");
+      revalidatePath("/contenu");
       return {
         ok: true,
         duplicate: result.created === false,

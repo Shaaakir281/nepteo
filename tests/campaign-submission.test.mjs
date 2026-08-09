@@ -92,7 +92,11 @@ test("CAMP-1 transaction — action proposée et journal partagent toujours une 
   const functionStart = migration26.indexOf("create or replace function public.propose_campaign_studio_action");
   const actionInsert = migration26.indexOf("insert into public.actions", functionStart);
   const journalInsert = migration26.indexOf("insert into public.journal", actionInsert);
-  const functionEnd = migration26.indexOf("end;\n$$;", functionStart);
+  const functionEndOffset = migration26
+    .slice(functionStart)
+    .search(/end;\r?\n\$\$;/);
+  const functionEnd =
+    functionEndOffset === -1 ? -1 : functionStart + functionEndOffset;
   assert.ok(functionStart >= 0 && functionStart < actionInsert);
   assert.ok(actionInsert < journalInsert && journalInsert < functionEnd);
   const body = migration26.slice(functionStart, functionEnd);

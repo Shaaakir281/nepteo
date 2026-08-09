@@ -16,7 +16,7 @@ export const TARGET_ORGANIZATION_NAME = "Fathi Solution";
 export const TARGET_SUPABASE_ORIGIN =
   "https://hrqnzorapjnosjphftur.supabase.co";
 export const TARGET_SUPABASE_PROJECT_REF = "hrqnzorapjnosjphftur";
-export const EXPECTED_SCHEMA_VERSION = 21;
+export const EXPECTED_SCHEMA_VERSION = 28;
 export const EXPECTED_CONNECTOR_COUNT = 6;
 export const EXPECTED_PROSPECT_COUNT = 48;
 export const EXPECTED_SOURCE_COUNT = 24;
@@ -111,6 +111,8 @@ const TABLE_SPECS = Object.freeze({
   action_target_snapshots: ["action_id"],
   action_target_snapshot_members: ["action_id", "prospect_id"],
   value_events: ["id"],
+  creative_generation_requests: ["id"],
+  creative_assets: ["id"],
 });
 
 const MUST_BE_EMPTY_BEFORE_AND_AFTER = Object.freeze([
@@ -121,6 +123,8 @@ const MUST_BE_EMPTY_BEFORE_AND_AFTER = Object.freeze([
   "revenue_events",
   "action_target_snapshots",
   "action_target_snapshot_members",
+  "creative_generation_requests",
+  "creative_assets",
 ]);
 
 const MUST_REMAIN_BYTE_EQUIVALENT = Object.freeze([

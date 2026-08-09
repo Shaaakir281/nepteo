@@ -1,6 +1,11 @@
 /** Icônes SVG — reprises des maquettes validées. */
 
 export const icons = {
+  sparkle: (
+    <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+      <path d="M8 1.5c.35 2.8 1.7 4.15 4.5 4.5C9.7 6.35 8.35 7.7 8 10.5 7.65 7.7 6.3 6.35 3.5 6 6.3 5.65 7.65 4.3 8 1.5zM12.5 10.5c.17 1.35.82 2 2.17 2.17-1.35.16-2 0.82-2.17 2.16-.17-1.34-.82-2-2.17-2.16 1.35-.17 2-.82 2.17-2.17z" stroke="currentColor" strokeWidth="1.25" strokeLinejoin="round" />
+    </svg>
+  ),
   star: (
     <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
       <path d="M8 1.8l1.8 4.3 4.7.4-3.6 3.1 1.1 4.6L8 11.7l-4 2.5 1.1-4.6-3.6-3.1 4.7-.4L8 1.8z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />

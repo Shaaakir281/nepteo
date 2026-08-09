@@ -9,6 +9,7 @@ import {
 import { runAnalysis } from "@/lib/analysis";
 import { withDemoMutationLock } from "@/lib/demo/lock";
 import { purgeExpiredWebsitePreviews } from "@/lib/research/website-preview";
+import { purgeAbandonedCreativeObjects } from "@/lib/creative-assets";
 
 /**
  * Sync quotidienne de tous les connecteurs configurés (toutes organisations),
@@ -25,8 +26,26 @@ export async function POST(request: NextRequest) {
   const admin = createAdminClient();
   // Rétention du laboratoire : les analyses de test disparaissent après 30 j.
   // Un échec est rendu honnêtement mais ne bloque pas la sync des connecteurs.
-  const websitePreviewRetention = await purgeExpiredWebsitePreviews(admin);
-  const { data } = await admin
+  const [websitePreviewResult, creativeStorageResult] = await Promise.allSettled([
+    purgeExpiredWebsitePreviews(admin),
+    purgeAbandonedCreativeObjects(admin),
+  ]);
+  const websitePreviewRetention =
+    websitePreviewResult.status === "fulfilled"
+      ? websitePreviewResult.value
+      : { ok: false as const, reason: "retention_unavailable" as const };
+  const creativeStorageRetention =
+    creativeStorageResult.status === "fulfilled"
+      ? creativeStorageResult.value
+      : {
+          ok: false as const,
+          attempted: 0,
+          removed: 0,
+          failed: 0,
+          skipped: 0,
+          reason: "retention_unavailable" as const,
+        };
+  const { data, error: connectorReadError } = await admin
     .from("connectors")
     .select(CONNECTOR_SELECT)
     .eq("status", "connected");
@@ -92,11 +111,22 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  return NextResponse.json({
-    ok: true,
-    at: new Date().toISOString(),
-    results,
-    analyzed,
-    website_preview_retention: websitePreviewRetention,
-  });
+  const retentionOk =
+    websitePreviewRetention.ok && creativeStorageRetention.ok;
+  const connectorsOk =
+    !connectorReadError && results.every((result) => !result.error);
+  const analysisOk = analyzed.every((result) => !result.error);
+  const operationOk = retentionOk && connectorsOk && analysisOk;
+  return NextResponse.json(
+    {
+      ok: operationOk,
+      at: new Date().toISOString(),
+      connector_read_error: connectorReadError?.message,
+      results,
+      analyzed,
+      website_preview_retention: websitePreviewRetention,
+      creative_storage_retention: creativeStorageRetention,
+    },
+    { status: operationOk ? 200 : 503 },
+  );
 }

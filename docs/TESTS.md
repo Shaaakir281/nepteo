@@ -23,7 +23,8 @@ Jeu de données : `docs/tests/prospects-test.csv` (24 prospects, 5 sans email, s
     - `0024_unlimited_research_and_structured_preview.sql` ;
     - `0025_campaign_proposals.sql` ;
     - `0026_campaign_studio.sql` ;
-    - `0027_campaign_decision_cockpit.sql`.
+    - `0027_campaign_decision_cockpit.sql` ;
+    - `0028_creative_assets.sql`.
 
    Avant `0013`, contrôler les doublons :
 
@@ -34,7 +35,7 @@ Jeu de données : `docs/tests/prospects-test.csv` (24 prospects, 5 sans email, s
    having count(*) > 1;
    ```
 
-   Si la requête renvoie une ligne, arrêter et arbitrer explicitement les memberships concernés. `0013` échoue volontairement sans modifier les données ; ne pas supprimer automatiquement une appartenance. Après `0015`, exécuter le [smoke authentifié/RLS](tests/SMOKE-AUTH-RLS.md), puis compléter par une recette manuelle du rôle commercial ; le smoke automatisé actuel couvre le rôle lecture. `0016` crée le marqueur de readiness après avoir vérifié les prérequis critiques ; les migrations suivantes le portent progressivement à 27. REL-0 exige l'ordre strict `0022 → 0023 → 0024 → 0025 → 0026 → 0027` pour une production déjà à 21 : 0025 exige 24, 0026 exige 25 et 0027 exige 26. (« Success. No rows returned » est normal pour une migration de schéma.)
+   Si la requête renvoie une ligne, arrêter et arbitrer explicitement les memberships concernés. `0013` échoue volontairement sans modifier les données ; ne pas supprimer automatiquement une appartenance. Après `0015`, exécuter le [smoke authentifié/RLS](tests/SMOKE-AUTH-RLS.md), puis compléter par une recette manuelle du rôle commercial ; le smoke automatisé actuel couvre le rôle lecture. `0016` crée le marqueur de readiness après avoir vérifié les prérequis critiques ; les migrations suivantes le portent progressivement à 28. Depuis une base à 21, respecter `0022 → 0023 → 0024 → 0025 → 0026 → 0027 → 0028`. Le lot créatif local n'ajoute que `0028` après contrôle du numéro, mais cette migration doit d'abord être appliquée sur une base Supabase de staging/recette distincte déjà à 27. La production ne doit jamais constituer sa première exécution et son application exige une autorisation explicite. (« Success. No rows returned » est normal pour une migration de schéma.)
 2. **`CONNECTOR_TOKEN_ENCRYPTION_KEY` et `CRON_SECRET`** : ces clés ne se « trouvent » nulle part — **c'est toi qui les fabriques**. Ouvre PowerShell et lance **deux fois** :
 
    ```powershell
@@ -46,12 +47,13 @@ Jeu de données : `docs/tests/prospects-test.csv` (24 prospects, 5 sans email, s
 
    ```
    OPENAI_API_KEY=sk-...
+   OPENAI_IMAGE_MODEL=gpt-image-2
    LLM_MODEL=openai:gpt-5.4
    LLM_MODEL_LIGHT=openai:gpt-5.4
    LLM_MODEL_PREMIUM=openai:gpt-5.4
    ```
 
-   (L'analyse utilise la tâche `recommend_action` → niveau premium, d'où les 3 lignes. Quand tu prendras une clé Anthropic : supprime les 3 lignes `LLM_MODEL*`, les défauts Claude reprennent.) Sans aucune clé, l'analyse fonctionne quand même avec des textes templates.
+   Pour cette release, `OPENAI_API_KEY` est obligatoire dans l'environnement de déploiement afin d'activer la Story. `OPENAI_IMAGE_MODEL` est facultative, propagée au runtime et vaut `gpt-image-2` par défaut. L'analyse utilise la tâche `recommend_action` → niveau premium, d'où les trois lignes `LLM_MODEL*`. Sans clé de texte compatible, l'analyse retombe sur ses templates, mais la génération d'image ne dispose pas de ce repli.
 4. Redémarrer `npm run dev` après toute modif d'env.
 
 > **État au 31 juillet 2026 — release courante attestée** : la PR #17 est
@@ -63,10 +65,11 @@ Jeu de données : `docs/tests/prospects-test.csv` (24 prospects, 5 sans email, s
 > l'image
 > `nepteoacr27de3b.azurecr.io/nepteo:704efabd80de434ea2619cd993ae87427c114838`,
 > digest `sha256:fe6cafbe991c45952262e33be965e4ba09239ff421a86dce80231117a3504425`,
-> état Healthy/Provisioned/RunningAtMaxScale. Supabase reste à
-> `app_schema_version = 21`. C'est l'état de production historique : REL-0,
-> encore local, ne doit être publié qu'après les migrations `0022` à `0027` et
-> la preuve `app_schema_version = 27`.
+> état Healthy/Provisioned/RunningAtMaxScale. Cette release applicative reste
+> l'attestation historique au schéma 21. Le projet Supabase lié
+> `hrqnzorapjnosjphftur` est désormais vérifié à 28, avec tables, bucket privé et
+> cinq RPC créatives visibles ; cette lecture ne prouve ni le déploiement
+> applicatif, ni les RLS JWT, ni la concurrence ou les effets Storage réels.
 
 ### Deux voies de données, jamais mélangées
 
@@ -131,7 +134,7 @@ Les tests couvrent notamment :
 
 - la matrice de rôles et le filtrage RLS fail-closed de `0015`, réappliqués par `0019` : le commercial ne voit aucun contenu libre/dérivé (mémoire, recherches, briefings, actions, journal, outbox), seulement les colonnes prospects expurgées, le nom de l'organisation et les métadonnées non sensibles des connecteurs non financiers ; `organizations.activity`, `connectors.config` et les credentials restent côté serveur ;
 - l'isolation des deux voies : administrateur uniquement pour le scénario, organisation vide au seed, certification V2 fail-closed, retrait obligatoire avant import, sauvegarde validée, verrou partagé avec les mutations de données apportées et nettoyage sélectif ;
-- `/api/health` sans dépendance base et `/api/ready` exigeant le marqueur de schéma `>= 21` ;
+- `/api/health` sans dépendance base et `/api/ready` exigeant le marqueur de schéma `>= 28` pour le lot créatif local ;
 - le quota de recherche atomique de `0017`, séparé du cache et sérialisé avec la pause : une pause gagnante ne réserve rien ; les appels forcés ou échoués après claim consomment une réservation, mais seul `status = ok` sert une réponse en cache ;
 - les RPC transactionnelles de `0018` pour décisions, claim, finalisation, pause et autonomie, avec reprise fail-closed en cas d'état ambigu ;
 - le Top 5 de R1B : filtre d'autorisation avant classement, plafond strict de cinq actions et justification « Pourquoi maintenant » déterministe ;
@@ -140,16 +143,28 @@ Les tests couvrent notamment :
 - la stabilité opérationnelle du snapshot : inversion du représentant Sheets/Notion réconciliée avec l'ID figé, identité disparue exclue, et verrou partagé avec les synchronisations pendant l'approbation et l'exécution ;
 - la concurrence d'analyse : clic, cron et démonstration partagent le même verrou distribué avant le journal et le moteur ; une passe Ads échouée après une analyse prospects réussie remonte comme succès partiel, y compris quand Supabase renvoie une propriété `error` sans lever d'exception ;
 - `0020` : cohorte de relance figée dans la transaction d'approbation, `value_events` append-only, séparation stricte des organisations, idempotence des déclarations et résultats aval rattachés à un prospect de la cohorte.
+- `0028` : bucket créatif privé, réservation atomique des quotas, versions et sélection/finalisation uniques, chemin pending réconciliable, puis validation campagne + visuel dans la transaction de décision sans publication fournisseur.
 
 Après application sur une base de recette, vérifier séparément :
 
 1. `GET /api/health` renvoie 200 si le processus répond ;
-2. `GET /api/ready` renvoie 200 uniquement si Supabase est joignable et `app_schema_version.version >= 21` ;
+2. `GET /api/ready` renvoie 200 uniquement si Supabase est joignable et `app_schema_version.version >= 28` pour le lot créatif ;
 3. le chargement d'une démo est refusé hors rôle admin ou dans une organisation contenant une donnée réelle ;
 4. deux recherches simultanées ne peuvent pas dépasser le quota quotidien ;
 5. deux décisions ou exécutions concurrentes ne produisent qu'un gagnant ;
 6. « Aujourd'hui » affiche au plus cinq propositions autorisées, ordonnées, chacune avec sa raison « Pourquoi maintenant » ;
 7. l'approbation d'une relance fige ses cibles, puis les suites terrain sont déclarées prospect par prospect sans aucun envoi externe.
+
+### Recette croisée Story et Connecteurs
+
+Après application de `0028` sur la base de staging/recette distincte et déploiement de l'application de recette exigeant 28 :
+
+1. préparer une campagne, ouvrir le studio Story prérempli, générer une version, en générer une seconde, en sélectionner une puis approuver la campagne ; vérifier la miniature, le journal et l'absence de publication fournisseur ;
+2. approuver une autre campagne sans visuel, rouvrir le studio, générer puis choisir une version ; vérifier que ce choix devient le visuel validé sans lancement ni publication ;
+3. provoquer en recette un échec Storage après réservation, vérifier le chemin pending, puis lancer le cron et constater la suppression de l'objet abandonné et la remise à zéro du chemin ;
+4. vérifier ensuite Google Sheets/Notion puis les états pause, reprise et révocation ; pour Meta Ads, relire un snapshot borné et confirmer qu'il n'alimente ni `ad_metrics` ni le visuel validé.
+
+Les tests Node contrôlent les contrats statiques, mais ne remplacent pas l'exécution de `0028` sur PostgreSQL/Supabase. Avant production, la recette doit réellement appliquer la migration sur cette base distincte, tester les RLS avec JWT, deux réservations/sélections/approbations concurrentes et les opérations du bucket privé. La production ne reçoit `0028` qu'après ces preuves et une autorisation explicite.
 
 ### Smoke réel des RPC CSV
 
