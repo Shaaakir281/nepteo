@@ -2,7 +2,7 @@
 
 Une phase = un objectif unique + une porte go/no-go. On ne passe pas la porte, on ne passe pas à la suite.
 
-> **Lecture au 2026-07-30** : la phase 3A est déployée et recettée en lecture, mais la porte de valeur de la phase 2 reste ouverte faute de preuve commanditaire. L'ordre opérationnel des prochains incréments est défini dans la [roadmap valeur — tests commanditaires](projets/roadmap-valeur-commanditaires.md).
+> **Lecture au 2026-08-09** : la phase 3A et le socle Campagnes/Story sont déployés ; le parcours campagne → génération → sélection → validation a été recetté en production sans lancement ni publication fournisseur. La porte de valeur de la phase 2, les OAuth réels et les écritures fournisseur restent ouverts. L'ordre opérationnel des prochains incréments est défini dans la [roadmap valeur — tests commanditaires](projets/roadmap-valeur-commanditaires.md).
 
 > **Chantier transverse — prise en main** : le parcours guidé est piloté par sa
 > [roadmap dédiée](projets/roadmap-prise-en-main.md), distincte de la roadmap
@@ -41,9 +41,9 @@ Livrables : 1 ou 2 types d'action réels (ex. email de relance), idempotence + j
 
 **Objectif** : préparer puis superviser une première campagne complète (brief → proposition → validation → lecture fournisseur → action bornée).
 
-Livrables : modal nouvelle campagne, variantes de messages, typologie (acquisition, retargeting, conversion, nurturing, réactivation…), génération de contenus texte et d'un visuel Story/carré/paysage rattaché à la campagne, cockpit fondé sur des faits inspectables, puis un fournisseur Ads pilote en lecture avant toute écriture. Le visuel est implémenté localement via `0028`, sans publication fournisseur.
+Livrables : modal nouvelle campagne, variantes de messages, typologie (acquisition, retargeting, conversion, nurturing, réactivation…), génération de contenus texte et d'un visuel Story/carré/paysage rattaché à la campagne, cockpit fondé sur des faits inspectables, puis un fournisseur Ads pilote en lecture avant toute écriture. Le visuel est déployé via `0028` et reste sans publication fournisseur.
 
-Le détail exécutable, les micro-lots CAMP-0 à CAMP-10 et le backlog des intégrateurs visibles dans la maquette sont définis dans la [roadmap Campagnes supervisées et intégrateurs](projets/roadmap-campagnes-supervisees.md). CAMP-0, CAMP-1 et le socle CAMP-2 sont fusionnés dans `main`, mais leur déploiement et leur recette en ligne restent à attester ; CAMP-3 à CAMP-5 restent nécessaires pour franchir la porte. Chaque intégrateur suit `contrat → connexion → lecture → vérité UI` avant une permission d'écriture séparée.
+Le détail exécutable, les micro-lots CAMP-0 à CAMP-10 et le backlog des intégrateurs visibles dans la maquette sont définis dans la [roadmap Campagnes supervisées et intégrateurs](projets/roadmap-campagnes-supervisees.md). CAMP-0, CAMP-1, le socle CAMP-2 et CREATIVE-1 sont fusionnés et déployés ; une recette de production partielle couvre le parcours campagne → Story → approbation sans effet externe. La lecture Meta réelle et CAMP-4 à CAMP-5 restent nécessaires pour franchir la porte. Chaque intégrateur suit `contrat → connexion → lecture → vérité UI` avant une permission d'écriture séparée.
 
 **Porte** : une campagne proposée par l'agent est validée, lancée sur un fournisseur pilote et mesurée avec un statut et un coût vérifiables des deux côtés.
 
@@ -64,4 +64,4 @@ Tous les canaux, les deux écosystèmes email en parallèle, attribution complex
 Deux features ont été cadrées avec Fathi (2026-07-23), chacune avec son document projet. **Cible commune : le solopreneur**. **Contrainte : rester très simple, garder les formulaires existants, ne rien perdre.**
 
 - **Onboarding enrichi par IA — partiellement livré** : philosophie, ingestion de page web, identité synthétisée et diagnostic initial. Les réseaux restent en backlog. Voir `docs/projets/onboarding-ia.md`.
-- **Génération de contenu fini par l'IA — implémentée localement, intégration et déploiement en attente** : Story/carré/paysage versionnés et liés à la campagne ; vidéo et variantes conversationnelles plus tard. Voir `docs/projets/generation-creative-ia.md`.
+- **Génération de contenu fini par l'IA — déployée et recettée sur son parcours principal** : Story/carré/paysage versionnés et liés à la campagne ; vidéo, variantes conversationnelles et essais de concurrence restent à traiter. Voir `docs/projets/generation-creative-ia.md`.

@@ -3,24 +3,20 @@
 Cette procédure prépare un déploiement Docker vers Azure Container Apps, avec
 images dans ACR, région UE et GitHub Actions en OIDC.
 
-> **État au 31 juillet 2026 — release courante attestée** : la PR #17 est
-> fusionnée dans `main` au SHA `704efabd80de434ea2619cd993ae87427c114838`.
-> Sa CI `30620564365` est verte sur le head
-> `28781aad52564f02fcee1c0dda4b5ee5291836b8` ; la CI `main` `30620691704`
-> et le déploiement `30620812901` sont verts. Azure sert à 100 %, avec une
-> réplique, la révision `nepteo-prod--0000011`, latest et ready, état
-> Healthy/Provisioned/RunningAtMaxScale, image
-> `nepteoacr27de3b.azurecr.io/nepteo:704efabd80de434ea2619cd993ae87427c114838`,
-> digest `sha256:fe6cafbe991c45952262e33be965e4ba09239ff421a86dce80231117a3504425`.
-> La release applicative historiquement attestée utilisait
-> `app_schema_version = 21`. Le projet Supabase lié `hrqnzorapjnosjphftur` est
-> désormais vérifié à 28, avec les tables, le bucket privé et les cinq RPC de
-> `0028`, sans que cela atteste le déploiement des lots fusionnés dans `main` ni
-> les smokes RLS/concurrence/Storage. Le workflow ne lance aucune
-> migration : leur application manuelle reste un préalable obligatoire.
+> **État au 9 août 2026 — release courante attestée** : la PR #29 est
+> fusionnée dans `main` au SHA `c5e7148ad62908a52536f6b2b52fd32ed0c357c0`.
+> Sa CI `31332578671` et le déploiement `31332676182` sont verts. Azure sert à
+> 100 % la révision `nepteo-prod--0000022`, latest et ready, état
+> `Succeeded`/`Running`, image
+> `nepteoacr27de3b.azurecr.io/nepteo:c5e7148ad62908a52536f6b2b52fd32ed0c357c0`.
+> Supabase et l'application sont alignés sur `app_schema_version = 28` ; le
+> happy path Story, les contrôles JWT/RLS ciblés et le Storage privé/signé sont
+> verts. Le scénario de panne Storage/pending reste ouvert. Le workflow ne lance
+> aucune migration : leur application manuelle et ordonnée reste un préalable obligatoire.
 >
-> **Historique — ne pas confondre avec la release courante** : la PR #16 a été
-> attestée sur `nepteo-prod--0000010`, au merge
+> **Historique — ne pas confondre avec la release courante** : la PR #17 a été
+> attestée sur `nepteo-prod--0000011`. La PR #16 avait été attestée sur
+> `nepteo-prod--0000010`, au merge
 > `21c90f77af0c877e9c99f60a4997c4dad4b1ba84`. La PR #15 a porté la
 > reconstruction de la vitrine sur `nepteo-prod--0000009`. La PR #13 avait été promue sur
 > `nepteo-prod--0000008` ; le 30 juillet 2026, `nepteo-prod--0000007` servait
@@ -319,14 +315,43 @@ est un contrôle de liveness du processus et ne touche pas la base ;
 du schéma. Une réponse 200 de `/api/health` ne compense jamais un échec de
 `/api/ready`.
 
-Une fois le premier déploiement validé, on pourra ajouter le trigger
-`push: branches: [main]` tout en conservant les contrôles de cible. Le cron
+Le workflow reste volontairement manuel. Toute automatisation future du trigger
+`push: branches: [main]` devra conserver les contrôles de cible. Le cron
 `.github/workflows/sync-cron.yml` reste optionnel. Pour l’activer tel qu’il est
 écrit, ajouter `APP_URL` comme **variable de dépôt** et dupliquer
 `CRON_SECRET` comme **secret de dépôt** (le job planifié ne lit pas
 l’environnement GitHub `production`).
 
-### Preuve de la release courante PR #17 du 31 juillet 2026
+### Preuve de la release courante PR #29 du 9 août 2026
+
+- PR [#29](https://github.com/Shaaakir281/nepteo/pull/29) fusionnée dans `main`
+  au SHA `c5e7148ad62908a52536f6b2b52fd32ed0c357c0` ;
+- CI de PR verte, run `31332578671` : 571/571 tests, lint, typecheck et build ;
+- workflow de déploiement vert, run `31332676182`, après approbation de
+  l'environnement `production` ;
+- Container Apps : `latestRevisionName` et `latestReadyRevisionName` valent
+  `nepteo-prod--0000022`, état `Succeeded`/`Running`, 100 % du trafic, image
+  `nepteoacr27de3b.azurecr.io/nepteo:c5e7148ad62908a52536f6b2b52fd32ed0c357c0` ;
+- Supabase : `app_schema_version = 28`, tables créatives accessibles et bucket
+  `campaign-creatives` privé, JPEG uniquement, limite 12 Mo ;
+- contrôles directs sur le domaine public : `/` répond 307 vers `/login`, puis
+  la réponse finale est 200 ; `/api/health` et `/api/ready` répondent 200.
+  Health/readiness sont également verts sur le FQDN Azure ;
+- contrôle responsive desktop/mobile sans débordement, puis un unique parcours
+  authentifié : campagne préremplie, Story 9:16 `gpt-image-2` 1008 × 1792,
+  persistance par URL signée, sélection et validation atomique campagne + visuel ;
+- garde-fous JWT : asset propre lisible, requêtes internes et update direct
+  refusés en `42501`, accès Storage direct refusé en 404 ;
+- nettoyage : objet, asset, requête de génération, action/campagne et acteur du
+  run supprimés ; aucune donnée Connecteurs, prospects, outbox ou Ads modifiée.
+  L'organisation-coquille et le journal append-only sont conservés ; l'acteur
+  CSV dédié a été reprovisionné et le smoke CSV officiel est de nouveau vert.
+
+Cette preuve ferme la promotion technique et la recette Story ciblée de PR #29.
+Les callbacks/lectures OAuth réels, le smoke inter-tenant/concurrence complet et
+le gate `reset → reseed → préparation → exécution` restent ouverts. C7 reste fermé.
+
+### Historique — preuve de la release PR #17 du 31 juillet 2026
 
 - PR [#17](https://github.com/Shaaakir281/nepteo/pull/17) fusionnée dans
   `main` au SHA `704efabd80de434ea2619cd993ae87427c114838` ;
@@ -371,7 +396,7 @@ restent à jouer avant de déclarer le pilote entièrement recetté. C7 reste fe
 > ni l'artefact ni la révision ; mettre à niveau les actions concernées avant le
 > retrait effectif de ce runtime.
 
-### Contrat spécifique PR #17 désormais promu
+### Historique — contrat spécifique PR #17
 
 La voie Nepteo expose désormais uniquement « scénario d'exemple Nepteo » et
 « données d'exemple » ; `certified-demo` reste un marqueur technique. La voie

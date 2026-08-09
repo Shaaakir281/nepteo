@@ -1,12 +1,12 @@
 # Roadmap — Campagnes supervisées et intégrateurs
 
-> **Statut au 2026-08-09** : CAMP-0, CAMP-1, CAMP-2, CONN-0, CONN-1 et
-> META-READ sont fusionnés dans `main`. Le projet Supabase lié est vérifié à la
-> version 28 après `0028`, avec tables, bucket privé et cinq RPC visibles. Le
-> worktree est aligné sur le dernier `origin/main` et le lot
-> créatif campagne-first y est implémenté localement, mais il n'est ni fusionné
-> dans `main`, ni déployé ; il ajoute `0028_creative_assets.sql`. Les états fusionné, migré, déployé et
-> recetté restent distincts.
+> **Statut au 2026-08-09** : CAMP-0, CAMP-1, CAMP-2, CONN-0, CONN-1,
+> META-READ et CREATIVE-1 sont fusionnés dans `main` et déployés par la PR #29
+> dans `nepteo-prod--0000022`. Le projet Supabase lié est vérifié à la version
+> 28 après `0028`, avec tables, bucket privé et cinq RPC visibles. Le parcours
+> campagne → Story → sélection → approbation est recetté en production sans
+> effet fournisseur ; OAuth/lecture Meta, concurrence et pannes Storage restent
+> à éprouver. Les états fusionné, migré, déployé et recetté restent distincts.
 >
 > Elle ne remplace pas la
 > [roadmap valeur — tests commanditaires](roadmap-valeur-commanditaires.md) :
@@ -23,10 +23,10 @@ La première ligne d'arrivée Campagnes est la porte de la phase 4 :
 Le chemin minimal est :
 
 ```text
-CAMP-0 brief fiable et non-lancement                  fusionné, recette en ligne à attester
-  → CAMP-1 studio arbitrable                          fusionné, recette en ligne à attester
-  → CAMP-2 cockpit reproductible                      fusionné, recette en ligne à attester
-  → CAMP-3 lecture Meta bornée                        socle fusionné, recette en ligne à attester
+CAMP-0 brief fiable et non-lancement                  déployé, recette production partielle
+  → CAMP-1 studio arbitrable                          déployé, recette production partielle
+  → CAMP-2 cockpit reproductible                      déployé, recette production partielle
+  → CAMP-3 lecture Meta bornée                        socle déployé, OAuth/lecture réels à recetter
   → CAMP-4 pause réelle supervisée                    après preuve CAMP-3
   → CAMP-5 lancement mono-fournisseur contrôlé        ferme la phase 4
 ```
@@ -119,9 +119,9 @@ lot n'est considéré comme lancé qu'après cette concordance.
 CAMP-0, CAMP-1 et CAMP-2 sont fusionnés dans `main` avec les migrations
 séquentielles `0025`, `0026` et `0027` ; le projet Supabase lié est désormais
 vérifié à 28 après l'ajout créatif `0028`.
-Ils restent une **release de rattrapage unique à attester en ligne** : la fusion
-et la migration ne prouvent ni le déploiement de l'application ni les trois
-recettes. CONN-0, CONN-1 et META-READ ont depuis été fusionnés à leur tour.
+Ils sont déployés dans `nepteo-prod--0000022`. La recette Story atteste une
+partie du parcours Campagnes et l'absence d'effet externe ; elle ne remplace ni
+la recette mobile complète CAMP-0/1/2, ni un OAuth et une lecture Meta réels.
 
 ## 3. Contrat commun de tout intégrateur
 
@@ -220,7 +220,7 @@ quand sa preuve est complète, mais peut contenir plusieurs étapes cohérentes 
 Les sous-étapes historiques restent des repères d'audit. Elles ne créent plus
 une publication autonome si le lot regroupé n'est pas entièrement vérifiable.
 
-### META-READ — lecture Meta Ads bornée (fusionné dans `main` ; déploiement et recette à attester)
+### META-READ — lecture Meta Ads bornée (déployé ; OAuth et première lecture réels à recetter)
 
 - OAuth demande exclusivement `ads_read` ; le retour vérifie ce droit côté
   serveur avant de chiffrer le jeton ;
@@ -236,9 +236,9 @@ une publication autonome si le lot regroupé n'est pas entièrement vérifiable.
 - pause, révocation, rôles et verrou d'isolation démo sont ceux de CONN-1 ;
   aucun endpoint de mutation Meta Ads n'est introduit.
 
-### REL-0 — Release de rattrapage CAMP-0/1/2 (fusionnée ; déploiement à attester)
+### REL-0 — Release de rattrapage CAMP-0/1/2 (fusionnée et déployée ; recette complète ouverte)
 
-**But** : attester en ligne, après autorisation, l'état fusionné déjà validé localement.
+**But** : compléter la recette en ligne de l'état désormais déployé.
 
 - réconcilier les documents et l'inventaire exact des fichiers ;
 - vérifier les migrations `0025` à `0027` et la readiness 27 ;
@@ -252,7 +252,7 @@ du journal. La procédure mobile détaillée est
 
 **Porte** : exactement les actions et journaux attendus, zéro effet externe.
 
-### CONN-0 — Catalogue honnête et registre de capacités (fusionné ; déploiement à attester)
+### CONN-0 — Catalogue honnête et registre de capacités (déployé ; recette catalogue complète ouverte)
 
 **But** : rendre visibles les intégrateurs de la maquette sans inventer leur
 connexion.
@@ -278,7 +278,7 @@ mobile et l'absence de prétendue connexion.
 **Porte** : aucune catégorie ni proposition existante ne manque et aucune carte
 ne promet plus que l'état persistant vérifié.
 
-### CONN-1 — Noyau de connexion et de révocation (fusionné ; déploiement à attester)
+### CONN-1 — Noyau de connexion et de révocation (déployé ; révocation réelle à recetter)
 
 **But** : partager seulement les primitives réellement communes.
 
@@ -517,7 +517,7 @@ Le MCP personnalisé ne signifie jamais « coller une URL et faire confiance ».
 - CAMP-9 : prévisions uniquement calibrées sur des campagnes closes ;
 - CAMP-10 : multi-canal, reporting consolidé et autonomie réversible.
 
-## 13. Lot local à intégrer — CREATIVE-1
+## 13. Lot déployé — CREATIVE-1
 
 **But** : terminer une campagne avec un visuel fini sans confondre génération,
 publication et performance fournisseur.
@@ -539,10 +539,12 @@ publication et performance fournisseur.
 créatifs ne sont pas injectés dans `ad_metrics` et ne constituent pas encore un
 audit de performance créative. Toute écriture Ads reste dans les lots ultérieurs.
 
-**Ordre de sortie actualisé** : le projet lié est déjà vérifié au schéma 28 →
-attester une recette distincte et y jouer réellement RLS/JWT, concurrence,
-bucket privé, pending/cron, validation atomique et Story + Connecteurs →
-commit/relecture puis intégration sur `main` → déploiement de l'application
-exigeant 28 → recette de production. `0028` est désormais verrouillée ; toute
+**État de sortie** : schéma 28 vérifié → PR #29 fusionnée → CI et déploiement
+verts → recette de production Story réussie avec génération payante unique,
+rechargement signé privé, sélection, validation atomique, refus JWT/RLS et
+nettoyage des artefacts synthétiques. La surface Connecteurs est accessible sans
+erreur et expose les parcours OAuth attendus, mais aucun OAuth réel n'a été
+lancé. Restent ouverts : concurrence multi-session, isolation inter-tenant,
+échecs Storage/pending et lecture Meta réelle. `0028` est verrouillée ; toute
 nouvelle migration commence à `0029` ou au numéro supérieur présent dans
 `main`.
