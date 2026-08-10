@@ -121,11 +121,42 @@ de la relecture finale. PR #29 est fusionnée au SHA
 `c5e7148ad62908a52536f6b2b52fd32ed0c357c0`, avec la CI de PR `31332578671`
 verte, puis le déploiement `31332676182` vert.
 
+**Candidate locale du 10 août — simplifications auth mobile, non déployées** :
+**574/574 tests**, typecheck, lint et build verts, avec **29 pages/routes**
+générées. Le contrôle navigateur local à 463 px confirme sur `/login` et
+`/signup` l'absence de débordement horizontal ainsi que le basculement
+Afficher/Masquer sans perte de la valeur saisie. La production et son passage de
+référence à 571 tests restent inchangés tant que ce micro-lot n'est pas publié.
+
+Le tableau Supabase expose la Site URL et le callback `/auth/confirm` de
+production. Le modèle « Confirm signup » français est publié et sa source
+versionnée conserve `{{ .ConfirmationURL }}`. Cette vérification de configuration
+ne remplace pas la recette d'un nouvel email : un message ancien garde son ancien
+`redirect_to` et doit être abandonné.
+
+Recette mobile authentifiée à jouer après publication ou sur une fixture locale
+dédiée, en 390 × 844 :
+
+1. se connecter avec un compte de test, toucher « Déconnexion » dans l'en-tête
+   et vérifier la redirection vers `/login` ;
+2. utiliser le bouton Retour et vérifier que le cockpit ne réapparaît pas ;
+3. sur `/login` puis `/signup`, saisir un mot de passe, l'afficher, le masquer et
+   vérifier que sa valeur reste inchangée ;
+4. confirmer que la barre mobile n'ajoute aucune entrée Déconnexion, affiche
+   uniquement les destinations autorisées par le rôle et ne déborde pas
+   horizontalement ; un compte admin/financier en voit cinq.
+
+Le point 3 est attesté dans le navigateur local à 463 px. Les points 1 et 2
+restent volontairement ouverts faute de session mobile authentifiée dédiée ; les
+tests automatisés couvrent le formulaire, l'action serveur réutilisée et le nom
+accessible du bouton, mais ne remplacent pas ce parcours runtime.
+
 **Historique — lot livré jusqu'à la PR #11** : **341/341 tests**, lint,
 typecheck et build Next.js 16.2.10 verts ; **23 pages/routes** générées.
 
 Les tests couvrent notamment :
 
+- le contrat auth mobile : présence d'un formulaire de déconnexion dans l'en-tête masqué sur desktop, nom accessible du bouton, champ mot de passe partagé, boutons Afficher/Masquer non-submit et `autocomplete` distinct entre connexion et inscription ;
 - la matrice de rôles et le filtrage RLS fail-closed de `0015`, réappliqués par `0019` : le commercial ne voit aucun contenu libre/dérivé (mémoire, recherches, briefings, actions, journal, outbox), seulement les colonnes prospects expurgées, le nom de l'organisation et les métadonnées non sensibles des connecteurs non financiers ; `organizations.activity`, `connectors.config` et les credentials restent côté serveur ;
 - l'isolation des deux voies : administrateur uniquement pour le scénario, organisation vide au seed, certification V2 fail-closed, retrait obligatoire avant import, sauvegarde validée, verrou partagé avec les mutations de données apportées et nettoyage sélectif ;
 - `/api/health` sans dépendance base et `/api/ready` exigeant le marqueur de schéma `>= 28` pour le lot créatif déployé ;

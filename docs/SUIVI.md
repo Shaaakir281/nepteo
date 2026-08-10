@@ -7,11 +7,15 @@
 
 > **Références de recette** : `docs/demo/GUIDE-TEST.md` pour le parcours, `docs/tests/SCORECARD-COMMANDITAIRE.md` pour mesurer la valeur, `docs/TESTS.md` pour les connecteurs et `docs/tests/SMOKE-AUTH-RLS.md` pour l'isolation Supabase. Au 2026-08-09, Azure sert à 100 % la révision `nepteo-prod--0000022`, image du merge `c5e7148ad62908a52536f6b2b52fd32ed0c357c0`. La PR #29, sa CI, le déploiement, les contrôles HTTP et la recette Story authentifiée sont attestés ci-dessous. Le smoke RLS multi-rôles/tenants complet reste réservé à des organisations de recette séparées.
 
-## État actuel (2026-08-09)
+## État actuel (2026-08-10)
 
 **CAMP-0, CAMP-1, CAMP-2, CONN-0, CONN-1, META-READ et le studio Story campagne-first sont fusionnés dans `main` et déployés dans la révision `nepteo-prod--0000022`.** L'agent lit, détecte et propose pour les seules capacités autorisées. Les lots Campagnes et Connecteurs ne publient aucun visuel, n'envoient rien et n'autorisent aucune écriture Ads. La [roadmap Campagnes supervisées et intégrateurs](projets/roadmap-campagnes-supervisees.md) séquence la suite ; elle ne remplace ni la [roadmap valeur — tests commanditaires](projets/roadmap-valeur-commanditaires.md), ni la [roadmap de prise en main](projets/roadmap-prise-en-main.md), qui gardent leurs propres gates.
 
 **Mise à jour du 9 août — états séparés et attestés.** Le projet Supabase lié `hrqnzorapjnosjphftur` est à `app_schema_version = 28`. Les tables créatives et le bucket privé sont contrôlés après déploiement. La PR #29 est fusionnée au merge `c5e7148`, la CI `31332578671` et le déploiement `31332676182` sont verts, et Azure sert la révision `nepteo-prod--0000022`. La recette runtime authentifiée campagne → Story → sélection → validation est verte sur fixture synthétique ; elle reste distincte des recettes OAuth Connecteurs et du smoke RLS inter-tenant complet.
+
+**Mise à jour du 10 août — simplifications d'authentification prêtes localement, non déployées.** La branche locale `codex/mobile-auth-simplification`, issue du dernier `origin/main`, ajoute une déconnexion explicite dans l'en-tête mobile et un contrôle partagé « Afficher/Masquer le mot de passe » sur la connexion et la création de compte. La production reste inchangée sur `nepteo-prod--0000022` ; ce micro-lot n'ajoute aucune migration Supabase et ne modifie aucun connecteur.
+
+**Email de confirmation — configuration corrigée, recette d'un nouvel envoi ouverte.** Le tableau Supabase expose aujourd'hui la Site URL `https://nepteo.bogasolution.com` et l'unique callback autorisé `https://nepteo.bogasolution.com/auth/confirm`. Le modèle « Confirm signup » anglais a été remplacé par un email français Nepteo dont la source est versionnée dans `supabase/templates/confirm-signup.html`. Un ancien email conserve son ancienne destination `0.0.0.0` : seul un nouvel envoi permettra de fermer la recette.
 
 État du produit déployé ou local, avec le niveau de recette précisé dans chaque lot :
 
@@ -30,6 +34,7 @@
 - **R2 — play supervisé « prospects dormants »** : seuil **30 ou 45 jours choisi explicitement**, sans valeur par défaut ; date valide obligatoire ; prospect actif et joignable ; tri déterministe du silence le plus ancien au plus récent et plafond de 50. Les membres des snapshots des vagues dormantes antérieures sont exclus. Le lanceur produit seulement une action à valider humainement, sans outbox ni envoi ; l'approbation revalide puis fige atomiquement la cohorte via `0020`. La scorecard dédiée au kind dormant exclut la démo, montre ses dénominateurs et sépare faits déclarés et faits fournisseur observés. Elle est strictement locale au tenant courant : le gate programme « 3 testeurs » se consolide manuellement et anonymement hors application.
 - **Confidentialité LLM** : les métriques techniques restent actives, mais prompts et réponses ne sont plus enregistrés par la télémétrie.
 - **Simplification déployée** : contexte auth/organisation centralisé et fail-closed, ciblage des relances partagé, file « Aujourd'hui », fiche connecteur et façade Server Actions découpées, navigation mobile et dialogues clavier ajoutés. Aucun garde-fou métier n'a été retiré.
+- **Simplifications auth mobile — candidate locale** : la déconnexion est désormais visible dans l'en-tête sous le breakpoint desktop, sans ajouter une sixième destination à la barre mobile. Connexion et inscription partagent un champ mot de passe qui conserve la valeur lors du basculement entre texte visible et masqué, avec libellé accessible. Le lot passe 574/574 tests, typecheck, lint et build ; sa publication reste à effectuer.
 - **Prise en main guidée — déployée dans `0000022`, recette à poursuivre** : l’onboarding propose désormais les voies exemple/entreprise réelle avant le formulaire ; `/prise-en-main` porte onze missions et ouvre les vrais écrans ; la progression locale versionnée ne conserve ni URL ni contenu métier. Le scénario choisi n’est jamais chargé automatiquement.
 - **Tenancy, rôles et RLS en production** : `0013` impose une organisation au plus par utilisateur sans arbitrer les doublons ; `0014` retire l'écriture directe de `company_memory` ; `0015` centralise les capacités ; `0019` réapplique la frontière de façon additive. Le commercial ne lit aucun contenu libre/dérivé (mémoire, recherche, briefing, action, journal, outbox) et conserve uniquement les colonnes prospects expurgées, le nom d'organisation et les métadonnées non sensibles des connecteurs CRM/fichiers. `organizations.activity`, `connectors.config` et `connectors.encrypted_credentials` restent côté service role. Les rôles inconnus échouent fermés.
 - **Deux voies de test techniques exclusives déployées ; RPC CSV et chargements/analyses recettés** : **A**, l'un des trois scénarios Nepteo V2 certifiés dans une organisation vide et classé `certified-demo` ; **B**, un environnement de test alimenté par des données saisies ou importées par le testeur via interface, connecteur ou CSV, qu'elles soient réelles ou synthétiques. Le scénario doit être retiré avant toute saisie ou tout import. Le préflight, les marqueurs namespacés et le verrou distribué empêchent le mélange ; une sauvegarde corrompue bloque tout seed. Sans fencing distribué, un verrou orphelin reste bloquant jusqu'à récupération manuelle vérifiée. Le smoke réel de `0021` est vert sur `E2E_RLS_CSV_OWN` / `E2E_RLS_CSV_OTHER`, y compris après reprovisionnement de l'acteur dédié le 2026-08-09. Les cycles de chargement et d'analyse des trois variantes sont verts ; chaque scénario a produit six propositions avec une console vide et Atelier Northwind reste actif. Le gate `reset → reseed → préparation → exécution` reste ouvert.
@@ -45,6 +50,11 @@ Environnement : Supabase `hrqnzorapjnosjphftur`, repo GitHub `Shaaakir281/nepteo
 ## Prochaines étapes (dans l'ordre)
 
 Pour l'intégration actuelle, les lots Connecteurs accessibles sont déjà dans `main` et ne réservent aucune migration après `0027`. Le lot créatif occupe désormais définitivement `0028`, déjà appliquée sur le projet lié ; toute nouvelle migration doit commencer à `0029` ou au numéro supérieur présent dans `main`.
+
+### Simplification UX suivante
+
+1. **Publier puis recetter le micro-lot auth** : après autorisation, faire passer PR/CI/déploiement, puis vérifier la déconnexion depuis une session mobile authentifiée et l'impossibilité de restaurer le cockpit avec le bouton Retour.
+2. **Poursuivre l'allègement par parcours** : reprendre ensuite les écrans les plus denses un par un, en supprimant les répétitions et en gardant une action principale visible par surface, sans retirer les preuves, validations humaines ou garde-fous métier.
 
 ### Recette post-déploiement
 
@@ -91,6 +101,14 @@ Pour l'intégration actuelle, les lots Connecteurs accessibles sont déjà dans 
 - **Coût de la recherche web OpenAI** : le prix affiché (10 $ / 1 000 appels d'outil) n'est **que la moitié de la facture** — les *search content tokens* sont facturés au tarif du modèle et dominent le total (~0,06 $ par recherche avec `gpt-5.5`). Toujours chiffrer les deux parts, et se rappeler que `MAX_RESEARCH_PER_DAY` compte des appels `runResearch`, **pas** des `web_search_call`.
 
 ## Historique des sessions
+
+### 2026-08-10 — Codex — **Déconnexion mobile et affichage du mot de passe prêts localement**
+
+**Simplification UX** : l'unique déconnexion du cockpit vivait dans la sidebar masquée sur mobile. Un bouton « Déconnexion » est maintenant présent dans l'en-tête mobile et réutilise l'action serveur existante ; la barre inférieure ne reçoit aucune sixième entrée et continue d'afficher uniquement les destinations autorisées par le rôle. Les pages de connexion et de création de compte utilisent un champ partagé « Afficher/Masquer le mot de passe », sans perdre la valeur saisie et avec les attributs `autocomplete` adaptés.
+
+**Vérifications** : `npm test` passe 574/574, `npm run typecheck`, `npm run lint`, `npm run build` et `git diff --check` sont verts ; le build génère 29 pages/routes. Dans le navigateur local à 463 px, le contrôle affiche puis remasque le mot de passe en conservant sa valeur, sur connexion comme sur inscription, sans débordement horizontal ni erreur console. Les contrats automatisés verrouillent aussi le formulaire de déconnexion mobile, son nom accessible et la conservation de `{{ .ConfirmationURL }}` dans le modèle email français.
+
+**Frontière et reste** : aucun secret, schéma Supabase, connecteur ni donnée métier distante n'est modifié. La seule modification distante concerne la configuration Auth Supabase et son modèle de confirmation ; aucun push, PR ni déploiement applicatif n'est encore effectué à ce stade. La déconnexion doit encore être cliquée dans une session mobile authentifiée après publication, puis le bouton Retour doit confirmer que le cockpit n'est pas restauré. La simplification suivante restera un lot séparé, traité parcours par parcours.
 
 ### 2026-08-09 — Codex — **PR #29 fusionnée, design + Story déployés et recettés sur le schéma 28**
 
