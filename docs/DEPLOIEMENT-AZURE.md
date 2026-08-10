@@ -3,20 +3,24 @@
 Cette procédure prépare un déploiement Docker vers Azure Container Apps, avec
 images dans ACR, région UE et GitHub Actions en OIDC.
 
-> **État au 10 août 2026 — release courante attestée** : la PR #31 est
-> fusionnée dans `main` au SHA `7424d2926e6423e1af674c741eb90dc1fcd914a3`.
-> Sa CI `31368969929` et le déploiement `31369161993` sont verts. Azure sert à
-> 100 % la révision `nepteo-prod--0000023`, latest et ready, état
+> **État au 10 août 2026 — release courante attestée** : la PR #33 est
+> fusionnée dans `main` au SHA `6f54cee5cc7c594956515cea2a94204d5da2a5a2`.
+> Sa CI `31372881341` et le déploiement `31373032666` sont verts. Azure sert à
+> 100 % la révision `nepteo-prod--0000024`, latest et ready, état
 > `Succeeded`/`Running`, image
-> `nepteoacr27de3b.azurecr.io/nepteo:7424d2926e6423e1af674c741eb90dc1fcd914a3`.
+> `nepteoacr27de3b.azurecr.io/nepteo:6f54cee5cc7c594956515cea2a94204d5da2a5a2`.
 > Supabase et l'application restent alignés sur `app_schema_version = 28` ; la
-> déconnexion mobile et Afficher/Masquer le mot de passe sont livrés. La recette
+> déconnexion mobile et Afficher/Masquer le mot de passe restent livrés. Le
+> callback Auth construit désormais ses sorties depuis `APP_URL`, jamais depuis
+> l'origine interne du proxy. La recette
 > Story, les contrôles JWT/RLS ciblés et le Storage privé/signé restent ceux de
-> la PR #29. Le nouvel email et le logout mobile authentifié restent à recetter.
+> la PR #29. Le clic positif d'un email neuf et le logout mobile authentifié
+> restent à recetter.
 > Le workflow ne lance aucune migration : leur application manuelle et ordonnée
 > reste un préalable obligatoire.
 >
-> **Historique — ne pas confondre avec la release courante** : la PR #29 a été
+> **Historique — ne pas confondre avec la release courante** : la PR #31 a livré
+> les simplifications auth dans `nepteo-prod--0000023`. La PR #29 a été
 > attestée sur `nepteo-prod--0000022`, avec la recette Story ciblée. La PR #17 a été
 > attestée sur `nepteo-prod--0000011`. La PR #16 avait été attestée sur
 > `nepteo-prod--0000010`, au merge
@@ -178,9 +182,10 @@ de protection.
 | `LLM_MODEL_LIGHT` | modèle choisi |
 | `LLM_MODEL_PREMIUM` | modèle choisi |
 
-`APP_URL` est l'origine publique utilisée pour les liens d'authentification ;
-elle est obligatoire en production afin qu'un proxy ne puisse pas injecter
-l'adresse interne du conteneur. Les deux variables `NEXT_PUBLIC_*` sont
+`APP_URL` est l'origine publique utilisée pour les liens d'authentification et
+pour toutes les redirections après `/auth/confirm` ; elle est obligatoire en
+production afin qu'un proxy ne puisse pas injecter l'adresse interne du
+conteneur. Les deux variables `NEXT_PUBLIC_*` sont
 publiques par nature et sont injectées au build Next.js **et** au runtime.
 
 ### Secrets obligatoires
@@ -240,8 +245,12 @@ Avec `https://<DOMAINE_PROD>` :
    - sujet de production Nepteo en français ;
    - corps synchronisé depuis `supabase/templates/confirm-signup.html` ;
    - conserver exactement `{{ .ConfirmationURL }}` dans chaque lien de confirmation ;
-   - après toute correction, demander un **nouvel** email : les liens déjà émis
-     conservent leur ancien `redirect_to` et sont immuables.
+   - le client `@supabase/ssr` utilise PKCE : après vérification, ce lien revient
+     sur le callback avec un `code`, que la route échange côté serveur ;
+   - après une modification de `redirect_to`, ou si le jeton a été consommé ou
+     a expiré, demander un **nouvel** email ;
+   - après une correction du code de `/auth/confirm`, recetter également avec un
+     nouvel email, sans attribuer automatiquement l'échec à l'ancien message.
 3. Google OAuth, si activé :
    - `https://<DOMAINE_PROD>/api/connectors/google_sheets/callback`.
 4. Notion OAuth, si activé :
@@ -251,6 +260,9 @@ Sans les deux réglages d'URL Supabase, le lien de confirmation envoyé à un no
 inscrit peut revenir sur localhost ou être refusé, et le parcours de l’ami
 s’arrête avant `/auth/confirm`. Le modèle d'email est un réglage hébergé séparé :
 un déploiement applicatif ne traduit pas automatiquement le modèle Supabase.
+Même lorsque ces réglages sont corrects, les redirections absolues produites
+après le callback doivent utiliser `APP_URL` comme origine publique de confiance,
+jamais `request.url` derrière Azure Container Apps.
 
 Pour la production Nepteo, le domaine principal est
 `https://nepteo.bogasolution.com`. Le sous-domaine OVH pointe par CNAME vers le
@@ -332,7 +344,30 @@ Le workflow reste volontairement manuel. Toute automatisation future du trigger
 `CRON_SECRET` comme **secret de dépôt** (le job planifié ne lit pas
 l’environnement GitHub `production`).
 
-### Preuve de la release courante PR #31 du 10 août 2026
+### Preuve de la release courante PR #33 du 10 août 2026
+
+- PR [#33](https://github.com/Shaaakir281/nepteo/pull/33) fusionnée dans `main`
+  au SHA `6f54cee5cc7c594956515cea2a94204d5da2a5a2` ;
+- CI de PR verte, run `31372881341` : 575/575 tests, lint, typecheck et build
+  de 29 pages/routes ;
+- workflow de déploiement vert, run `31373032666`, après approbation de
+  l'environnement `production` ;
+- Container Apps : `latestRevisionName` et `latestReadyRevisionName` valent
+  `nepteo-prod--0000024`, état `Succeeded`/`Running`, 100 % du trafic, image
+  `nepteoacr27de3b.azurecr.io/nepteo:6f54cee5cc7c594956515cea2a94204d5da2a5a2` ;
+- Supabase : `app_schema_version = 28` inchangé ; aucune migration ni aucun
+  connecteur modifié par ce lot ;
+- `/api/health` et `/api/ready` répondent 200 ;
+- `/auth/confirm` sans paramètre, avec `token_hash&type=email`, avec
+  `token_hash&type=signup` et avec `code=invalid` répond 307 vers
+  `https://nepteo.bogasolution.com/login?...`, sans aucune occurrence de
+  `0.0.0.0` ;
+- le défaut de redirection post-callback est donc fermé. Le clic unique d'un
+  email neuf émis après le hotfix, avec jeton non consommé et création de session,
+  ainsi que le parcours Déconnexion puis Retour en
+  session mobile restent à exécuter.
+
+### Historique — preuve de la release PR #31 du 10 août 2026
 
 - PR [#31](https://github.com/Shaaakir281/nepteo/pull/31) fusionnée dans `main`
   au SHA `7424d2926e6423e1af674c741eb90dc1fcd914a3` ;
@@ -340,8 +375,8 @@ l’environnement GitHub `production`).
   de 29 pages/routes ;
 - workflow de déploiement vert, run `31369161993`, après approbation de
   l'environnement `production` ;
-- Container Apps : `latestRevisionName` et `latestReadyRevisionName` valent
-  `nepteo-prod--0000023`, état `Succeeded`/`Running`, révision active,
+- Container Apps : `latestRevisionName` et `latestReadyRevisionName` valaient
+  alors `nepteo-prod--0000023`, état `Succeeded`/`Running`, révision alors active,
   Healthy/Provisioned/RunningAtMaxScale avec une réplique, 100 % du trafic,
   image
   `nepteoacr27de3b.azurecr.io/nepteo:7424d2926e6423e1af674c741eb90dc1fcd914a3` ;
@@ -363,8 +398,8 @@ l’environnement GitHub `production`).
 - CI de PR verte, run `31332578671` : 571/571 tests, lint, typecheck et build ;
 - workflow de déploiement vert, run `31332676182`, après approbation de
   l'environnement `production` ;
-- Container Apps : `latestRevisionName` et `latestReadyRevisionName` valent
-  `nepteo-prod--0000022`, état `Succeeded`/`Running`, 100 % du trafic, image
+- Container Apps : `latestRevisionName` et `latestReadyRevisionName` valaient
+  alors `nepteo-prod--0000022`, état `Succeeded`/`Running`, 100 % du trafic, image
   `nepteoacr27de3b.azurecr.io/nepteo:c5e7148ad62908a52536f6b2b52fd32ed0c357c0` ;
 - Supabase : `app_schema_version = 28`, tables créatives accessibles et bucket
   `campaign-creatives` privé, JPEG uniquement, limite 12 Mo ;

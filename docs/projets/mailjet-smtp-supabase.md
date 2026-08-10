@@ -1,9 +1,11 @@
 # Mailjet → Supabase Auth — rétablir les inscriptions externes
 
-> **Statut au 10 août 2026** : le SMTP personnalisé est actif et le tableau
-> Supabase expose la Site URL et le callback de production attendus. Le modèle
-> « Confirm signup » est désormais publié en français. La fermeture complète
-> reste conditionnée à un nouvel email externe reçu puis cliqué avec succès.
+> **Statut au 10 août 2026** : le SMTP personnalisé, la Site URL, la Redirect URL
+> et le modèle français sont actifs. Un nouvel email français a toutefois révélé
+> un défaut applicatif post-callback : `0000023` redirigeait vers l'origine interne
+> Azure. La PR #33 et `nepteo-prod--0000024` imposent désormais l'origine publique
+> `APP_URL`; les smokes négatifs sont verts. La fermeture complète reste
+> conditionnée à un email neuf reçu puis cliqué une seule fois avec succès.
 > Aucun secret SMTP ne doit être écrit dans ce dépôt ou envoyé dans une
 > conversation.
 
@@ -27,8 +29,16 @@ marketing supervisés.
 - Le modèle « Confirm signup » français est publié dans Supabase ; sa source de
   référence est `supabase/templates/confirm-signup.html` et conserve
   impérativement `{{ .ConfirmationURL }}`.
-- Un email généré avant la correction conserve son ancienne destination ; il
-  faut demander un nouvel envoi pour recetter le lien courant.
+- Un nouvel email français livré par l'expéditeur personnalisé a reproduit
+  `0.0.0.0`. La cause n'était donc pas seulement un ancien `redirect_to` :
+  `/auth/confirm` reconstruisait ses sorties depuis `request.url`, dont l'origine
+  derrière Azure était `https://0.0.0.0:3000`.
+- La PR #33 utilise `APP_URL` pour toutes les sorties du callback. Sur la révision
+  `0000024`, les variantes sans paramètre, `token_hash&type=email`,
+  `token_hash&type=signup` et `code=invalid` répondent toutes 307 vers le domaine
+  public ; `/api/health` et `/api/ready` répondent 200.
+- Un jeton déjà consommé ou expiré, ou un message portant un ancien `redirect_to`,
+  exige toujours un nouvel envoi. Ce cas est distinct du défaut applicatif corrigé.
 - La zone DNS de `bogasolution.com` est gérée chez OVH
   (`dns200.anycast.me` / `ns200.anycast.me`).
 - Le domaine racine possède déjà un SPF OVH :
@@ -119,8 +129,10 @@ Dans le projet `hrqnzorapjnosjphftur` :
 2. Créer un compte depuis `/signup`.
 3. Vérifier la boîte principale puis les spams.
 4. Contrôler dans Mailjet que le message est `delivered`.
-5. Cliquer le lien et vérifier le retour authentifié vers Nepteo.
-6. Tester **Renvoyer le lien de confirmation** avec un compte non confirmé.
+5. Tant que le compte est non confirmé, tester **Renvoyer le lien de
+   confirmation** et conserver uniquement le message le plus récent.
+6. Cliquer ce lien une seule fois et vérifier la confirmation, la création de
+   session et le retour authentifié vers Nepteo sur le domaine public.
 7. En cas d'échec, lire d'abord les journaux Auth Supabase puis l'événement
    Mailjet correspondant.
 
@@ -130,6 +142,7 @@ Dans le projet `hrqnzorapjnosjphftur` :
 - Supabase utilise le SMTP personnalisé sans désactiver la confirmation email.
 - Une adresse externe reçoit le premier email et un renvoi.
 - Le lien confirme réellement le compte et ouvre Nepteo.
+- Aucun en-tête `Location` émis par `/auth/confirm` ne contient `0.0.0.0`.
 - Les erreurs de cadence ou de SMTP sont affichées honnêtement.
 - Aucun secret Mailjet n'est présent dans Git, les journaux ou les captures.
 
