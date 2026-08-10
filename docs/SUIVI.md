@@ -103,6 +103,14 @@ Pour l'intégration actuelle, les lots Connecteurs accessibles sont déjà dans 
 
 ## Historique des sessions
 
+### 2026-08-10 — Codex — **UX-4 « Campagnes » épuré, local uniquement**
+
+**Découpage préalable et navigation** : le composant serveur `campagnes/page.tsx` est passé de 1 927 à 59 lignes et reste serveur ; le cockpit client est passé de 1 693 à 166 lignes. Les lectures bornées, présentateurs et sections sont répartis dans des modules courts sous `_lib/` et `_components/`. L'écran propose désormais trois onglets internes exclusifs — Décision, Rapport et Historique — sans nouvelle route. Décision réunit la fenêtre en 11 px, trois KPI compacts, la recommandation ou son motif derrière « Pourquoi ? », puis un seul geste plein selon l'état. Les vérifications, la recherche prospect et la lecture CPM/CTR sont trois `<details>` fermés.
+
+**Densité et contrats conservés** : Rapport porte seul le 7 jours contre 7 jours et l'audit créatif ; les quatre questions fixes ne sont rendues que si le rapport est disponible, et l'indisponibilité créative tient dans une ligne repliée. Historique rassemble filtres, campagnes mesurées, décisions et activité vérifiable. L'état vide global conduit vers les connecteurs ou la prise en main au lieu d'empiler les absences. Les fenêtres, dénominateurs, seuils de preuve, lectures descriptives, refus motivés, statuts non supposés, Server Actions, capacités financières, exclusion Ads de l'exécution et garde-fous démo restent inchangés. Aucune migration, route, écriture fournisseur, outbox, IA, secret ou donnée distante n'a été ajoutée.
+
+**Contrôles** : les nouveaux contrats UX-4 et les contrats CAMP-2/RLS ciblés passent 39/39 ; la suite complète passe 600/600, sans échec. `npm run lint`, `npm run typecheck`, `npm run build` et `git diff --check` terminent avec exit 0 ; Next.js 16.2.10 compile en 11,9 s, finit TypeScript en 8,0 s et génère 29 pages statiques avant toutes les routes dynamiques. La recette visuelle reste à jouer dans le navigateur local authentifié, en viewport responsive sur le PC. Aucun push, PR, publication ni déploiement n'a été effectué.
+
 ### 2026-08-10 — Codex — **UX-3 « Mon entreprise » épuré, local uniquement**
 
 **Identité recentrée** : l'onglet Identité ouvre directement sur un héros de complétude `x/8` et l'action principale « Remplir depuis mon site ». Les huit informations attendues — activité, zone, offres, ton, philosophie, canaux, communication et objectifs — sont réunies en lignes compactes ; toute la ligne ouvre le formulaire existant, les offres ne forment plus une carte séparée et les aides `?` restent accessibles au clavier. Apprentissages et Documents deviennent deux sections `<details>` fermées avec leur compteur. L'introduction redondante, l'encart ampoule et l'action morte « Ajouter un document — bientôt » ont disparu.

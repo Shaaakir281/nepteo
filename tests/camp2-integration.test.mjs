@@ -2,17 +2,52 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-const campaignPage = await readFile(
-  new URL("../app/(cockpit)/campagnes/page.tsx", import.meta.url),
-  "utf8",
-);
-const cockpitUi = await readFile(
-  new URL(
-    "../app/(cockpit)/campagnes/_components/campaign-decision-cockpit.tsx",
-    import.meta.url,
-  ),
-  "utf8",
-);
+async function readCampaignSources(paths) {
+  return (await Promise.all(paths.map((path) =>
+    readFile(new URL(`../app/(cockpit)/campagnes/${path}`, import.meta.url), "utf8"),
+  ))).join("\n");
+}
+
+const campaignPage = await readCampaignSources([
+  "page.tsx",
+  "_lib/campaign-page-constants.ts",
+  "_lib/campaign-page-query.ts",
+  "_lib/campaign-page-view.ts",
+  "_lib/campaign-cockpit-presentation.ts",
+  "_lib/campaign-weekly-presentation.ts",
+  "_lib/campaign-weekly-metrics.ts",
+  "_lib/campaign-cockpit-presentation.ts",
+  "_lib/campaign-kpi-presentation.ts",
+  "_lib/campaign-row-presentation.ts",
+  "_lib/campaign-delivery-presentation.ts",
+  "_lib/campaign-history-presentation.ts",
+  "_lib/campaign-labels.ts",
+  "_lib/campaign-operational-presentation.ts",
+  "_lib/campaign-prospect-search.ts",
+  "_lib/campaign-read-utils.ts",
+  "_lib/campaign-formatters.ts",
+]);
+const cockpitUi = await readCampaignSources([
+  "_components/campaign-decision-types.ts",
+  "_components/campaign-decision-cockpit.tsx",
+  "_components/campaign-decision-hero.tsx",
+  "_components/campaign-filters.tsx",
+  "_components/campaign-operational-summary.tsx",
+  "_components/campaign-prospect-search.tsx",
+  "_components/campaign-kpi-card.tsx",
+  "_components/campaign-delivery-panel.tsx",
+  "_components/campaign-weekly-insights.tsx",
+  "_components/campaign-creative-audit.tsx",
+  "_components/campaign-measured-list.tsx",
+  "_components/campaign-attempt-history.tsx",
+  "_components/campaign-activity-list.tsx",
+  "_components/campaign-table.tsx",
+  "_components/campaign-cards.tsx",
+  "_components/campaign-readings.tsx",
+  "_components/campaign-metric-table-cell.tsx",
+  "_components/campaign-metric-definition.tsx",
+  "_components/campaign-evidence.tsx",
+]);
 const decisionActions = await readFile(
   new URL("../app/(cockpit)/_actions/decisions.ts", import.meta.url),
   "utf8",
@@ -250,7 +285,7 @@ test("CAMP-2 prospects — recherche RLS en lecture seule, complète, bornée et
   assert.match(cockpitUi, /aucun[\s\S]*email, contenu brut ou note interne/);
   assert.match(cockpitUi, /Source enregistrée : \{prospect\.source\}/);
   assert.match(cockpitUi, /Origine présentée : \{presentation\}/);
-  assert.match(campaignPage, /prospectDatasetLabel\(demoSnapshot\.presentation\)/);
+  assert.match(campaignPage, /prospectDatasetLabel\(snapshot\.demoSnapshot\.presentation\)/);
   assert.match(campaignPage, /Scénario d’exemple Nepteo certifié/);
   assert.match(campaignPage, /Environnement de test — origine à vérifier/);
   assert.doesNotMatch(cockpitUi, /prospect\.email|prospect\.notes|prospect\.raw/);
@@ -346,7 +381,7 @@ test("CAMP-2 filtres — canal sourcé et vide canal/statut ignorent les tentati
   );
   assert.match(
     cockpitUi,
-    /emptyFilterResult[\s\S]*Aucun résultat pour ces filtres/,
+    /globallyEmpty[\s\S]*Rien à mesurer pour l’instant/,
   );
 });
 
@@ -380,7 +415,7 @@ test("CAMP-2 hebdomadaire — un second snapshot 7+7 réutilise lectures et filt
     weeklyPresentation,
     /answerCampaignAnalyticQuestion\([\s\S]*weeklyResult\.cockpit,[\s\S]*question\.id/,
   );
-  assert.match(campaignPage, /weeklyInsights=\{weeklyInsights\}/);
+  assert.match(campaignPage, /weeklyInsights=\{model\.weeklyInsights\}/);
 });
 
 test("CAMP-2 hebdomadaire — rapport et dock sont accessibles, bornés et sourcés", () => {
@@ -427,7 +462,7 @@ test("CAMP-2 créatifs — l’indisponibilité est séparée des métriques cam
   const creative = between(
     cockpitUi,
     "function CreativeAuditUnavailable(",
-    "function PriorityRecommendation(",
+    "function CampaignTable(",
   );
   assert.match(creative, /Audit créatif indisponible/);
   for (const missing of ["creative", "ad", "asset", "frequency"]) {
@@ -472,7 +507,7 @@ test("CAMP-2 page — toute erreur ou troncature échoue fermée", () => {
 test("CAMP-2 page — le nouveau cockpit ne suppose aucun statut fournisseur", () => {
   assert.match(campaignPage, /buildCampaignCockpit\(\{/);
   assert.match(campaignPage, /providerStatuses: \[\]/);
-  assert.match(campaignPage, /<CampaignDecisionCockpit[\s\S]*dataState=\{dataState\}/);
+  assert.match(campaignPage, /<CampaignDecisionCockpit[\s\S]*dataState=\{model\.dataState\}/);
   assert.doesNotMatch(
     campaignPage,
     /rollupWithStatus|Campagnes en cours|arrêtées/i,
@@ -552,7 +587,7 @@ test("CAMP-2 historique — le fallback action source le statut et la date de d�
 test("CAMP-2 UI — comparaisons et indisponibilités restent visibles", () => {
   assert.match(
     cockpitUi,
-    /note=\{[\s\S]*comparisonUnavailableReason[\s\S]*Comparaison indisponible/,
+    /period\.comparisonUnavailableReason[\s\S]*Comparaison indisponible/,
   );
   assert.ok(
     occurrences(cockpitUi, "observation.comparison.value") >= 3,
@@ -612,7 +647,7 @@ test("CAMP-2 livraison — CPM et CTR globaux et par campagne restent sourcés e
     /campaign\.roas,[\s\S]*campaign\.cpm,[\s\S]*campaign\.ctr/,
   );
   assert.match(cockpitUi, /min-w-\[1480px\]/);
-  assert.match(cockpitUi, /lg:grid-cols-4 2xl:grid-cols-7/);
+  assert.match(cockpitUi, /sm:grid-cols-3/);
   assert.match(
     tableCell,
     /observation\.state === "insufficient"[\s\S]*observation\.reason[\s\S]*observation\.source[\s\S]*EvidenceReference/,

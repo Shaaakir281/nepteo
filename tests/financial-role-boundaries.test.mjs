@@ -26,10 +26,10 @@ const campaignActions = await readFile(
   new URL("../app/(cockpit)/campagnes/actions.ts", import.meta.url),
   "utf8",
 );
-const campaignPage = await readFile(
-  new URL("../app/(cockpit)/campagnes/page.tsx", import.meta.url),
-  "utf8",
-);
+const campaignPage = await Promise.all([
+  "../app/(cockpit)/campagnes/page.tsx",
+  "../app/(cockpit)/campagnes/_lib/campaign-page-query.ts",
+].map((path) => readFile(new URL(path, import.meta.url), "utf8"))).then((parts) => parts.join("\n"));
 const todayQueueData = await readFile(
   new URL("../app/(cockpit)/_lib/today-queue-data.ts", import.meta.url),
   "utf8",
