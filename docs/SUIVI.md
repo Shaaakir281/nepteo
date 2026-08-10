@@ -103,6 +103,14 @@ Pour l'intégration actuelle, les lots Connecteurs accessibles sont déjà dans 
 
 ## Historique des sessions
 
+### 2026-08-10 — Codex — **UX-3 « Mon entreprise » épuré, local uniquement**
+
+**Identité recentrée** : l'onglet Identité ouvre directement sur un héros de complétude `x/8` et l'action principale « Remplir depuis mon site ». Les huit informations attendues — activité, zone, offres, ton, philosophie, canaux, communication et objectifs — sont réunies en lignes compactes ; toute la ligne ouvre le formulaire existant, les offres ne forment plus une carte séparée et les aides `?` restent accessibles au clavier. Apprentissages et Documents deviennent deux sections `<details>` fermées avec leur compteur. L'introduction redondante, l'encart ampoule et l'action morte « Ajouter un document — bientôt » ont disparu.
+
+**Contrats conservés** : le calcul pur `profileMemoryCompletion` compte les huit champs, avec `communication` relié à la section persistée `presence` et une offre comptée seulement si elle est nommée. Le prédicat UX-2 « Définir le contexte » reste distinct et exige toujours exactement activité, zone, ton et philosophie. Les formulaires et Server Actions existants, l'alerte ambre du scénario d'exemple, les permissions de rôle, le verrou de mutation démo et le laboratoire web sont conservés. Aucun schéma, migration, route, moteur métier, connecteur, secret ou état distant n'a été modifié.
+
+**Contrôles et recette** : les contrats UX-3 ciblés passent 34/34 et la suite complète 595/595, sans échec. `npm run lint`, `npm run typecheck`, `npm run build` et `git diff --check` terminent avec exit 0 ; Next.js 16.2.10 compile en 41 s, finit TypeScript en 27,9 s et génère 29 pages statiques avant toutes les routes dynamiques. La recette visuelle reste à jouer dans le navigateur local authentifié, en viewport responsive sur le PC ; aucun appareil mobile ni accès externe n'est requis. Aucun push, PR, publication ni déploiement n'a été effectué.
+
 ### 2026-08-10 — Codex — **UX-2 épuré terminé localement**
 
 **Guide recentré** : `/prise-en-main` n’affiche plus les onze cartes ni la progression en pourcentage. La première mission incomplète devient l’unique héros, avec un seul bouton plein et un seul lien « Passer » ; les cinq étapes restent visibles dans un rail compact, suivies de « Connecter vos outils ». Le chargement d’un scénario requis occupe ce même héros, sans bandeau ambre, et le nom du scénario ou de l’entreprise tient dans la pastille d’en-tête. Le but de la mission reste relié au titre pour les technologies d’assistance, mais n’est plus visible. La réinitialisation est reléguée au pied.

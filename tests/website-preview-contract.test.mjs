@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-const [migration, applyMigration, service, applyService, action, application, page, cron, sideCards] = await Promise.all([
+const [migration, applyMigration, service, applyService, action, application, page, cron, documentsDetails] = await Promise.all([
   readFile(new URL("../supabase/migrations/0022_website_preview.sql", import.meta.url), "utf8"),
   readFile(new URL("../supabase/migrations/0023_website_preview_apply.sql", import.meta.url), "utf8"),
   readFile(new URL("../lib/research/website-preview.ts", import.meta.url), "utf8"),
@@ -11,7 +11,7 @@ const [migration, applyMigration, service, applyService, action, application, pa
   readFile(new URL("../app/(cockpit)/entreprise/laboratoire-web/_components/website-preview-application.tsx", import.meta.url), "utf8"),
   readFile(new URL("../app/(cockpit)/entreprise/laboratoire-web/page.tsx", import.meta.url), "utf8"),
   readFile(new URL("../app/api/cron/sync/route.ts", import.meta.url), "utf8"),
-  readFile(new URL("../app/(cockpit)/entreprise/_components/side-cards.tsx", import.meta.url), "utf8"),
+  readFile(new URL("../app/(cockpit)/entreprise/_components/documents-details.tsx", import.meta.url), "utf8"),
 ]);
 
 test("website_preview — kind et cache dédiés, schéma 22", () => {
@@ -75,8 +75,8 @@ test("laboratoire — confirmation, rôle éditeur, rétention et aucun verrou d
 test("laboratoire — purge quotidienne et accès depuis Documents & sources", () => {
   assert.match(cron, /purgeExpiredWebsitePreviews\(admin\)/);
   assert.match(cron, /website_preview_retention/);
-  assert.match(sideCards, /href="\/entreprise\/laboratoire-web"/);
-  assert.match(sideCards, /y compris pendant un scénario d&apos;exemple/);
+  assert.match(documentsDetails, /href="\/entreprise\/laboratoire-web"/);
+  assert.match(documentsDetails, /y compris pendant un[\s\S]*scénario d&apos;exemple/);
 });
 
 test("I2 — RPC atomique, éditeurs seulement, analyse fraîche et schéma 23", () => {

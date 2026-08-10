@@ -15,6 +15,7 @@ import {
 } from "../lib/onboarding/walkthrough.ts";
 import {
   memorySectionIsFilled,
+  profileMemoryCompletion,
   walkthroughContextCompletion,
 } from "../lib/memory-completion.ts";
 import { ONBOARDING_CHOICE_COPY } from "../app/onboarding/_components/onboarding-choice-copy.ts";
@@ -226,6 +227,51 @@ test("UX-2 — une visite seule ne valide jamais les missions de contexte", () =
     }),
     ["situation", "activity", "voice"],
   );
+});
+
+test("UX-3 — la jauge compte huit champs et mappe communication sur presence", () => {
+  const memory = {
+    activite: { activity_type: "Services" },
+    zone: { text: "Dreux" },
+    offres: { items: [{ name: "Audit" }] },
+    ton: { text: "Direct" },
+    philosophie: { text: "Rester concret" },
+    canaux: { list: ["Google"] },
+    presence: { list: ["Newsletter"] },
+    objectifs: { list: ["Trouver plus de clients"] },
+  };
+
+  assert.deepEqual(profileMemoryCompletion({}), {
+    completed: 0,
+    total: 8,
+    filled: [],
+  });
+  assert.deepEqual(profileMemoryCompletion(memory), {
+    completed: 8,
+    total: 8,
+    filled: [
+      "activite",
+      "zone",
+      "offres",
+      "ton",
+      "philosophie",
+      "canaux",
+      "communication",
+      "objectifs",
+    ],
+  });
+});
+
+test("UX-3 — quatre champs hors contexte ne valident pas le guide", () => {
+  const memory = {
+    offres: { items: [{ name: "Audit" }] },
+    canaux: { list: ["Google"] },
+    presence: { list: ["Newsletter"] },
+    objectifs: { list: ["Trouver plus de clients"] },
+  };
+
+  assert.equal(profileMemoryCompletion(memory).completed, 4);
+  assert.equal(walkthroughContextCompletion(memory).complete, false);
 });
 
 test("onboarding — choix explicite avant formulaire et aucune exécution automatique", () => {

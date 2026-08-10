@@ -7,6 +7,22 @@ export const WALKTHROUGH_CONTEXT_SECTIONS = [
   "philosophie",
 ] as const;
 
+export const PROFILE_MEMORY_FIELDS = [
+  "activite",
+  "zone",
+  "offres",
+  "ton",
+  "philosophie",
+  "canaux",
+  "communication",
+  "objectifs",
+] as const;
+
+export type ProfileMemoryField = (typeof PROFILE_MEMORY_FIELDS)[number];
+type MemoryCompletionSection =
+  | Exclude<ProfileMemoryField, "communication">
+  | "presence";
+
 export interface WalkthroughContextCompletion {
   activity: boolean;
   voice: boolean;
@@ -28,7 +44,7 @@ function sectionObject(
 
 export function memorySectionIsFilled(
   memory: Record<string, unknown>,
-  section: (typeof WALKTHROUGH_CONTEXT_SECTIONS)[number],
+  section: MemoryCompletionSection,
 ): boolean {
   const content = sectionObject(memory, section);
   if (!content) return false;
@@ -37,7 +53,37 @@ export function memorySectionIsFilled(
       nonEmptyText(content[field]),
     );
   }
-  return nonEmptyText(content.text);
+  if (section === "zone" || section === "ton" || section === "philosophie") {
+    return nonEmptyText(content.text);
+  }
+  if (section === "offres") {
+    return (
+      Array.isArray(content.items) &&
+      content.items.some(
+        (item) =>
+          item &&
+          typeof item === "object" &&
+          nonEmptyText((item as Record<string, unknown>).name),
+      )
+    );
+  }
+  return (
+    Array.isArray(content.list) && content.list.some((item) => nonEmptyText(item))
+  );
+}
+
+export function profileMemoryCompletion(memory: Record<string, unknown>): {
+  completed: number;
+  total: number;
+  filled: ProfileMemoryField[];
+} {
+  const filled = PROFILE_MEMORY_FIELDS.filter((field) =>
+    memorySectionIsFilled(
+      memory,
+      field === "communication" ? "presence" : field,
+    ),
+  );
+  return { completed: filled.length, total: PROFILE_MEMORY_FIELDS.length, filled };
 }
 
 /**
