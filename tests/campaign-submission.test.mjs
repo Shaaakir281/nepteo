@@ -2,6 +2,20 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
+async function readValidationSources() {
+  return (await Promise.all([
+    "validation-drawer.tsx",
+    "validation-drawer-header.tsx",
+    "validation-decision-footer.tsx",
+    "validation-action-content.tsx",
+    "campaign-validation-evidence.tsx",
+    "campaign-proposal-details.tsx",
+  ].map((name) => readFile(
+    new URL(`../app/(cockpit)/_components/${name}`, import.meta.url),
+    "utf8",
+  )))).join("\n");
+}
+
 const [
   actions,
   modal,
@@ -23,7 +37,7 @@ const [
   readFile(new URL("../supabase/migrations/0025_campaign_proposals.sql", import.meta.url), "utf8"),
   readFile(new URL("../supabase/migrations/0026_campaign_studio.sql", import.meta.url), "utf8"),
   readFile(new URL("../app/(cockpit)/_components/decisions-history.tsx", import.meta.url), "utf8"),
-  readFile(new URL("../app/(cockpit)/_components/validation-drawer.tsx", import.meta.url), "utf8"),
+  readValidationSources(),
   readFile(new URL("../supabase/migrations/0018_atomic_action_decisions.sql", import.meta.url), "utf8"),
   readFile(new URL("../lib/research/research-rules.ts", import.meta.url), "utf8"),
 ]);

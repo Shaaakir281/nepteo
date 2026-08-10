@@ -52,13 +52,15 @@ const decisionActions = await readFile(
   new URL("../app/(cockpit)/_actions/decisions.ts", import.meta.url),
   "utf8",
 );
-const validationDrawer = await readFile(
-  new URL(
-    "../app/(cockpit)/_components/validation-drawer.tsx",
-    import.meta.url,
-  ),
+const validationDrawer = (await Promise.all([
+  "validation-drawer.tsx",
+  "validation-drawer-header.tsx",
+  "validation-decision-footer.tsx",
+  "validation-action-content.tsx",
+].map((name) => readFile(
+  new URL(`../app/(cockpit)/_components/${name}`, import.meta.url),
   "utf8",
-);
+)))).join("\n");
 const decisionsHistory = await readFile(
   new URL(
     "../app/(cockpit)/_components/decisions-history.tsx",

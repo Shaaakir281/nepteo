@@ -19,7 +19,7 @@
 
 État du produit déployé ou local, avec le niveau de recette précisé dans chaque lot :
 
-- **Refonte de densité UX-1 à UX-5 — terminée et validée localement, non publiée** : Aujourd'hui, onboarding, prise en main, identité d'entreprise et Campagnes appliquent la direction « Épuré ». Les références locales sont `cf66442`, `db97b5e`, `a4fede7`, `0dc6e40`, `c9c8db4` et `8a287ec`. La suite d'harmonisation est cadrée par UX-6 à UX-9 ; leurs quatre specs HTML sont désormais présentes dans le checkout.
+- **Refonte de densité UX-1 à UX-6 — terminée et validée localement, non publiée** : Aujourd'hui, onboarding, prise en main, identité d'entreprise, Campagnes et le moment de validation appliquent la direction « Épuré ». Les références locales antérieures sont `cf66442`, `db97b5e`, `a4fede7`, `0dc6e40`, `c9c8db4` et `8a287ec` ; UX-6 est consigné en tête de l'historique. La suite d'harmonisation est cadrée par UX-7 à UX-9 ; leurs specs HTML sont présentes dans le checkout.
 - **Socle et produit** : auth, organisation/RLS de base, mémoire, journal, couche LLM, analyse, validation, funnel/kanban, onboarding enrichi, recherche web et navigation à cinq entrées.
 - **Connecteurs en lecture seule** : Google Sheets et Notion, OAuth chiffré, mapping configurable, sync manuelle et cron. La lecture Notion est désormais paginée ; les appels connecteurs ont un timeout. Les demandes, configurations, callbacks OAuth, déconnexions et synchronisations participent au verrou d'isolation démo.
 - **Exécution sûre** : idempotence, journal avant exécution, pause, plafonds serveur et messages au statut `prepared`. C7, l'envoi externe, n'est pas activé.
@@ -103,6 +103,14 @@ Pour l'intégration actuelle, les lots Connecteurs accessibles sont déjà dans 
 - **Coût de la recherche web OpenAI** : le prix affiché (10 $ / 1 000 appels d'outil) n'est **que la moitié de la facture** — les *search content tokens* sont facturés au tarif du modèle et dominent le total (~0,06 $ par recherche avec `gpt-5.5`). Toujours chiffrer les deux parts, et se rappeler que `MAX_RESEARCH_PER_DAY` compte des appels `runResearch`, **pas** des `web_search_call`.
 
 ## Historique des sessions
+
+### 2026-08-10 — Codex — **UX-6 « Validation » épuré, local uniquement**
+
+**Décision recentrée** : le tiroir commun et ses familles relance, campagne et contenu sont désormais répartis en composants courts, tous sous 250 lignes. Pour une relance, le brouillon éditable apparaît immédiatement sous l'en-tête ; constat, raison, données, nature, limites et sources restent accessibles dans « Sur quoi Nepteo s'appuie ». La personnalisation par prospect est repliée avec son compteur. Les détails Budget, Objectif, Audience, Hypothèse, Hooks, Structure et Formats ne sont rendus que pour `launch_campaign` et réunis dans un seul accordéon. Aucun bloc vide ou « — » n'est fabriqué.
+
+**Gestes et preuve conservés** : le pied présente une seule voie de validation, le report et le refus ; le clic sur « Refuser » remplace ce pied par l'unique formulaire motivé, toujours borné à 3–500 caractères. Les recommandations Ads continuent d'être validées sans application ni bouton d'exécution publicitaire. Le retour terrain tient d'abord sur « C'était utile ? Oui / Non », les autres dimensions restant dans « Préciser » sans modifier `value_events`. La scorecard expose seulement Examinées, Jugées utiles et Réponses avant « Toutes les métriques ». Les Server Actions, rôles, gardes démo, transitions, moteurs métier, agrégations tenant-scopées et distinctions déclaré/fournisseur sont inchangés ; aucune migration, route, écriture fournisseur, outbox, IA, donnée distante ou secret n'a été ajouté.
+
+**Contrôles et réserve de recette** : les contrats UX-6 ciblés passent 5/5 et la suite complète 605/605, sans échec. `git diff --check`, `npm run lint`, `npm run typecheck` et `npm run build` terminent avec exit 0 ; Next.js 16.2.10 compile en 62 s, finit TypeScript en 19,8 s et génère 29 pages statiques. Le navigateur intégré atteint `http://localhost:3003/login`, mais la session locale disponible est déconnectée : aucune donnée d'authentification ni aucun secret n'a été saisi, et la recette visuelle authentifiée reste à jouer sur le PC. Aucun push, PR, publication ni déploiement n'a été effectué.
 
 ### 2026-08-10 — Codex — **Guide UX-6 à UX-9 réconcilié avec la vague terminée**
 

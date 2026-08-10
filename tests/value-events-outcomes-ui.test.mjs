@@ -5,16 +5,19 @@ import { readFile } from "node:fs/promises";
 const read = (path) =>
   readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
-const [history, outcomes, feedback, prospects, decisions, queueData, migration] =
+const [history, outcomes, feedbackShell, feedbackFields, prospects, decisions, queueData, migration] =
   await Promise.all([
   read("app/(cockpit)/_components/decisions-history.tsx"),
   read("app/(cockpit)/_components/action-outcomes.tsx"),
   read("app/(cockpit)/_components/action-value-feedback.tsx"),
+  read("app/(cockpit)/_components/action-value-feedback-fields.tsx"),
   read("app/(cockpit)/_actions/prospects.ts"),
   read("app/(cockpit)/_actions/decisions.ts"),
   read("app/(cockpit)/_lib/today-queue-data.ts"),
   read("supabase/migrations/0020_value_events.sql"),
   ]);
+
+const feedback = `${feedbackShell}\n${feedbackFields}`;
 
 test("les résultats terrain restent séparés par prospect et après décision", () => {
   assert.match(history, /isRelanceKind\(a\.kind\)/);
