@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
 import { getCurrentAuthContext } from "@/lib/auth/context";
+import { readMemory } from "@/lib/memory-store";
+import { campaignBriefDefaultsFromMemory } from "@/lib/campaign-brief-defaults";
 import { AnalysisNotice } from "./_components/analysis-notice";
 import { CampaignDecisionCockpit } from "./_components/campaign-decision-cockpit";
 import { readCampaignPageSnapshot } from "./_lib/campaign-page-query";
@@ -25,11 +27,19 @@ export default async function CampagnesPage({
   if (!membership) redirect("/onboarding");
   if (!membership.canViewFinancials) redirect("/");
 
-  const snapshot = await readCampaignPageSnapshot(
-    supabase,
-    membership.organizationId,
-    requested.prospect,
-  );
+  const [snapshot, campaignMemory] = await Promise.all([
+    readCampaignPageSnapshot(
+      supabase,
+      membership.organizationId,
+      requested.prospect,
+    ),
+    readMemory(
+      supabase,
+      ["activite", "zone", "canaux", "objectifs", "offres", "ton", "philosophie"],
+      membership.organizationId,
+    ),
+  ]);
+  const campaignBriefDefaults = campaignBriefDefaultsFromMemory(campaignMemory);
   const model = buildCampaignPageView(
     snapshot,
     requested.channel,
@@ -43,6 +53,7 @@ export default async function CampagnesPage({
       <CampaignDecisionCockpit
         {...model.view}
         canEdit={membership.canEdit}
+        campaignBriefDefaults={campaignBriefDefaults}
         dataState={model.dataState}
         filters={model.filters}
         operationalSummary={model.operationalSummary}

@@ -37,13 +37,16 @@ const contentPage = fs.readFileSync(
   new URL("../app/(cockpit)/contenu/page.tsx", import.meta.url),
   "utf8",
 );
-const workspace = fs.readFileSync(
-  new URL(
-    "../app/(cockpit)/contenu/_components/creative-workspace.tsx",
-    import.meta.url,
-  ),
+const workspace = [
+  "creative-workspace.tsx",
+  "use-creative-workspace.ts",
+  "creative-story-settings.tsx",
+  "creative-asset-gallery.tsx",
+  "creative-secondary-options.tsx",
+].map((name) => fs.readFileSync(
+  new URL(`../app/(cockpit)/contenu/_components/${name}`, import.meta.url),
   "utf8",
-);
+)).join("\n");
 const executionSwitch = fs.readFileSync(
   new URL(
     "../app/(cockpit)/_components/execution-switch.tsx",

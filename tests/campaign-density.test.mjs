@@ -33,7 +33,7 @@ test("UX-4 — l’onglet Décision reste centré sur trois KPI et un geste domi
   assert.match(hero, /Brancher un compte publicitaire/);
   assert.match(hero, /Pourquoi \?/);
   assert.match(hero, /<form action=\{analyzeAdsForm\}>/);
-  assert.match(hero, /<NewCampaignModal \/>/);
+  assert.match(hero, /<NewCampaignModal initialDraft=\{campaignBriefDefaults\} \/>/);
 });
 
 test("UX-4 — les vérifications secondaires sont trois details fermés", () => {

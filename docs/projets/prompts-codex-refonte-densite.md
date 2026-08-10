@@ -16,9 +16,9 @@ Objectif commun : les testeurs décrochent parce que chaque écran demande de li
 | UX-8 | Catalogue + tunnel + laboratoire | 214 → 86 | `nepteo-brancher-ux8.html` |
 | UX-9 | Tunnel campagne + Story | 11 champs → 4 | `nepteo-produire-ux9.html` |
 
-État local au 2026-08-10 : **UX-1 à UX-8 sont terminés et validés**. Les commits de référence sont UX-1 `cf66442`, UX-5 `db97b5e`, intégration UX-1 + UX-5 `a4fede7`, UX-2 `0dc6e40`, UX-3 `c9c8db4` et UX-4 `8a287ec` ; UX-6 à UX-8 sont consignés dans l'historique local du dépôt.
+État local au 2026-08-10 : **UX-1 à UX-9 sont terminés et validés localement, sans publication**. Les commits de référence antérieurs sont UX-1 `cf66442`, UX-5 `db97b5e`, intégration UX-1 + UX-5 `a4fede7`, UX-2 `0dc6e40`, UX-3 `c9c8db4` et UX-4 `8a287ec` ; UX-6 à UX-9 sont consignés dans l'historique local du dépôt.
 
-Suite locale : **UX-9**. Son préalable UX-4 est déjà satisfait. Le lot reste indépendant et attend son propre `GO UX-9`.
+Suite locale : **vague UX-1 à UX-9 terminée**. Aucun lot supplémentaire n'est engagé et aucune publication n'a été effectuée.
 
 ---
 
@@ -523,9 +523,11 @@ Recette responsive sur le PC (5 min)
 
 ---
 
-## Tâche 8 — UX-9 — prête après ajout de la spec
+## Tâche 8 — UX-9 — terminée localement
 
 Le préalable UX-4 est satisfait localement par `8a287ec`.
+
+Statut au 2026-08-10 : implémentée et validée localement ; voir l'entrée UX-9 en tête de `docs/SUIVI.md`. Aucun push, PR, déploiement ni publication.
 
 ```
 Lot UX-9 — parcours « produire » : tunnel de création de campagne et atelier

@@ -16,6 +16,19 @@ async function readValidationSources() {
   )))).join("\n");
 }
 
+async function readCampaignProposalSources() {
+  return (await Promise.all([
+    "campaign-proposal-review.tsx",
+    "campaign-proposal-adsets.tsx",
+    "campaign-proposal-hooks.tsx",
+    "campaign-proposal-evidence.tsx",
+    "campaign-competition-research.tsx",
+  ].map((name) => readFile(
+    new URL(`../app/(cockpit)/campagnes/_components/${name}`, import.meta.url),
+    "utf8",
+  )))).join("\n");
+}
+
 const [
   actions,
   modal,
@@ -32,7 +45,7 @@ const [
   readFile(new URL("../app/(cockpit)/campagnes/actions.ts", import.meta.url), "utf8"),
   readFile(new URL("../app/(cockpit)/campagnes/_components/new-campaign-modal.tsx", import.meta.url), "utf8"),
   readFile(new URL("../app/(cockpit)/campagnes/_components/campaign-brief-form.tsx", import.meta.url), "utf8"),
-  readFile(new URL("../app/(cockpit)/campagnes/_components/campaign-proposal-review.tsx", import.meta.url), "utf8"),
+  readCampaignProposalSources(),
   readFile(new URL("../lib/campaign.ts", import.meta.url), "utf8"),
   readFile(new URL("../supabase/migrations/0025_campaign_proposals.sql", import.meta.url), "utf8"),
   readFile(new URL("../supabase/migrations/0026_campaign_studio.sql", import.meta.url), "utf8"),

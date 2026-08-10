@@ -9,6 +9,7 @@ import type {
 import { ReadingEvidence } from "./campaign-evidence";
 import { ObservedKpiCard } from "./campaign-kpi-card";
 import { NewCampaignModal } from "./new-campaign-modal";
+import type { CampaignBriefDefaults } from "@/lib/campaign-brief-defaults";
 
 export function CampaignDecisionHero({
   canEdit,
@@ -18,6 +19,7 @@ export function CampaignDecisionHero({
   recommendation,
   dailySummary,
   hasMeasuredData,
+  campaignBriefDefaults,
 }: {
   canEdit: boolean;
   dataState: CampaignCockpitDataState;
@@ -26,6 +28,7 @@ export function CampaignDecisionHero({
   recommendation: CampaignPriorityRecommendation | null;
   dailySummary: string | null;
   hasMeasuredData: boolean;
+  campaignBriefDefaults: CampaignBriefDefaults;
 }) {
   const globallyEmpty = dataState.kind === "empty" && !hasMeasuredData;
   const title = globallyEmpty
@@ -101,7 +104,7 @@ export function CampaignDecisionHero({
                 </form>
               )}
               <div className="[&>button]:!border [&>button]:!border-line [&>button]:!bg-white [&>button]:!text-body [&>button:hover]:!bg-tint-soft">
-                <NewCampaignModal />
+                <NewCampaignModal initialDraft={campaignBriefDefaults} />
               </div>
             </>
           )}

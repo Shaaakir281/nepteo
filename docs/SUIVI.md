@@ -19,7 +19,7 @@
 
 État du produit déployé ou local, avec le niveau de recette précisé dans chaque lot :
 
-- **Refonte de densité UX-1 à UX-8 — terminée et validée localement, non publiée** : Aujourd'hui, onboarding, prise en main, identité d'entreprise, Campagnes, validation, Prospects, Journal et le parcours « Brancher » appliquent la direction « Épuré ». Les références locales antérieures sont `cf66442`, `db97b5e`, `a4fede7`, `0dc6e40`, `c9c8db4` et `8a287ec` ; UX-6 à UX-8 sont consignés en tête de l'historique. La dernière suite d'harmonisation est UX-9 ; sa spec HTML est présente et son préalable UX-4 est satisfait.
+- **Refonte de densité UX-1 à UX-9 — terminée et validée localement, non publiée** : Aujourd'hui, onboarding, prise en main, identité d'entreprise, Campagnes, validation, Prospects, Journal, « Brancher » et le parcours de production Campagne → Story appliquent la direction « Épuré ». Les références locales antérieures sont `cf66442`, `db97b5e`, `a4fede7`, `0dc6e40`, `c9c8db4` et `8a287ec` ; UX-6 à UX-9 sont consignés en tête de l'historique. La vague UX-1 à UX-9 est terminée localement.
 - **Socle et produit** : auth, organisation/RLS de base, mémoire, journal, couche LLM, analyse, validation, funnel/kanban, onboarding enrichi, recherche web et navigation à cinq entrées.
 - **Connecteurs en lecture seule** : Google Sheets et Notion, OAuth chiffré, mapping configurable, sync manuelle et cron. La lecture Notion est désormais paginée ; les appels connecteurs ont un timeout. Les demandes, configurations, callbacks OAuth, déconnexions et synchronisations participent au verrou d'isolation démo.
 - **Exécution sûre** : idempotence, journal avant exécution, pause, plafonds serveur et messages au statut `prepared`. C7, l'envoi externe, n'est pas activé.
@@ -103,6 +103,14 @@ Pour l'intégration actuelle, les lots Connecteurs accessibles sont déjà dans 
 - **Coût de la recherche web OpenAI** : le prix affiché (10 $ / 1 000 appels d'outil) n'est **que la moitié de la facture** — les *search content tokens* sont facturés au tarif du modèle et dominent le total (~0,06 $ par recherche avec `gpt-5.5`). Toujours chiffrer les deux parts, et se rappeler que `MAX_RESEARCH_PER_DAY` compte des appels `runResearch`, **pas** des `web_search_call`.
 
 ## Historique des sessions
+
+### 2026-08-10 — Codex — **UX-9 « Produire » épuré, local uniquement**
+
+**Campagne en trois temps** : « Nouvelle campagne » ouvre désormais un brief prérempli depuis la fiche entreprise et ne laisse visibles qu'Objectif, Budget par jour, Audience et Offre ; les sept autres réglages restent éditables dans « Affiner ». La proposition commence par l'enveloppe budgétaire totale calculée côté serveur, compacte adsets et hooks, et place les ajustements ainsi que les preuves dans deux accordéons. L'estimation demeure absente si la preuve fournisseur ne réunit pas exactement les seuils CAMP-1 : au moins 7 jours distincts, une dépense positive et 10 conversions. L'unique geste final ajoute une action `launch_campaign` `proposed` à la file ; la validation reste « Validée — non lancée » et aucune exécution n'est exposée.
+
+**Atelier Story** : la prévisualisation 9:16 précède les réglages, avec la campagne récente présélectionnée et le format recommandé par les règles existantes. « Générer » reste un clic explicite ; les versions sont conservées, sélectionnées puis validées sans publication automatique. Suggestions, réglages et création libre restent disponibles mais repliés et clairement séparés du parcours Story rattaché à une campagne.
+
+**Frontières, contrôles et réserve PC** : aucun Server Action, validation serveur, garde de rôle/démonstration, moteur métier, RPC, migration, route, connecteur, outbox, secret ou donnée distante n'a été modifié. Les clés de requête et d'exécution restent distinctes, le budget total demeure dérivé côté serveur et le lancement atomique/idempotent existant n'est pas contourné. Tous les composants touchés restent sous 250 lignes. Les contrats ciblés passent 32/32 et la suite complète 624/624. `git diff --check`, `npm run lint`, `npm run typecheck` et `npm run build` terminent avec exit 0 ; Next.js 16.2.10 compile en 18,0 s, finit TypeScript en 11,3 s et génère 29 pages statiques. Aucun serveur local n'écoute sur les ports applicatifs connus : aucune session authentifiée n'était disponible, donc la recette visuelle PC reste à jouer en moins de cinq minutes sur `/campagnes` puis `/contenu`. Aucun push, PR, publication ni déploiement n'a été effectué.
 
 ### 2026-08-10 — Codex — **UX-8 « Brancher » épuré, local uniquement**
 
