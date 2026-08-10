@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { login } from "../actions";
-
-const FIELD =
-  "mt-1 w-full rounded-[10px] border border-line bg-white px-3.5 py-2.5 text-sm text-ink placeholder:text-faint focus:border-violet focus:outline-none focus:ring-[3px] focus:ring-violet/15";
+import { PasswordField } from "@/components/ui/password-field";
+import { FIELD } from "@/components/ui/styles";
 
 export default async function LoginPage({
   searchParams,
@@ -22,14 +21,9 @@ export default async function LoginPage({
           <label htmlFor="email" className="block text-[13px] font-semibold text-ink">
             Email
           </label>
-          <input id="email" name="email" type="email" required autoComplete="email" className={FIELD} />
+          <input id="email" name="email" type="email" required autoComplete="username" className={`${FIELD} mt-1`} />
         </div>
-        <div>
-          <label htmlFor="password" className="block text-[13px] font-semibold text-ink">
-            Mot de passe
-          </label>
-          <input id="password" name="password" type="password" required minLength={8} autoComplete="current-password" className={FIELD} />
-        </div>
+        <PasswordField autoComplete="current-password" />
         {error && (
           <p className="rounded-[10px] bg-red-tint px-3.5 py-2.5 text-[13px] font-medium text-red">
             {error}

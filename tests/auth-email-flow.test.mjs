@@ -3,11 +3,29 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { buildConfirmationRedirectUrl } from "../lib/auth/confirmation-url.ts";
 
-const [actions, signupPage, deployment] = await Promise.all([
-  readFile(new URL("../app/(auth)/actions.ts", import.meta.url), "utf8"),
-  readFile(new URL("../app/(auth)/signup/page.tsx", import.meta.url), "utf8"),
-  readFile(new URL("../.github/workflows/deploy.yml", import.meta.url), "utf8"),
-]);
+const [
+  actions,
+  loginPage,
+  signupPage,
+  passwordField,
+  cockpitLayout,
+  confirmationTemplate,
+  deployment,
+] = await Promise.all([
+    readFile(new URL("../app/(auth)/actions.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/(auth)/login/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/(auth)/signup/page.tsx", import.meta.url), "utf8"),
+    readFile(
+      new URL("../components/ui/password-field.tsx", import.meta.url),
+      "utf8",
+    ),
+    readFile(new URL("../app/(cockpit)/layout.tsx", import.meta.url), "utf8"),
+    readFile(
+      new URL("../supabase/templates/confirm-signup.html", import.meta.url),
+      "utf8",
+    ),
+    readFile(new URL("../.github/workflows/deploy.yml", import.meta.url), "utf8"),
+  ]);
 
 test("auth email — inscription et renvoi utilisent le même callback PKCE", () => {
   assert.equal(
@@ -87,8 +105,43 @@ test("auth email — les erreurs SMTP et de cadence restent honnêtes", () => {
 });
 
 test("auth email — l'interface propose un renvoi sans mot de passe", () => {
+  const resendSection = signupPage.slice(signupPage.indexOf('id="resend-confirmation"'));
   assert.match(signupPage, /id="resend-confirmation"/);
   assert.match(signupPage, /action=\{resendConfirmation\}/);
   assert.match(signupPage, /Renvoyer le lien de confirmation/);
-  assert.equal(signupPage.match(/name="password"/g)?.length, 1);
+  assert.doesNotMatch(resendSection, /<PasswordField/);
+  assert.doesNotMatch(resendSection, /name="password"/);
+});
+
+test("auth UI — connexion et inscription partagent un mot de passe affichable", () => {
+  assert.match(loginPage, /<PasswordField autoComplete="current-password" \/>/);
+  assert.match(loginPage, /name="email"[\s\S]*autoComplete="username"/);
+  assert.match(signupPage, /<PasswordField[\s\S]*autoComplete="new-password"/);
+  assert.match(passwordField, /useState\(false\)/);
+  assert.match(passwordField, /type=\{visible \? "text" : "password"\}/);
+  assert.match(passwordField, /type="button"/);
+  assert.match(passwordField, /onClick=\{\(\) => setVisible\(\(current\) => !current\)\}/);
+  assert.match(passwordField, /id="password"/);
+  assert.match(passwordField, /aria-controls="password"/);
+  assert.match(passwordField, /aria-describedby=\{hintId\}/);
+  assert.match(passwordField, /Afficher le mot de passe/);
+  assert.match(passwordField, /Masquer le mot de passe/);
+  assert.match(passwordField, /autoComplete=\{autoComplete\}/);
+  assert.match(passwordField, /name="password"/);
+  assert.match(passwordField, /required/);
+  assert.match(passwordField, /minLength=\{8\}/);
+});
+
+test("auth UI — la déconnexion reste visible et accessible sur mobile", () => {
+  assert.match(cockpitLayout, /import \{ logout \} from "@\/app\/\(auth\)\/actions"/);
+  assert.match(cockpitLayout, /<form action=\{logout\} className="lg:hidden">/);
+  assert.match(cockpitLayout, /aria-label="Se déconnecter"/);
+  assert.match(cockpitLayout, /title="Se déconnecter"/);
+  assert.match(cockpitLayout, /Déconnexion/);
+});
+
+test("auth email — le modèle de confirmation reste français et conserve le callback", () => {
+  assert.match(confirmationTemplate, /Confirme ton adresse email/);
+  assert.equal(confirmationTemplate.match(/\{\{ \.ConfirmationURL \}\}/g)?.length, 2);
+  assert.doesNotMatch(confirmationTemplate, /SiteURL|0\.0\.0\.0|Confirm your email/);
 });

@@ -1,8 +1,11 @@
 # Mailjet → Supabase Auth — rétablir les inscriptions externes
 
-> **Statut au 2 août 2026** : tâche ouverte, configuration externe à réaliser
-> avec Fathi pas à pas. Aucun secret SMTP ne doit être écrit dans ce dépôt ou
-> envoyé dans une conversation.
+> **Statut au 10 août 2026** : le SMTP personnalisé est actif et le tableau
+> Supabase expose la Site URL et le callback de production attendus. Le modèle
+> « Confirm signup » est désormais publié en français. La fermeture complète
+> reste conditionnée à un nouvel email externe reçu puis cliqué avec succès.
+> Aucun secret SMTP ne doit être écrit dans ce dépôt ou envoyé dans une
+> conversation.
 
 ## Résultat attendu
 
@@ -16,14 +19,24 @@ marketing supervisés.
 
 ## État constaté
 
-- Supabase utilise encore son SMTP par défaut, qui refuse les destinataires
-  externes à l'équipe du projet.
+- La capture du 10 août montre l'expéditeur personnalisé
+  `Nepteo <no-reply@auth.bogasolution.com>` : le SMTP personnalisé est actif.
+- Le tableau Supabase a été contrôlé le 10 août : Site URL
+  `https://nepteo.bogasolution.com` et unique Redirect URL
+  `https://nepteo.bogasolution.com/auth/confirm`.
+- Le modèle « Confirm signup » français est publié dans Supabase ; sa source de
+  référence est `supabase/templates/confirm-signup.html` et conserve
+  impérativement `{{ .ConfirmationURL }}`.
+- Un email généré avant la correction conserve son ancienne destination ; il
+  faut demander un nouvel envoi pour recetter le lien courant.
 - La zone DNS de `bogasolution.com` est gérée chez OVH
   (`dns200.anycast.me` / `ns200.anycast.me`).
 - Le domaine racine possède déjà un SPF OVH :
   `v=spf1 include:mx.ovh.com ~all`.
-- Aucun DKIM Mailjet n'est publié.
-- Aucun DMARC n'est publié.
+- Le sous-domaine `auth` publie le SPF Mailjet et
+  `mailjet._domainkey.auth.bogasolution.com` publie une clé DKIM ; leur statut
+  dans Mailjet reste à confirmer avant de fermer la recette.
+- Aucun DMARC n'est publié pour `_dmarc.auth.bogasolution.com`.
 
 Le domaine d'authentification retenu est **`auth.bogasolution.com`**, avec
 **`no-reply@auth.bogasolution.com`** comme expéditeur. Cette séparation protège
@@ -96,6 +109,9 @@ Dans le projet `hrqnzorapjnosjphftur` :
 6. Vérifier dans **URL Configuration** :
    - Site URL : `https://nepteo.bogasolution.com` ;
    - Redirect URL : `https://nepteo.bogasolution.com/auth/confirm`.
+7. Dans **Emails → Templates → Confirm signup**, utiliser le sujet
+   `Confirme ton adresse email — Nepteo` et le corps versionné dans
+   `supabase/templates/confirm-signup.html`.
 
 ### 6. Recette externe
 

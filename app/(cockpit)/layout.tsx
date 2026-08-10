@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { logout } from "@/app/(auth)/actions";
+import { icons } from "@/components/icons";
 import { getCurrentAuthContext } from "@/lib/auth/context";
 import { readDemoPresentation } from "@/lib/demo/presentation";
 import { Sidebar } from "./_components/sidebar";
@@ -50,7 +52,7 @@ export default async function CockpitLayout({
       />
 
       <div className="min-w-0">
-        <div className="sticky top-0 z-20 flex items-center justify-between gap-4 border-b border-line bg-page/90 px-7 py-3 backdrop-blur-xl">
+        <div className="sticky top-0 z-20 flex items-center justify-between gap-4 border-b border-line bg-page/90 px-4 py-3 backdrop-blur-xl sm:px-7">
           <span className="font-display text-[15px] font-semibold text-ink lg:hidden">
             Nepteo
           </span>
@@ -58,7 +60,7 @@ export default async function CockpitLayout({
             <span className="h-1.5 w-1.5 rounded-full bg-green" />
             L&apos;agent est prêt
           </span>
-          <div className="flex items-center gap-3.5">
+          <div className="flex items-center gap-2 sm:gap-3.5">
             <Link
               href="/prise-en-main"
               className="rounded-[8px] bg-tint px-2.5 py-1.5 text-[11px] font-semibold text-violet-ink lg:hidden"
@@ -68,7 +70,18 @@ export default async function CockpitLayout({
             <span className="hidden text-[12.5px] text-muted sm:inline">
               {today}
             </span>
-            <span className="grid h-8 w-8 place-items-center rounded-full bg-ink font-display text-[11.5px] font-semibold text-white">
+            <form action={logout} className="lg:hidden">
+              <button
+                type="submit"
+                aria-label="Se déconnecter"
+                title="Se déconnecter"
+                className="inline-flex min-h-10 items-center gap-1.5 rounded-[8px] border border-line bg-white px-2.5 text-[11px] font-semibold text-body transition hover:bg-tint-soft hover:text-ink"
+              >
+                <span aria-hidden="true">{icons.logout}</span>
+                Déconnexion
+              </button>
+            </form>
+            <span className="hidden h-8 w-8 place-items-center rounded-full bg-ink font-display text-[11.5px] font-semibold text-white lg:grid">
               {initial}
             </span>
           </div>
