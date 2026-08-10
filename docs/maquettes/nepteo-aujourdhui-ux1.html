@@ -1,0 +1,588 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Nepteo — « Aujourd'hui » avant / après (spec du lot UX-1)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;450;500;550;600;650&family=Manrope:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ------------------------------------------------------------------
+   Tokens — copiés à l'identique depuis app/globals.css (2026-08-10).
+   Toute divergence ici est un bug de la maquette, pas une proposition.
+------------------------------------------------------------------- */
+:root{
+  --ink:#1c1713; --body:#5a5046; --muted:#81776b; --faint:#a79d90;
+  --violet:#2d5ba7; --violet-deep:#244d91; --violet-ink:#234b8b;
+  --tint:#eaf0f9; --tint-soft:#f8f5f0; --page:#f7f4ee; --card:#fff;
+  --line:#e4ddd1; --line-soft:#eee8de;
+  --green:#3e6b4f; --green-tint:#edf3ee;
+  --amber:#91631c; --amber-tint:#f7f0e0;
+  --red:#a4393c; --red-tint:#f8e9e7;
+  --cherry:#8a232d; --cherry-soft:#f5e9e7;
+  --shadow-card:0 1px 2px rgba(28,23,19,.04), 0 8px 24px rgba(28,23,19,.045);
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:#efeae1;color:var(--body);font-family:"Geist",system-ui,sans-serif;font-size:14px;-webkit-font-smoothing:antialiased}
+h1,h2,h3,h4{font-family:"Manrope","Geist",system-ui,sans-serif;color:var(--ink);margin:0}
+a{color:inherit}
+button{font:inherit;cursor:pointer}
+summary{list-style:none;cursor:pointer}
+summary::-webkit-details-marker{display:none}
+
+/* ---------- barre de spec (hors produit) ---------- */
+.specbar{position:sticky;top:0;z-index:20;background:#1c1713;color:#e9e2d6;padding:10px 18px;display:flex;flex-wrap:wrap;align-items:center;gap:14px}
+.specbar b{font-family:"Manrope";color:#fff;font-weight:600;font-size:13px}
+.specbar .sep{opacity:.3}
+.tabs{display:flex;gap:4px;background:rgba(255,255,255,.08);padding:3px;border-radius:9px}
+.tabs button{background:none;border:0;color:#cfc6b8;padding:5px 12px;border-radius:7px;font-size:12.5px;font-weight:550}
+.tabs button[aria-selected="true"]{background:#f7f4ee;color:#1c1713}
+.readout{margin-left:auto;display:flex;gap:14px;font-size:11.5px;color:#b8ae9f;flex-wrap:wrap}
+.readout span b{font-size:11.5px}
+.toggle{display:flex;align-items:center;gap:7px;font-size:12px;color:#cfc6b8}
+
+/* ---------- coquille produit ---------- */
+.view{display:none;padding:22px}
+.view.on{display:block}
+.app{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:196px 1fr;gap:0;background:var(--page);border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:0 18px 50px rgba(28,23,19,.10)}
+.side{background:#fbf9f5;border-right:1px solid var(--line-soft);padding:16px 0 22px}
+.brand{display:flex;align-items:center;gap:8px;padding:0 16px 14px}
+.logo{width:22px;height:22px;border-radius:6px;background:var(--violet);color:#fff;display:grid;place-items:center;font-weight:700;font-size:12px}
+.brand small{background:var(--cherry-soft);color:var(--cherry);font-size:9px;font-weight:650;letter-spacing:.08em;text-transform:uppercase;padding:2px 6px;border-radius:99px}
+.side .cta{margin:0 12px 14px;display:block;text-align:center;background:var(--cherry);color:#fff;border:0;border-radius:9px;padding:9px;font-size:12px;font-weight:600;text-decoration:none}
+.side nav a{display:flex;align-items:center;gap:10px;padding:8px 14px;font-size:12.5px;color:var(--body);text-decoration:none;border-left:2px solid transparent}
+.side nav a.on{background:var(--tint-soft);color:var(--ink);font-weight:600;border-left-color:var(--ink)}
+.dot{width:15px;height:15px;border-radius:4px;background:var(--tint);display:inline-block;flex:none}
+.canvas{padding:26px 30px 34px;min-width:0}
+
+/* ---------- primitives produit ---------- */
+.eyebrow{font-size:10.5px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--cherry);margin:0 0 6px}
+.h1{font-family:"Manrope";font-size:28px;font-weight:300;letter-spacing:-.02em;color:var(--ink)}
+.card{background:var(--card);border:1px solid var(--line-soft);border-radius:13px;box-shadow:var(--shadow-card)}
+.pad{padding:18px 20px}
+.muted{color:var(--muted)}
+.faint{color:var(--faint)}
+.small{font-size:12.5px;line-height:1.6}
+.tiny{font-size:11.5px}
+.btn{display:inline-block;border:0;border-radius:9px;padding:9px 15px;font-size:12.5px;font-weight:600;text-decoration:none}
+.btn.primary{background:var(--violet);color:#fff;box-shadow:0 6px 16px rgba(45,91,167,.18)}
+.btn.cherry{background:var(--cherry);color:#fff}
+.btn.ghost{background:var(--tint);color:var(--violet-ink)}
+.btn.outline{background:#fff;border:1px solid var(--line);color:var(--body)}
+.agentchip{display:inline-flex;align-items:center;gap:7px;font-size:10.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--violet-ink)}
+.agentchip i{width:20px;height:20px;border-radius:99px;background:var(--violet);color:#fff;display:grid;place-items:center;font-style:normal;font-size:11px;font-weight:700}
+.pill{display:inline-block;border-radius:99px;padding:2px 9px;font-size:10.5px;font-weight:600}
+.pill.g{background:var(--green-tint);color:var(--green)}
+.pill.a{background:var(--amber-tint);color:var(--amber)}
+.pill.b{background:var(--tint);color:var(--violet-ink)}
+details.block{background:#fff;border:1px solid var(--line);border-radius:12px;margin-top:10px}
+details.block>summary{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 18px;font-size:12.5px;font-weight:600;color:var(--ink)}
+details.block>summary .chev{color:var(--muted);transition:transform .15s}
+details.block[open]>summary .chev{transform:rotate(180deg)}
+details.block .inner{border-top:1px solid var(--line-soft);padding:16px 18px}
+details.inlineq{margin-top:10px}
+details.inlineq>summary{font-size:11.5px;font-weight:600;color:var(--violet-ink)}
+details.inlineq .inner{margin-top:7px;font-size:12px;line-height:1.65;color:var(--muted);border-left:2px solid var(--line);padding-left:11px}
+
+/* ---------- annotations (hors produit) ---------- */
+.anno{display:none}
+body.anno-on .anno{display:block}
+.anno{margin-top:8px;background:var(--red-tint);border-left:3px solid var(--red);color:#7d2b2e;font-size:11.5px;line-height:1.55;padding:7px 11px;border-radius:0 8px 8px 0}
+.anno b{color:#7d2b2e}
+
+/* ---------- vue AVANT ---------- */
+.hero-old{background:linear-gradient(135deg,var(--tint-soft),#fff)}
+.chan{display:flex;gap:14px;align-items:flex-start}
+.num{width:28px;height:28px;border-radius:99px;background:var(--tint);color:var(--violet-ink);display:grid;place-items:center;font-family:"Manrope";font-weight:600;font-size:13px;flex:none}
+.geste{margin-top:9px;background:var(--tint-soft);border-radius:10px;padding:9px 13px;font-size:12.5px;line-height:1.6;color:var(--ink)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+.li{display:flex;gap:8px;font-size:12.5px;line-height:1.6;margin-top:6px}
+.li .m{color:var(--violet);flex:none}
+.li .x{color:var(--red);flex:none}
+.bandeau{margin-top:14px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;background:rgba(248,245,240,.6);border:1px solid var(--line-soft);border-radius:14px;padding:13px 16px}
+.qhead{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--line-soft)}
+.empty{padding:26px 20px;text-align:center}
+
+/* ---------- vue APRÈS ---------- */
+.topline{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:16px}
+.safechip{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;color:var(--green);background:var(--green-tint);border-radius:99px;padding:5px 11px}
+.progress{display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:#fff;border:1px solid var(--line-soft);border-radius:12px;padding:11px 16px;box-shadow:var(--shadow-card)}
+.steps{display:flex;gap:5px}
+.steps i{width:26px;height:5px;border-radius:99px;background:var(--line);display:block}
+.steps i.done{background:var(--green)}
+.steps i.now{background:var(--violet)}
+.hero{margin-top:12px;background:linear-gradient(135deg,#fff 40%,var(--tint) 190%);border:1px solid var(--line-soft);border-radius:16px;box-shadow:var(--shadow-card);padding:22px 24px}
+.hero h2{font-family:"Manrope";font-size:21px;font-weight:500;line-height:1.35;letter-spacing:-.01em;max-width:30ch}
+.hero .why{margin-top:6px;font-size:13px;color:var(--muted)}
+.heroactions{margin-top:16px;display:flex;flex-wrap:wrap;gap:9px;align-items:center}
+.metrics{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+.queue-lite{margin-top:14px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.footnote{margin-top:16px;font-size:11px;color:var(--faint);line-height:1.6}
+
+/* ---------- vue ÉPURÉ ---------- */
+.canvas.z{padding:34px 38px 40px}
+.zhead{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:26px}
+.zsteps{display:inline-flex;align-items:center;gap:5px;text-decoration:none;background:#fff;border:1px solid var(--line-soft);border-radius:99px;padding:6px 12px;box-shadow:var(--shadow-card)}
+.zsteps i{width:16px;height:4px;border-radius:99px;background:var(--line);display:block}
+.zsteps i.done{background:var(--green)}
+.zsteps i.now{background:var(--violet)}
+.zsteps b{font-size:11px;color:var(--muted);margin-left:4px;font-weight:600}
+.zhero{background:#fff;border:1px solid var(--line-soft);border-radius:20px;box-shadow:var(--shadow-card);padding:34px 36px 30px}
+.zhero h2{font-family:"Manrope";font-size:29px;font-weight:400;line-height:1.28;letter-spacing:-.02em;margin:16px 0 0;max-width:16ch}
+.zactions{margin-top:26px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.zactions .btn.primary{padding:12px 22px;font-size:13.5px}
+.zrow{margin-top:14px;display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--line-soft);border-radius:13px;padding:13px 20px;box-shadow:var(--shadow-card)}
+.zcount{font-family:"Manrope";font-size:19px;font-weight:600;color:var(--faint)}
+.zlabel{font-size:13px;color:var(--muted)}
+.zfold{margin-top:7px;border-bottom:1px solid var(--line-soft)}
+.zfold>summary{display:flex;align-items:center;gap:11px;padding:13px 4px;font-size:13px;font-weight:550;color:var(--ink)}
+.zfold>summary .chev{color:var(--faint);transition:transform .15s;font-size:15px}
+.zfold[open]>summary .chev{transform:rotate(90deg)}
+.zfold>summary b{margin-left:auto;font-size:11px;font-weight:600;color:var(--muted);background:var(--tint-soft);border-radius:99px;padding:2px 8px}
+.zfold>summary b:empty{display:none}
+.zfold .inner{padding:0 4px 16px 26px}
+.zfoot{margin-top:30px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;font-size:11px;color:var(--faint)}
+.zfoot a{color:var(--faint);text-decoration:none;border-bottom:1px solid var(--line)}
+.zfoot a:hover{color:var(--violet);border-color:var(--violet)}
+.safedot{color:var(--green);font-weight:600;cursor:help}
+
+/* ---------- vue CONSIGNES ---------- */
+.spec{max-width:900px;margin:0 auto;background:#fff;border:1px solid var(--line);border-radius:16px;padding:30px 34px;box-shadow:0 18px 50px rgba(28,23,19,.08)}
+.spec h2{font-size:19px;margin:26px 0 10px}
+.spec h2:first-child{margin-top:0}
+.spec p,.spec li{font-size:13.5px;line-height:1.7}
+.spec ul,.spec ol{padding-left:20px}
+.spec code{background:var(--tint-soft);border:1px solid var(--line-soft);border-radius:5px;padding:1px 5px;font-size:12px}
+.spec table{width:100%;border-collapse:collapse;margin-top:10px;font-size:13px}
+.spec th,.spec td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line-soft);vertical-align:top}
+.spec th{font-family:"Manrope";color:var(--ink);font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+.rule{background:var(--tint-soft);border-left:3px solid var(--violet);border-radius:0 10px 10px 0;padding:12px 16px;margin-top:10px}
+.rule b{color:var(--ink)}
+@media(max-width:820px){
+  .app{grid-template-columns:1fr}
+  .side{display:none}
+  .grid2{grid-template-columns:1fr}
+  .canvas{padding:20px}
+}
+</style>
+</head>
+<body>
+
+<div class="specbar">
+  <b>Nepteo · écran « Aujourd'hui »</b>
+  <span class="sep">|</span>
+  <div class="tabs" role="tablist">
+    <button role="tab" aria-selected="true" data-view="avant">Avant (livré)</button>
+    <button role="tab" aria-selected="false" data-view="apres">Allégé</button>
+    <button role="tab" aria-selected="false" data-view="epure">Épuré ★</button>
+    <button role="tab" aria-selected="false" data-view="consignes">Consignes Codex</button>
+  </div>
+  <label class="toggle"><input type="checkbox" id="annoBox"> Annotations</label>
+  <div class="readout" id="readout"></div>
+</div>
+
+<!-- =================================================================
+     AVANT — reproduction fidèle de app/(cockpit)/page.tsx (base vide)
+================================================================== -->
+<section class="view on" id="v-avant">
+<div class="app">
+  <aside class="side">
+    <div class="brand"><span class="logo">N</span><span style="font-family:Manrope;font-weight:600;color:var(--ink)">nepteo</span><small>growth</small></div>
+    <a class="cta" href="#">✦ Créer une story</a>
+    <nav>
+      <a href="#" class="on"><span class="dot"></span>Aujourd'hui</a>
+      <a href="#"><span class="dot"></span>Prospects</a>
+      <a href="#"><span class="dot"></span>Campagnes</a>
+      <a href="#"><span class="dot"></span>Mon entreprise</a>
+      <a href="#"><span class="dot"></span>Journal</a>
+    </nav>
+  </aside>
+
+  <main class="canvas" id="canvas-avant">
+    <div style="display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:22px">
+      <div>
+        <p class="eyebrow">Aujourd'hui</p>
+        <h1 class="h1">Bonjour, par quoi commence-t-on ?</h1>
+        <p class="small muted" style="margin:8px 0 0;max-width:56ch">Nepteo apprend votre entreprise. Complétez la <a href="#" style="color:var(--violet);font-weight:600">mémoire de l'agent</a> — les données de votre organisation apparaîtront ici dès le premier connecteur.</p>
+      </div>
+      <div style="display:flex;gap:9px;align-items:center">
+        <span class="tiny" style="color:var(--green)">● Exécution active</span>
+        <a class="btn cherry" href="#">✦ Créer une story</a>
+      </div>
+    </div>
+    <div class="anno"><b>1.</b> Le titre pose une question, mais aucun élément de la page n'y répond de façon dominante. Le sous-titre explique le produit au lieu de guider.</div>
+
+    <div class="card hero-old pad" style="margin-bottom:16px">
+      <div class="agentchip"><i>N</i>Diagnostic de départ</div>
+      <p style="margin:10px 0 0;font-size:14px;line-height:1.65;color:var(--ink)">Pour démarrer, l'effort le plus rentable est recommandations, mais organisées puis une présence trouvable.</p>
+      <p class="tiny muted" style="margin:6px 0 0">Complétez votre fiche entreprise pour affiner ce diagnostic.</p>
+    </div>
+
+    <div class="card pad" style="margin-bottom:12px">
+      <div class="chan">
+        <span class="num">1</span>
+        <div>
+          <h3 style="font-size:14.5px;font-weight:600">Recommandations, mais organisées</h3>
+          <p class="small" style="margin:5px 0 0">Sans données ni budget, c'est le canal le moins risqué : vos clients actuels sont votre meilleur argument.</p>
+          <p class="geste"><b>Premier geste :</b> Demandez à vos trois derniers clients satisfaits de parler de vous, avec un message que vous réutiliserez.</p>
+          <p class="tiny faint" style="margin:7px 0 0">Effort faible · Gratuit</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card pad">
+      <div class="chan">
+        <span class="num">2</span>
+        <div>
+          <h3 style="font-size:14.5px;font-weight:600">Une présence trouvable</h3>
+          <p class="small" style="margin:5px 0 0">Il faut qu'on puisse vérifier que vous existez et comprendre votre offre en trente secondes. C'est le préalable à tout le reste.</p>
+          <p class="geste"><b>Premier geste :</b> Une page qui dit ce que vous vendez, à qui, à quel prix, et comment vous joindre.</p>
+          <p class="tiny faint" style="margin:7px 0 0">Effort moyen · Faible</p>
+        </div>
+      </div>
+    </div>
+    <div class="anno"><b>2.</b> Deux leviers de poids visuel identique = aucune priorité perçue. Le <i>pourquoi</i> est affiché avant le <i>quoi faire</i>, alors qu'il n'est lu qu'en cas de doute.</div>
+
+    <div class="grid2">
+      <div class="card pad">
+        <h3 style="font-size:14px;font-weight:600">Cette semaine</h3>
+        <div class="li"><span class="m">→</span><span>Écrivez en trois phrases ce que vous vendez, à qui, et ce qui vous distingue — vous le réutiliserez partout.</span></div>
+        <div class="li"><span class="m">→</span><span>Demandez à trois clients satisfaits de parler de vous.</span></div>
+        <div class="li"><span class="m">→</span><span>Rendez votre offre et votre prix visibles quelque part.</span></div>
+      </div>
+      <div class="card pad">
+        <h3 style="font-size:14px;font-weight:600">Ce qu'il vaut mieux éviter pour l'instant</h3>
+        <div class="li"><span class="x">×</span><span>Ouvrir plusieurs canaux en même temps : vous ne saurez pas lequel a marché.</span></div>
+        <div class="li"><span class="x">×</span><span>Payer de la publicité avant de savoir ce qui convainc vos clients actuels.</span></div>
+      </div>
+    </div>
+    <div class="anno"><b>3.</b> Deux colonnes symétriques doublent la charge de lecture pour zéro décision. « Cette semaine » répète le premier geste du levier 1.</div>
+
+    <div class="bandeau">
+      <p class="small" style="margin:0;max-width:62ch">Ce diagnostic vient de votre fiche entreprise. Corrigez-la et il change ; branchez vos outils et il devient un plan chiffré.</p>
+      <div style="display:flex;gap:8px"><a class="btn ghost" href="#">Corriger ma fiche</a><a class="btn primary" href="#">Brancher mes outils</a></div>
+    </div>
+    <div class="anno"><b>4.</b> Deux boutons de même force, en concurrence directe avec le CTA du header et celui de la file. Cinq appels à l'action distincts sur un seul écran.</div>
+
+    <div class="card" id="queue-avant" style="margin-top:26px;border-color:var(--line)">
+      <div class="qhead">
+        <h3 style="font-size:15px;font-weight:600">Vos prochaines décisions</h3>
+        <span class="tiny muted">0 à valider</span>
+      </div>
+      <div class="empty">
+        <p style="margin:0;font-size:13.5px;font-weight:600;color:var(--ink)">Rien à valider pour l'instant</p>
+        <p class="small muted" style="margin:7px auto 0;max-width:52ch">Synchronisez un connecteur puis lancez l'analyse — l'agent proposera ses premières actions ici.</p>
+        <a class="btn outline" style="margin-top:13px" href="#">Analyser mes données maintenant</a>
+        <p class="tiny muted" style="margin:12px auto 0;max-width:56ch;line-height:1.65">Pas encore d'outil à brancher ? <a href="#" style="color:var(--violet);font-weight:600">Chargez un scénario d'exemple</a> — identité, prospects, campagnes et ventes en un clic. Il remplace temporairement l'identité que vous venez de saisir, puis la restaure à son retrait.</p>
+      </div>
+    </div>
+    <div class="anno"><b>5.</b> Le cœur du produit — la file de décision — arrive après 210 mots, hors du premier écran, et son état vide occupe 6 lignes dont une note de bas de page conditionnelle.</div>
+
+    <details class="block" style="margin-top:14px">
+      <summary><span>Suivi et historique</span><span class="chev">⌄</span></summary>
+      <div class="inner"><p class="small muted" style="margin:0">Décisions récentes · scorecard de valeur.</p></div>
+    </details>
+  </main>
+</div>
+</section>
+
+<!-- =================================================================
+     APRÈS — proposition lot UX-1
+================================================================== -->
+<section class="view" id="v-apres">
+<div class="app">
+  <aside class="side">
+    <div class="brand"><span class="logo">N</span><span style="font-family:Manrope;font-weight:600;color:var(--ink)">nepteo</span><small>growth</small></div>
+    <a class="cta" href="#">✦ Créer une story</a>
+    <nav>
+      <a href="#" class="on"><span class="dot"></span>Aujourd'hui</a>
+      <a href="#"><span class="dot"></span>Prospects</a>
+      <a href="#"><span class="dot"></span>Campagnes</a>
+      <a href="#"><span class="dot"></span>Mon entreprise</a>
+      <a href="#"><span class="dot"></span>Journal</a>
+    </nav>
+  </aside>
+
+  <main class="canvas" id="canvas-apres">
+    <div class="topline">
+      <div>
+        <p class="eyebrow">Aujourd'hui</p>
+        <h1 class="h1">Par quoi commence-t-on ?</h1>
+      </div>
+      <span class="safechip">✓ Mode sûr — rien n'est envoyé sans votre clic</span>
+    </div>
+
+    <!-- 1. progression : remplace l'écran « Prise en main » -->
+    <div class="progress">
+      <div class="steps" aria-label="Progression 2 sur 5">
+        <i class="done"></i><i class="now"></i><i></i><i></i><i></i>
+      </div>
+      <span class="small" style="color:var(--ink)"><b>Étape 2 sur 5</b> · Analyser la situation</span>
+      <a href="#" class="tiny" style="margin-left:auto;color:var(--violet);font-weight:600">Reprendre →</a>
+    </div>
+
+    <!-- 2. héros : une seule chose à faire -->
+    <div class="hero">
+      <div class="agentchip"><i>N</i>Votre meilleur levier</div>
+      <h2 style="margin-top:11px">Faites parler vos clients satisfaits.</h2>
+      <p class="why">Trois demandes bien formulées. Aucun budget, aucun outil à brancher.</p>
+      <div class="heroactions">
+        <a class="btn primary" href="#">Préparer les 3 messages</a>
+        <a href="#" class="tiny" style="color:var(--violet);font-weight:600">Voir l'autre levier</a>
+      </div>
+      <div class="metrics">
+        <span class="pill g">Effort faible</span>
+        <span class="pill g">Gratuit</span>
+        <span class="pill b">Résultat sous 2 semaines</span>
+      </div>
+      <details class="inlineq">
+        <summary>Pourquoi ce levier ? ⌄</summary>
+        <div class="inner">Sans données ni budget, c'est le canal le moins risqué : vos clients actuels sont votre meilleur argument. Ce classement vient de votre fiche entreprise — corrigez-la et il change.</div>
+      </details>
+    </div>
+
+    <!-- 3. la file de décision, compacte -->
+    <div class="queue-lite" id="queue-apres">
+      <div>
+        <h3 style="font-size:14px;font-weight:600">Vos prochaines décisions</h3>
+        <p class="tiny muted" style="margin:3px 0 0">Rien à valider — lancez une analyse pour remplir cette file.</p>
+      </div>
+      <a class="btn outline" href="#">Analyser mes données</a>
+    </div>
+
+    <!-- 4. tout le reste, replié -->
+    <details class="block">
+      <summary><span>Le plan de la semaine · 3 gestes</span><span class="chev">⌄</span></summary>
+      <div class="inner">
+        <div class="li"><span class="m">→</span><span>Écrivez en trois phrases ce que vous vendez, à qui, et ce qui vous distingue.</span></div>
+        <div class="li"><span class="m">→</span><span>Demandez à trois clients satisfaits de parler de vous.</span></div>
+        <div class="li"><span class="m">→</span><span>Rendez votre offre et votre prix visibles quelque part.</span></div>
+        <p class="tiny muted" style="margin:14px 0 0"><b>À éviter pour l'instant :</b> ouvrir plusieurs canaux en même temps, ou payer de la publicité avant de savoir ce qui convainc.</p>
+      </div>
+    </details>
+
+    <details class="block">
+      <summary><span>L'autre levier · une présence trouvable</span><span class="chev">⌄</span></summary>
+      <div class="inner">
+        <p class="small" style="margin:0">Il faut qu'on puisse comprendre votre offre en trente secondes.</p>
+        <p class="geste"><b>Premier geste :</b> une page qui dit ce que vous vendez, à qui, à quel prix, et comment vous joindre.</p>
+        <p class="tiny faint" style="margin:8px 0 0">Effort moyen · Coût faible</p>
+      </div>
+    </details>
+
+    <details class="block">
+      <summary><span>Suivi et historique</span><span class="chev">⌄</span></summary>
+      <div class="inner"><p class="small muted" style="margin:0">Décisions récentes · scorecard de valeur.</p></div>
+    </details>
+
+    <p class="footnote">Ce diagnostic vient de votre fiche entreprise. <a href="#" style="color:var(--violet);font-weight:600">La corriger</a> · <a href="#" style="color:var(--violet);font-weight:600">Brancher mes outils</a> · <a href="#" style="color:var(--violet);font-weight:600">Charger un scénario d'exemple</a></p>
+  </main>
+</div>
+</section>
+
+<!-- =================================================================
+     ÉPURÉ — le cran au-dessus : l'écran ne se lit pas, il se regarde
+================================================================== -->
+<section class="view" id="v-epure">
+<div class="app">
+  <aside class="side">
+    <div class="brand"><span class="logo">N</span><span style="font-family:Manrope;font-weight:600;color:var(--ink)">nepteo</span><small>growth</small></div>
+    <a class="cta" href="#">✦ Créer une story</a>
+    <nav>
+      <a href="#" class="on"><span class="dot"></span>Aujourd'hui</a>
+      <a href="#"><span class="dot"></span>Prospects</a>
+      <a href="#"><span class="dot"></span>Campagnes</a>
+      <a href="#"><span class="dot"></span>Mon entreprise</a>
+      <a href="#"><span class="dot"></span>Journal</a>
+    </nav>
+  </aside>
+
+  <main class="canvas z" id="canvas-epure">
+    <div class="zhead">
+      <p class="eyebrow" style="margin:0">Aujourd'hui</p>
+      <a href="#" class="zsteps" title="Prise en main — étape 2 sur 5">
+        <i class="done"></i><i class="now"></i><i></i><i></i><i></i>
+        <b>2/5</b>
+      </a>
+    </div>
+
+    <!-- LA carte : une phrase, un bouton -->
+    <div class="zhero">
+      <div class="agentchip"><i>N</i>À faire maintenant</div>
+      <h2>Faites parler vos clients satisfaits.</h2>
+      <div class="zactions">
+        <a class="btn primary" href="#">Préparer les 3 messages</a>
+        <details class="inlineq" style="margin:0">
+          <summary>Pourquoi ?</summary>
+          <div class="inner">Sans données ni budget, c'est le canal le moins risqué : vos clients actuels sont votre meilleur argument. Ce classement vient de votre fiche entreprise.</div>
+        </details>
+      </div>
+    </div>
+
+    <!-- la file, réduite à son état -->
+    <div class="zrow" id="queue-epure">
+      <span class="zcount">0</span>
+      <span class="zlabel">décision à valider</span>
+      <a class="btn outline" style="margin-left:auto" href="#">Analyser</a>
+    </div>
+
+    <!-- le reste : trois lignes, rien de plus -->
+    <details class="zfold">
+      <summary><span class="chev">›</span>Plan de la semaine<b>3</b></summary>
+      <div class="inner">
+        <div class="li"><span class="m">→</span><span>Écrivez en trois phrases ce que vous vendez, à qui, et ce qui vous distingue.</span></div>
+        <div class="li"><span class="m">→</span><span>Demandez à trois clients satisfaits de parler de vous.</span></div>
+        <div class="li"><span class="m">→</span><span>Rendez votre offre et votre prix visibles quelque part.</span></div>
+        <p class="tiny muted" style="margin:13px 0 0"><b>À éviter :</b> ouvrir plusieurs canaux à la fois, ou payer de la publicité avant de savoir ce qui convainc.</p>
+      </div>
+    </details>
+    <details class="zfold">
+      <summary><span class="chev">›</span>Autre levier<b>1</b></summary>
+      <div class="inner">
+        <p class="small" style="margin:0"><b>Une présence trouvable.</b> Une page qui dit ce que vous vendez, à qui, à quel prix, et comment vous joindre.</p>
+        <p class="tiny faint" style="margin:8px 0 0">Effort moyen · Coût faible</p>
+      </div>
+    </details>
+    <details class="zfold">
+      <summary><span class="chev">›</span>Historique<b></b></summary>
+      <div class="inner"><p class="small muted" style="margin:0">Décisions récentes · scorecard de valeur.</p></div>
+    </details>
+
+    <div class="zfoot">
+      <span class="safedot" title="Mode sûr : rien n'est envoyé sans votre clic">✓ Mode sûr</span>
+      <a href="#">Ma fiche</a><a href="#">Mes outils</a><a href="#">Scénario d'exemple</a>
+    </div>
+  </main>
+</div>
+</section>
+
+<!-- =================================================================
+     CONSIGNES
+================================================================== -->
+<section class="view" id="v-consignes">
+<div class="spec">
+  <p class="eyebrow" style="color:var(--violet)">Lot UX-1 · spec du 10 août 2026</p>
+  <h2>Portée</h2>
+  <p>Un seul écran : <code>app/(cockpit)/page.tsx</code> et <code>app/(cockpit)/_components/starter-diagnostic.tsx</code>. Aucun changement de schéma, de garde-fou serveur, de RLS ou de route. Uniquement de la présentation et du texte.</p>
+
+  <h2>Les cinq règles</h2>
+  <div class="rule"><b>1 · Une action dominante.</b> Un seul bouton plein <code>bg-violet</code> visible sans scroller. Les autres appels à l'action passent en <code>outline</code>, en lien texte, ou en pied de page.</div>
+  <div class="rule"><b>2 · Règle des 3 lignes.</b> Aucun bloc au-dessus de la ligne de flottaison ne dépasse 3 lignes. Le détail va dans un <code>&lt;details&gt;</code> « Pourquoi ? ».</div>
+  <div class="rule"><b>3 · Les garde-fous ne sont pas du contenu.</b> « Mode sûr », « rien n'est envoyé » : un badge de 11px, jamais un encart.</div>
+  <div class="rule"><b>4 · Replié par défaut.</b> Tout bloc secondaire est un <code>&lt;details&gt;</code> fermé au premier rendu.</div>
+  <div class="rule"><b>5 · Le geste avant l'explication.</b> Chaque carte commence par un verbe ou un chiffre. Le <i>pourquoi</i> vient après, ou en repli.</div>
+
+  <h2>Deux niveaux de densité — choisir avant d'écrire le code</h2>
+  <table>
+    <tr><th style="width:22%">Niveau</th><th style="width:39%">Ce qu'on gagne</th><th>Ce qu'on perd</th></tr>
+    <tr>
+      <td><b>Allégé</b><br><span class="tiny muted">≈ 108 mots</span></td>
+      <td>L'écran reste auto-explicatif : le testeur comprend le levier, sa raison, son coût et le prochain geste sans cliquer.</td>
+      <td>Ça reste une page qui se lit. Un testeur pressé peut encore décrocher.</td>
+    </tr>
+    <tr>
+      <td><b>Épuré</b> ★<br><span class="tiny muted">≈ 30 mots</span></td>
+      <td>L'écran ne se lit plus, il se regarde. Une phrase, un bouton. Impossible de se tromper de prochaine action.</td>
+      <td>L'écran ne se justifie plus tout seul : tout repose sur la <b>justesse</b> du levier proposé. Si l'agent se trompe, l'utilisateur n'a aucun élément visible pour le voir — il doit ouvrir « Pourquoi ? ». Et la promesse « mode sûr » descend en pied de page.</td>
+    </tr>
+  </table>
+  <div class="rule" style="border-left-color:var(--cherry)"><b>Décision de Fathi, 2026-08-10 : niveau Épuré retenu.</b> Le niveau Allégé reste dans ce fichier uniquement comme point de comparaison. Raisonnement retenu : Le risque décrit ci-dessus est réel mais il est déjà présent aujourd'hui — personne ne lit les 315 mots. Deux garde-fous le couvrent. <b>Premier : l'entrée « Pourquoi ? » est toujours visible à côté du bouton principal</b> — jamais à l'intérieur d'un accordéon fermé, jamais sous la ligne de flottaison. Sa <i>réponse</i>, elle, est repliée et s'ouvre au clic : c'est le libellé qui doit être permanent, pas le texte. <b>Second :</b> le pied d'écran conserve un accès permanent à la fiche, aux outils et au scénario d'exemple.</div>
+
+  <h2>Correspondance bloc par bloc</h2>
+  <table>
+    <tr><th style="width:34%">Aujourd'hui (livré)</th><th>Devient</th></tr>
+    <tr><td>Sous-titre « Nepteo apprend votre entreprise… »</td><td><b>Supprimé.</b> Son contenu est repris par la barre de progression.</td></tr>
+    <tr><td>Carte « Diagnostic de départ » (intro + basis)</td><td>Fusionnée dans le héros. <code>basis</code> passe dans le <code>&lt;details&gt;</code> « Pourquoi ce levier ? ».</td></tr>
+    <tr><td>Canal 1 (carte complète)</td><td><b>Le héros.</b> Titre reformulé à l'impératif, <code>why</code> replié, <code>firstStep</code> devient le libellé du bouton, <code>effort</code>/<code>cost</code> deviennent des pastilles.</td></tr>
+    <tr><td>Canaux 2..n</td><td>Un <code>&lt;details&gt;</code> fermé par canal, sous la file de décision.</td></tr>
+    <tr><td>« Cette semaine » + « À éviter » (2 colonnes)</td><td>Un seul <code>&lt;details&gt;</code> fermé : « Le plan de la semaine · 3 gestes ». « À éviter » devient un paragraphe final à l'intérieur.</td></tr>
+    <tr><td>Bandeau « Corriger ma fiche / Brancher mes outils »</td><td>Une ligne de liens texte en pied d'écran, 11px.</td></tr>
+    <tr><td>File de décision (état vide, 6 lignes)</td><td>Une carte d'une ligne + un bouton <code>outline</code>. La note « scénario d'exemple » rejoint le pied d'écran.</td></tr>
+    <tr><td>Barre de progression</td><td><b>Nouveau.</b> Remplace l'écran <code>/prise-en-main</code> comme point d'entrée (voir lot UX-2). Lit le même état <code>localStorage</code>.</td></tr>
+  </table>
+
+  <h2>Ce qui ne change pas</h2>
+  <ul>
+    <li>Les moteurs purs : <code>lib/diagnostic.ts</code>, <code>lib/plan.ts</code>, <code>lib/today-priority-rules.ts</code>. Le lot ne touche qu'au rendu.</li>
+    <li>Le comportement quand des données existent (KPI, PlanBanner, DormantPlayLauncher) : mêmes règles de repli, même hiérarchie, héros alimenté par la première action priorisée.</li>
+    <li>Les rôles : un commercial ne doit toujours rien voir de financier, y compris dans le héros.</li>
+  </ul>
+
+  <h2>Critère de recette</h2>
+  <ol>
+    <li>Sur un écran de 1280×800, la file de décision est visible sans scroller.</li>
+    <li>Un seul bouton plein violet au premier rendu.</li>
+    <li>Moins de <b>40 mots</b> lisibles avant interaction en niveau Épuré (contre 315 aujourd'hui), ou moins de 130 en niveau Allégé. Le compteur en haut de cette page recalcule à chaque ouverture.</li>
+    <li>Au plus <b>1 bloc</b> entre l'en-tête et la file de décision en Épuré, contre 5 aujourd'hui.</li>
+    <li>Le libellé « Pourquoi ? » est visible sans scroller et sans ouvrir d'accordéon ; sa réponse reste repliée au chargement.</li>
+    <li>Aucun <code>&lt;details&gt;</code> ouvert au chargement.</li>
+    <li>Sur mobile, la barre de progression et le héros tiennent dans le premier écran.</li>
+  </ol>
+
+  <h2>Statut de ce fichier</h2>
+  <p>Ceci est une <b>spec de lot</b>, pas une maquette historique et pas du code à recopier. La structure JSX, les composants serveur/client et les gardes de rôle restent ceux du dépôt : Codex transpose la hiérarchie, les tokens et les textes, il ne transpose pas ce HTML. Une fois le lot UX-1 recetté, ce fichier passe en référence historique.</p>
+</div>
+</section>
+
+<script>
+(function(){
+  var tabs = document.querySelectorAll('.tabs button');
+  var views = {avant:'v-avant', apres:'v-apres', epure:'v-epure', consignes:'v-consignes'};
+  tabs.forEach(function(b){
+    b.addEventListener('click', function(){
+      tabs.forEach(function(x){ x.setAttribute('aria-selected', String(x===b)); });
+      Object.keys(views).forEach(function(k){
+        document.getElementById(views[k]).classList.toggle('on', k===b.dataset.view);
+      });
+    });
+  });
+
+  document.getElementById('annoBox').addEventListener('change', function(e){
+    document.body.classList.toggle('anno-on', e.target.checked);
+  });
+
+  // Mesure honnête de la densité : mots réellement lisibles au premier rendu.
+  // Le contenu d'un accordéon fermé et les annotations sont exclus.
+  function scan(root){
+    var words=0;
+    (function walk(node){
+      if(node.nodeType===3){
+        var m=node.textContent.match(/[\wÀ-ÿ'’€%-]+/g);
+        if(m) words+=m.length;
+        return;
+      }
+      if(node.nodeType!==1) return;
+      if(node.classList && node.classList.contains('anno')) return;
+      if(node.tagName==='DETAILS' && !node.open){
+        var s=node.querySelector(':scope > summary');
+        if(s) walk(s);
+        return;
+      }
+      for(var i=0;i<node.childNodes.length;i++) walk(node.childNodes[i]);
+    })(root);
+    return words;
+  }
+  // Blocs de premier niveau à traverser avant d'atteindre la file de décision.
+  // L'en-tête de page et les annotations ne comptent pas.
+  function blocksBefore(queueId){
+    var n=0, el=document.getElementById(queueId).previousElementSibling;
+    while(el){
+      if(!el.classList.contains('anno') && el.previousElementSibling) n++;
+      el=el.previousElementSibling;
+    }
+    return n;
+  }
+  var aw=scan(document.getElementById('canvas-avant'));
+  var bw=scan(document.getElementById('canvas-apres'));
+  var cw=scan(document.getElementById('canvas-epure'));
+  var ab=blocksBefore('queue-avant'), bb=blocksBefore('queue-apres'), cb=blocksBefore('queue-epure');
+  function d(x){ return '−'+Math.round((1-x/aw)*100)+'%'; }
+  document.getElementById('readout').innerHTML =
+    '<span>Mots lisibles au 1<sup>er</sup> rendu — avant <b>'+aw+'</b> · allégé <b>'+bw+'</b> ('+d(bw)+') · épuré <b>'+cw+'</b> ('+d(cw)+')</span>'+
+    '<span>Blocs avant la file — <b>'+ab+'</b> · <b>'+bb+'</b> · <b>'+cb+'</b></span>';
+})();
+</script>
+</body>
+</html>

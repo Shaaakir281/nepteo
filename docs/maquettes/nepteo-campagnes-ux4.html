@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Nepteo — « Campagnes » avant / épuré (spec du lot UX-4)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;450;500;550;600;650&family=Manrope:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Tokens copiés à l'identique depuis app/globals.css (2026-08-10). */
+:root{
+  --ink:#1c1713; --body:#5a5046; --muted:#81776b; --faint:#a79d90;
+  --violet:#2d5ba7; --violet-deep:#244d91; --violet-ink:#234b8b;
+  --tint:#eaf0f9; --tint-soft:#f8f5f0; --page:#f7f4ee; --card:#fff;
+  --line:#e4ddd1; --line-soft:#eee8de;
+  --green:#3e6b4f; --green-tint:#edf3ee;
+  --amber:#91631c; --amber-tint:#f7f0e0;
+  --red:#a4393c; --red-tint:#f8e9e7;
+  --cherry:#8a232d; --cherry-soft:#f5e9e7;
+  --shadow-card:0 1px 2px rgba(28,23,19,.04), 0 8px 24px rgba(28,23,19,.045);
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:#efeae1;color:var(--body);font-family:"Geist",system-ui,sans-serif;font-size:14px;-webkit-font-smoothing:antialiased}
+h1,h2,h3,h4{font-family:"Manrope","Geist",system-ui,sans-serif;color:var(--ink);margin:0}
+button{font:inherit;cursor:pointer}
+summary{list-style:none;cursor:pointer}
+summary::-webkit-details-marker{display:none}
+
+.specbar{position:sticky;top:0;z-index:20;background:#1c1713;color:#e9e2d6;padding:10px 18px;display:flex;flex-wrap:wrap;align-items:center;gap:14px}
+.specbar b{font-family:"Manrope";color:#fff;font-weight:600;font-size:13px}
+.specbar .sep{opacity:.3}
+.tabs{display:flex;gap:4px;background:rgba(255,255,255,.08);padding:3px;border-radius:9px}
+.tabs button{background:none;border:0;color:#cfc6b8;padding:5px 12px;border-radius:7px;font-size:12.5px;font-weight:550}
+.tabs button[aria-selected="true"]{background:#f7f4ee;color:#1c1713}
+.readout{margin-left:auto;display:flex;gap:14px;font-size:11.5px;color:#b8ae9f;flex-wrap:wrap}
+.toggle{display:flex;align-items:center;gap:7px;font-size:12px;color:#cfc6b8}
+
+.view{display:none;padding:22px}
+.view.on{display:block}
+.app{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:196px 1fr;background:var(--page);border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:0 18px 50px rgba(28,23,19,.10)}
+.side{background:#fbf9f5;border-right:1px solid var(--line-soft);padding:16px 0 22px}
+.brand{display:flex;align-items:center;gap:8px;padding:0 16px 14px}
+.logo{width:22px;height:22px;border-radius:6px;background:var(--violet);color:#fff;display:grid;place-items:center;font-weight:700;font-size:12px}
+.brand small{background:var(--cherry-soft);color:var(--cherry);font-size:9px;font-weight:650;letter-spacing:.08em;text-transform:uppercase;padding:2px 6px;border-radius:99px}
+.side nav a{display:flex;align-items:center;gap:10px;padding:8px 14px;font-size:12.5px;color:var(--body);text-decoration:none;border-left:2px solid transparent}
+.side nav a.on{background:var(--tint-soft);color:var(--ink);font-weight:600;border-left-color:var(--ink)}
+.dot{width:15px;height:15px;border-radius:4px;background:var(--tint);display:inline-block;flex:none}
+.canvas{padding:26px 30px 34px;min-width:0}
+
+.h1{font-family:"Manrope";font-size:22px;font-weight:600;letter-spacing:-.02em;color:var(--ink)}
+.muted{color:var(--muted)} .faint{color:var(--faint)}
+.small{font-size:12.5px;line-height:1.6} .tiny{font-size:11.5px;line-height:1.6}
+.btn{display:inline-block;border:0;border-radius:9px;padding:9px 15px;font-size:12.5px;font-weight:600;text-decoration:none;text-align:center}
+.btn.primary{background:var(--violet);color:#fff;box-shadow:0 6px 16px rgba(45,91,167,.18)}
+.btn.cherry{background:var(--cherry);color:#fff}
+.btn.outline{background:#fff;border:1px solid var(--line);color:var(--body)}
+.btn.ghost{background:var(--tint);color:var(--violet-ink)}
+.pill{display:inline-block;border-radius:99px;padding:2px 9px;font-size:10.5px;font-weight:600}
+.pill.g{background:var(--green-tint);color:var(--green)}
+.pill.a{background:var(--amber-tint);color:var(--amber)}
+.pill.b{background:var(--tint);color:var(--violet-ink)}
+
+.anno{display:none}
+body.anno-on .anno{display:block}
+.anno{margin-top:8px;background:var(--red-tint);border-left:3px solid var(--red);color:#7d2b2e;font-size:11.5px;line-height:1.55;padding:7px 11px;border-radius:0 8px 8px 0}
+
+/* ---------- AVANT ---------- */
+.sec{background:#fff;border:1px solid var(--line-soft);border-radius:14px;box-shadow:var(--shadow-card);padding:16px 20px;margin-top:12px}
+.sec>h3{font-size:14.5px;font-weight:600}
+.sec>p{margin:5px 0 0;font-size:12.5px;line-height:1.6;color:var(--muted)}
+.win{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+.win div{border:1px solid var(--line-soft);border-radius:11px;padding:11px 14px;background:var(--tint-soft)}
+.win p{margin:0;font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--faint)}
+.win b{display:block;margin-top:3px;font-size:13px;color:var(--ink)}
+.three{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}
+.three div{border:1px solid var(--line-soft);border-radius:11px;padding:11px 13px}
+.three p{margin:0;font-size:10.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--faint)}
+.three span{display:block;margin-top:4px;font-size:12px;line-height:1.55;color:var(--body)}
+.qs{margin-top:10px;display:grid;gap:8px}
+.qs a{display:block;border:1px solid var(--line-soft);border-radius:10px;padding:9px 12px;font-size:12px;color:var(--body);text-decoration:none;background:var(--tint-soft)}
+.empty{margin-top:10px;border:1px dashed var(--line);border-radius:11px;padding:14px;text-align:center;font-size:12.5px;color:var(--faint)}
+
+/* ---------- ÉPURÉ ---------- */
+.canvas.z{padding:28px 34px 38px}
+.ztabs{display:flex;gap:4px;border-bottom:1px solid var(--line-soft);margin:16px 0 20px}
+.ztabs a{padding:8px 14px;font-size:13.5px;color:var(--muted);text-decoration:none;border-bottom:2px solid transparent;margin-bottom:-1px}
+.ztabs a.on{color:var(--violet-ink);font-weight:600;border-bottom-color:var(--violet)}
+.ztabs a b{margin-left:6px;font-size:10.5px;background:var(--tint);color:var(--violet-ink);border-radius:99px;padding:1px 7px}
+.zhero{background:#fff;border:1px solid var(--line-soft);border-radius:18px;box-shadow:var(--shadow-card);padding:26px 28px}
+.zwin{display:flex;align-items:center;gap:10px;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
+.zhero h2{font-family:"Manrope";font-size:23px;font-weight:400;line-height:1.32;letter-spacing:-.02em;margin:12px 0 0;max-width:26ch}
+.zactions{margin-top:22px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.zactions .btn.primary{padding:12px 22px;font-size:13.5px}
+.zsub{font-size:12px;color:var(--faint)}
+details.zfold{margin-top:8px;border-bottom:1px solid var(--line-soft)}
+details.zfold>summary{display:flex;align-items:center;gap:11px;padding:12px 4px;font-size:13px;font-weight:550;color:var(--ink)}
+details.zfold>summary .chev{color:var(--faint);font-size:15px;transition:transform .15s}
+details.zfold[open]>summary .chev{transform:rotate(90deg)}
+details.zfold>summary b{margin-left:auto;font-size:11px;font-weight:600;color:var(--muted);background:var(--tint-soft);border-radius:99px;padding:2px 8px}
+details.zfold .inner{padding:0 4px 18px 26px}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:16px}
+.kpis div{border:1px solid var(--line-soft);border-radius:12px;padding:12px 14px;background:var(--tint-soft)}
+.kpis p{margin:0;font-size:10.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--faint)}
+.kpis b{display:block;margin-top:3px;font-family:"Manrope";font-size:19px;font-weight:600;color:var(--ink)}
+.kpis span{font-size:11px;color:var(--muted)}
+.zfoot{margin-top:22px;font-size:11px;color:var(--faint)}
+
+/* ---------- CONSIGNES ---------- */
+.spec{max-width:900px;margin:0 auto;background:#fff;border:1px solid var(--line);border-radius:16px;padding:30px 34px;box-shadow:0 18px 50px rgba(28,23,19,.08)}
+.spec .eyebrow{font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--violet);margin:0 0 14px}
+.spec h2{font-size:19px;margin:26px 0 10px}
+.spec p,.spec li{font-size:13.5px;line-height:1.7}
+.spec code{background:var(--tint-soft);border:1px solid var(--line-soft);border-radius:5px;padding:1px 5px;font-size:12px}
+.spec table{width:100%;border-collapse:collapse;margin-top:10px;font-size:13px}
+.spec th,.spec td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line-soft);vertical-align:top}
+.spec th{font-family:"Manrope";color:var(--ink);font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+.rule{background:var(--tint-soft);border-left:3px solid var(--violet);border-radius:0 10px 10px 0;padding:12px 16px;margin-top:10px}
+.rule b{color:var(--ink)}
+@media(max-width:820px){.app{grid-template-columns:1fr}.side{display:none}.win,.three,.kpis{grid-template-columns:1fr}.canvas{padding:20px}}
+</style>
+</head>
+<body>
+
+<div class="specbar">
+  <b>Nepteo · écran « Campagnes »</b>
+  <span class="sep">|</span>
+  <div class="tabs" role="tablist">
+    <button role="tab" aria-selected="true" data-view="avant">Avant (livré)</button>
+    <button role="tab" aria-selected="false" data-view="epure">Épuré ★</button>
+    <button role="tab" aria-selected="false" data-view="consignes">Consignes Codex</button>
+  </div>
+  <label class="toggle"><input type="checkbox" id="annoBox"> Annotations</label>
+  <div class="readout" id="readout"></div>
+</div>
+
+<!-- ============================ AVANT ============================ -->
+<section class="view on" id="v-avant">
+<div class="app">
+  <aside class="side">
+    <div class="brand"><span class="logo">N</span><span style="font-family:Manrope;font-weight:600;color:var(--ink)">nepteo</span><small>growth</small></div>
+    <nav>
+      <a href="#"><span class="dot"></span>Aujourd'hui</a>
+      <a href="#"><span class="dot"></span>Prospects</a>
+      <a href="#" class="on"><span class="dot"></span>Campagnes</a>
+      <a href="#"><span class="dot"></span>Mon entreprise</a>
+      <a href="#"><span class="dot"></span>Journal</a>
+    </nav>
+  </aside>
+  <main class="canvas" id="canvas-avant">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap">
+      <div>
+        <h1 class="h1">Campagnes</h1>
+        <p class="small muted" style="margin:7px 0 0;max-width:66ch">Examinez ce que l'agent a mesuré sur la période, ce qu'il en déduit, et décidez d'une suite. Aucune modification n'est appliquée chez le fournisseur.</p>
+      </div>
+      <div style="display:flex;gap:8px"><a class="btn outline" href="#">Aide-mémoire</a><a class="btn cherry" href="#">+ Nouvelle campagne</a></div>
+    </div>
+
+    <div class="sec">
+      <h3>Cockpit de décision</h3>
+      <p>Les fenêtres courante et de comparaison sont explicites. Les indicateurs proviennent uniquement des métriques enregistrées.</p>
+      <div class="win">
+        <div><p>Fenêtre courante</p><b>1 au 7 août 2026 · aucune donnée</b></div>
+        <div><p>Fenêtre de comparaison</p><b>25 au 31 juillet 2026 · aucune donnée</b></div>
+      </div>
+    </div>
+    <div class="anno"><b>1.</b> La première carte de l'écran est un en-tête de méthode. Elle explique comment lire des chiffres qui n'existent pas encore.</div>
+
+    <div class="sec">
+      <h3>Résumé factuel du jour</h3>
+      <p>Aucune campagne mesurée sur la fenêtre courante.</p>
+    </div>
+
+    <div class="sec">
+      <h3>Reprendre après un contrôle</h3>
+      <p>Trois faits vérifiables avant toute décision, relus depuis les contrôles persistés.</p>
+      <div class="three">
+        <div><p>Statut d'exécution</p><span>Aucune reprise nécessaire</span></div>
+        <div><p>Connecteurs hors scénario</p><span>Aucun connecteur enregistré</span></div>
+        <div><p>Dernier démarrage journalisé</p><span>Aucun démarrage journalisé — un démarrage n'est pas un succès</span></div>
+      </div>
+    </div>
+    <div class="anno"><b>2.</b> Trois cartes pour dire « il n'y a rien ». Chacune est correcte et prudente ; ensemble elles remplissent un tiers d'écran avec du vide certifié.</div>
+
+    <div class="sec">
+      <h3>Prospects synchronisés</h3>
+      <p>Recherche bornée et expurgée sur les prospects importés.</p>
+      <div class="empty">Aucun prospect synchronisé</div>
+    </div>
+
+    <div class="sec">
+      <h3>Indicateurs observés</h3>
+      <p>CPM et CTR sont calculés avec leurs dénominateurs explicites ; une corrélation n'est pas une cause.</p>
+      <div class="empty">Aucun indicateur sur la période</div>
+    </div>
+
+    <div class="sec">
+      <h3>Rapport hebdomadaire et questions analytiques</h3>
+      <p>Rapport 7 jours / 7 jours dérivé sans IA, puis quatre questions fixes.</p>
+      <div class="empty">Rapport indisponible : aucune donnée sur les deux fenêtres</div>
+      <div class="qs">
+        <a href="#">Quelle campagne a le meilleur coût par conversion sur la période ?</a>
+        <a href="#">Quelle campagne a le plus dérivé par rapport à la semaine précédente ?</a>
+        <a href="#">Quelle campagne dépense sans conversion mesurée ?</a>
+        <a href="#">Quelle campagne mérite une revue humaine avant toute décision ?</a>
+      </div>
+    </div>
+    <div class="anno"><b>3.</b> Quatre questions proposées alors qu'aucune ne peut recevoir de réponse. Le testeur clique, obtient « aucune donnée », et conclut que le produit est cassé.</div>
+
+    <div class="sec">
+      <h3>Audit créatif indisponible</h3>
+      <p>L'audit créatif exige des créations mesurées et des impressions non nulles.</p>
+    </div>
+
+    <div class="sec">
+      <h3>Aucune recommandation étayée</h3>
+      <p>Aucune campagne ne réunit les conditions minimales de preuve : sept jours distincts, une dépense positive et dix conversions.</p>
+    </div>
+
+    <div class="sec">
+      <h3>Campagnes mesurées</h3>
+      <div class="empty">Aucune campagne mesurée</div>
+    </div>
+
+    <div class="sec">
+      <h3>Historique des décisions</h3>
+      <div class="empty">Aucune décision enregistrée</div>
+    </div>
+    <div class="anno"><b>4.</b> Dix sections de même poids visuel, toutes vides, sur un seul écran de 1 900 lignes. Rien n'indique par quoi commencer — et la seule action utile (« brancher un compte ») n'est nulle part.</div>
+  </main>
+</div>
+</section>
+
+<!-- ============================ ÉPURÉ ============================ -->
+<section class="view" id="v-epure">
+<div class="app">
+  <aside class="side">
+    <div class="brand"><span class="logo">N</span><span style="font-family:Manrope;font-weight:600;color:var(--ink)">nepteo</span><small>growth</small></div>
+    <nav>
+      <a href="#"><span class="dot"></span>Aujourd'hui</a>
+      <a href="#"><span class="dot"></span>Prospects</a>
+      <a href="#" class="on"><span class="dot"></span>Campagnes</a>
+      <a href="#"><span class="dot"></span>Mon entreprise</a>
+      <a href="#"><span class="dot"></span>Journal</a>
+    </nav>
+  </aside>
+  <main class="canvas z" id="canvas-epure">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap">
+      <h1 class="h1">Campagnes</h1>
+      <a class="btn cherry" href="#">+ Nouvelle campagne</a>
+    </div>
+
+    <div class="ztabs">
+      <a href="#" class="on">Décision</a>
+      <a href="#">Rapport</a>
+      <a href="#">Historique</a>
+    </div>
+
+    <div class="zhero">
+      <div class="zwin"><span>1 au 7 août</span><span style="color:var(--line)">/</span><span>vs 25 au 31 juillet</span></div>
+      <h2>Rien à mesurer pour l'instant.</h2>
+      <div class="zactions">
+        <a class="btn primary" href="#">Brancher un compte publicitaire</a>
+        <a href="#" class="zsub" style="color:var(--violet);font-weight:600">ou charger un scénario d'exemple</a>
+      </div>
+    </div>
+
+    <div style="margin-top:20px">
+      <details class="zfold">
+        <summary><span class="chev">›</span>Aperçu avec des données<b>exemple</b></summary>
+        <div class="inner">
+          <p class="tiny faint" style="margin:0 0 4px">Illustration de la mise en page une fois un compte branché — aucune donnée réelle.</p>
+          <div class="kpis">
+            <div><p>Dépense</p><b>1 240 €</b><span>+8 % vs 7j</span></div>
+            <div><p>Conversions</p><b>18</b><span>−2 vs 7j</span></div>
+            <div><p>Coût / conversion</p><b>69 €</b><span>+21 %</span></div>
+          </div>
+          <div style="margin-top:14px;border:1px solid var(--line-soft);border-radius:13px;padding:16px 18px;background:var(--tint-soft)">
+            <span class="pill a">Attention</span>
+            <h3 style="font-size:16px;font-weight:500;margin-top:9px">« Rentrée artisans » coûte 21 % plus cher qu'il y a une semaine.</h3>
+            <div style="margin-top:14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+              <a class="btn primary" href="#">Proposer une mise en pause</a>
+              <a href="#" class="zsub" style="color:var(--violet);font-weight:600">Pourquoi ?</a>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <details class="zfold">
+        <summary><span class="chev">›</span>Ce que Nepteo a vérifié<b>3</b></summary>
+        <div class="inner">
+          <div class="three">
+            <div><p>Exécution</p><span>Aucune reprise nécessaire</span></div>
+            <div><p>Connecteurs</p><span>Aucun enregistré</span></div>
+            <div><p>Dernier démarrage</p><span>Aucun journalisé</span></div>
+          </div>
+          <p class="tiny faint" style="margin:10px 0 0">Un démarrage journalisé n'est pas un succès fournisseur.</p>
+        </div>
+      </details>
+
+      <details class="zfold">
+        <summary><span class="chev">›</span>Prospects synchronisés<b>0</b></summary>
+        <div class="inner"><p class="small muted" style="margin:0">Recherche bornée et expurgée sur les prospects importés.</p></div>
+      </details>
+    </div>
+
+    <p class="zfoot">Aucune modification n'est appliquée chez le fournisseur.</p>
+  </main>
+</div>
+</section>
+
+<!-- ============================ CONSIGNES ============================ -->
+<section class="view" id="v-consignes">
+<div class="spec">
+  <p class="eyebrow">Lot UX-4 · spec du 10 août 2026</p>
+
+  <h2>Portée et avertissement</h2>
+  <p><code>app/(cockpit)/campagnes/page.tsx</code> (1 927 lignes) et <code>campaign-decision-cockpit.tsx</code> (1 693 lignes). <b>C'est le lot le plus lourd des cinq et il doit être traité seul</b>, après les autres. Aucune règle de calcul ne change : les fenêtres, dénominateurs, seuils de preuve et refus explicites de <code>CAMP-1</code>/<code>CAMP-2</code> restent intacts. Ce lot ne fait que décider <i>quand</i> chaque section est visible.</p>
+  <div class="rule" style="border-left-color:var(--cherry)"><b>Préalable non négociable : découper les fichiers avant de toucher au design.</b> La convention du dépôt est ~200 lignes par fichier ; on est à 10×. Chaque section devient un composant dans <code>campagnes/_components/</code>. Tant que ce découpage n'est pas fait, toute retouche visuelle est coûteuse et risquée.</div>
+
+  <h2>Le principe</h2>
+  <div class="rule"><b>Trois onglets internes : Décision · Rapport · Historique.</b> Un seul visible à la fois. Aujourd'hui, dix sections de même poids cohabitent — dont la décision, le rapport analytique et l'audit créatif, qui ne se lisent jamais au même moment.</div>
+  <div class="rule"><b>L'onglet Décision ne contient qu'une chose :</b> la fenêtre, les trois indicateurs, la recommandation, deux boutons. Tout le reste est replié ou dans un autre onglet.</div>
+  <div class="rule"><b>Un état vide n'est pas dix états vides.</b> Quand aucune donnée n'est mesurée, l'écran affiche une phrase et l'action qui débloque la situation. Les vérifications restent accessibles, repliées, avec leur compteur.</div>
+  <div class="rule"><b>Ne pas proposer une question sans réponse possible.</b> Les quatre questions analytiques sont masquées tant que le rapport n'a pas de données. Un bouton qui répond « aucune donnée » se lit comme une panne.</div>
+
+  <h2>Répartition des dix sections</h2>
+  <table>
+    <tr><th style="width:42%">Section livrée</th><th>Destination</th></tr>
+    <tr><td>Cockpit de décision (en-tête de méthode + fenêtres)</td><td>Onglet <b>Décision</b>. Le paragraphe de méthode disparaît ; les deux fenêtres deviennent une ligne de 11px au-dessus du titre.</td></tr>
+    <tr><td>Résumé factuel du jour</td><td>Onglet <b>Décision</b>, fusionné dans le titre du héros.</td></tr>
+    <tr><td>Indicateurs observés</td><td>Onglet <b>Décision</b>, sous forme de 3 KPI. Les explications de dénominateur passent en infobulle.</td></tr>
+    <tr><td>Recommandation / « Aucune recommandation étayée »</td><td>Onglet <b>Décision</b>. Devient le héros dès qu'elle existe. Le motif de non-recommandation passe derrière « Pourquoi ? ».</td></tr>
+    <tr><td>Reprendre après un contrôle (3 cartes)</td><td>Onglet <b>Décision</b>, accordéon replié « Ce que Nepteo a vérifié · 3 ».</td></tr>
+    <tr><td>Prospects synchronisés</td><td>Onglet <b>Décision</b>, accordéon replié avec compteur.</td></tr>
+    <tr><td>Rapport 7 j / 7 j</td><td>Onglet <b>Rapport</b>.</td></tr>
+    <tr><td>Questions disponibles (×4)</td><td>Onglet <b>Rapport</b>, <b>masquées</b> tant que le rapport n'a pas de données.</td></tr>
+    <tr><td>Audit créatif</td><td>Onglet <b>Rapport</b>, accordéon. Quand il est indisponible, une ligne suffit — pas une carte.</td></tr>
+    <tr><td>Campagnes mesurées + Historique des décisions</td><td>Onglet <b>Historique</b>.</td></tr>
+  </table>
+
+  <h2>Ce qui ne change pas</h2>
+  <ul>
+    <li>Toutes les règles de <code>docs/DECISIONS.md</code> du 2026-08-04 : fenêtres explicites, dénominateurs, seuils de preuve (7 jours distincts, dépense positive, 10 conversions), refus motivés, « Validée — non appliquée », exclusion d'Ads du claim et de la finalisation.</li>
+    <li>Aucun appel fournisseur, aucune outbox, aucune IA ajoutée par ce lot.</li>
+    <li>Les quatre questions restent fixes et dérivées sans IA. On change leur visibilité, pas leur contenu.</li>
+    <li>Le libellé « un démarrage journalisé n'est pas un succès fournisseur » est conservé — c'est une garantie, pas du remplissage. Il descend en 11px sous les vérifications.</li>
+  </ul>
+
+  <h2>Critère de recette</h2>
+  <ol>
+    <li>Moins de <b>60 mots</b> lisibles avant interaction sur l'onglet Décision. La reproduction « Avant » de cette page en compte 262 — et elle est <b>optimiste</b> : elle ne reprend pas tous les sous-détails de l'écran livré, qui est plus dense encore.</li>
+    <li>Un seul bouton plein sur l'onglet Décision.</li>
+    <li>Aucune question analytique affichée quand le rapport est vide.</li>
+    <li>Aucun fichier de <code>campagnes/</code> au-dessus de 250 lignes après découpage.</li>
+    <li>Les tests existants de <code>CAMP-1</code>/<code>CAMP-2</code> passent sans modification : ce lot ne touche à aucun calcul.</li>
+  </ol>
+
+  <h2>Statut de ce fichier</h2>
+  <p>Spec de lot, pas maquette historique et pas du code à recopier. Les chiffres de l'aperçu « avec des données » sont illustratifs et ne constituent ni une mesure, ni un état fournisseur. Codex transpose hiérarchie, tokens et textes dans les composants existants.</p>
+</div>
+</section>
+
+<script>
+(function(){
+  var tabs=document.querySelectorAll('.tabs button');
+  var views={avant:'v-avant',epure:'v-epure',consignes:'v-consignes'};
+  tabs.forEach(function(b){
+    b.addEventListener('click',function(){
+      tabs.forEach(function(x){x.setAttribute('aria-selected',String(x===b));});
+      Object.keys(views).forEach(function(k){
+        document.getElementById(views[k]).classList.toggle('on',k===b.dataset.view);
+      });
+    });
+  });
+  document.getElementById('annoBox').addEventListener('change',function(e){
+    document.body.classList.toggle('anno-on',e.target.checked);
+  });
+  function scan(root){
+    var w=0;
+    (function walk(n){
+      if(n.nodeType===3){var m=n.textContent.match(/[\wÀ-ÿ'’€%]+/g); if(m)w+=m.length; return;}
+      if(n.nodeType!==1) return;
+      if(n.classList&&n.classList.contains('anno')) return;
+      if(n.tagName==='DETAILS'&&!n.open){var s=n.querySelector(':scope > summary'); if(s)walk(s); return;}
+      for(var i=0;i<n.childNodes.length;i++) walk(n.childNodes[i]);
+    })(root);
+    return w;
+  }
+  function sections(root,sel){ return root.querySelectorAll(sel).length; }
+  var a=scan(document.getElementById('canvas-avant')), b=scan(document.getElementById('canvas-epure'));
+  var sa=sections(document.getElementById('canvas-avant'),'.sec');
+  var sb=sections(document.getElementById('canvas-epure'),'.zhero');
+  document.getElementById('readout').innerHTML=
+    '<span>Mots lisibles au 1<sup>er</sup> rendu — avant <b>'+a+'</b> · épuré <b>'+b+'</b> (−'+Math.round((1-b/a)*100)+'%)</span>'+
+    '<span>Sections déployées — avant <b>'+sa+'</b> · épuré <b>'+sb+'</b></span>';
+})();
+</script>
+</body>
+</html>

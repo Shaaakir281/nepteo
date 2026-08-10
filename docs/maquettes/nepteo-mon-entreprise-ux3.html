@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Nepteo — « Mon entreprise » avant / épuré (spec du lot UX-3)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;450;500;550;600;650&family=Manrope:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Tokens copiés à l'identique depuis app/globals.css (2026-08-10). */
+:root{
+  --ink:#1c1713; --body:#5a5046; --muted:#81776b; --faint:#a79d90;
+  --violet:#2d5ba7; --violet-deep:#244d91; --violet-ink:#234b8b;
+  --tint:#eaf0f9; --tint-soft:#f8f5f0; --page:#f7f4ee; --card:#fff;
+  --line:#e4ddd1; --line-soft:#eee8de;
+  --green:#3e6b4f; --green-tint:#edf3ee;
+  --amber:#91631c; --amber-tint:#f7f0e0;
+  --red:#a4393c; --red-tint:#f8e9e7;
+  --cherry:#8a232d; --cherry-soft:#f5e9e7;
+  --shadow-card:0 1px 2px rgba(28,23,19,.04), 0 8px 24px rgba(28,23,19,.045);
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:#efeae1;color:var(--body);font-family:"Geist",system-ui,sans-serif;font-size:14px;-webkit-font-smoothing:antialiased}
+h1,h2,h3,h4{font-family:"Manrope","Geist",system-ui,sans-serif;color:var(--ink);margin:0}
+button{font:inherit;cursor:pointer}
+summary{list-style:none;cursor:pointer}
+summary::-webkit-details-marker{display:none}
+
+.specbar{position:sticky;top:0;z-index:20;background:#1c1713;color:#e9e2d6;padding:10px 18px;display:flex;flex-wrap:wrap;align-items:center;gap:14px}
+.specbar b{font-family:"Manrope";color:#fff;font-weight:600;font-size:13px}
+.specbar .sep{opacity:.3}
+.tabs{display:flex;gap:4px;background:rgba(255,255,255,.08);padding:3px;border-radius:9px}
+.tabs button{background:none;border:0;color:#cfc6b8;padding:5px 12px;border-radius:7px;font-size:12.5px;font-weight:550}
+.tabs button[aria-selected="true"]{background:#f7f4ee;color:#1c1713}
+.readout{margin-left:auto;display:flex;gap:14px;font-size:11.5px;color:#b8ae9f;flex-wrap:wrap}
+.toggle{display:flex;align-items:center;gap:7px;font-size:12px;color:#cfc6b8}
+
+.view{display:none;padding:22px}
+.view.on{display:block}
+.app{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:196px 1fr;background:var(--page);border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:0 18px 50px rgba(28,23,19,.10)}
+.side{background:#fbf9f5;border-right:1px solid var(--line-soft);padding:16px 0 22px}
+.brand{display:flex;align-items:center;gap:8px;padding:0 16px 14px}
+.logo{width:22px;height:22px;border-radius:6px;background:var(--violet);color:#fff;display:grid;place-items:center;font-weight:700;font-size:12px}
+.brand small{background:var(--cherry-soft);color:var(--cherry);font-size:9px;font-weight:650;letter-spacing:.08em;text-transform:uppercase;padding:2px 6px;border-radius:99px}
+.side nav a{display:flex;align-items:center;gap:10px;padding:8px 14px;font-size:12.5px;color:var(--body);text-decoration:none;border-left:2px solid transparent}
+.side nav a.on{background:var(--tint-soft);color:var(--ink);font-weight:600;border-left-color:var(--ink)}
+.dot{width:15px;height:15px;border-radius:4px;background:var(--tint);display:inline-block;flex:none}
+.canvas{padding:26px 30px 34px;min-width:0}
+
+.h1{font-family:"Manrope";font-size:22px;font-weight:600;letter-spacing:-.02em;color:var(--ink)}
+.muted{color:var(--muted)} .faint{color:var(--faint)}
+.small{font-size:12.5px;line-height:1.6} .tiny{font-size:11.5px;line-height:1.6}
+.btn{display:inline-block;border:0;border-radius:9px;padding:9px 15px;font-size:12.5px;font-weight:600;text-decoration:none;text-align:center}
+.btn.primary{background:var(--violet);color:#fff;box-shadow:0 6px 16px rgba(45,91,167,.18)}
+.btn.outline{background:#fff;border:1px solid var(--line);color:var(--body)}
+.btn.ghost{background:var(--tint);color:var(--violet-ink)}
+.tabsrow{display:flex;gap:4px;border-bottom:1px solid var(--line-soft);margin:16px 0 18px}
+.tabsrow a{padding:8px 14px;font-size:13.5px;color:var(--muted);text-decoration:none;border-bottom:2px solid transparent;margin-bottom:-1px}
+.tabsrow a.on{color:var(--violet-ink);font-weight:600;border-bottom-color:var(--violet)}
+
+.anno{display:none}
+body.anno-on .anno{display:block}
+.anno{margin-top:8px;background:var(--red-tint);border-left:3px solid var(--red);color:#7d2b2e;font-size:11.5px;line-height:1.55;padding:7px 11px;border-radius:0 8px 8px 0}
+
+/* ---------- AVANT ---------- */
+.card{background:#fff;border:1px solid var(--line-soft);border-radius:18px;box-shadow:var(--shadow-card)}
+.card>.hd{display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line-soft);padding:14px 22px}
+.card>.hd h3{font-size:15px;font-weight:600}
+.card>.hd span{font-size:12px;color:var(--muted)}
+.grp{padding:16px 22px 4px}
+.grp h4{font-size:13.5px;font-weight:600}
+.grp p{margin:2px 0 0;font-size:12px;line-height:1.5;color:var(--muted)}
+.mrow{display:flex;align-items:flex-start;gap:12px;padding:13px 22px;border-top:1px solid var(--line-soft)}
+.mrow .lab{width:110px;flex:none;font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--faint);padding-top:3px}
+.mrow .val{flex:1;font-size:13.5px;color:var(--faint)}
+.mrow .val em{display:block;font-style:normal;font-size:12px;color:var(--muted);margin-top:2px}
+.mrow .mod{flex:none;background:var(--tint);color:var(--violet);border-radius:7px;padding:5px 12px;font-size:12px;font-weight:600}
+.bulb{display:flex;gap:12px;align-items:flex-start;border:1px solid var(--line);background:linear-gradient(#fbfbff,#f4f3fc);border-radius:18px;padding:16px 20px;margin-bottom:16px}
+.bulb span.i{width:36px;height:36px;border-radius:11px;border:1px solid var(--line);background:#fff;color:var(--violet);display:grid;place-items:center;flex:none}
+.cols{display:grid;grid-template-columns:1.15fr 1fr;gap:16px;align-items:start}
+.dash{margin-top:16px;display:block;text-align:center;border:1.5px dashed var(--line);border-radius:13px;padding:11px;font-size:13px;font-weight:600;color:var(--faint)}
+.info{margin-top:16px;display:flex;gap:10px;background:var(--tint-soft);border-radius:10px;padding:12px 14px;font-size:12.5px;line-height:1.6}
+
+/* ---------- ÉPURÉ ---------- */
+.canvas.z{padding:30px 34px 38px}
+.zhero{background:#fff;border:1px solid var(--line-soft);border-radius:18px;box-shadow:var(--shadow-card);padding:24px 26px;display:flex;gap:26px;align-items:center;flex-wrap:wrap}
+.ring{--p:25;width:74px;height:74px;flex:none;border-radius:99px;display:grid;place-items:center;
+  background:conic-gradient(var(--violet) calc(var(--p)*1%), var(--tint) 0)}
+.ring b{width:58px;height:58px;border-radius:99px;background:#fff;display:grid;place-items:center;font-family:"Manrope";font-size:16px;font-weight:600;color:var(--ink)}
+.zhero h2{font-family:"Manrope";font-size:20px;font-weight:500;letter-spacing:-.01em}
+.zhero .zactions{margin-top:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.zgroup{margin-top:24px}
+.zgroup h3{font-size:11px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);margin-bottom:2px}
+.frow{display:flex;align-items:center;gap:14px;padding:12px 4px;border-bottom:1px solid var(--line-soft);font-size:13.5px;cursor:pointer}
+.frow:hover{background:#fff;border-radius:9px;padding-left:10px;padding-right:10px;border-bottom-color:transparent;box-shadow:var(--shadow-card)}
+.frow .k{width:130px;flex:none;color:var(--ink);font-weight:500}
+.frow .v{flex:1;color:var(--faint)}
+.frow.ok .v{color:var(--body)}
+.frow .go{color:var(--faint);font-size:16px}
+.frow .q{color:var(--line);border:1px solid var(--line);width:15px;height:15px;border-radius:99px;font-size:9px;display:grid;place-items:center;color:var(--faint);cursor:help;flex:none}
+details.zfold{margin-top:8px;border-bottom:1px solid var(--line-soft)}
+details.zfold>summary{display:flex;align-items:center;gap:11px;padding:12px 4px;font-size:13px;font-weight:550;color:var(--ink)}
+details.zfold>summary .chev{color:var(--faint);font-size:15px;transition:transform .15s}
+details.zfold[open]>summary .chev{transform:rotate(90deg)}
+details.zfold>summary b{margin-left:auto;font-size:11px;font-weight:600;color:var(--muted);background:var(--tint-soft);border-radius:99px;padding:2px 8px}
+details.zfold .inner{padding:0 4px 16px 26px}
+.zfoot{margin-top:22px;font-size:11px;color:var(--faint)}
+
+/* ---------- CONSIGNES ---------- */
+.spec{max-width:900px;margin:0 auto;background:#fff;border:1px solid var(--line);border-radius:16px;padding:30px 34px;box-shadow:0 18px 50px rgba(28,23,19,.08)}
+.spec .eyebrow{font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--violet);margin:0 0 14px}
+.spec h2{font-size:19px;margin:26px 0 10px}
+.spec p,.spec li{font-size:13.5px;line-height:1.7}
+.spec code{background:var(--tint-soft);border:1px solid var(--line-soft);border-radius:5px;padding:1px 5px;font-size:12px}
+.spec table{width:100%;border-collapse:collapse;margin-top:10px;font-size:13px}
+.spec th,.spec td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line-soft);vertical-align:top}
+.spec th{font-family:"Manrope";color:var(--ink);font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+.rule{background:var(--tint-soft);border-left:3px solid var(--violet);border-radius:0 10px 10px 0;padding:12px 16px;margin-top:10px}
+.rule b{color:var(--ink)}
+@media(max-width:820px){.app{grid-template-columns:1fr}.side{display:none}.cols{grid-template-columns:1fr}.canvas{padding:20px}}
+</style>
+</head>
+<body>
+
+<div class="specbar">
+  <b>Nepteo · écran « Mon entreprise » (onglet Identité)</b>
+  <span class="sep">|</span>
+  <div class="tabs" role="tablist">
+    <button role="tab" aria-selected="true" data-view="avant">Avant (livré)</button>
+    <button role="tab" aria-selected="false" data-view="epure">Épuré ★</button>
+    <button role="tab" aria-selected="false" data-view="consignes">Consignes Codex</button>
+  </div>
+  <label class="toggle"><input type="checkbox" id="annoBox"> Annotations</label>
+  <div class="readout" id="readout"></div>
+</div>
+
+<!-- ============================ AVANT ============================ -->
+<section class="view on" id="v-avant">
+<div class="app">
+  <aside class="side">
+    <div class="brand"><span class="logo">N</span><span style="font-family:Manrope;font-weight:600;color:var(--ink)">nepteo</span><small>growth</small></div>
+    <nav>
+      <a href="#"><span class="dot"></span>Aujourd'hui</a>
+      <a href="#"><span class="dot"></span>Prospects</a>
+      <a href="#"><span class="dot"></span>Campagnes</a>
+      <a href="#" class="on"><span class="dot"></span>Mon entreprise</a>
+      <a href="#"><span class="dot"></span>Journal</a>
+    </nav>
+  </aside>
+  <main class="canvas" id="canvas-avant">
+    <h1 class="h1">Mon entreprise</h1>
+    <p class="small muted" style="margin:8px 0 0;max-width:66ch">C'est la mémoire de Nepteo : tout ce qu'il sait pour personnaliser ses recommandations. Plus elle est juste, meilleures sont les propositions — chaque élément est modifiable et s'applique immédiatement.</p>
+    <div class="anno"><b>1.</b> Trois lignes pour dire « remplissez cette fiche ». Une jauge de complétude le dirait sans un mot.</div>
+
+    <div class="tabsrow"><a href="#" class="on">Identité</a><a href="#">Connecteurs</a><a href="#">Agent</a></div>
+
+    <div class="bulb">
+      <span class="i">◔</span>
+      <div>
+        <h4>Remplissez ce que vous savez, comme vous le diriez à un client</h4>
+        <p class="small" style="margin:3px 0 0">Pas besoin des bons termes marketing. Nepteo enrichira ensuite cette mémoire avec ce qu'il observe dans vos données — et vous garderez le dernier mot sur chaque apprentissage.</p>
+      </div>
+    </div>
+    <div class="anno"><b>2.</b> Un deuxième paragraphe d'introduction, juste après le premier, qui dit à peu près la même chose. Aucun des deux n'aide à remplir un champ.</div>
+
+    <div class="cols">
+      <div>
+        <div class="card">
+          <div class="hd"><h3>Identité &amp; activité</h3><span>Modifiable à tout moment</span></div>
+          <div class="grp"><h4>Ce que je vends</h4><p>Votre activité et votre zone. Vos offres sont juste en dessous, dans leur propre carte.</p></div>
+          <div class="mrow"><span class="lab">Activité</span><span class="val">À compléter</span><span class="mod">Modifier</span></div>
+          <div class="mrow"><span class="lab">Zone</span><span class="val">À compléter</span><span class="mod">Modifier</span></div>
+          <div class="grp" style="border-top:1px solid var(--line-soft)"><h4>Comment je parle</h4><p>Ce que Nepteo imite quand il écrit à votre place.</p></div>
+          <div class="mrow"><span class="lab">Ton</span><span class="val">À compléter<em>Utilisé pour tous les emails et publications rédigés par Nepteo</em></span><span class="mod">Modifier</span></div>
+          <div class="mrow"><span class="lab">Philosophie</span><span class="val">À compléter<em>Votre façon de travailler, ce à quoi vous tenez — Nepteo s'en sert pour écrire comme vous</em></span><span class="mod">Modifier</span></div>
+          <div class="grp" style="border-top:1px solid var(--line-soft)"><h4>Ce que je fais déjà</h4><p>Vos canaux, ce que vous publiez, et ce que vous visez.</p></div>
+          <div class="mrow"><span class="lab">Canaux actuels</span><span class="val">À compléter<em>Comment vos clients vous trouvent aujourd'hui</em></span><span class="mod">Modifier</span></div>
+          <div class="mrow"><span class="lab">Communication</span><span class="val">À compléter<em>Ce que vous faites déjà publiquement — pour ne pas vous le reproposer</em></span><span class="mod">Modifier</span></div>
+          <div class="mrow"><span class="lab">Objectifs</span><span class="val">À compléter<em>Le cockpit et les priorités s'organisent autour de ces objectifs</em></span><span class="mod">Modifier</span></div>
+        </div>
+        <div class="anno"><b>3.</b> Sept champs vides, chacun avec sa propre justification. Le testeur lit 60 mots d'explication avant d'avoir rempli une seule ligne — et rien ne lui dit combien il en reste.</div>
+
+        <div class="card" style="margin-top:16px">
+          <div class="hd"><h3>Vos offres</h3><span>Ce que vous vendez</span></div>
+          <div style="padding:22px">
+            <p class="small muted" style="margin:0">Décrivez votre offre principale — Nepteo s'en servira pour les campagnes et les contenus.</p>
+            <span class="dash">+ Ajouter une offre</span>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="card">
+          <div class="hd"><h3>Documents &amp; sources</h3><span>Ce que Nepteo a lu</span></div>
+          <div style="padding:22px">
+            <p style="margin:0;font-size:13px;font-weight:500;color:var(--ink)">Faites découvrir votre entreprise à Nepteo</p>
+            <p class="small muted" style="margin:4px 0 0">Donnez l'adresse de votre site : Nepteo le lit, consulte des sources publiques et vous propose une fiche à corriger avant enregistrement.</p>
+            <a class="btn primary" style="display:block;margin-top:16px" href="#">⌕ Analyser mon site</a>
+            <div style="margin-top:16px;border-top:1px solid var(--line-soft);padding-top:16px">
+              <p style="margin:0;font-size:12.5px;font-weight:600;color:var(--ink)">Tester un site avant de choisir</p>
+              <p class="small muted" style="margin:4px 0 0">Votre site ou un autre site public : l'analyse reste isolée, y compris pendant un scénario d'exemple. Hors scénario, vous pourrez ensuite appliquer uniquement les sections validées.</p>
+              <a class="btn ghost" style="display:block;margin-top:10px" href="#">⌕ Ouvrir le laboratoire web</a>
+            </div>
+            <span class="dash">+ Ajouter un document — bientôt</span>
+          </div>
+        </div>
+        <div class="anno"><b>4.</b> « Analyser mon site » est le geste qui remplit sept champs d'un coup. Il est relégué en colonne de droite, sous deux paragraphes, à égalité visuelle avec un bouton désactivé.</div>
+
+        <div class="card" style="margin-top:16px">
+          <div class="hd"><h3>Ce que Nepteo a appris</h3><span>Vous gardez le dernier mot</span></div>
+          <div style="padding:22px">
+            <p style="margin:0;font-size:13px;font-weight:500;color:var(--ink)">Les premières observations arriveront avec vos données</p>
+            <p class="small muted" style="margin:4px 0 0">Dès qu'un connecteur sera branché, Nepteo notera ici ce qu'il observe — délais de signature, meilleurs créneaux, segments qui répondent le mieux…</p>
+            <div class="info"><span>ⓘ</span><span>Ces observations resteront des <b>hypothèses</b> tant que vous ne les aurez pas confirmées. Confirmées, elles renforcent les recommandations ; corrigées, Nepteo apprend de votre retour.</span></div>
+          </div>
+        </div>
+        <div class="anno"><b>5.</b> Une carte vide qui occupe un quart de l'écran pour expliquer ce qui s'y trouvera un jour. Tant qu'elle est vide, elle ne devrait être qu'une ligne.</div>
+      </div>
+    </div>
+  </main>
+</div>
+</section>
+
+<!-- ============================ ÉPURÉ ============================ -->
+<section class="view" id="v-epure">
+<div class="app">
+  <aside class="side">
+    <div class="brand"><span class="logo">N</span><span style="font-family:Manrope;font-weight:600;color:var(--ink)">nepteo</span><small>growth</small></div>
+    <nav>
+      <a href="#"><span class="dot"></span>Aujourd'hui</a>
+      <a href="#"><span class="dot"></span>Prospects</a>
+      <a href="#"><span class="dot"></span>Campagnes</a>
+      <a href="#" class="on"><span class="dot"></span>Mon entreprise</a>
+      <a href="#"><span class="dot"></span>Journal</a>
+    </nav>
+  </aside>
+  <main class="canvas z" id="canvas-epure">
+    <h1 class="h1">Mon entreprise</h1>
+    <div class="tabsrow"><a href="#" class="on">Identité</a><a href="#">Connecteurs</a><a href="#">Agent</a></div>
+
+    <div class="zhero">
+      <div class="ring" style="--p:25" role="img" aria-label="Fiche complétée à 2 sur 8"><b>2/8</b></div>
+      <div style="flex:1;min-width:240px">
+        <h2>Nepteo vous connaît encore mal.</h2>
+        <div class="zactions">
+          <a class="btn primary" href="#">Remplir depuis mon site</a>
+          <a href="#" class="tiny" style="color:var(--violet);font-weight:600">ou à la main, ci-dessous</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="zgroup">
+      <h3>Ce que je vends</h3>
+      <div class="frow ok"><span class="k">Activité</span><span class="v">Menuiserie sur mesure</span><span class="go">›</span></div>
+      <div class="frow ok"><span class="k">Zone</span><span class="v">Eure-et-Loir</span><span class="go">›</span></div>
+      <div class="frow"><span class="k">Offres</span><span class="v">À compléter</span><span class="go">›</span></div>
+    </div>
+
+    <div class="zgroup">
+      <h3>Comment je parle</h3>
+      <div class="frow"><span class="k">Ton <span class="q" title="Utilisé pour tous les emails et publications rédigés par Nepteo">?</span></span><span class="v">À compléter</span><span class="go">›</span></div>
+      <div class="frow"><span class="k">Philosophie <span class="q" title="Votre façon de travailler, ce à quoi vous tenez — Nepteo s'en sert pour écrire comme vous">?</span></span><span class="v">À compléter</span><span class="go">›</span></div>
+    </div>
+
+    <div class="zgroup">
+      <h3>Ce que je fais déjà</h3>
+      <div class="frow"><span class="k">Canaux <span class="q" title="Comment vos clients vous trouvent aujourd'hui">?</span></span><span class="v">À compléter</span><span class="go">›</span></div>
+      <div class="frow"><span class="k">Communication <span class="q" title="Ce que vous faites déjà publiquement — pour ne pas vous le reproposer">?</span></span><span class="v">À compléter</span><span class="go">›</span></div>
+      <div class="frow"><span class="k">Objectifs <span class="q" title="Le cockpit et les priorités s'organisent autour de ces objectifs">?</span></span><span class="v">À compléter</span><span class="go">›</span></div>
+    </div>
+
+    <div style="margin-top:22px">
+      <details class="zfold">
+        <summary><span class="chev">›</span>Ce que Nepteo a appris<b>0</b></summary>
+        <div class="inner"><p class="small muted" style="margin:0">Les observations arriveront avec vos données : délais de signature, meilleurs créneaux, segments qui répondent le mieux. Elles resteront des hypothèses tant que vous ne les aurez pas confirmées.</p></div>
+      </details>
+      <details class="zfold">
+        <summary><span class="chev">›</span>Documents &amp; sources<b>0</b></summary>
+        <div class="inner">
+          <p class="small muted" style="margin:0">Tester un site public sans rien enregistrer.</p>
+          <a class="btn outline" style="margin-top:10px" href="#">Ouvrir le laboratoire web</a>
+        </div>
+      </details>
+    </div>
+
+    <p class="zfoot">Chaque champ est modifiable à tout moment et s'applique immédiatement.</p>
+  </main>
+</div>
+</section>
+
+<!-- ============================ CONSIGNES ============================ -->
+<section class="view" id="v-consignes">
+<div class="spec">
+  <p class="eyebrow">Lot UX-3 · spec du 10 août 2026</p>
+
+  <h2>Portée</h2>
+  <p>Onglet <code>Identité</code> uniquement : <code>identity-panel.tsx</code>, <code>identity-card.tsx</code>, <code>mem-row.tsx</code>, <code>side-cards.tsx</code>, <code>offers-card.tsx</code>, plus l'intro de <code>entreprise/page.tsx</code>. Les onglets <code>Connecteurs</code> et <code>Agent</code> ne sont pas dans ce lot. Aucun changement de <code>lib/memory.ts</code> ni de <code>lib/memory-store.ts</code>.</p>
+
+  <h2>Le principe</h2>
+  <div class="rule"><b>Une jauge remplace huit justifications.</b> « Fiche 2/8 » dit en un chiffre ce que huit sous-titres essaient d'expliquer. Les deux paragraphes d'introduction et l'encart ampoule disparaissent.</div>
+  <div class="rule"><b>Le geste le plus rentable devient le héros.</b> « Analyser mon site » remplit sept champs d'un coup : il quitte la colonne de droite pour le haut de l'écran, à côté de la jauge. La saisie manuelle reste immédiatement dessous.</div>
+  <div class="rule"><b>Les explications par champ deviennent des infobulles.</b> <code>MemRow.sub</code> n'est plus rendu en permanence : il devient un <code>title</code> sur une pastille <code>?</code>, et reste dans le DOM pour l'accessibilité.</div>
+  <div class="rule"><b>Une carte vide n'est qu'une ligne.</b> « Ce que Nepteo a appris » et « Documents &amp; sources » sont repliés tant qu'ils sont vides, avec leur compteur à droite.</div>
+
+  <h2>Correspondance bloc par bloc</h2>
+  <table>
+    <tr><th style="width:38%">Aujourd'hui (livré)</th><th>Devient</th></tr>
+    <tr><td>Intro de page (3 lignes, <code>INTRO.identite</code>)</td><td><b>Supprimée.</b> Sa dernière idée utile — « modifiable à tout moment, s'applique immédiatement » — descend en pied d'écran, 11px.</td></tr>
+    <tr><td>Encart ampoule « Remplissez ce que vous savez… »</td><td><b>Supprimé.</b> Redondant avec l'intro qu'il suit immédiatement.</td></tr>
+    <tr><td>3 en-têtes de groupe avec titre + sous-titre</td><td>Un intertitre de 11px en capitales. Le sous-titre disparaît.</td></tr>
+    <tr><td>7 <code>MemRow</code> avec <code>label</code> + « À compléter » + <code>sub</code> + bouton « Modifier »</td><td>8 lignes cliquables (les offres rejoignent la liste) : <code>label</code> · valeur ou « À compléter » · chevron. Toute la ligne ouvre l'édition — le bouton « Modifier » disparaît. <code>sub</code> devient l'infobulle <code>?</code>.</td></tr>
+    <tr><td>Carte « Vos offres » séparée</td><td>Une ligne de la liste « Ce que je vends ». Le formulaire d'ajout reste le même, ouvert par la ligne.</td></tr>
+    <tr><td>Carte « Documents &amp; sources » (2 paragraphes, 2 boutons, 1 bouton désactivé)</td><td>Le bouton principal remonte dans le héros. Le laboratoire web va dans un accordéon replié. <b>« Ajouter un document — bientôt » est supprimé</b> : un bouton mort qui annonce une fonction inexistante.</td></tr>
+    <tr><td>Carte « Ce que Nepteo a appris » (vide, ~70 mots)</td><td>Une ligne repliée avec compteur <code>0</code>. Le texte d'explication survit à l'intérieur.</td></tr>
+  </table>
+
+  <h2>La jauge</h2>
+  <p>Huit champs comptés : <code>activite</code>, <code>zone</code>, <code>offres</code>, <code>ton</code>, <code>philosophie</code>, <code>canaux</code>, <code>communication</code>, <code>objectifs</code>. Un champ compte comme rempli s'il a une valeur non vide en mémoire. Le calcul est une fonction pure et testable, à placer à côté des autres moteurs de <code>lib/</code> — pas dans le composant.</p>
+  <p><b>Articulation avec le guide (lot UX-2) — actée le 2026-08-10.</b> L'étape 1 du guide, « Définir le contexte », passe à ✓ quand <b>quatre champs précis</b> sont remplis : <code>activite</code>, <code>zone</code>, <code>ton</code>, <code>philosophie</code>. Ce sont exactement les champs couverts par les deux missions non optionnelles de l'étape (<code>activity</code> et <code>voice</code>) — la troisième, <code>website</code>, reste optionnelle et ne compte pas.</p>
+  <p>Deux conséquences à respecter :</p>
+  <ul>
+    <li><b>Pour l'étape 1 seulement, le remplissage l'emporte sur la visite.</b> La règle générale d'UX-2 — « la complétion se déduit du retour depuis l'écran cible » — ne s'applique pas ici : visiter la fiche sans rien remplir ne valide pas l'étape. Les étapes 2 à 5 restent en déduction par la visite.</li>
+    <li><b>Le seuil n'est pas un pourcentage de la jauge.</b> Il porte sur quatre champs nommés, pas sur « 4/8 ». Remplir <code>offres</code>, <code>canaux</code>, <code>communication</code> et <code>objectifs</code> afficherait aussi 4/8 sans valider l'étape.</li>
+  </ul>
+  <p>Un seul calcul dans <code>lib/</code>, deux lectures : la jauge <code>x/8</code> pour cet écran, le prédicat des quatre champs pour le guide. Un seuil plus élevé (7/8, par exemple) a été écarté : il rendrait le chemin manuel nettement plus exigeant que l'analyse de site, alors que les deux voies doivent rester équivalentes.</p>
+
+  <h2>Ce qui ne change pas</h2>
+  <ul>
+    <li>Le bandeau ambre « Scénario Nepteo actif — identité en lecture seule » reste tel quel : c'est une vraie alerte, elle a le droit d'interrompre.</li>
+    <li>Le message de rôle « Lecture seule — votre rôle ne permet pas la modification » reste.</li>
+    <li>Les formulaires d'édition, leurs Server Actions et les gardes <code>canEdit</code> / <code>mutationBlockedByDemo</code> sont inchangés. Seule l'ouverture change : la ligne entière au lieu d'un bouton.</li>
+  </ul>
+
+  <h2>Critère de recette</h2>
+  <ol>
+    <li>Moins de <b>90 mots</b> lisibles avant interaction, contre environ 375 aujourd'hui (la maquette « épuré » en compte 82 ; le compteur en haut de cette page recalcule à chaque ouverture).</li>
+    <li>La jauge et « Remplir depuis mon site » sont visibles sans scroller.</li>
+    <li>Les 8 champs tiennent dans un seul écran de 1280×800.</li>
+    <li>Aucun bouton désactivé ni mention « bientôt ».</li>
+    <li>Chaque infobulle <code>?</code> reste lisible au lecteur d'écran et atteignable au clavier.</li>
+  </ol>
+
+  <h2>Statut de ce fichier</h2>
+  <p>Spec de lot, pas maquette historique et pas du code à recopier. Codex transpose hiérarchie, tokens et textes dans les composants existants. Le fichier passe en référence historique une fois UX-3 recetté.</p>
+</div>
+</section>
+
+<script>
+(function(){
+  var tabs=document.querySelectorAll('.tabs button');
+  var views={avant:'v-avant',epure:'v-epure',consignes:'v-consignes'};
+  tabs.forEach(function(b){
+    b.addEventListener('click',function(){
+      tabs.forEach(function(x){x.setAttribute('aria-selected',String(x===b));});
+      Object.keys(views).forEach(function(k){
+        document.getElementById(views[k]).classList.toggle('on',k===b.dataset.view);
+      });
+    });
+  });
+  document.getElementById('annoBox').addEventListener('change',function(e){
+    document.body.classList.toggle('anno-on',e.target.checked);
+  });
+  function scan(root){
+    var w=0;
+    (function walk(n){
+      if(n.nodeType===3){var m=n.textContent.match(/[\wÀ-ÿ'’€%]+/g); if(m)w+=m.length; return;}
+      if(n.nodeType!==1) return;
+      if(n.classList&&n.classList.contains('anno')) return;
+      if(n.classList&&n.classList.contains('q')) return; /* infobulle : non lue */
+      if(n.tagName==='DETAILS'&&!n.open){var s=n.querySelector(':scope > summary'); if(s)walk(s); return;}
+      for(var i=0;i<n.childNodes.length;i++) walk(n.childNodes[i]);
+    })(root);
+    return w;
+  }
+  var a=scan(document.getElementById('canvas-avant')), b=scan(document.getElementById('canvas-epure'));
+  document.getElementById('readout').innerHTML=
+    '<span>Mots lisibles au 1<sup>er</sup> rendu — avant <b>'+a+'</b> · épuré <b>'+b+'</b> (−'+Math.round((1-b/a)*100)+'%)</span>'+
+    '<span>Champs remplis en 1 geste — avant <b>0</b> · épuré <b>7</b></span>';
+})();
+</script>
+</body>
+</html>

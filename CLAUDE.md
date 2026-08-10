@@ -54,7 +54,7 @@ docs/           architecture, roadmap, décisions, maquettes HTML
 ## Design
 
 - **Référence visuelle : `docs/maquettes/`** pour les tokens et patterns. Ces maquettes sont historiques ; la navigation fonctionnelle à cinq entrées est définie dans `docs/DECISIONS.md` et le code livré fait foi.
-- Tokens dans `app/globals.css` (violet #5a4fe0, ink #191731, tint, line…) exposés en classes Tailwind (`text-ink`, `bg-tint`, `border-line-soft`, `shadow-card`…).
+- Tokens dans `app/globals.css` (bleu #2d5ba7, ink #1c1713, cerise #8a232d, tint, line…) exposés en classes Tailwind (`text-ink`, `bg-tint`, `border-line-soft`, `shadow-card`…).
 - Typo : Inter (corps) + Instrument Sans (titres, `font-display`). Rayons 18/13/10 px.
 - Textes produit : simples, français, **concis**. On s'adresse à des entrepreneurs : **ne pas définir** le lexique marketing standard (prospect, lead, funnel, relance…). Ne gloser brièvement que le jargon d'initié réellement obscur (cf. « Règle vocabulaire »). Pas de sous-titres explicatifs à rallonge.
 
