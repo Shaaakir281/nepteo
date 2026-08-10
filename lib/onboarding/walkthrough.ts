@@ -245,6 +245,20 @@ export function walkthroughCompletedCount(state: WalkthroughState): number {
   ).length;
 }
 
+/**
+ * Nombre d'étapes terminées, indépendamment des onze missions internes.
+ * Une étape est acquise lorsque toutes ses missions obligatoires le sont.
+ */
+export function walkthroughCompletedStageCount(
+  state: WalkthroughState,
+): number {
+  return WALKTHROUGH_STAGES.filter((stage) =>
+    WALKTHROUGH_MISSIONS.filter(
+      (mission) => mission.stage === stage.id && !mission.optional,
+    ).every((mission) => state.completed.includes(mission.id)),
+  ).length;
+}
+
 export function walkthroughIsComplete(state: WalkthroughState): boolean {
   return walkthroughCompletedCount(state) === WALKTHROUGH_MISSIONS.length;
 }

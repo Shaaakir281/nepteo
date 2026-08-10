@@ -12,17 +12,18 @@ const source = (relativePath) =>
 
 test("Aujourd'hui délègue le chargement au loader et ne chiffre que la cohorte complète", () => {
   const page = source("../app/(cockpit)/page.tsx");
+  const dashboard = source("../app/(cockpit)/_lib/today-dashboard-data.ts");
 
   assert.match(
-    page,
+    dashboard,
     /loadProspectCohort\(\s*createSupabaseProspectReader\(supabase\)/,
   );
   assert.match(
-    page,
+    dashboard,
     /prospectCohort\.status === "complete"\s*\? prospectCohort\.rawRows\s*: \[\]/,
   );
   assert.match(
-    page,
+    dashboard,
     /prospectCohort\.status === "unavailable"\s*\? null\s*: prospectCohort\.importedCount/,
   );
   assert.match(

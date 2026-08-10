@@ -31,8 +31,8 @@ const decisionsHistory = await readFile(
   ),
   "utf8",
 );
-const todayPage = await readFile(
-  new URL("../app/(cockpit)/page.tsx", import.meta.url),
+const todayQueueData = await readFile(
+  new URL("../app/(cockpit)/_lib/today-queue-data.ts", import.meta.url),
   "utf8",
 );
 const execution = await readFile(
@@ -764,7 +764,7 @@ test("CAMP-2 décisions — la raison enregistrée est relue et affichée", () =
   assert.match(campaignPage, /learning: attempt\.decisionReason/);
   assert.match(cockpitUi, /Motif enregistré :/);
   assert.match(
-    todayPage,
+    todayQueueData,
     /\.select\("id, kind, title, status, decided_at, decision_reason"\)/,
   );
   assert.match(decisionsHistory, /decision_reason: string \| null/);

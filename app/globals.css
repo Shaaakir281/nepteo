@@ -46,6 +46,8 @@
   --color-amber-tint: var(--amber-tint);
   --color-red: var(--red);
   --color-red-tint: var(--red-tint);
+  --color-cherry: var(--cherry);
+  --color-cherry-soft: var(--cherry-soft);
   --font-sans: "Geist", system-ui, sans-serif;
   --font-display: "Manrope", "Geist", system-ui, sans-serif;
   --shadow-card: 0 1px 2px rgba(28, 23, 19, 0.04), 0 8px 24px rgba(28, 23, 19, 0.045);

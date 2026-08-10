@@ -8,6 +8,7 @@ import {
   emptyWalkthroughState,
   parseWalkthroughState,
   walkthroughCompletedCount,
+  walkthroughCompletedStageCount,
   walkthroughIsComplete,
   walkthroughRequiredMissionsComplete,
 } from "../lib/onboarding/walkthrough.ts";
@@ -87,6 +88,23 @@ test("progression — état invalide ignoré et mission web non bloquante", () =
   assert.equal(
     walkthroughIsComplete({ ...state, completed: WALKTHROUGH_MISSIONS.map((m) => m.id) }),
     true,
+  );
+});
+
+test("progression — le compteur visible reste fondé sur cinq étapes", () => {
+  const state = {
+    ...emptyWalkthroughState("real"),
+    completed: ["activity", "voice", "website", "situation", "summary"],
+  };
+
+  assert.equal(walkthroughCompletedCount(state), 5);
+  assert.equal(walkthroughCompletedStageCount(state), 2);
+  assert.equal(
+    walkthroughCompletedStageCount({
+      ...state,
+      completed: WALKTHROUGH_MISSIONS.map((mission) => mission.id),
+    }),
+    WALKTHROUGH_STAGES.length,
   );
 });
 

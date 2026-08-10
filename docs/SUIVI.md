@@ -103,6 +103,14 @@ Pour l'intégration actuelle, les lots Connecteurs accessibles sont déjà dans 
 
 ## Historique des sessions
 
+### 2026-08-10 — Codex — **UX-1 « Aujourd'hui » épuré, local uniquement**
+
+**Fait** : l'écran Aujourd'hui place désormais un seul héros entre l'en-tête et la file de décision. Sans données, il reprend le premier levier du diagnostic sous forme d'impératif ; avec données, il reprend la première action déjà filtrée et priorisée. Le libellé « Pourquoi ? » reste visible à côté de l'unique bouton plein et seule sa réponse est repliée. L'état vide de la file tient sur une ligne avec un bouton outline. Plan de la semaine et « À éviter » sont fusionnés ; les autres leviers, le briefing, les KPI, le cap mensuel, le play dormant et l'historique sont des `<details>` fermés. Les liens fiche, outils et scénario ainsi que le coupe-circuit sont descendus en pied 11 px.
+
+**Décisions** : la progression Aujourd'hui lit `WALKTHROUGH_STORAGE_KEY` et `WALKTHROUGH_UPDATED_EVENT`, mais expose uniquement le nombre d'étapes terminées sur cinq. Le calcul d'étapes est une fonction pure testée ; les onze missions restent inchangées et internes. Les lectures serveur ont été réparties en trois modules courts afin de ramener `page.tsx` à 184 lignes, sans changer l'ordre des requêtes, les bornes, les moteurs, les gardes de rôle/démo ni les composants serveur. Aucun fichier d'onboarding, schéma, route, appel externe, envoi ou télémétrie n'a été modifié.
+
+**Vérifications et reste** : `npm run lint`, `npm run typecheck`, `npm test` (580/580) et `npm run build` (29 routes) sont verts. Les contrats statiques existants ont été recâblés sur les nouveaux modules de lecture. La recette navigateur authentifiée n'a pas pu être jouée : ce worktree ne contient pas les variables Supabase locales et le proxy échoue avant rendu ; aucun secret n'a été ajouté. Reste donc à jouer la recette téléphone sur un environnement authentifié configuré avant toute publication. Aucun commit, push, PR, déploiement ni publication n'a été effectué.
+
 ### 2026-08-10 — Codex — **PR #33 fusionnée, callback Auth corrigé et déployé**
 
 **Diagnostic corrigé** : un nouvel email français issu du modèle Supabase publié a reproduit la panne, invalidant l'hypothèse « ancien email uniquement ». Sur `0000023`, un appel public direct à `/auth/confirm` renvoyait lui-même `307 Location: https://0.0.0.0:3000/login?...`. La route utilisait `request.url` pour ses sorties absolues ; Azure y exposait l'origine interne du conteneur.
