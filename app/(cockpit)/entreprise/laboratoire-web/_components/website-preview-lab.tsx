@@ -129,12 +129,7 @@ export function WebsitePreviewLab({
     <div className="mt-5 space-y-4">
       <div className="rounded-[18px] border border-line-soft bg-white p-5 shadow-card">
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h2 className="font-display text-[15px] font-semibold">Site à étudier</h2>
-            <p className="mt-1 text-[12.5px] text-muted">
-              Les adresses locales, IP brutes, identifiants et ports spécifiques sont refusés.
-            </p>
-          </div>
+          <h2 className="font-display text-[15px] font-semibold">Quel site voulez-vous analyser ?</h2>
           <span className="rounded-full bg-tint px-3 py-1 text-[11.5px] font-semibold text-violet-ink">
             {quota
               ? `${quota.used} analyses lancées aujourd'hui · sans limite`
@@ -157,7 +152,7 @@ export function WebsitePreviewLab({
             disabled={running || !website.trim()}
             className="flex-none rounded-[10px] bg-violet px-4 py-2.5 text-[13px] font-semibold text-white transition hover:bg-violet-deep disabled:cursor-not-allowed disabled:opacity-40"
           >
-            Préparer l&apos;analyse
+            Analyser ce site
           </button>
         </form>
 

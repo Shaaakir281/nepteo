@@ -19,7 +19,7 @@
 
 État du produit déployé ou local, avec le niveau de recette précisé dans chaque lot :
 
-- **Refonte de densité UX-1 à UX-7 — terminée et validée localement, non publiée** : Aujourd'hui, onboarding, prise en main, identité d'entreprise, Campagnes, validation, Prospects et Journal appliquent la direction « Épuré ». Les références locales antérieures sont `cf66442`, `db97b5e`, `a4fede7`, `0dc6e40`, `c9c8db4` et `8a287ec` ; UX-6 et UX-7 sont consignés en tête de l'historique. La suite d'harmonisation est cadrée par UX-8 puis UX-9 ; leurs specs HTML sont présentes dans le checkout.
+- **Refonte de densité UX-1 à UX-8 — terminée et validée localement, non publiée** : Aujourd'hui, onboarding, prise en main, identité d'entreprise, Campagnes, validation, Prospects, Journal et le parcours « Brancher » appliquent la direction « Épuré ». Les références locales antérieures sont `cf66442`, `db97b5e`, `a4fede7`, `0dc6e40`, `c9c8db4` et `8a287ec` ; UX-6 à UX-8 sont consignés en tête de l'historique. La dernière suite d'harmonisation est UX-9 ; sa spec HTML est présente et son préalable UX-4 est satisfait.
 - **Socle et produit** : auth, organisation/RLS de base, mémoire, journal, couche LLM, analyse, validation, funnel/kanban, onboarding enrichi, recherche web et navigation à cinq entrées.
 - **Connecteurs en lecture seule** : Google Sheets et Notion, OAuth chiffré, mapping configurable, sync manuelle et cron. La lecture Notion est désormais paginée ; les appels connecteurs ont un timeout. Les demandes, configurations, callbacks OAuth, déconnexions et synchronisations participent au verrou d'isolation démo.
 - **Exécution sûre** : idempotence, journal avant exécution, pause, plafonds serveur et messages au statut `prepared`. C7, l'envoi externe, n'est pas activé.
@@ -103,6 +103,14 @@ Pour l'intégration actuelle, les lots Connecteurs accessibles sont déjà dans 
 - **Coût de la recherche web OpenAI** : le prix affiché (10 $ / 1 000 appels d'outil) n'est **que la moitié de la facture** — les *search content tokens* sont facturés au tarif du modèle et dominent le total (~0,06 $ par recherche avec `gpt-5.5`). Toujours chiffrer les deux parts, et se rappeler que `MAX_RESEARCH_PER_DAY` compte des appels `runResearch`, **pas** des `web_search_call`.
 
 ## Historique des sessions
+
+### 2026-08-10 — Codex — **UX-8 « Brancher » épuré, local uniquement**
+
+**Catalogue et tunnels** : les 22 connecteurs et cinq catégories du registre CONN-0 sont conservés sans ajout ni retrait. Le catalogue propose désormais recherche, filtres Tous/Branchés/Disponibles et catégorie, remonte les connexions en premier et rend chaque connecteur sur une tuile compacte ; descriptions et libellés d'état longs restent accessibles en infobulle. Les parcours OAuth/provider exposent une seule étape courante et replient source et mapping déjà configurés. L'import CSV montre successivement dépôt, vérification des colonnes et confirmation du remplacement ; les exigences apparaissent après sélection et les erreurs serveur précises restent l'autorité.
+
+**Laboratoire** : l'entrée est réduite à une question, un champ et un bouton. Coût, usage, rétention et séparation de la fiche restent accessibles ; la confirmation précède toujours toute recherche. Les résultats, sources et comparaison sont conservés. Toutes les sections proposées sont cochées par défaut mais chacune reste décochable, affiche « vide → proposé » ou « rempli → remplacé » et exige encore la confirmation puis le clic unique d'application. Aucune application, recherche, connexion, synchronisation ou import ne se déclenche automatiquement.
+
+**Frontières et contrôles** : aucun Server Action, validation, OAuth/callback, chiffrement, RLS/tenant scope, rôle/démo, verrou de mutation, moteur de mapping/import/recherche, `runResearch`, cache/quota/rétention, migration, route, cron, schéma, secret ou donnée distante n'a été modifié. Tous les composants UX-8 restent sous 250 lignes. Les contrats ciblés passent 34/34 et la suite complète 619/619. `npm run lint` (18,1 s), `npm run typecheck` (6,7 s) et `npm run build` terminent avec exit 0 ; Next.js 16.2.10 compile en 21,6 s, finit TypeScript en 13,5 s et génère 29 pages statiques. Le navigateur local atteint `http://localhost:3003/login` sans session authentifiée : aucun identifiant ni secret n'a été saisi, donc la recette visuelle authentifiée reste à jouer sur le PC. Aucun push, PR, publication ni déploiement n'a été effectué. La suite locale est UX-9.
 
 ### 2026-08-10 — Codex — **UX-7 « Prospects + Journal » épuré, local uniquement**
 

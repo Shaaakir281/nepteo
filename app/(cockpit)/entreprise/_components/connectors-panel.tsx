@@ -1,6 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { icons } from "@/components/icons";
 import { CONNECTOR_CATALOG } from "@/lib/connectors";
 import { connectionPresentation } from "@/lib/connectors/lifecycle";
 import { DEMO_SCENARIOS } from "@/lib/demo/scenarios";
@@ -16,10 +15,8 @@ import { readDemoPresentation } from "@/lib/demo/presentation";
 import { classifyDemoLoadGuard } from "@/lib/demo/presentation-rules";
 import { DemoPanel } from "../../agent/_components/demo-panel";
 import type { WalkthroughScenario } from "@/lib/onboarding/walkthrough";
-import {
-  ConnectorCard,
-  type ConnectorStatus,
-} from "../../connecteurs/_components/connector-card";
+import type { ConnectorStatus } from "../../connecteurs/_components/connector-card";
+import { ConnectorCatalog } from "../../connecteurs/_components/connector-catalog";
 
 /**
  * Onglet « Connecteurs » — repris de l'ancienne page `/connecteurs`, qui
@@ -129,19 +126,17 @@ export async function ConnectorsPanel({
       : demoLoadGuard.canLoad
         ? "Chargez un jeu cohérent — identité, prospects, campagnes et ventes en un clic."
         : "Ils sont réservés à une organisation de test dédiée et vide ; vos données actuelles sont préservées.";
+  const catalogEntries = CONNECTOR_CATALOG.flatMap((group) =>
+    group.tools.map((tool) => ({
+      category: group.title,
+      tool,
+      status: statusOf(tool.provider),
+      justRequested: saved === tool.provider,
+    })),
+  );
 
   return (
     <>
-      <div className="mb-5 flex items-start gap-2.5 rounded-[13px] border border-line bg-tint-soft px-4 py-3 text-[12.5px] leading-relaxed text-body">
-        <span className="mt-0.5 flex-none">{icons.info}</span>
-        <span>
-          Ce catalogue distingue les <b>connexions réellement disponibles</b>{" "}
-          des intégrations proposées. «&nbsp;Demander l&apos;intégration&nbsp;»
-          enregistre uniquement votre intérêt : aucun accès, synchronisation ou
-          échange de données n&apos;est ouvert par cette action.
-        </span>
-      </div>
-
       {(!hasConnected || hasDemo) && (
         <div className="mb-7 rounded-[18px] border border-line-soft bg-white shadow-card">
           <div className="border-b border-line-soft px-[22px] py-4">
@@ -194,29 +189,13 @@ export async function ConnectorsPanel({
         </p>
       )}
 
-      {CONNECTOR_CATALOG.map((group) => (
-        <section key={group.title} className="mb-7">
-          <div className="mb-3">
-            <h3 className="font-display text-[15px] font-semibold">
-              {group.title}
-            </h3>
-            <p className="text-[12.5px] text-muted">{group.sub}</p>
-          </div>
-          <div className="grid gap-3.5 sm:grid-cols-2 xl:grid-cols-3">
-            {group.tools.map((tool) => (
-              <ConnectorCard
-                key={tool.provider}
-                tool={tool}
-                status={statusOf(tool.provider)}
-                canEdit={canEdit && !hasDemo}
-                blockedByDemo={hasDemo}
-                demoPresentation={demoPresentation}
-                justRequested={saved === tool.provider}
-              />
-            ))}
-          </div>
-        </section>
-      ))}
+      <ConnectorCatalog
+        entries={catalogEntries}
+        categories={CONNECTOR_CATALOG.map((group) => group.title)}
+        canEdit={canEdit && !hasDemo}
+        blockedByDemo={hasDemo}
+        demoPresentation={demoPresentation}
+      />
 
       <p className="mt-2 text-[12.5px] leading-relaxed text-faint">
         Vous pouvez utiliser Nepteo sans connexion : le cockpit s&apos;appuie

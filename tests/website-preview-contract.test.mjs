@@ -2,13 +2,14 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-const [migration, applyMigration, service, applyService, action, application, page, cron, documentsDetails] = await Promise.all([
+const [migration, applyMigration, service, applyService, action, application, reviewSection, page, cron, documentsDetails] = await Promise.all([
   readFile(new URL("../supabase/migrations/0022_website_preview.sql", import.meta.url), "utf8"),
   readFile(new URL("../supabase/migrations/0023_website_preview_apply.sql", import.meta.url), "utf8"),
   readFile(new URL("../lib/research/website-preview.ts", import.meta.url), "utf8"),
   readFile(new URL("../lib/research/website-preview-apply.ts", import.meta.url), "utf8"),
   readFile(new URL("../app/(cockpit)/entreprise/laboratoire-web/actions.ts", import.meta.url), "utf8"),
   readFile(new URL("../app/(cockpit)/entreprise/laboratoire-web/_components/website-preview-application.tsx", import.meta.url), "utf8"),
+  readFile(new URL("../app/(cockpit)/entreprise/laboratoire-web/_components/website-preview-review-section.tsx", import.meta.url), "utf8"),
   readFile(new URL("../app/(cockpit)/entreprise/laboratoire-web/page.tsx", import.meta.url), "utf8"),
   readFile(new URL("../app/api/cron/sync/route.ts", import.meta.url), "utf8"),
   readFile(new URL("../app/(cockpit)/entreprise/_components/documents-details.tsx", import.meta.url), "utf8"),
@@ -105,8 +106,8 @@ test("I2 — application séparée, verrouillée et sans appel payant", () => {
 test("I2 — comparaison, validation section par section et blocage scénario", () => {
   assert.match(page, /isDemoModeOrMutationActive/);
   assert.match(page, /readWebsitePreviewCurrentProfile/);
-  assert.match(application, /Fiche actuelle/);
-  assert.match(application, /Appliquer cette section/);
+  assert.match(application + reviewSection, /Fiche actuelle/);
+  assert.match(application + reviewSection, /Appliquer cette section/);
   assert.match(application, /Une section non cochée reste intacte/);
   assert.match(application, /applicationBlocked/);
   assert.match(application, /Aucun envoi ni campagne/);

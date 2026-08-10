@@ -64,21 +64,13 @@ export default async function WebsitePreviewPage() {
         ← Retour à Mon entreprise
       </Link>
       <div className="mt-4 max-w-3xl">
-        <h1 className="text-[22px] font-semibold tracking-tight">
-          Laboratoire d&apos;enrichissement web
-        </h1>
-        <p className="mt-1.5 text-[13.5px] leading-relaxed text-muted">
-          Testez votre site ou un autre site public, un domaine à la fois. Le
-          résultat reste une analyse de test séparée de la fiche entreprise.
-        </p>
+        <h1 className="text-[22px] font-semibold tracking-tight">Que dit ce site de l&apos;entreprise ?</h1>
       </div>
 
-      <div className="mt-5 rounded-[13px] border border-violet/20 bg-tint px-4 py-3 text-[12.5px] leading-relaxed text-body">
-        <b>L&apos;analyse seule reste sans effet sur la mémoire.</b> Après le
-        résultat, une application séparée exige une revue section par section
-        et reste bloquée pendant un scénario d&apos;exemple. Aucun envoi, aucune
-        campagne et aucun déploiement ne sont déclenchés ici.
-      </div>
+      <details className="mt-3 max-w-3xl text-[11.5px] text-muted">
+        <summary className="cursor-pointer font-semibold text-body">Coût, usage et conservation</summary>
+        <p className="mt-2 leading-relaxed">La recherche exige une confirmation, journalise l’usage et ses sources, puis conserve le résultat au plus 30 jours. L’analyse reste séparée de la fiche jusqu’à une application explicite, section par section. Aucun envoi, campagne ou déploiement n’est déclenché ici.</p>
+      </details>
 
       <WebsitePreviewLab
         canEdit={membership.canEdit}

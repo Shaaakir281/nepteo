@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getCurrentAuthContext } from "@/lib/auth/context";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -18,13 +17,8 @@ import {
 import { loadRemoteMetadata } from "./_lib/load-remote-metadata";
 import { MetaAdsSection } from "./_components/meta-ads-section";
 import { readSelectedMetaAdAccount } from "@/lib/connectors/meta-ads";
-
-const fmtDate = new Intl.DateTimeFormat("fr-FR", {
-  day: "numeric",
-  month: "short",
-  hour: "2-digit",
-  minute: "2-digit",
-});
+import { ConnectorSetupSteps } from "./_components/connector-setup-steps";
+import { ConnectorDetailHeader } from "./_components/connector-detail-header";
 
 interface VisibleConnector {
   id: string;
@@ -117,71 +111,16 @@ export default async function ConnectorDetailPage({
 
   return (
     <>
-      <Link
-        href="/entreprise?onglet=connecteurs"
-        className="text-[13px] text-muted hover:text-ink"
-      >
-        ← Tous les connecteurs
-      </Link>
-      <div className="mt-3 mb-5 flex items-center gap-3.5">
-        <span
-          className="grid h-11 w-11 flex-none place-items-center rounded-[11px] text-[15px] font-bold"
-          style={{
-            background: tool.color,
-            color: tool.darkText ? "#1a1a2e" : "#fff",
-          }}
-        >
-          {tool.letter}
-        </span>
-        <div>
-          <h1 className="text-[20px] font-semibold tracking-tight">
-            {tool.name}
-          </h1>
-          <p className="text-[12.5px] text-muted">
-            {connected ? (
-              <>
-                <span className="font-semibold text-green">Connecté</span>
-                {typeof config.workspace_name === "string" &&
-                  ` · ${config.workspace_name}`}
-                {typeof config.last_synced_at === "string" &&
-                  ` · synchronisé le ${fmtDate.format(
-                    new Date(config.last_synced_at),
-                  )}`}
-              </>
-            ) : presentation === "configured" ? (
-              "Accès autorisé — source à vérifier"
-            ) : presentation === "paused" ? (
-              "Lecture en pause"
-            ) : presentation === "error" ? (
-              "Dernière lecture en erreur"
-            ) : (
-              "Non connecté"
-            )}
-          </p>
-        </div>
-      </div>
+      <ConnectorDetailHeader tool={tool} presentation={presentation} config={config} saved={saved} synced={synced} error={error} />
 
-      {error && (
-        <p className="mb-4 rounded-[10px] bg-red-tint px-4 py-2.5 text-[13px] font-medium text-red">
-          {error}
-        </p>
-      )}
-      {saved && (
-        <p className="mb-4 rounded-[10px] bg-green-tint px-4 py-2.5 text-[13px] font-medium text-green">
-          Configuration enregistrée ✓
-        </p>
-      )}
-      {synced && (
-        <p className="mb-4 rounded-[10px] bg-green-tint px-4 py-2.5 text-[13px] font-medium text-green">
-          Synchronisation terminée — {synced} prospect
-          {Number(synced) > 1 ? "s" : ""} lu
-          {Number(synced) > 1 ? "s" : ""} ✓
-        </p>
-      )}
+      <ConnectorSetupSteps authorized={authorized} configured={configured} />
 
       {!authorized ? (
         <div className="rounded-[18px] border border-line-soft bg-white p-6 shadow-card">
-          <p className="text-[13.5px] text-body">
+          <h2 className="font-display text-[16px] font-semibold text-ink">
+            Autoriser la lecture de {tool.name}
+          </h2>
+          <p className="mt-2 text-[13px] text-body">
             {provider === "meta_ads"
               ? "Autorisez uniquement la lecture Meta Ads (ads_read) : aucun budget, campagne, créa ou pause publicitaire ne peut être modifié par Nepteo."
               : "Autorisez Nepteo à lire vos données — lecture seule, jetons chiffrés, accès révocable ici à tout moment."}
@@ -203,7 +142,7 @@ export default async function ConnectorDetailPage({
             )
           ) : (
             <>
-              {membership.canViewFinancials && (
+              {!configured && membership.canViewFinancials && (
                 <SourceConfiguration
                   provider={provider}
                   config={config}
@@ -212,23 +151,41 @@ export default async function ConnectorDetailPage({
                 />
               )}
 
-              {configured && canEdit && (
-                <MappingSection
-                  provider={provider}
-                  state={remoteMetadata.columns}
-                  mapping={remoteMetadata.mapping}
-                  canEdit={canEdit}
-                />
+              {configured && (
+                <>
+                  <SyncSection
+                    provider={provider}
+                    configured={configured}
+                    paused={paused}
+                    canEdit={canEdit}
+                    prospectCount={prospectCount}
+                    preview={preview}
+                  />
+                  {membership.canViewFinancials && (
+                    <details className="rounded-[13px] border border-line-soft bg-white px-4 py-3">
+                      <summary className="cursor-pointer text-[12.5px] font-semibold text-body">
+                        Paramètres de source et correspondance des colonnes
+                      </summary>
+                      <div className="mt-3 space-y-3">
+                        <SourceConfiguration
+                          provider={provider}
+                          config={config}
+                          canEdit={canEdit}
+                          databases={remoteMetadata.databases}
+                        />
+                        {canEdit && (
+                          <MappingSection
+                            provider={provider}
+                            state={remoteMetadata.columns}
+                            mapping={remoteMetadata.mapping}
+                            canEdit={canEdit}
+                          />
+                        )}
+                      </div>
+                    </details>
+                  )}
+                </>
               )}
-
-              <SyncSection
-                provider={provider}
-                configured={configured}
-                paused={paused}
-                canEdit={canEdit}
-                prospectCount={prospectCount}
-                preview={preview}
-              />
             </>
           )}
         </div>

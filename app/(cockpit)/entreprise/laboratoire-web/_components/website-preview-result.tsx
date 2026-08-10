@@ -106,8 +106,8 @@ export function WebsitePreviewResult({
         </ResultSection>
       </div>
 
-      <section className="mt-4">
-        <h3 className="text-[12px] font-semibold uppercase tracking-wide text-muted">Sources</h3>
+      <details className="mt-4 rounded-[10px] border border-line-soft px-3.5 py-2.5">
+        <summary className="cursor-pointer text-[12px] font-semibold uppercase tracking-wide text-muted">{result.sources.length} source{result.sources.length > 1 ? "s" : ""}</summary>
         {result.sources.length > 0 ? (
           <ul className="mt-2 space-y-1.5 text-[12.5px]">
             {result.sources.map((source, index) => (
@@ -120,7 +120,7 @@ export function WebsitePreviewResult({
             ))}
           </ul>
         ) : <p className="mt-2 text-[12.5px] text-muted">Aucune source cliquable n&apos;a été renvoyée.</p>}
-      </section>
+      </details>
 
       <p className="mt-4 rounded-[10px] bg-tint px-3.5 py-2.5 text-[12px] leading-relaxed text-body">
         Cette analyse reste séparée de votre fiche tant que vous n&apos;avez pas relu, coché et confirmé des sections ci-dessous.
