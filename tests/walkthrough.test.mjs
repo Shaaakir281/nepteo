@@ -12,11 +12,42 @@ import {
   walkthroughIsComplete,
   walkthroughRequiredMissionsComplete,
 } from "../lib/onboarding/walkthrough.ts";
+import { ONBOARDING_CHOICE_COPY } from "../app/onboarding/_components/onboarding-choice-copy.ts";
 
-const [onboardingAction, onboardingPage, center, demoPanel, sidebar] =
+const [
+  onboardingAction,
+  onboardingPage,
+  guidedOnboarding,
+  onboardingChoice,
+  onboardingExample,
+  center,
+  demoPanel,
+  sidebar,
+] =
   await Promise.all([
     readFile(new URL("../app/onboarding/actions.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/onboarding/page.tsx", import.meta.url), "utf8"),
+    readFile(
+      new URL(
+        "../app/onboarding/_components/guided-onboarding.tsx",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+    readFile(
+      new URL(
+        "../app/onboarding/_components/onboarding-choice.tsx",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+    readFile(
+      new URL(
+        "../app/onboarding/_components/onboarding-example.tsx",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
     readFile(
       new URL(
         "../app/(cockpit)/prise-en-main/_components/walkthrough-center.tsx",
@@ -110,9 +141,47 @@ test("progression — le compteur visible reste fondé sur cinq étapes", () => 
 
 test("onboarding — choix explicite avant formulaire et aucune exécution automatique", () => {
   assert.match(onboardingPage, /GuidedOnboarding/);
+  assert.match(guidedOnboarding, /setScreen\("example"\)/);
+  assert.match(guidedOnboarding, /setScreen\("real"\)/);
   assert.match(onboardingAction, /onboardingPath: z\.enum\(\["example", "real"\]\)/);
   assert.match(onboardingAction, /\/prise-en-main\?depart=example&scenario=/);
   assert.doesNotMatch(onboardingAction, /loadDemoScenarioAction|runResearch|proposeIdentityForOrg/);
+});
+
+test("onboarding UX-5 — écran de choix épuré à 38 mots", () => {
+  const visibleCopy = [
+    ONBOARDING_CHOICE_COPY.title,
+    ONBOARDING_CHOICE_COPY.example.title,
+    ONBOARDING_CHOICE_COPY.example.description,
+    ONBOARDING_CHOICE_COPY.example.duration,
+    ONBOARDING_CHOICE_COPY.real.title,
+    ONBOARDING_CHOICE_COPY.real.description,
+    ONBOARDING_CHOICE_COPY.real.duration,
+    ONBOARDING_CHOICE_COPY.safeLabel,
+    ONBOARDING_CHOICE_COPY.safeDetail,
+  ].join(" ");
+  const words = visibleCopy.match(/[\p{L}\p{N}]+(?:[’'][\p{L}\p{N}]+)*/gu) ?? [];
+
+  assert.equal(words.length, 38);
+  assert.equal(ONBOARDING_CHOICE_COPY.example.duration, "3 min");
+  assert.equal(ONBOARDING_CHOICE_COPY.real.duration, "5 min");
+  assert.match(onboardingChoice, /icons\.sparkle/);
+  assert.match(onboardingChoice, /icons\.house/);
+  assert.match(onboardingChoice, /text-\[11\.5px\]/);
+  assert.doesNotMatch(onboardingChoice, /Bienvenue dans Nepteo|Recommandé/);
+});
+
+test("onboarding UX-5 — scénarios illustrés et confirmation distincte", () => {
+  assert.match(onboardingExample, /icons\.house/);
+  assert.match(onboardingExample, /icons\.people/);
+  assert.match(onboardingExample, /icons\.send/);
+  assert.match(
+    onboardingExample,
+    /Le scénario ne se charge qu’après une confirmation explicite\./,
+  );
+  assert.match(onboardingExample, /name="scenario" value=\{scenario\}/);
+  assert.match(onboardingExample, /<form action=\{action\}/);
+  assert.doesNotMatch(onboardingExample, /loadDemoScenario|runAnalysis/);
 });
 
 test("centre — progression locale, routes réelles et reprise explicite", () => {
