@@ -56,15 +56,14 @@ Jeu de données : `docs/tests/prospects-test.csv` (24 prospects, 5 sans email, s
    Pour cette release, `OPENAI_API_KEY` est obligatoire dans l'environnement de déploiement afin d'activer la Story. `OPENAI_IMAGE_MODEL` est facultative, propagée au runtime et vaut `gpt-image-2` par défaut. L'analyse utilise la tâche `recommend_action` → niveau premium, d'où les trois lignes `LLM_MODEL*`. Sans clé de texte compatible, l'analyse retombe sur ses templates, mais la génération d'image ne dispose pas de ce repli.
 4. Redémarrer `npm run dev` après toute modif d'env.
 
-> **État au 9 août 2026 — release courante attestée** : la PR #29 est fusionnée
-> dans `main` au SHA `c5e7148ad62908a52536f6b2b52fd32ed0c357c0` après la CI
-> `31332578671`. Le déploiement `31332676182` est vert et la révision
-> `nepteo-prod--0000022`, latest et ready, sert 100 % du trafic avec l'image
-> `nepteoacr27de3b.azurecr.io/nepteo:c5e7148ad62908a52536f6b2b52fd32ed0c357c0`.
-> Supabase et l'application sont alignés sur le schéma 28. La recette Story
-> authentifiée, le JWT/RLS positif et négatif et le Storage privé signé sont
-> attestés ; la concurrence et l'isolation inter-tenant complètes restent des
-> recettes séparées.
+> **État au 10 août 2026 — release courante attestée** : la PR #31 est fusionnée
+> dans `main` au SHA `7424d2926e6423e1af674c741eb90dc1fcd914a3` après la CI
+> `31368969929`. Le déploiement `31369161993` est vert et la révision
+> `nepteo-prod--0000023`, latest et ready, sert 100 % du trafic avec l'image
+> `nepteoacr27de3b.azurecr.io/nepteo:7424d2926e6423e1af674c741eb90dc1fcd914a3`.
+> Supabase et l'application restent alignés sur le schéma 28. La recette Story,
+> les contrôles JWT/RLS et le Storage privé signé restent attestés par la PR #29 ;
+> la concurrence et l'isolation inter-tenant complètes restent des recettes séparées.
 
 ### Deux voies de données, jamais mélangées
 
@@ -115,18 +114,17 @@ npm run lint
 npm run build
 ```
 
-Passage de référence de la release actuelle : **571/571 tests**, typecheck,
+Passage de référence de la release actuelle : **574/574 tests**, typecheck,
 lint et build verts, **29 pages/routes** générées et aucun défaut P1 ou P2 lors
-de la relecture finale. PR #29 est fusionnée au SHA
-`c5e7148ad62908a52536f6b2b52fd32ed0c357c0`, avec la CI de PR `31332578671`
-verte, puis le déploiement `31332676182` vert.
+de la relecture finale. PR #31 est fusionnée au SHA
+`7424d2926e6423e1af674c741eb90dc1fcd914a3`, avec la CI de PR `31368969929`
+verte, puis le déploiement `31369161993` vert.
 
-**Candidate locale du 10 août — simplifications auth mobile, non déployées** :
-**574/574 tests**, typecheck, lint et build verts, avec **29 pages/routes**
-générées. Le contrôle navigateur local à 463 px confirme sur `/login` et
-`/signup` l'absence de débordement horizontal ainsi que le basculement
-Afficher/Masquer sans perte de la valeur saisie. La production et son passage de
-référence à 571 tests restent inchangés tant que ce micro-lot n'est pas publié.
+**Lot du 10 août — simplifications auth mobile déployées** : le contrôle
+navigateur local à 463 px et la recette de production sur `/login` et `/signup`
+confirment le basculement Afficher/Masquer sans perte de la valeur saisie. Le lot
+est servi par `nepteo-prod--0000023` et n'ajoute ni migration ni changement de
+connecteur.
 
 Le tableau Supabase expose la Site URL et le callback `/auth/confirm` de
 production. Le modèle « Confirm signup » français est publié et sa source
@@ -134,8 +132,8 @@ versionnée conserve `{{ .ConfirmationURL }}`. Cette vérification de configurat
 ne remplace pas la recette d'un nouvel email : un message ancien garde son ancien
 `redirect_to` et doit être abandonné.
 
-Recette mobile authentifiée à jouer après publication ou sur une fixture locale
-dédiée, en 390 × 844 :
+Recette mobile authentifiée à finaliser en production avec une fixture dédiée,
+en 390 × 844 :
 
 1. se connecter avec un compte de test, toucher « Déconnexion » dans l'en-tête
    et vérifier la redirection vers `/login` ;
@@ -146,10 +144,16 @@ dédiée, en 390 × 844 :
    uniquement les destinations autorisées par le rôle et ne déborde pas
    horizontalement ; un compte admin/financier en voit cinq.
 
-Le point 3 est attesté dans le navigateur local à 463 px. Les points 1 et 2
-restent volontairement ouverts faute de session mobile authentifiée dédiée ; les
-tests automatisés couvrent le formulaire, l'action serveur réutilisée et le nom
-accessible du bouton, mais ne remplacent pas ce parcours runtime.
+Le point 3 est attesté dans le navigateur local à 463 px et sur les deux pages de
+production. Le point 4 est couvert par les contrats automatisés et la structure
+de navigation. Les points 1 et 2 restent volontairement ouverts faute de session
+mobile authentifiée dédiée ; les tests couvrent le formulaire, l'action serveur
+réutilisée et le nom accessible du bouton, mais ne remplacent pas ce parcours runtime.
+
+Recette email encore ouverte : demander un **nouvel** envoi, vérifier le sujet et
+le corps français, confirmer que le lien ne contient jamais `0.0.0.0`, passe par
+`/auth/confirm` puis aboutit dans l'application. Un message émis avant la correction
+conserve son ancien `redirect_to` et ne constitue pas une preuve valable.
 
 **Historique — lot livré jusqu'à la PR #11** : **341/341 tests**, lint,
 typecheck et build Next.js 16.2.10 verts ; **23 pages/routes** générées.
@@ -182,9 +186,11 @@ Après application sur une base de recette, vérifier séparément :
 
 ### Recette croisée Story et Connecteurs — post-déploiement
 
-La production est alignée sur le schéma 28 et l'application `0000022`. État de la recette :
+La production est alignée sur le schéma 28 et l'application courante `0000023`.
+La preuve Story ci-dessous a été établie sur PR #29 / `0000022` ; le code Story
+est inchangé dans `0000023`, mais ce parcours payant n'y a pas été rejoué.
 
-1. **Vert en production** : campagne → studio Story prérempli → génération `gpt-image-2` → rechargement de l'objet privé signé → sélection → approbation atomique campagne + visuel. Miniature, journal, statut final et absence de publication fournisseur vérifiés ;
+1. **Vert historique en production — PR #29 / `0000022`** : campagne → studio Story prérempli → génération `gpt-image-2` → rechargement de l'objet privé signé → sélection → approbation atomique campagne + visuel. Miniature, journal, statut final et absence de publication fournisseur vérifiés ;
 2. **À jouer** : approuver une autre campagne sans visuel, rouvrir le studio, générer puis choisir une version ; vérifier que ce choix devient le visuel validé sans lancement ni publication ;
 3. **À jouer sur staging/recette** : provoquer un échec Storage après réservation, vérifier le chemin pending, puis lancer uniquement la rétention créative contrôlée et constater la suppression de l'objet abandonné et la remise à zéro du chemin ;
 4. **Partiel** : la surface Connecteurs et les liens OAuth Google Sheets/Notion/Meta sont verts sans erreur. Les callbacks, lectures réelles, puis les états pause, reprise et révocation restent à recetter ; aucun OAuth n'a été déclenché pendant la recette Story.
@@ -230,7 +236,26 @@ rejeu idempotent, retrait et second retrait `not_found`. Les deux organisations,
 l'acteur dédié et le journal append-only restent conservés ; les tables métier
 de la fixture sont revenues à zéro.
 
-### Recette technique de production — PR #29
+### Recette technique de production — PR #31
+
+- PR [#31](https://github.com/Shaaakir281/nepteo/pull/31) fusionnée au SHA
+  `7424d2926e6423e1af674c741eb90dc1fcd914a3` ;
+- CI `31368969929` et déploiement `31369161993` verts ;
+- 574/574 tests, typecheck, lint et build verts, 29 pages/routes générées ;
+- révision `nepteo-prod--0000023`, latest et ready, état
+  `Succeeded`/`Running`, Healthy/Provisioned/RunningAtMaxScale avec une réplique,
+  100 % du trafic, image
+  `nepteoacr27de3b.azurecr.io/nepteo:7424d2926e6423e1af674c741eb90dc1fcd914a3` ;
+- schéma Supabase 28 inchangé ; aucune migration ni aucun connecteur modifié ;
+- `/` aboutit à `/login` en 200 ; `/login`, `/signup`, `/api/health` et
+  `/api/ready` répondent 200. Health/readiness sont aussi verts sur le FQDN Azure ;
+- sur connexion et inscription, Afficher/Masquer fait passer le champ de
+  `password` à `text` et conserve la valeur saisie ;
+- la Site URL `https://nepteo.bogasolution.com`, le callback unique
+  `/auth/confirm` et le modèle Confirm signup français sont configurés. Le clic
+  d'un nouvel email et Déconnexion puis Retour en session mobile restent ouverts.
+
+### Historique — recette technique de production PR #29
 
 - PR [#29](https://github.com/Shaaakir281/nepteo/pull/29) fusionnée au SHA
   `c5e7148ad62908a52536f6b2b52fd32ed0c357c0` ;

@@ -3,18 +3,21 @@
 Cette procédure prépare un déploiement Docker vers Azure Container Apps, avec
 images dans ACR, région UE et GitHub Actions en OIDC.
 
-> **État au 9 août 2026 — release courante attestée** : la PR #29 est
-> fusionnée dans `main` au SHA `c5e7148ad62908a52536f6b2b52fd32ed0c357c0`.
-> Sa CI `31332578671` et le déploiement `31332676182` sont verts. Azure sert à
-> 100 % la révision `nepteo-prod--0000022`, latest et ready, état
+> **État au 10 août 2026 — release courante attestée** : la PR #31 est
+> fusionnée dans `main` au SHA `7424d2926e6423e1af674c741eb90dc1fcd914a3`.
+> Sa CI `31368969929` et le déploiement `31369161993` sont verts. Azure sert à
+> 100 % la révision `nepteo-prod--0000023`, latest et ready, état
 > `Succeeded`/`Running`, image
-> `nepteoacr27de3b.azurecr.io/nepteo:c5e7148ad62908a52536f6b2b52fd32ed0c357c0`.
-> Supabase et l'application sont alignés sur `app_schema_version = 28` ; le
-> happy path Story, les contrôles JWT/RLS ciblés et le Storage privé/signé sont
-> verts. Le scénario de panne Storage/pending reste ouvert. Le workflow ne lance
-> aucune migration : leur application manuelle et ordonnée reste un préalable obligatoire.
+> `nepteoacr27de3b.azurecr.io/nepteo:7424d2926e6423e1af674c741eb90dc1fcd914a3`.
+> Supabase et l'application restent alignés sur `app_schema_version = 28` ; la
+> déconnexion mobile et Afficher/Masquer le mot de passe sont livrés. La recette
+> Story, les contrôles JWT/RLS ciblés et le Storage privé/signé restent ceux de
+> la PR #29. Le nouvel email et le logout mobile authentifié restent à recetter.
+> Le workflow ne lance aucune migration : leur application manuelle et ordonnée
+> reste un préalable obligatoire.
 >
-> **Historique — ne pas confondre avec la release courante** : la PR #17 a été
+> **Historique — ne pas confondre avec la release courante** : la PR #29 a été
+> attestée sur `nepteo-prod--0000022`, avec la recette Story ciblée. La PR #17 a été
 > attestée sur `nepteo-prod--0000011`. La PR #16 avait été attestée sur
 > `nepteo-prod--0000010`, au merge
 > `21c90f77af0c877e9c99f60a4997c4dad4b1ba84`. La PR #15 a porté la
@@ -233,14 +236,21 @@ Avec `https://<DOMAINE_PROD>` :
 1. Supabase → Authentication → URL Configuration :
    - Site URL : `https://<DOMAINE_PROD>` ;
    - Redirect URL : `https://<DOMAINE_PROD>/auth/confirm`.
-2. Google OAuth, si activé :
+2. Supabase → Authentication → Emails → Templates → **Confirm signup** :
+   - sujet de production Nepteo en français ;
+   - corps synchronisé depuis `supabase/templates/confirm-signup.html` ;
+   - conserver exactement `{{ .ConfirmationURL }}` dans chaque lien de confirmation ;
+   - après toute correction, demander un **nouvel** email : les liens déjà émis
+     conservent leur ancien `redirect_to` et sont immuables.
+3. Google OAuth, si activé :
    - `https://<DOMAINE_PROD>/api/connectors/google_sheets/callback`.
-3. Notion OAuth, si activé :
+4. Notion OAuth, si activé :
    - `https://<DOMAINE_PROD>/api/connectors/notion/callback`.
 
-Sans les deux réglages Supabase, le lien de confirmation envoyé à un nouvel
+Sans les deux réglages d'URL Supabase, le lien de confirmation envoyé à un nouvel
 inscrit peut revenir sur localhost ou être refusé, et le parcours de l’ami
-s’arrête avant `/auth/confirm`.
+s’arrête avant `/auth/confirm`. Le modèle d'email est un réglage hébergé séparé :
+un déploiement applicatif ne traduit pas automatiquement le modèle Supabase.
 
 Pour la production Nepteo, le domaine principal est
 `https://nepteo.bogasolution.com`. Le sous-domaine OVH pointe par CNAME vers le
@@ -322,7 +332,31 @@ Le workflow reste volontairement manuel. Toute automatisation future du trigger
 `CRON_SECRET` comme **secret de dépôt** (le job planifié ne lit pas
 l’environnement GitHub `production`).
 
-### Preuve de la release courante PR #29 du 9 août 2026
+### Preuve de la release courante PR #31 du 10 août 2026
+
+- PR [#31](https://github.com/Shaaakir281/nepteo/pull/31) fusionnée dans `main`
+  au SHA `7424d2926e6423e1af674c741eb90dc1fcd914a3` ;
+- CI de PR verte, run `31368969929` : 574/574 tests, lint, typecheck et build
+  de 29 pages/routes ;
+- workflow de déploiement vert, run `31369161993`, après approbation de
+  l'environnement `production` ;
+- Container Apps : `latestRevisionName` et `latestReadyRevisionName` valent
+  `nepteo-prod--0000023`, état `Succeeded`/`Running`, révision active,
+  Healthy/Provisioned/RunningAtMaxScale avec une réplique, 100 % du trafic,
+  image
+  `nepteoacr27de3b.azurecr.io/nepteo:7424d2926e6423e1af674c741eb90dc1fcd914a3` ;
+- Supabase : `app_schema_version = 28` inchangé ; aucune migration ni aucun
+  connecteur modifié par ce lot ;
+- domaine public : `/` aboutit à `/login` en 200 ; `/login`, `/signup`,
+  `/api/health` et `/api/ready` répondent 200. Health/readiness sont aussi verts
+  sur le FQDN Azure ;
+- recette navigateur : Afficher/Masquer est présent sur connexion et inscription,
+  fait passer le champ de `password` à `text` et conserve la valeur saisie ;
+- configuration Auth Supabase : Site URL de production, unique callback
+  `/auth/confirm` et modèle Confirm signup français publiés. Un nouvel email et
+  le parcours Déconnexion puis Retour en session mobile restent à exécuter.
+
+### Historique — preuve de la release PR #29 du 9 août 2026
 
 - PR [#29](https://github.com/Shaaakir281/nepteo/pull/29) fusionnée dans `main`
   au SHA `c5e7148ad62908a52536f6b2b52fd32ed0c357c0` ;
@@ -439,6 +473,10 @@ Ne lancer `POST /api/llm/status` que si un ping LLM facturé est souhaité.
 - aucun secret n’apparaît dans l’image, le dépôt ou les logs GitHub ;
 - la révision est en région `AZURE_LOCATION` ;
 - les URLs Supabase et OAuth utilisent exactement le domaine de production ;
+- un nouvel email de confirmation est en français, ne contient jamais
+  `0.0.0.0` et passe par `/auth/confirm` ;
+- en session mobile authentifiée, Déconnexion redirige vers `/login` et le
+  bouton Retour ne restaure pas le cockpit ;
 - `CONNECTOR_TOKEN_ENCRYPTION_KEY` est sauvegardée durablement ;
 - `app_schema_version.version >= 28` pour le lot créatif ;
 - `/api/health` et `/api/ready` répondent tous deux 200.
