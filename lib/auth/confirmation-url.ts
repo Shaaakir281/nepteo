@@ -1,4 +1,4 @@
-type ConfirmationUrlInput = {
+type PublicAppUrlInput = {
   appUrl?: string;
   requestOrigin?: string | null;
   isProduction: boolean;
@@ -18,11 +18,11 @@ const NON_PUBLIC_HOSTS = new Set([
  * peut la remplacer par l'adresse d'écoute du conteneur (`0.0.0.0:3000`).
  * `APP_URL` est donc obligatoire et doit être une origine HTTPS publique.
  */
-export function buildConfirmationRedirectUrl({
+function publicAppOrigin({
   appUrl,
   requestOrigin,
   isProduction,
-}: ConfirmationUrlInput): string {
+}: PublicAppUrlInput): string {
   const candidate = appUrl?.trim() || (!isProduction ? requestOrigin?.trim() : "");
 
   if (!candidate) {
@@ -52,5 +52,28 @@ export function buildConfirmationRedirectUrl({
     throw new Error("APP_URL must be publicly reachable in production");
   }
 
-  return `${url.origin}/auth/confirm`;
+  return url.origin;
+}
+
+/** Construit une URL applicative absolue sans réutiliser l'origine interne du proxy. */
+export function buildPublicAppRedirectUrl(
+  path: string,
+  input: PublicAppUrlInput,
+): string {
+  if (!path.startsWith("/") || path.startsWith("//") || path.includes("\\")) {
+    throw new Error("Public app redirect path must be relative to the app origin");
+  }
+
+  const origin = publicAppOrigin(input);
+  const redirect = new URL(path, `${origin}/`);
+
+  if (redirect.origin !== origin) {
+    throw new Error("Public app redirect path must stay on the app origin");
+  }
+
+  return redirect.toString();
+}
+
+export function buildConfirmationRedirectUrl(input: PublicAppUrlInput): string {
+  return buildPublicAppRedirectUrl("/auth/confirm", input);
 }

@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { buildConfirmationRedirectUrl } from "../lib/auth/confirmation-url.ts";
+import {
+  buildConfirmationRedirectUrl,
+  buildPublicAppRedirectUrl,
+} from "../lib/auth/confirmation-url.ts";
 
 const [
   actions,
@@ -9,6 +12,7 @@ const [
   signupPage,
   passwordField,
   cockpitLayout,
+  confirmationRoute,
   confirmationTemplate,
   deployment,
 ] = await Promise.all([
@@ -20,6 +24,7 @@ const [
       "utf8",
     ),
     readFile(new URL("../app/(cockpit)/layout.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/auth/confirm/route.ts", import.meta.url), "utf8"),
     readFile(
       new URL("../supabase/templates/confirm-signup.html", import.meta.url),
       "utf8",
@@ -84,6 +89,30 @@ test("auth email — localhost reste disponible uniquement en développement", (
     }),
     "http://localhost:3001/auth/confirm",
   );
+});
+
+test("auth callback — les redirections utilisent l'origine publique en production", () => {
+  const input = {
+    appUrl: "https://nepteo.bogasolution.com",
+    requestOrigin: "https://0.0.0.0:3000",
+    isProduction: true,
+  };
+
+  assert.equal(
+    buildPublicAppRedirectUrl("/", input),
+    "https://nepteo.bogasolution.com/",
+  );
+  assert.equal(
+    buildPublicAppRedirectUrl("/login?error=invalide", input),
+    "https://nepteo.bogasolution.com/login?error=invalide",
+  );
+  assert.throws(
+    () => buildPublicAppRedirectUrl("/\\\\evil.example", input),
+    /must be relative to the app origin/,
+  );
+  assert.match(confirmationRoute, /buildPublicAppRedirectUrl/);
+  assert.equal(confirmationRoute.match(/return redirectTo\(/g)?.length, 3);
+  assert.doesNotMatch(confirmationRoute, /request\.url/);
 });
 
 test("auth email — le déploiement exige et injecte APP_URL", () => {
