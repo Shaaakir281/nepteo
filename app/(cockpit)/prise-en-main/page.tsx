@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { getCurrentAuthContext } from "@/lib/auth/context";
 import { readDemoPresentation } from "@/lib/demo/presentation";
+import { walkthroughContextCompletion } from "@/lib/memory-completion";
+import { readMemory } from "@/lib/memory-store";
 import {
   isWalkthroughPath,
   isWalkthroughScenario,
@@ -13,11 +15,14 @@ export default async function WalkthroughPage({
   searchParams: Promise<{ depart?: string; scenario?: string }>;
 }) {
   const { depart, scenario } = await searchParams;
-  const { user, membership } = await getCurrentAuthContext();
+  const { supabase, user, membership } = await getCurrentAuthContext();
   if (!user) redirect("/login");
   if (!membership) redirect("/onboarding");
 
-  const demo = await readDemoPresentation(membership.organizationId);
+  const [demo, memory] = await Promise.all([
+    readDemoPresentation(membership.organizationId),
+    readMemory(supabase, ["activite", "zone", "ton", "philosophie"]),
+  ]);
 
   return (
     <WalkthroughCenter
@@ -28,6 +33,7 @@ export default async function WalkthroughPage({
       demoPresentation={demo.presentation}
       organizationName={membership.organizationName ?? "Mon entreprise"}
       canManageDemo={membership.role === "admin"}
+      contextCompletion={walkthroughContextCompletion(memory)}
     />
   );
 }

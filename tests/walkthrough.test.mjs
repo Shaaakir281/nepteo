@@ -9,9 +9,14 @@ import {
   parseWalkthroughState,
   walkthroughCompletedCount,
   walkthroughCompletedStageCount,
+  walkthroughCompletedWithContext,
   walkthroughIsComplete,
   walkthroughRequiredMissionsComplete,
 } from "../lib/onboarding/walkthrough.ts";
+import {
+  memorySectionIsFilled,
+  walkthroughContextCompletion,
+} from "../lib/memory-completion.ts";
 import { ONBOARDING_CHOICE_COPY } from "../app/onboarding/_components/onboarding-choice-copy.ts";
 
 const [
@@ -21,8 +26,14 @@ const [
   onboardingChoice,
   onboardingExample,
   center,
+  hero,
+  progressHook,
+  stageList,
+  walkthroughPage,
   demoPanel,
   sidebar,
+  sidebarLink,
+  todayProgress,
 ] =
   await Promise.all([
     readFile(new URL("../app/onboarding/actions.ts", import.meta.url), "utf8"),
@@ -57,6 +68,31 @@ const [
     ),
     readFile(
       new URL(
+        "../app/(cockpit)/prise-en-main/_components/walkthrough-hero.tsx",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+    readFile(
+      new URL(
+        "../app/(cockpit)/prise-en-main/_components/use-walkthrough-progress.ts",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+    readFile(
+      new URL(
+        "../app/(cockpit)/prise-en-main/_components/walkthrough-stage-list.tsx",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+    readFile(
+      new URL("../app/(cockpit)/prise-en-main/page.tsx", import.meta.url),
+      "utf8",
+    ),
+    readFile(
+      new URL(
         "../app/(cockpit)/agent/_components/demo-panel.tsx",
         import.meta.url,
       ),
@@ -65,6 +101,20 @@ const [
     readFile(
       new URL(
         "../app/(cockpit)/_components/sidebar.tsx",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+    readFile(
+      new URL(
+        "../app/(cockpit)/_components/walkthrough-link.tsx",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+    readFile(
+      new URL(
+        "../app/(cockpit)/_components/walkthrough-progress.tsx",
         import.meta.url,
       ),
       "utf8",
@@ -139,6 +189,45 @@ test("progression — le compteur visible reste fondé sur cinq étapes", () => 
   );
 });
 
+test("UX-2 — le contexte exige les quatre champs nommés", () => {
+  const partial = {
+    activite: { activity_type: "Services" },
+    zone: { text: "Dreux" },
+    ton: { text: "Direct" },
+    philosophie: { text: "   " },
+  };
+  assert.equal(memorySectionIsFilled(partial, "activite"), true);
+  assert.deepEqual(walkthroughContextCompletion(partial), {
+    activity: true,
+    voice: false,
+    complete: false,
+  });
+  assert.deepEqual(
+    walkthroughContextCompletion({
+      ...partial,
+      philosophie: { text: "Promettre seulement ce qui est vérifiable." },
+    }),
+    { activity: true, voice: true, complete: true },
+  );
+});
+
+test("UX-2 — une visite seule ne valide jamais les missions de contexte", () => {
+  assert.deepEqual(
+    walkthroughCompletedWithContext(
+      ["activity", "voice", "situation"],
+      { activity: false, voice: false },
+    ),
+    ["situation"],
+  );
+  assert.deepEqual(
+    walkthroughCompletedWithContext(["situation"], {
+      activity: true,
+      voice: true,
+    }),
+    ["situation", "activity", "voice"],
+  );
+});
+
 test("onboarding — choix explicite avant formulaire et aucune exécution automatique", () => {
   assert.match(onboardingPage, /GuidedOnboarding/);
   assert.match(guidedOnboarding, /setScreen\("example"\)/);
@@ -184,11 +273,54 @@ test("onboarding UX-5 — scénarios illustrés et confirmation distincte", () =
   assert.doesNotMatch(onboardingExample, /loadDemoScenario|runAnalysis/);
 });
 
-test("centre — progression locale, routes réelles et reprise explicite", () => {
-  assert.match(center, /WALKTHROUGH_STORAGE_KEY/);
-  assert.match(center, /ne déclenchent aucune action à votre place/);
-  assert.match(center, /Le chargement ne démarre pas automatiquement/);
+test("centre UX-2 — une mission, un bouton plein et retour déduit", () => {
+  assert.match(progressHook, /WALKTHROUGH_STORAGE_KEY/);
+  assert.match(progressHook, /sessionStorage\.setItem\(PENDING_MISSION_KEY/);
+  assert.match(progressHook, /pending !== "activity" && pending !== "voice"/);
+  assert.match(center, /currentMission/);
+  assert.doesNotMatch(center, /WALKTHROUGH_MISSIONS\.map|MissionCard/);
+  assert.match(hero, /aria-describedby=\{goalId\}/);
+  assert.match(hero, /className="sr-only"/);
+  assert.equal((hero.match(/bg-violet px-4/g) ?? []).length, 1);
+  assert.equal((hero.match(/Passer/g) ?? []).length, 1);
+  assert.doesNotMatch(center + hero + stageList, /Marquer comme comprise|sur 11|0%/);
+});
+
+test("centre UX-2 — le premier rendu reste sous 70 mots visibles", () => {
+  const visibleCopy = [
+    "Guide",
+    "Exploration libre",
+    "Étape 1 sur 5",
+    WALKTHROUGH_STAGES[0].title,
+    WALKTHROUGH_MISSIONS[0].title,
+    WALKTHROUGH_MISSIONS[0].action,
+    "Passer",
+    ...WALKTHROUGH_STAGES.map((stage) => stage.title),
+    "Connecter vos outils",
+    "Progression locale à ce navigateur.",
+    "Réinitialiser la progression",
+  ].join(" ");
+  const words = visibleCopy.match(/[\p{L}\p{N}]+(?:[’'][\p{L}\p{N}]+)*/gu) ?? [];
+
+  assert.ok(words.length < 70, `${words.length} mots visibles`);
+});
+
+test("centre UX-2 — scénario explicite, cinq étapes et sixième ligne", () => {
   assert.match(center, /\/entreprise\?onglet=connecteurs&prise_en_main=1&scenario=/);
+  assert.match(center, /Chargez \$\{SCENARIO_LABELS\[selectedScenario\]\}/);
+  assert.match(stageList, /WALKTHROUGH_STAGES\.map/);
+  assert.match(stageList, /CONNECT_DATA_MISSION/);
+  assert.match(stageList, /Connecter vos outils/);
+  assert.match(walkthroughPage, /readMemory\(supabase, \["activite", "zone", "ton", "philosophie"\]\)/);
+  assert.match(walkthroughPage, /walkthroughContextCompletion\(memory\)/);
+});
+
+test("centre UX-2 — sidebar et Aujourd’hui partagent x/5", () => {
+  assert.match(sidebarLink, /walkthroughCompletedStageCount/);
+  assert.match(sidebarLink, /Guide · \{completed\}\/5/);
+  assert.doesNotMatch(sidebarLink, /WALKTHROUGH_MISSIONS|missions/);
+  assert.match(todayProgress, /walkthroughCompletedStageCount/);
+  assert.match(todayProgress, /\{completed\}\/5/);
   assert.match(demoPanel, /Reprendre la prise en main/);
   assert.match(sidebar, /WalkthroughSidebarLink/);
 });

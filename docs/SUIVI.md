@@ -103,6 +103,14 @@ Pour l'intégration actuelle, les lots Connecteurs accessibles sont déjà dans 
 
 ## Historique des sessions
 
+### 2026-08-10 — Codex — **UX-2 épuré terminé localement**
+
+**Guide recentré** : `/prise-en-main` n’affiche plus les onze cartes ni la progression en pourcentage. La première mission incomplète devient l’unique héros, avec un seul bouton plein et un seul lien « Passer » ; les cinq étapes restent visibles dans un rail compact, suivies de « Connecter vos outils ». Le chargement d’un scénario requis occupe ce même héros, sans bandeau ambre, et le nom du scénario ou de l’entreprise tient dans la pastille d’en-tête. Le but de la mission reste relié au titre pour les technologies d’assistance, mais n’est plus visible. La réinitialisation est reléguée au pied.
+
+**Progression déduite et partagée** : le clic sur une cible place seulement l’identifiant de mission en stockage de session ; le retour au guide le consomme et met à jour l’état local versionné existant. Les missions `activity` et `voice` ne peuvent pas être acquises par une visite : un prédicat pur vérifie respectivement `activite` + `zone` et `ton` + `philosophie`, soit les quatre champs nommés exigés pour l’étape « Définir le contexte ». La barre latérale et Aujourd’hui calculent désormais tous deux le même `x/5` depuis les étapes, sans dénominateur `/11`. Les onze missions, les cinq étapes, la clé `localStorage` et sa version restent inchangées.
+
+**Contrôles, frontière et recette** : les contrats UX-2 ciblés passent 13/13 et la suite complète 587/587, sans échec. `npm run lint`, `npm run typecheck`, `npm run build` et `git diff --check` terminent avec exit 0 ; Next.js 16.2.10 compile en 40 s, finit TypeScript en 15,3 s et génère 29 pages statiques avant toutes les routes dynamiques. Aucun schéma, migration, Server Action, garde de rôle/démo, moteur métier, route, appel fournisseur, secret ou état distant n’a été modifié. Le contrôle navigateur local atteint bien l’application mais la session disponible est déconnectée, donc la recette visuelle authentifiée reste à jouer avec une session utilisateur locale. Aucun push, PR, publication ni déploiement n’a été effectué. La suite prévue après validation est UX-3, qui réutilisera le calcul pur de complétude mémoire.
+
 ### 2026-08-10 — Codex — **Intégration locale UX-1 + UX-5, sans publication**
 
 **Intégration** : depuis le socle exact `cf330aa895b05bb0d9361d2fc52f18904b4bda92`, les commits validés UX-1 `e93928e946d981b0de6173efcfaac1d468414194` puis UX-5 `1bbdbd9d0b464c4abfcc86495da2d1cc02edc1dc` ont été cherry-pickés localement dans cet ordre. Leur seul conflit Git réel concernait ce journal ; les deux entrées ont été conservées intégralement. Le recouvrement de `tests/walkthrough.test.mjs` s'est fusionné automatiquement et conserve les contrats des deux lots : compteur Aujourd'hui fondé sur cinq étapes, choix onboarding à 38 mots, icônes et confirmation distincte du chargement.

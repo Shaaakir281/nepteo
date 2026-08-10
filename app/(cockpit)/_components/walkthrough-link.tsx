@@ -4,11 +4,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
-  WALKTHROUGH_MISSIONS,
+  WALKTHROUGH_STAGES,
   WALKTHROUGH_STORAGE_KEY,
   WALKTHROUGH_UPDATED_EVENT,
   parseWalkthroughState,
-  walkthroughCompletedCount,
+  walkthroughCompletedStageCount,
 } from "@/lib/onboarding/walkthrough";
 
 export function WalkthroughSidebarLink() {
@@ -19,7 +19,7 @@ export function WalkthroughSidebarLink() {
     const refresh = () => {
       try {
         setCompleted(
-          walkthroughCompletedCount(
+          walkthroughCompletedStageCount(
             parseWalkthroughState(
               window.localStorage.getItem(WALKTHROUGH_STORAGE_KEY),
             ),
@@ -39,9 +39,7 @@ export function WalkthroughSidebarLink() {
   }, []);
 
   const current = pathname.startsWith("/prise-en-main");
-  const percent = Math.round(
-    (completed / WALKTHROUGH_MISSIONS.length) * 100,
-  );
+  const percent = Math.round((completed / WALKTHROUGH_STAGES.length) * 100);
 
   return (
     <Link
@@ -60,15 +58,13 @@ export function WalkthroughSidebarLink() {
           background: `radial-gradient(circle, white 57%, transparent 59%), conic-gradient(var(--violet) ${percent}%, var(--tint) 0)`,
         }}
       >
-        {completed}
+        {completed}/5
       </span>
       <span className="min-w-0 flex-1">
         <span className="block text-[12.5px] font-semibold text-ink">
-          Prise en main
+          Guide · {completed}/5
         </span>
-        <span className="block text-[10.5px] text-muted">
-          {completed} / {WALKTHROUGH_MISSIONS.length} missions
-        </span>
+        <span className="block text-[10.5px] text-muted">Prise en main</span>
       </span>
       <span aria-hidden="true" className="text-faint">
         →
