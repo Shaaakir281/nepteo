@@ -12,9 +12,9 @@ Les lots UX-1 à UX-5 sont terminés et validés localement. Leurs fichiers rest
 - `nepteo-prise-en-main-ux2.html` — **spec du lot UX-2, terminé localement.** Écran `Prise en main` : une mission à la fois au lieu de 11 cartes, complétion déduite au lieu de déclarée, rail de 5 étapes. Environ 470 mots lisibles aujourd'hui contre 55 visés.
 - `nepteo-aujourdhui-ux1.html` — **spec du lot UX-1, terminé localement.** Bascule « Avant (livré) / Après (proposé) / Consignes Codex » sur l'écran `Aujourd'hui`, tokens copiés à l'identique depuis `app/globals.css`, mesure de densité calculée à l'ouverture. Ce n'est ni une maquette historique ni du code à recopier : Codex transpose hiérarchie, tokens et textes dans les composants existants.
 
-## Specs suivantes attendues
+## Specs suivantes disponibles
 
-Le guide `docs/projets/prompts-codex-refonte-densite.md` prépare la vague d'harmonisation UX-6 à UX-9. Les quatre fichiers suivants ne sont pas encore présents dans ce checkout et doivent être ajoutés avant de lancer leurs lots :
+Le guide `docs/projets/prompts-codex-refonte-densite.md` prépare la vague d'harmonisation UX-6 à UX-9. Les quatre fichiers suivants sont présents dans ce checkout et doivent être relus avant de lancer leurs lots :
 
 - `nepteo-validation-ux6.html` — tiroir de validation et sous-blocs d'Aujourd'hui ;
 - `nepteo-listes-ux7.html` — Prospects et Journal ;

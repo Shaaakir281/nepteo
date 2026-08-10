@@ -25,7 +25,7 @@ Suite locale : **UX-6**, puis **UX-7**, puis **UX-8**, puis **UX-9**. Le préala
 ## Avant le prochain lot — état des préalables
 
 1. **UX-1 à UX-5 : fait.** Les cinq specs d'origine sont versionnées et `CLAUDE.md` annonce bien bleu `#2d5ba7`, encre `#1c1713` et cerise `#8a232d`.
-2. **UX-6 à UX-9 : specs à ajouter.** Les quatre fichiers `nepteo-validation-ux6.html`, `nepteo-listes-ux7.html`, `nepteo-brancher-ux8.html` et `nepteo-produire-ux9.html` ne sont pas présents dans ce checkout. Ne pas lancer UX-6 tant que sa spec n'a pas été ajoutée localement et relue.
+2. **UX-6 à UX-9 : specs disponibles.** Les quatre fichiers `nepteo-validation-ux6.html`, `nepteo-listes-ux7.html`, `nepteo-brancher-ux8.html` et `nepteo-produire-ux9.html` ont été importés depuis le checkout principal `C:\dev\agent_marketing`. Ouvrir et relire la spec du lot avant chaque `GO UX-n`.
 3. **Fins de ligne : risque latent, pas un diff actif.** Le checkout est propre au moment de cette actualisation. Il n'a pas de `.gitattributes` et la configuration Git système utilise `core.autocrlf=true`. Si la normalisation est décidée, ajouter `* text=auto eol=lf` puis renormaliser dans un commit dédié, sans aucun changement UX mélangé.
 
 > L'alerte antérieure portant sur 157 fichiers modifiés uniquement par leurs fins de ligne provenait d'un autre état de checkout. Elle ne doit pas être recopiée comme état courant sans un nouveau `git status` et une comparaison `--ignore-all-space`.
