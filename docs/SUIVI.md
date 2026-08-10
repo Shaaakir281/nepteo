@@ -19,6 +19,7 @@
 
 État du produit déployé ou local, avec le niveau de recette précisé dans chaque lot :
 
+- **Refonte de densité UX-1 à UX-5 — terminée et validée localement, non publiée** : Aujourd'hui, onboarding, prise en main, identité d'entreprise et Campagnes appliquent la direction « Épuré ». Les références locales sont `cf66442`, `db97b5e`, `a4fede7`, `0dc6e40`, `c9c8db4` et `8a287ec`. La suite d'harmonisation est cadrée par UX-6 à UX-9 ; leurs quatre specs HTML doivent encore être ajoutées au checkout avant lancement.
 - **Socle et produit** : auth, organisation/RLS de base, mémoire, journal, couche LLM, analyse, validation, funnel/kanban, onboarding enrichi, recherche web et navigation à cinq entrées.
 - **Connecteurs en lecture seule** : Google Sheets et Notion, OAuth chiffré, mapping configurable, sync manuelle et cron. La lecture Notion est désormais paginée ; les appels connecteurs ont un timeout. Les demandes, configurations, callbacks OAuth, déconnexions et synchronisations participent au verrou d'isolation démo.
 - **Exécution sûre** : idempotence, journal avant exécution, pause, plafonds serveur et messages au statut `prepared`. C7, l'envoi externe, n'est pas activé.
@@ -102,6 +103,16 @@ Pour l'intégration actuelle, les lots Connecteurs accessibles sont déjà dans 
 - **Coût de la recherche web OpenAI** : le prix affiché (10 $ / 1 000 appels d'outil) n'est **que la moitié de la facture** — les *search content tokens* sont facturés au tarif du modèle et dominent le total (~0,06 $ par recherche avec `gpt-5.5`). Toujours chiffrer les deux parts, et se rappeler que `MAX_RESEARCH_PER_DAY` compte des appels `runResearch`, **pas** des `web_search_call`.
 
 ## Historique des sessions
+
+### 2026-08-10 — Codex — **Guide UX-6 à UX-9 réconcilié avec la vague terminée**
+
+**État confirmé** : UX-1 à UX-5 sont terminés et validés localement ; le guide conserve leurs prompts comme historique et associe désormais les commits de référence. UX-4 satisfait déjà le préalable de découpage d'UX-9. La suite prévue est UX-6, UX-7, UX-8 puis UX-9, chaque lot restant soumis à son propre `GO` local.
+
+**Préparation de la suite** : les chemins sentinelles ont été corrigés et leurs longueurs remesurées sur le code après refonte. Les quatre prompts UX-6 à UX-9 ont été intégrés au guide avec une recette responsive sur le PC, sans référence trompeuse à un appareil mobile. Le README des maquettes distingue les cinq specs livrées des quatre specs attendues. `nepteo-validation-ux6.html`, `nepteo-listes-ux7.html`, `nepteo-brancher-ux8.html` et `nepteo-produire-ux9.html` sont absents de ce checkout : UX-6 ne doit pas démarrer avant l'ajout et la lecture de sa spec.
+
+**Fins de ligne et frontière** : le checkout était propre avant cette passe ; l'alerte antérieure des 157 fichiers CRLF ne décrit donc pas son état courant. Le risque reste documenté parce que `.gitattributes` est absent et que Git système utilise `core.autocrlf=true`. Aucune renormalisation, aucun fichier applicatif, test, secret, état distant, push, PR, publication ou déploiement n'a été touché.
+
+**Contrôles** : `git diff --check`, `npm run lint`, `npm run typecheck`, `npm test` et `npm run build` terminent avec exit 0. La suite passe 600/600 tests, sans échec. Next.js 16.2.10 compile en 78 s, finit TypeScript en 30,3 s et génère 29 pages statiques avant toutes les routes dynamiques.
 
 ### 2026-08-10 — Codex — **UX-4 « Campagnes » épuré, local uniquement**
 

@@ -1,8 +1,8 @@
 # Refonte de densité — prompts Codex
 
-Guide d'envoi des lots UX-1 à UX-5. Chaque bloc encadré est à copier-coller tel quel dans une tâche Codex, **une tâche par lot**.
+Guide d'envoi des lots UX-1 à UX-9. Chaque bloc encadré est à copier-coller tel quel dans une tâche Codex, **une tâche par lot**.
 
-Objectif commun : les testeurs décrochent parce que chaque écran demande de lire avant de comprendre quoi faire. Les cinq specs HTML de `docs/maquettes/` définissent, écran par écran, la hiérarchie cible, les textes définitifs et un critère de recette chiffré.
+Objectif commun : les testeurs décrochent parce que chaque écran demande de lire avant de comprendre quoi faire. Les neuf specs HTML prévues dans `docs/maquettes/` définissent, écran par écran, la hiérarchie cible, les textes définitifs et un critère de recette chiffré.
 
 | Lot | Écran | Mots lisibles au 1ᵉʳ rendu | Spec |
 |---|---|---|---|
@@ -11,17 +11,24 @@ Objectif commun : les testeurs décrochent parce que chaque écran demande de li
 | UX-2 | Prise en main | 470 → 55 | `nepteo-prise-en-main-ux2.html` |
 | UX-3 | Mon entreprise | 375 → 82 | `nepteo-mon-entreprise-ux3.html` |
 | UX-4 | Campagnes | 262 → 53 | `nepteo-campagnes-ux4.html` |
+| UX-6 | Tiroir de validation + sous-blocs | 220 → 60 | `nepteo-validation-ux6.html` |
+| UX-7 | Prospects + Journal | 266 → 115 | `nepteo-listes-ux7.html` |
+| UX-8 | Catalogue + tunnel + laboratoire | 214 → 86 | `nepteo-brancher-ux8.html` |
+| UX-9 | Tunnel campagne + Story | 11 champs → 4 | `nepteo-produire-ux9.html` |
 
-Ordre d'envoi : **UX-1 + UX-5 ensemble**, puis UX-2, puis UX-3, puis UX-4 seul.
+État local au 2026-08-10 : **UX-1 à UX-5 sont terminés et validés**. Les commits de référence sont UX-1 `cf66442`, UX-5 `db97b5e`, intégration UX-1 + UX-5 `a4fede7`, UX-2 `0dc6e40`, UX-3 `c9c8db4` et UX-4 `8a287ec`.
+
+Suite locale : **UX-6**, puis **UX-7**, puis **UX-8**, puis **UX-9**. Le préalable UX-4 d'UX-9 est déjà satisfait. Chaque lot reste indépendant et attend son propre `GO UX-n`.
 
 ---
 
-## Avant le premier envoi — deux corrections à faire soi-même
+## Avant le prochain lot — état des préalables
 
-1. **Committer et pousser les specs.** Les cinq fichiers `docs/maquettes/*-ux*.html` et le `README.md` mis à jour sont actuellement non suivis. Sans push, Codex ne peut pas les lire et travaillera à l'aveugle.
-2. **Corriger `CLAUDE.md` ligne 57.** Elle annonce encore `violet #5a4fe0, ink #191731` alors que `app/globals.css` est passé au bleu `#2d5ba7` / encre `#1c1713` / cerise `#8a232d`. Codex lit `CLAUDE.md` en priorité : non corrigée, cette ligne produira la mauvaise palette.
+1. **UX-1 à UX-5 : fait.** Les cinq specs d'origine sont versionnées et `CLAUDE.md` annonce bien bleu `#2d5ba7`, encre `#1c1713` et cerise `#8a232d`.
+2. **UX-6 à UX-9 : specs à ajouter.** Les quatre fichiers `nepteo-validation-ux6.html`, `nepteo-listes-ux7.html`, `nepteo-brancher-ux8.html` et `nepteo-produire-ux9.html` ne sont pas présents dans ce checkout. Ne pas lancer UX-6 tant que sa spec n'a pas été ajoutée localement et relue.
+3. **Fins de ligne : risque latent, pas un diff actif.** Le checkout est propre au moment de cette actualisation. Il n'a pas de `.gitattributes` et la configuration Git système utilise `core.autocrlf=true`. Si la normalisation est décidée, ajouter `* text=auto eol=lf` puis renormaliser dans un commit dédié, sans aucun changement UX mélangé.
 
-> Attention en committant : `docs/maquettes/nepteo-prise-en-main.html` apparaît modifié avec 1981 insertions / 1981 suppressions. C'est un changement de fins de ligne (CRLF/LF), pas une modification réelle. Ne pas l'inclure dans le commit des specs.
+> L'alerte antérieure portant sur 157 fichiers modifiés uniquement par leurs fins de ligne provenait d'un autre état de checkout. Elle ne doit pas être recopiée comme état courant sans un nouveau `git status` et une comparaison `--ignore-all-space`.
 
 ---
 
@@ -35,7 +42,7 @@ Projet Nepteo, dépôt agent_marketing. Lis d'abord CLAUDE.md puis docs/SUIVI.md
 et consigne ta session à la fin de docs/SUIVI.md (entrée datée : fait / décisions /
 reste à faire).
 
-Cette tâche fait partie d'une refonte de densité en cinq lots (UX-1 à UX-5). Le
+Cette tâche fait partie d'une refonte de densité en neuf lots (UX-1 à UX-9). Le
 problème : les testeurs décrochent parce que chaque écran demande de lire avant
 de comprendre quoi faire. La direction retenue par Fathi le 2026-08-10 est le
 niveau « Épuré ».
@@ -89,14 +96,16 @@ il ignore les composants serveur, les gardes de rôle et la structure du dépôt
 
 Fin de tâche
 Termine par un résumé de ce qui a changé, les contrôles passés (npm run lint,
-npm run typecheck, npm test, npm run build), une recette téléphone de cinq
-minutes maximum, puis un bloc unique « Commande à copier-coller ». Attends
+npm run typecheck, npm test, npm run build), une recette responsive sur le PC de
+cinq minutes maximum, puis un bloc unique « Commande à copier-coller ». Attends
 l'approbation avant toute publication.
 ```
 
 ---
 
-## Tâche 1 — UX-1 + UX-5 (à envoyer ensemble)
+## Tâche 1 — UX-1 + UX-5 — terminé localement
+
+Référence : UX-1 `cf66442`, UX-5 `db97b5e`, intégration `a4fede7`.
 
 ```
 Lot UX-1 + UX-5 — écrans « Aujourd'hui » et « Onboarding ».
@@ -143,7 +152,7 @@ Cible : 38 mots sur l'écran de choix contre 105.
 - Les deux voies restent exclusives et le choix d'un scénario ne le charge
   toujours pas : la confirmation reste un geste distinct dans le cockpit.
 
-Recette téléphone (5 min)
+Recette responsive sur le PC (5 min)
 1. Se connecter sur un compte neuf : l'écran de choix tient sans scroller, deux
    durées visibles, aucun encart de plus d'une ligne.
 2. Choisir « Voir Nepteo travailler », créer l'espace, arriver sur Aujourd'hui.
@@ -156,7 +165,9 @@ Recette téléphone (5 min)
 
 ---
 
-## Tâche 2 — UX-2
+## Tâche 2 — UX-2 — terminé localement
+
+Référence : `0dc6e40`.
 
 ```
 Lot UX-2 — écran « Prise en main ».
@@ -205,7 +216,7 @@ localStorage, même version d'état.
   l'accessibilité (aria-describedby). La lisibilité au lecteur d'écran ne baisse
   pas.
 
-Recette téléphone (5 min)
+Recette responsive sur le PC (5 min)
 1. Ouvrir le guide : une seule mission visible, un seul bouton plein, aucun
    « 0 % » ni « 0 sur 11 ».
 2. Cliquer la mission, revenir : elle passe à ✓ sans clic supplémentaire, la
@@ -216,7 +227,9 @@ Recette téléphone (5 min)
 
 ---
 
-## Tâche 3 — UX-3
+## Tâche 3 — UX-3 — terminé localement
+
+Référence : `c9c8db4`.
 
 ```
 Lot UX-3 — écran « Mon entreprise », onglet Identité uniquement.
@@ -279,7 +292,7 @@ seule » (c'est une vraie alerte, elle a le droit d'interrompre), le message
 « Lecture seule — votre rôle ne permet pas la modification », les formulaires,
 leurs Server Actions et les gardes canEdit / mutationBlockedByDemo.
 
-Recette téléphone (5 min)
+Recette responsive sur le PC (5 min)
 1. Ouvrir Mon entreprise : la jauge et « Remplir depuis mon site » sont visibles
    sans scroller.
 2. Les 8 champs tiennent dans un écran ; aucun bouton désactivé, aucune mention
@@ -292,7 +305,9 @@ Recette téléphone (5 min)
 
 ---
 
-## Tâche 4 — UX-4 (seul, en dernier)
+## Tâche 4 — UX-4 — terminé localement
+
+Référence : `8a287ec`. Le découpage préalable a ramené `page.tsx` à 59 lignes et `campaign-decision-cockpit.tsx` à 166 lignes avant la simplification visuelle.
 
 ```
 Lot UX-4 — écran « Campagnes ». Lot le plus lourd, à traiter seul.
@@ -300,15 +315,13 @@ Lot UX-4 — écran « Campagnes ». Lot le plus lourd, à traiter seul.
 Spec : docs/maquettes/nepteo-campagnes-ux4.html
 Ouvre-la et lis l'onglet « Consignes Codex ».
 
-Fichiers sentinelles :
-- app/(cockpit)/campagnes/page.tsx  (1 927 lignes)
-- app/(cockpit)/campagnes/_components/campaign-decision-cockpit.tsx  (1 693 lignes)
+Fichiers sentinelles après livraison :
+- app/(cockpit)/campagnes/page.tsx  (59 lignes)
+- app/(cockpit)/campagnes/_components/campaign-decision-cockpit.tsx  (166 lignes)
 
-Préalable non négociable : découper ces deux fichiers AVANT toute retouche
-visuelle. La convention du dépôt est ~200 lignes par fichier ; on est à 10×.
-Chaque section devient un composant dans campagnes/_components/. Si le découpage
-seul suffit à remplir la tâche, arrête-toi là et rends-le : la partie visuelle
-fera une tâche distincte.
+Préalable satisfait dans `8a287ec` : ces deux fichiers ont été découpés avant la
+retouche visuelle, chaque section ayant été déplacée vers un composant ou un
+module de présentation dédié.
 
 Cible : 53 mots lisibles au premier rendu sur l'onglet Décision. La reproduction
 « Avant » de la spec en compte 262, et elle est optimiste : elle ne reprend pas
@@ -336,7 +349,7 @@ visible. Les tests CAMP-1 / CAMP-2 doivent passer sans modification.
   côte à côte.
 - Quand l'audit créatif est indisponible, une ligne suffit — pas une carte.
 
-Recette téléphone (5 min)
+Recette responsive sur le PC (5 min)
 1. Ouvrir Campagnes sans données : une phrase, un bouton plein, trois
    accordéons fermés. Aucune question analytique affichée.
 2. Basculer sur Rapport puis Historique : un seul contenu à la fois.
@@ -344,6 +357,228 @@ Recette téléphone (5 min)
    indicateurs et une recommandation, ou son motif de non-recommandation
    derrière « Pourquoi ? ».
 4. Vérifier qu'aucune action n'annonce un effet fournisseur.
+```
+
+---
+
+## Tâche 5 — UX-6 — prête après ajout de la spec
+
+```
+Lot UX-6 — tiroir de validation et sous-blocs d'Aujourd'hui.
+
+Spec : docs/maquettes/nepteo-validation-ux6.html
+Ouvre-la et lis l'onglet « Consignes Codex ».
+
+Fichiers sentinelles et baselines actuelles :
+- app/(cockpit)/_components/validation-drawer.tsx  (650 lignes)
+- app/(cockpit)/_components/action-value-feedback.tsx  (302 lignes)
+- app/(cockpit)/_components/value-scorecard.tsx  (284 lignes)
+- app/(cockpit)/_components/prospect-drafts.tsx  (235 lignes)
+- app/(cockpit)/_components/action-draft-editor.tsx  (192 lignes)
+
+Ce lot porte sur le moment de décision — le cœur du produit. UX-1 a replié ces
+blocs sans redessiner leur intérieur : dès que l'utilisateur clique
+« Examiner », il retrouve la densité d'avant.
+
+Préalable : découper validation-drawer.tsx. Un composant par famille d'action
+(relance, campagne, contenu) plus un socle commun.
+
+Cible : 60 mots dans le tiroir au premier rendu contre 220, et un seul bloc
+déployé contre une douzaine.
+
+- Le brouillon d'abord, la justification ensuite. Le message remonte juste sous
+  l'en-tête et devient directement éditable (plus de bascule « Modifier »).
+- Un bloc sans valeur ne s'affiche pas. Les blocs de campagne (Budget, Objectif,
+  Audience, Hypothèse, Hooks, Structure, Formats…) ne sont rendus que pour
+  kind === "launch_campaign", et regroupés dans un seul <details>.
+- Constat, raison, données utilisées, nature des informations et limites vont
+  dans un <details> « Sur quoi Nepteo s'appuie », avec le nombre de sources en
+  compteur. Ils restent tous présents.
+- Impact, confiance et risque deviennent deux pastilles dans l'en-tête plus une
+  ligne de contexte chiffré.
+- « Personnaliser par prospect » devient un <details> fermé avec compteur.
+- Le formulaire de refus n'est plus affiché en permanence : il remplace le pied
+  de tiroir au clic sur « Refuser ». La règle serveur (raison de 3 à 500
+  caractères) est inchangée.
+- Retour terrain : une ligne « C'était utile ? Oui / Non » + <details>
+  « Préciser » contenant les trois autres dimensions. Le modèle value_events ne
+  change pas — on change l'ordre de saisie, pas le schéma.
+- Scorecard : 3 KPI (examinées, jugées utiles, réponses) + <details> « Toutes
+  les métriques ». Aucune agrégation inter-organisations.
+
+Recette responsive sur le PC (5 min)
+1. Ouvrir une proposition de relance : le message est visible sans scroller.
+2. Vérifier qu'aucun bloc « — » ou vide n'est rendu.
+3. Refuser sans motif : le refus est bien bloqué avec le message existant.
+4. Après décision, le retour terrain tient sur une ligne.
+```
+
+---
+
+## Tâche 6 — UX-7 — prête après ajout de la spec
+
+```
+Lot UX-7 — écrans « Prospects » et « Journal ».
+
+Spec : docs/maquettes/nepteo-listes-ux7.html
+Ouvre-la et lis l'onglet « Consignes Codex ».
+
+Fichiers sentinelles et baselines actuelles :
+- app/(cockpit)/prospects/page.tsx  (201 lignes)
+- app/(cockpit)/prospects/_components/prospects-board.tsx  (190 lignes)
+- app/(cockpit)/journal/page.tsx  (168 lignes)
+- app/(cockpit)/journal/_components/journal-row.tsx  (35 lignes)
+- app/(cockpit)/journal/_components/prepared-outbox.tsx  (103 lignes)
+
+Les deux écrans sont groupés parce qu'ils posent le même problème : une liste
+précédée d'explications. Ils doivent partager une grammaire — chiffre en tête,
+filtres en pastilles, lignes denses, détail au clic.
+
+Cibles : Prospects 156 → 61 mots ; Journal 110 → 54 mots.
+
+Prospects
+- Une ligne de tête : « 128 contacts · 96 relançables (?) ». L'encart
+  « Deux comptages, deux usages » passe intégralement dans l'infobulle : cette
+  garantie d'exactitude reste atteignable, mais n'est plus première.
+- Carte prospect à 3 lignes → une ligne : nom + délai aligné à droite.
+- Trois pastilles de filtre : Tous · Relançables · Dormants, appuyées sur les
+  cohortes déjà calculées côté serveur, sans nouveau calcul.
+- L'intro descend en pied, fusionnée avec la date de dernière synchronisation.
+
+Journal
+- Ajoute une table de correspondance event_type → libellé français, en fonction
+  pure et testable dans lib/. Un type inconnu retombe sur son nom technique
+  plutôt que d'être masqué. Le nom technique et la charge utile restent visibles
+  dans le détail, au clic.
+- Deux <select> + « Filtrer » + « Réinitialiser » deviennent trois pastilles
+  d'acteur qui filtrent au clic. Le filtre par type va dans un accordéon.
+- « Envois préparés » devient un accordéon replié avec compteur. Le texte « la
+  préparation n'est pas un envoi » est conservé à l'intérieur.
+
+Ne change pas : le journal reste append-only et complet, aucune ligne masquée
+ni fusionnée ; la distinction cohorte complète / partielle et le refus
+d'afficher un total partiel ; les colonnes expurgées et l'absence de journal
+pour le rôle commercial ; la pagination existante.
+
+Recette responsive sur le PC (5 min)
+1. Prospects : le nombre total est visible avant toute phrase explicative.
+2. L'écart entre les deux comptages reste atteignable au survol et au clavier.
+3. Journal : aucune ligne n'affiche un nom technique en libellé principal.
+4. Un filtre s'applique en un clic, sans bouton « Filtrer ».
+5. Avec un rôle commercial : ni journal, ni colonnes sensibles.
+```
+
+---
+
+## Tâche 7 — UX-8 — prête après ajout de la spec
+
+```
+Lot UX-8 — parcours « brancher » : catalogue, tunnel d'import, laboratoire web.
+
+Spec : docs/maquettes/nepteo-brancher-ux8.html
+Ouvre-la et lis l'onglet « Consignes Codex ».
+
+Fichiers sentinelles et baselines actuelles :
+- app/(cockpit)/entreprise/_components/connectors-panel.tsx  (228 lignes)
+- app/(cockpit)/connecteurs/_components/connector-card.tsx  (192 lignes)
+- app/(cockpit)/connecteurs/[provider]/page.tsx  (238 lignes)
+- app/(cockpit)/connecteurs/csv/page.tsx  (227 lignes)
+- app/(cockpit)/entreprise/laboratoire-web/_components/  (4 fichiers,
+  respectivement 138, 223, 263 et 178 lignes)
+
+Ces trois vues forment un seul parcours et souffrent du même défaut : elles
+expliquent les règles avant de proposer le geste.
+
+Cibles : tunnel 113 → 38 mots ; laboratoire 101 → 48 mots.
+
+- Catalogue : champ de recherche + trois pastilles (Tous · Branchés ·
+  Disponibles). Les branchés remontent en premier. 22 tuiles d'une ligne
+  (pictogramme, nom, pastille d'état) au lieu de 22 cartes à 3-4 lignes.
+- Les 22 connecteurs et les 5 catégories restent exactement les mêmes
+  (décision CONN-0 du 2026-08-08). Aucun retrait, aucun ajout. Les catégories
+  deviennent un filtre, pas des titres empilés.
+- Statuts : pastilles Branché · À vérifier · En pause · Erreur · Prévu. Le
+  libellé long actuel passe en infobulle. L'honnêteté des états ne change pas.
+- Le préambule « Ce catalogue distingue… » passe en infobulle sur « x branchés
+  sur 22 ». Texte intégral conservé.
+- Import CSV : les 6 contraintes techniques ne sont plus un préambule. Une
+  mention « CSV, 900 Ko max (?) » reste à côté du bouton, puis des messages de
+  validation précis apparaissent au dépôt. Les gardes serveur de 0021 — bornes,
+  mapping non ambigu, remplacement atomique, verrou, journal — ne changent pas.
+- Import CSV : 3 étapes, une visible à la fois (déposer → vérifier les colonnes
+  → confirmer le remplacement). Le blocage « scénario actif » devient un
+  message d'étape. L'exclusivité des voies reste absolue.
+- Laboratoire : un titre-question, un champ, un bouton. Les 4 boutons
+  « Appliquer cette section » deviennent 4 cases cochées + un bouton « Appliquer
+  les 4 ». Chaque ligne indique l'effet. Le laboratoire reste en lecture seule
+  et isolé ; rien n'est appliqué automatiquement.
+
+Recette responsive sur le PC (5 min)
+1. Trouver un connecteur par son nom prend une frappe, pas un balayage.
+2. Les 22 connecteurs et 5 catégories sont toujours là.
+3. Déposer un CSV non conforme : message précis, sans préambule de contraintes.
+4. Le tunnel CSV n'affiche qu'une étape à la fois.
+5. Le laboratoire n'applique rien sans clic.
+```
+
+---
+
+## Tâche 8 — UX-9 — prête après ajout de la spec
+
+Le préalable UX-4 est satisfait localement par `8a287ec`.
+
+```
+Lot UX-9 — parcours « produire » : tunnel de création de campagne et atelier
+Story.
+
+Spec : docs/maquettes/nepteo-produire-ux9.html
+Ouvre-la et lis l'onglet « Consignes Codex ».
+
+Fichiers sentinelles et baselines actuelles :
+- app/(cockpit)/campagnes/_components/new-campaign-modal.tsx  (439 lignes)
+- app/(cockpit)/campagnes/_components/campaign-brief-form.tsx  (309 lignes)
+- app/(cockpit)/campagnes/_components/campaign-proposal-review.tsx  (540 lignes)
+- app/(cockpit)/contenu/page.tsx  (197 lignes)
+- app/(cockpit)/contenu/_components/creative-workspace.tsx  (530 lignes)
+
+Cibles : brief 11 champs visibles → 4 ; proposition 166 → 71 mots ; Story
+67 → 39 mots.
+
+- Brief : 4 champs visibles — objectif, budget par jour, audience, offre — tous
+  préremplis depuis la mémoire d'entreprise. Les 7 autres (type, hypothèse,
+  canal, durée, métrique, seuil, contexte) vont dans un <details> « Affiner »,
+  préremplis eux aussi. Le préremplissage lit la mémoire en lecture seule.
+- Le titre « l'agent construit, vous arbitrez » devient « Nouvelle campagne » +
+  un rail 1/3.
+- Proposition : une phrase chiffrée + la liste des adsets + l'accroche retenue.
+  Les 8 blocs étiquetés passent dans deux <details>. Le bloc « Récapitulatif
+  complet » disparaît puisqu'il répète les blocs précédents.
+- « Coût / conversion — confiance de l'estimation » devient une pastille
+  « Estimation indisponible (?) ». Le motif complet — 7 jours distincts,
+  dépense positive, 10 conversions — reste dans l'infobulle. Ne jamais le
+  remplacer par un benchmark de canal.
+- Hooks : l'accroche retenue visible, les 5 autres repliées. La règle « au moins
+  un hook avant soumission » est inchangée.
+- Trois boutons de pied deviennent « Ajouter à la file » plein + « Modifier le
+  brief » outline. La proposition de créer un visuel apparaît après l'ajout à la
+  file, pas pendant.
+- Atelier Story : la campagne récente est présélectionnée, le format déduit du
+  canal, l'aperçu occupe le haut de l'écran. Suggestions et création libre sont
+  repliées. La Story reste rattachée à une campagne.
+
+Ne change pas : les règles CAMP-0/1/2, le budget total redérivé, les clés de
+soumission et d'exécution distinctes, l'action launch_campaign créée en proposed
+avec son journal unique et atomique, « Validée — non lancée », l'absence de
+bouton Exécuter, le seuil de preuve, chaque génération explicite et bornée, le
+versionnement du visuel et l'absence de publication automatique.
+
+Recette responsive sur le PC (5 min)
+1. Ouvrir « Nouvelle campagne » avec une fiche entreprise renseignée : 4 champs
+   visibles, tous préremplis.
+2. Construire la proposition : elle tient sur un écran jusqu'aux boutons.
+3. Vérifier qu'aucun chiffre n'est inventé quand l'estimation est indisponible.
+4. Ouvrir l'atelier Story : une zone d'aperçu avant toute configuration.
+5. Vérifier qu'aucune action n'annonce un effet fournisseur.
 ```
 
 ---
