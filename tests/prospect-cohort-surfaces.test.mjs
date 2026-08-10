@@ -48,7 +48,10 @@ test("Contenu suspend seulement les suggestions chiffrées lorsque la cohorte n'
 });
 
 test("Prospects n'affiche un board que pour une cohorte complète et annonce les totaux exacts", () => {
-  const page = source("../app/(cockpit)/prospects/page.tsx");
+  const page = [
+    "../app/(cockpit)/prospects/page.tsx",
+    "../app/(cockpit)/prospects/_components/prospect-count-summary.tsx",
+  ].map(source).join("\n");
 
   assert.match(
     page,
@@ -56,7 +59,7 @@ test("Prospects n'affiche un board que pour une cohorte complète et annonce les
   );
   assert.match(page, /prospectCohort\.status !== "complete"/);
   assert.match(page, /Vue prospects temporairement suspendue/);
-  assert.match(page, /Aucun board, total ou taux partiel/);
+  assert.match(page, /Aucun board,\s*total ou taux partiel/);
   assert.match(page, /fiche[\s\S]*dédoublonnée/);
   assert.match(page, /doublon[\s\S]*masqué/);
   assert.match(page, /Deux comptages, deux usages/);
@@ -65,7 +68,7 @@ test("Prospects n'affiche un board que pour une cohorte complète et annonce les
   assert.match(page, /il ne suppose pas que deux[\s\S]*homonymes/);
   assert.match(
     page,
-    /visualMissingEmailCount\.toLocaleString\("fr-FR"\)\}\{" "\}[\s\S]*sans email/,
+    /visualMissingEmailCount\.toLocaleString\("fr-FR"\)[\s\S]*sans email/,
   );
   assert.doesNotMatch(page, /\.limit\(500\)/);
 });
@@ -160,6 +163,6 @@ test("Prospects explique aussi une priorité visuelle neutralisée par un DNC", 
     page,
     /priorityCountsDiffer \|\| activeStageConflictCount > 0/,
   );
-  assert.match(page, /explainMissingEmailCohort \|\| explainPriorityCohort/);
+  assert.match(page, /\{explainMissingEmailCohort && \(/);
   assert.match(page, /\{explainPriorityCohort && \(/);
 });

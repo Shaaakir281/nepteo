@@ -19,7 +19,7 @@
 
 État du produit déployé ou local, avec le niveau de recette précisé dans chaque lot :
 
-- **Refonte de densité UX-1 à UX-6 — terminée et validée localement, non publiée** : Aujourd'hui, onboarding, prise en main, identité d'entreprise, Campagnes et le moment de validation appliquent la direction « Épuré ». Les références locales antérieures sont `cf66442`, `db97b5e`, `a4fede7`, `0dc6e40`, `c9c8db4` et `8a287ec` ; UX-6 est consigné en tête de l'historique. La suite d'harmonisation est cadrée par UX-7 à UX-9 ; leurs specs HTML sont présentes dans le checkout.
+- **Refonte de densité UX-1 à UX-7 — terminée et validée localement, non publiée** : Aujourd'hui, onboarding, prise en main, identité d'entreprise, Campagnes, validation, Prospects et Journal appliquent la direction « Épuré ». Les références locales antérieures sont `cf66442`, `db97b5e`, `a4fede7`, `0dc6e40`, `c9c8db4` et `8a287ec` ; UX-6 et UX-7 sont consignés en tête de l'historique. La suite d'harmonisation est cadrée par UX-8 puis UX-9 ; leurs specs HTML sont présentes dans le checkout.
 - **Socle et produit** : auth, organisation/RLS de base, mémoire, journal, couche LLM, analyse, validation, funnel/kanban, onboarding enrichi, recherche web et navigation à cinq entrées.
 - **Connecteurs en lecture seule** : Google Sheets et Notion, OAuth chiffré, mapping configurable, sync manuelle et cron. La lecture Notion est désormais paginée ; les appels connecteurs ont un timeout. Les demandes, configurations, callbacks OAuth, déconnexions et synchronisations participent au verrou d'isolation démo.
 - **Exécution sûre** : idempotence, journal avant exécution, pause, plafonds serveur et messages au statut `prepared`. C7, l'envoi externe, n'est pas activé.
@@ -103,6 +103,14 @@ Pour l'intégration actuelle, les lots Connecteurs accessibles sont déjà dans 
 - **Coût de la recherche web OpenAI** : le prix affiché (10 $ / 1 000 appels d'outil) n'est **que la moitié de la facture** — les *search content tokens* sont facturés au tarif du modèle et dominent le total (~0,06 $ par recherche avec `gpt-5.5`). Toujours chiffrer les deux parts, et se rappeler que `MAX_RESEARCH_PER_DAY` compte des appels `runResearch`, **pas** des `web_search_call`.
 
 ## Historique des sessions
+
+### 2026-08-10 — Codex — **UX-7 « Prospects + Journal » épuré, local uniquement**
+
+**Prospects** : l'écran ouvre désormais sur le total dédoublonné et le nombre relançable issu de la cohorte canonique. L'explication intégrale des deux comptages reste accessible au survol et au focus clavier. Les pastilles Tous, Relançables et Dormants filtrent en un clic côté serveur en réutilisant `prospectPriority` et `selectDormantProspects` sur la cohorte complète ; aucun total partiel n'est affiché. Les fiches tiennent sur une ligne nom + délai, avec société et email dans un détail replié. L'introduction et la dernière synchronisation sont réunies en pied.
+
+**Journal** : `journalEventLabel` est une fonction pure testée ; chaque type connu reçoit un libellé français et un type inconnu retombe sur son nom technique. Les lignes restent toutes rendues, sans fusion ni masquage, et leur détail conserve type technique, acteur, résumé et payload. Les acteurs se filtrent par pastilles à un clic, le type par accordéon, et « Envois préparés » est replié avec compteur et la garantie « la préparation n'est pas un envoi ». La pagination de 50 lignes et ses filtres sont conservés. La navigation et la route refusent explicitement le rôle commercial avant toute lecture, en complément de la RLS existante.
+
+**Frontières et contrôles** : aucun Server Action, garde de mutation/démo, moteur métier, cohorte pure, migration, schéma, route, connecteur, outbox, secret ou donnée distante n'a été modifié. Tous les composants touchés restent sous 250 lignes. Les contrats UX-7 ciblés passent 14/14 et la suite complète 614/614. `git diff --check`, `npm run lint`, `npm run typecheck` et `npm run build` terminent avec exit 0 ; le build final Next.js 16.2.10 compile en 22,4 s, finit TypeScript en 13,5 s et génère 29 pages statiques. La session locale connue est arrêtée sur `http://localhost:3003/login` : aucune donnée d'authentification ni aucun secret n'a été saisi, donc la recette visuelle authentifiée reste à jouer sur le PC. Aucun push, PR, publication ni déploiement n'a été effectué.
 
 ### 2026-08-10 — Codex — **UX-6 « Validation » épuré, local uniquement**
 

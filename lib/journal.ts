@@ -28,6 +28,8 @@ export const EVENT_LABELS: Record<string, string> = {
   analysis_run: "Analyse lancée",
   dormant_play_proposed: "Relance dormante proposée",
   action_proposed: "Action proposée",
+  action_proposal_upgraded: "Proposition mise à niveau",
+  action_history_adopted: "Historique de décision repris",
   action_approved: "Action validée",
   action_rejected: "Action refusée",
   action_postponed: "Action reportée",
@@ -42,6 +44,7 @@ export const EVENT_LABELS: Record<string, string> = {
   execution_pause_changed: "Bouton d'arrêt basculé",
   ads_demo_loaded: "Données d'exemple Meta Ads chargées",
   autonomy_changed: "Niveau d'autonomie modifié",
+  campaign_waiting: "Campagne mise en attente",
   creative_brief_generated: "Brief créatif généré",
   creative_image_requested: "Création visuelle demandée",
   creative_image_generated: "Visuel généré",
@@ -61,6 +64,11 @@ export const EVENT_LABELS: Record<string, string> = {
   value_event_recorded: "Retour terrain enregistré",
 };
 
+/** Libellé client du type technique, sans jamais masquer un type inconnu. */
+export function journalEventLabel(eventType: string): string {
+  return EVENT_LABELS[eventType] ?? eventType;
+}
+
 const SECTION_LABELS: Record<string, string> = {
   activite: "Activité",
   zone: "Zone",
@@ -73,7 +81,7 @@ const SECTION_LABELS: Record<string, string> = {
 };
 
 export function entryTitle(e: JournalEntry): string {
-  return EVENT_LABELS[e.event] ?? e.event;
+  return journalEventLabel(e.event);
 }
 
 export function entryDetail(e: JournalEntry): string | null {
