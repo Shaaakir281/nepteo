@@ -6,10 +6,10 @@ import {
   type CreativeImageFormat,
 } from "@/lib/creative-image-rules";
 
-const ASPECT: Record<CreativeImageFormat, string> = {
-  story: "aspect-[9/16] max-h-[590px]",
-  square: "aspect-square",
-  landscape: "aspect-[3/2]",
+const FRAME: Record<CreativeImageFormat, string> = {
+  story: "aspect-[9/16] w-full max-w-[332px]",
+  square: "aspect-square w-full max-w-[590px]",
+  landscape: "aspect-[3/2] w-full max-w-[885px]",
 };
 
 function wrapText(
@@ -120,7 +120,7 @@ export function StoryPreview({
       </div>
 
       <div
-        className={`relative mx-auto w-full overflow-hidden rounded-[16px] border-[5px] border-[#211c18] bg-[#ddd4c7] shadow-[0_18px_42px_rgba(28,23,19,.16)] ${ASPECT[format]}`}
+        className={`relative mx-auto overflow-hidden rounded-[16px] border-[5px] border-[#211c18] bg-[#ddd4c7] shadow-[0_18px_42px_rgba(28,23,19,.16)] ${FRAME[format]}`}
       >
         {image ? (
           <Image

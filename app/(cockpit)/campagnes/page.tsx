@@ -5,6 +5,7 @@ import { readMemory } from "@/lib/memory-store";
 import { campaignBriefDefaultsFromMemory } from "@/lib/campaign-brief-defaults";
 import { AnalysisNotice } from "./_components/analysis-notice";
 import { CampaignDecisionCockpit } from "./_components/campaign-decision-cockpit";
+import { NewCampaignModal } from "./_components/new-campaign-modal";
 import { readCampaignPageSnapshot } from "./_lib/campaign-page-query";
 import { buildCampaignPageView } from "./_lib/campaign-page-view";
 import { scalarSearchParam } from "./_lib/campaign-read-utils";
@@ -49,22 +50,24 @@ export default async function CampagnesPage({
 
   return (
     <>
-      <header className="mb-5 flex items-center justify-between gap-3">
+      <header className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-[22px] font-semibold tracking-tight">Campagnes</h1>
         {membership.canEdit && (
-          <Link
-            href="/contenu?libre=1"
-            className="rounded-[9px] bg-[#8a232d] px-3.5 py-2 text-[12px] font-semibold text-white transition hover:bg-[#741d25]"
-          >
-            Créer une story
-          </Link>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <NewCampaignModal initialDraft={campaignBriefDefaults} />
+            <Link
+              href="/contenu?libre=1"
+              className="rounded-[9px] border border-line bg-white px-3.5 py-2 text-[12px] font-semibold text-body transition hover:bg-tint-soft hover:text-ink"
+            >
+              Créer un visuel
+            </Link>
+          </div>
         )}
       </header>
       <AnalysisNotice proposed={proposed} />
       <CampaignDecisionCockpit
         {...model.view}
         canEdit={membership.canEdit}
-        campaignBriefDefaults={campaignBriefDefaults}
         dataState={model.dataState}
         filters={model.filters}
         operationalSummary={model.operationalSummary}

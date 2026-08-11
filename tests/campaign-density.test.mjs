@@ -17,9 +17,11 @@ test("UX-4 — les deux sentinelles surdimensionnées sont découpées", () => {
   assert.ok(cockpit.split(/\r?\n/).length <= 250);
 });
 
-test("UX-4 — le studio Story reste accessible hors du menu", () => {
+test("UX-4 — les deux créations restent accessibles dans l’en-tête", () => {
   assert.match(page, /href="\/contenu\?libre=1"/);
-  assert.match(page, /Créer une story/);
+  assert.match(page, /Créer un visuel/);
+  assert.match(page, /<NewCampaignModal initialDraft=\{campaignBriefDefaults\} \/>/);
+  assert.ok(page.indexOf("<NewCampaignModal") < page.indexOf("<CampaignDecisionCockpit"));
 });
 
 test("UX-4 — Décision, Rapport et Historique sont exclusifs", () => {
@@ -38,7 +40,7 @@ test("UX-4 — l’onglet Décision reste centré sur trois KPI et un geste domi
   assert.match(hero, /Brancher un compte publicitaire/);
   assert.match(hero, /Pourquoi \?/);
   assert.match(hero, /<form action=\{analyzeAdsForm\}>/);
-  assert.match(hero, /<NewCampaignModal initialDraft=\{campaignBriefDefaults\} \/>/);
+  assert.doesNotMatch(hero, /NewCampaignModal/);
 });
 
 test("UX-4 — les vérifications secondaires sont trois details fermés", () => {

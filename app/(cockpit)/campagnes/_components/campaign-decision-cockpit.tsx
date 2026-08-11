@@ -15,17 +15,12 @@ import {
 } from "./campaign-filters";
 import { CampaignMeasuredList } from "./campaign-measured-list";
 import { WeeklyInsightsPanel } from "./campaign-weekly-insights";
-import type { CampaignBriefDefaults } from "@/lib/campaign-brief-defaults";
 
 export * from "./campaign-decision-types";
 
 type CampaignTab = "decision" | "report" | "history";
 
-export function CampaignDecisionCockpit(
-  props: CampaignDecisionCockpitProps & {
-    campaignBriefDefaults: CampaignBriefDefaults;
-  },
-) {
+export function CampaignDecisionCockpit(props: CampaignDecisionCockpitProps) {
   const [tab, setTab] = useState<CampaignTab>("decision");
   const [search, setSearch] = useState("");
   const router = useRouter();
@@ -121,7 +116,6 @@ export function CampaignDecisionCockpit(
             recommendation={props.recommendation}
             dailySummary={props.dailySummary?.text ?? null}
             hasMeasuredData={hasMeasuredData}
-            campaignBriefDefaults={props.campaignBriefDefaults}
           />
           <CampaignDecisionDetails
             operationalSummary={props.operationalSummary}

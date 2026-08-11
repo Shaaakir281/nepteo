@@ -80,11 +80,12 @@ test("UX-9 — la proposition tient au premier rendu et conserve les garde-fous 
   assert.ok(footer.indexOf("Créer le visuel de cette campagne") < footer.indexOf("Le faire plus tard"));
 });
 
-test("UX-9 — l'aperçu Story précède les réglages et la génération reste explicite", async () => {
-  const [workspace, state, secondary] = await Promise.all([
+test("UX-9 — l'aperçu précède les réglages et la génération reste explicite", async () => {
+  const [workspace, state, secondary, preview] = await Promise.all([
     source("app/(cockpit)/contenu/_components/creative-workspace.tsx"),
     source("app/(cockpit)/contenu/_components/use-creative-workspace.ts"),
     source("app/(cockpit)/contenu/_components/creative-secondary-options.tsx"),
+    source("app/(cockpit)/contenu/_components/story-preview.tsx"),
   ]);
   assert.ok(workspace.indexOf("<StoryPreview") < workspace.indexOf("<CreativeStorySettings"));
   assert.match(workspace, /Générer/);
@@ -95,6 +96,11 @@ test("UX-9 — l'aperçu Story précède les réglages et la génération reste 
   assert.equal((secondary.match(/<details/g) ?? []).length, 2);
   assert.match(secondary, /Suggestions de l&apos;agent/);
   assert.match(secondary, /Création libre, sans campagne/);
+  assert.match(workspace, /Studio de visuels/);
+  assert.match(preview, /story: "aspect-\[9\/16\] w-full max-w-\[332px\]"/);
+  assert.match(preview, /square: "aspect-square w-full max-w-\[590px\]"/);
+  assert.match(preview, /landscape: "aspect-\[3\/2\] w-full max-w-\[885px\]"/);
+  assert.doesNotMatch(preview, /max-h-\[590px\]/);
 });
 
 test("UX-9 — tous les composants touchés restent sous 250 lignes", async () => {

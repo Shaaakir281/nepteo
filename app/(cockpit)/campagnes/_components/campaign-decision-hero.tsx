@@ -8,8 +8,6 @@ import type {
 } from "./campaign-decision-types";
 import { ReadingEvidence } from "./campaign-evidence";
 import { ObservedKpiCard } from "./campaign-kpi-card";
-import { NewCampaignModal } from "./new-campaign-modal";
-import type { CampaignBriefDefaults } from "@/lib/campaign-brief-defaults";
 
 export function CampaignDecisionHero({
   canEdit,
@@ -19,7 +17,6 @@ export function CampaignDecisionHero({
   recommendation,
   dailySummary,
   hasMeasuredData,
-  campaignBriefDefaults,
 }: {
   canEdit: boolean;
   dataState: CampaignCockpitDataState;
@@ -28,7 +25,6 @@ export function CampaignDecisionHero({
   recommendation: CampaignPriorityRecommendation | null;
   dailySummary: string | null;
   hasMeasuredData: boolean;
-  campaignBriefDefaults: CampaignBriefDefaults;
 }) {
   const globallyEmpty = dataState.kind === "empty" && !hasMeasuredData;
   const title = globallyEmpty
@@ -77,7 +73,7 @@ export function CampaignDecisionHero({
         </>
       )}
 
-      {canEdit && (
+      {canEdit && (globallyEmpty || hasMeasuredData) && (
         <div className="mt-5 flex flex-wrap items-center gap-3">
           {globallyEmpty ? (
             <>
@@ -91,23 +87,16 @@ export function CampaignDecisionHero({
                 ou charger un scénario d&apos;exemple
               </Link>
             </>
-          ) : (
-            <>
-              {hasMeasuredData && (
-                <form action={analyzeAdsForm}>
-                  <button
-                    type="submit"
-                    className="rounded-[10px] bg-violet px-4 py-2.5 text-[12.5px] font-semibold text-white transition hover:bg-violet-deep"
-                  >
-                    Analyser
-                  </button>
-                </form>
-              )}
-              <div className="[&>button]:!border [&>button]:!border-line [&>button]:!bg-white [&>button]:!text-body [&>button:hover]:!bg-tint-soft">
-                <NewCampaignModal initialDraft={campaignBriefDefaults} />
-              </div>
-            </>
-          )}
+          ) : hasMeasuredData ? (
+            <form action={analyzeAdsForm}>
+              <button
+                type="submit"
+                className="rounded-[10px] bg-violet px-4 py-2.5 text-[12.5px] font-semibold text-white transition hover:bg-violet-deep"
+              >
+                Analyser
+              </button>
+            </form>
+          ) : null}
         </div>
       )}
     </section>
