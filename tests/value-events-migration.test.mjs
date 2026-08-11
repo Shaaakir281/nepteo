@@ -2,6 +2,12 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
+async function readComponentSources(names) {
+  return (await Promise.all(names.map((name) =>
+    readFile(new URL(`../app/(cockpit)/_components/${name}`, import.meta.url), "utf8"),
+  ))).join("\n");
+}
+
 const migration = await readFile(
   new URL("../supabase/migrations/0020_value_events.sql", import.meta.url),
   "utf8",
@@ -13,20 +19,15 @@ const serverAction = await readFile(
   ),
   "utf8",
 );
-const feedback = await readFile(
-  new URL(
-    "../app/(cockpit)/_components/action-value-feedback.tsx",
-    import.meta.url,
-  ),
-  "utf8",
-);
-const drawer = await readFile(
-  new URL(
-    "../app/(cockpit)/_components/validation-drawer.tsx",
-    import.meta.url,
-  ),
-  "utf8",
-);
+const feedback = await readComponentSources([
+  "action-value-feedback.tsx",
+  "action-value-feedback-fields.tsx",
+  "action-value-feedback-options.ts",
+]);
+const drawer = await readComponentSources([
+  "validation-drawer.tsx",
+  "validation-action-content.tsx",
+]);
 
 const tableStart = migration.indexOf("create table public.value_events");
 const tableEnd = migration.indexOf(
@@ -266,7 +267,7 @@ test("interface value events — couvre verdict, retouche, résultats et explici
   assert.match(feedback, /crypto\.randomUUID\(\)/);
   assert.match(
     drawer,
-    /canEdit && !isRelanceKind\(action\.kind\)[\s\S]*mode="evaluation"/,
+    /function CampaignContent[\s\S]*canEdit && <ActionValueFeedback[\s\S]*mode="evaluation"/,
   );
   assert.match(
     drawer,

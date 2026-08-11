@@ -69,7 +69,7 @@ export const WALKTHROUGH_MISSIONS: WalkthroughMission[] = [
   {
     id: "activity",
     stage: 0,
-    title: "Décrire votre activité",
+    title: "Décrivez votre activité",
     goal: "Repérez où Nepteo conserve vos offres, vos publics et votre vocabulaire.",
     href: "/entreprise?onglet=identite",
     action: "Ouvrir la fiche entreprise",
@@ -77,7 +77,7 @@ export const WALKTHROUGH_MISSIONS: WalkthroughMission[] = [
   {
     id: "voice",
     stage: 0,
-    title: "Définir vos principes de communication",
+    title: "Définissez vos principes de communication",
     goal: "Vérifiez comment votre ton et vos limites encadrent les messages préparés.",
     href: "/entreprise?onglet=identite",
     action: "Examiner les principes",
@@ -85,7 +85,7 @@ export const WALKTHROUGH_MISSIONS: WalkthroughMission[] = [
   {
     id: "website",
     stage: 0,
-    title: "Tester l’enrichissement depuis un site",
+    title: "Testez l’enrichissement depuis un site",
     goal:
       "Évaluez l’extraction, les sources et les manques sans modifier automatiquement votre fiche.",
     href: "/entreprise/laboratoire-web",
@@ -95,7 +95,7 @@ export const WALKTHROUGH_MISSIONS: WalkthroughMission[] = [
   {
     id: "situation",
     stage: 1,
-    title: "Examiner les données disponibles",
+    title: "Examinez les données disponibles",
     goal: "Identifiez ce que Nepteo peut analyser et ce qui manque encore.",
     href: "/entreprise?onglet=connecteurs",
     action: "Examiner les sources",
@@ -103,7 +103,7 @@ export const WALKTHROUGH_MISSIONS: WalkthroughMission[] = [
   {
     id: "summary",
     stage: 1,
-    title: "Consulter la synthèse de l’agent",
+    title: "Consultez la synthèse de l’agent",
     goal: "Distinguez les faits observés des conseils et des éléments inconnus.",
     href: "/",
     action: "Ouvrir Aujourd’hui",
@@ -111,7 +111,7 @@ export const WALKTHROUGH_MISSIONS: WalkthroughMission[] = [
   {
     id: "priorities",
     stage: 2,
-    title: "Examiner les priorités du jour",
+    title: "Examinez les priorités du jour",
     goal: "Repérez les actions retenues et l’ordre proposé par Nepteo.",
     href: "/",
     action: "Voir la file À valider",
@@ -119,7 +119,7 @@ export const WALKTHROUGH_MISSIONS: WalkthroughMission[] = [
   {
     id: "rationale",
     stage: 2,
-    title: "Consulter « Pourquoi maintenant »",
+    title: "Consultez « Pourquoi maintenant »",
     goal: "Vérifiez que chaque recommandation s’appuie sur des faits identifiables.",
     href: "/",
     action: "Examiner une recommandation",
@@ -127,7 +127,7 @@ export const WALKTHROUGH_MISSIONS: WalkthroughMission[] = [
   {
     id: "customize",
     stage: 3,
-    title: "Examiner et personnaliser la proposition",
+    title: "Examinez et personnalisez la proposition",
     goal: "Contrôlez le raisonnement et le brouillon avant toute décision.",
     href: "/",
     action: "Ouvrir une proposition",
@@ -135,7 +135,7 @@ export const WALKTHROUGH_MISSIONS: WalkthroughMission[] = [
   {
     id: "decide",
     stage: 3,
-    title: "Valider, reporter ou refuser",
+    title: "Validez, reportez ou refusez",
     goal: "Constatez que la décision finale vous appartient et qu’elle est enregistrée.",
     href: "/",
     action: "Voir les décisions possibles",
@@ -143,7 +143,7 @@ export const WALKTHROUGH_MISSIONS: WalkthroughMission[] = [
   {
     id: "journal",
     stage: 4,
-    title: "Contrôler l’historique des actions",
+    title: "Contrôlez l’historique des actions",
     goal: "Retrouvez les analyses, préparations et décisions dans un historique vérifiable.",
     href: "/journal",
     action: "Ouvrir le journal",
@@ -151,7 +151,7 @@ export const WALKTHROUGH_MISSIONS: WalkthroughMission[] = [
   {
     id: "pause",
     stage: 4,
-    title: "Vérifier le mode sûr",
+    title: "Vérifiez le mode sûr",
     goal: "Repérez la mise en pause et le niveau d’autonomie appliqués côté serveur.",
     href: "/entreprise?onglet=agent",
     action: "Ouvrir les garde-fous",
@@ -243,6 +243,31 @@ export function walkthroughCompletedCount(state: WalkthroughState): number {
   return WALKTHROUGH_MISSIONS.filter((mission) =>
     state.completed.includes(mission.id),
   ).length;
+}
+
+/**
+ * Nombre d'étapes terminées, indépendamment des onze missions internes.
+ * Une étape est acquise lorsque toutes ses missions obligatoires le sont.
+ */
+export function walkthroughCompletedStageCount(
+  state: WalkthroughState,
+): number {
+  return WALKTHROUGH_STAGES.filter((stage) =>
+    WALKTHROUGH_MISSIONS.filter(
+      (mission) => mission.stage === stage.id && !mission.optional,
+    ).every((mission) => state.completed.includes(mission.id)),
+  ).length;
+}
+
+/** Synchronise les deux missions de contexte depuis les champs de la mémoire. */
+export function walkthroughCompletedWithContext(
+  completed: readonly string[],
+  context: { activity: boolean; voice: boolean },
+): string[] {
+  const next = completed.filter((id) => id !== "activity" && id !== "voice");
+  if (context.activity) next.push("activity");
+  if (context.voice) next.push("voice");
+  return [...new Set(next)];
 }
 
 export function walkthroughIsComplete(state: WalkthroughState): boolean {

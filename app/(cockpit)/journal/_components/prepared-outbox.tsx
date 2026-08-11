@@ -6,14 +6,8 @@ const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
   failed: { label: "Échec", cls: "bg-red-tint text-red" },
 };
 
-/**
- * Envois préparés — déplacé de l'onglet Agent (C5), en tête de `/journal`.
- * Composant serveur, lecture seule : en mode sûr, aucun message n'est
- * réellement parti, tout reste au statut « préparé ».
- */
 export async function PreparedOutbox() {
   const supabase = await createClient();
-
   const { count: preparedCount } = await supabase
     .from("outbox_messages")
     .select("id", { count: "exact", head: true })
@@ -23,14 +17,13 @@ export async function PreparedOutbox() {
     .select("id, to_email, subject, status, created_at")
     .order("created_at", { ascending: false })
     .limit(15);
-  const outbox = (outboxRows ?? []) as {
+  const outbox = (outboxRows ?? []) as Array<{
     id: string;
     to_email: string;
     subject: string;
     status: string;
     created_at: string;
-  }[];
-
+  }>;
   const fmtDate = new Intl.DateTimeFormat("fr-FR", {
     day: "numeric",
     month: "short",
@@ -39,65 +32,42 @@ export async function PreparedOutbox() {
   });
 
   return (
-    <div className="mb-5 rounded-[18px] border border-line-soft bg-white shadow-card">
-      <div className="border-b border-line-soft px-[22px] py-4">
-        <h3 className="font-display text-[15px] font-semibold">
-          Envois préparés
-        </h3>
-        <p className="mt-0.5 text-[12px] text-muted">
-          Les messages que l&apos;agent a préparés — en mode sûr, rien n&apos;est
-          parti.
+    <details className="mb-4 rounded-[13px] border border-line-soft bg-white shadow-card">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-[13px] marker:content-none">
+        <b className="font-semibold text-ink">Envois préparés</b>
+        <span className="rounded-full bg-tint-soft px-2 py-0.5 text-[10.5px] font-semibold tabular-nums text-muted">
+          {preparedCount ?? 0}
+        </span>
+      </summary>
+      <div className="border-t border-line-soft px-4 py-3">
+        <p className="mb-3 text-[11.5px] text-muted">
+          Mode sûr : la préparation n&apos;est pas un envoi.
         </p>
-      </div>
-      <div className="p-[22px]">
         {outbox.length === 0 ? (
-          <p className="text-[13px] text-muted">
-            Aucun message préparé pour l&apos;instant. Validez puis exécutez
-            une relance pour les voir apparaître ici.
-          </p>
+          <p className="text-[12.5px] text-faint">Aucun message préparé.</p>
         ) : (
-          <>
-            <p className="mb-3 text-[12.5px] text-muted">
-              {preparedCount ?? 0} message
-              {(preparedCount ?? 0) > 1 ? "s" : ""} préparé
-              {(preparedCount ?? 0) > 1 ? "s" : ""} · {outbox.length} récent
-              {outbox.length > 1 ? "s" : ""} affiché
-              {outbox.length > 1 ? "s" : ""}
-            </p>
-            <ul className="space-y-1.5">
-              {outbox.map((m) => {
-                const badge = STATUS_BADGE[m.status] ?? {
-                  label: m.status,
-                  cls: "bg-tint-soft text-body",
-                };
-                return (
-                  <li
-                    key={m.id}
-                    className="flex items-center gap-3 rounded-[10px] border border-line-soft px-3.5 py-2.5"
-                  >
-                    <span
-                      className={`flex-none rounded-full px-2 py-0.5 text-[10.5px] font-semibold ${badge.cls}`}
-                    >
-                      {badge.label}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-[13px] font-medium text-ink">
-                        {m.subject}
-                      </p>
-                      <p className="truncate text-[11.5px] text-muted">
-                        {m.to_email}
-                      </p>
-                    </div>
-                    <span className="flex-none text-[11px] text-faint">
-                      {fmtDate.format(new Date(m.created_at))}
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
-          </>
+          <ul className="space-y-1.5">
+            {outbox.map((message) => {
+              const badge = STATUS_BADGE[message.status] ?? {
+                label: message.status,
+                cls: "bg-tint-soft text-body",
+              };
+              return (
+                <li key={message.id} className="flex items-center gap-3 rounded-[9px] border border-line-soft px-3 py-2">
+                  <span className={`flex-none rounded-full px-2 py-0.5 text-[10px] font-semibold ${badge.cls}`}>
+                    {badge.label}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[12.5px] font-medium text-ink">{message.subject}</p>
+                    <p className="truncate text-[11px] text-muted">{message.to_email}</p>
+                  </div>
+                  <span className="flex-none text-[10.5px] text-faint">{fmtDate.format(new Date(message.created_at))}</span>
+                </li>
+              );
+            })}
+          </ul>
         )}
       </div>
-    </div>
+    </details>
   );
 }

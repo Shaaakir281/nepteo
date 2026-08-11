@@ -22,6 +22,10 @@ import {
   OffersFields,
   createApplicationDraft,
 } from "./website-preview-application-fields";
+import {
+  currentSummary,
+  WebsitePreviewReviewSection,
+} from "./website-preview-review-section";
 
 const ERRORS: Record<string, string> = {
   forbidden: "Votre rôle ne permet pas de modifier la fiche entreprise.",
@@ -35,66 +39,15 @@ const ERRORS: Record<string, string> = {
   application_ambiguous: "Impossible de confirmer le résultat. Rechargez la fiche avant toute nouvelle tentative.",
 };
 
-function currentSummary(
-  section: WebsitePreviewMemorySection,
-  current: WebsitePreviewCurrentProfile,
-): string {
-  if (section === "activite" && current.activite) {
-    return [
-      current.activite.activity_type,
-      current.activite.audience,
-      current.activite.description,
-    ].filter(Boolean).join(" · ");
-  }
-  if (section === "zone") return current.zone?.text ?? "Aucune donnée";
-  if (section === "ton") return current.ton?.text ?? "Aucune donnée";
-  if (section === "canaux") return current.canaux?.list.join(", ") ?? "Aucune donnée";
-  if (section === "offres") {
-    return current.offres?.items.map((offer) => offer.name).join(", ") ?? "Aucune donnée";
-  }
-  return current.presence?.list.join(" · ") ?? "Aucune donnée";
-}
-
-function ReviewSection({
-  section,
-  title,
-  selected,
-  current,
-  onToggle,
-  children,
-}: {
-  section: WebsitePreviewMemorySection;
-  title: string;
-  selected: boolean;
-  current: string;
-  onToggle: (section: WebsitePreviewMemorySection) => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className={`rounded-[13px] border p-4 ${selected ? "border-violet bg-tint-soft" : "border-line-soft bg-white"}`}>
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div>
-          <h4 className="text-[13px] font-semibold text-ink">{title}</h4>
-          <p className="mt-1 text-[11.5px] leading-relaxed text-muted">
-            <b>Fiche actuelle :</b> {current}
-          </p>
-        </div>
-        <label className="flex cursor-pointer items-center gap-2 text-[12px] font-semibold text-violet-ink">
-          <input
-            type="checkbox"
-            checked={selected}
-            onChange={() => onToggle(section)}
-            className="accent-violet"
-          />
-          Appliquer cette section
-        </label>
-      </div>
-      <p className="mt-3 text-[11.5px] font-semibold uppercase tracking-wide text-muted">
-        Proposition à relire
-      </p>
-      {children}
-    </section>
-  );
+function selectableSections(proposal: IdentityProposal): WebsitePreviewMemorySection[] {
+  const sections: WebsitePreviewMemorySection[] = [];
+  if (proposal.activity_type || proposal.audience || proposal.description) sections.push("activite");
+  if (proposal.zone) sections.push("zone");
+  if (proposal.ton) sections.push("ton");
+  if (proposal.canaux.length > 0) sections.push("canaux");
+  if (proposal.offres.length > 0) sections.push("offres");
+  if (proposal.presence.length > 0) sections.push("presence");
+  return sections;
 }
 
 export function WebsitePreviewApplication({
@@ -112,7 +65,7 @@ export function WebsitePreviewApplication({
 }) {
   const router = useRouter();
   const [draft, setDraft] = useState(() => createApplicationDraft(proposal));
-  const [selected, setSelected] = useState<WebsitePreviewMemorySection[]>([]);
+  const [selected, setSelected] = useState<WebsitePreviewMemorySection[]>(() => selectableSections(proposal));
   const [confirmed, setConfirmed] = useState(false);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -210,35 +163,35 @@ export function WebsitePreviewApplication({
 
       <div className="mt-4 space-y-3">
         {activityAvailable && (
-          <ReviewSection section="activite" title="Activité et audience" selected={selected.includes("activite")} current={currentSummary("activite", currentProfile)} onToggle={toggle}>
+          <WebsitePreviewReviewSection section="activite" title="Activité et audience" selected={selected.includes("activite")} current={currentSummary("activite", currentProfile)} onToggle={toggle}>
             <ActivityFields draft={draft} onChange={setDraft} activityOptions={ACTIVITY_OPTIONS} audienceOptions={AUDIENCE_OPTIONS} />
-          </ReviewSection>
+          </WebsitePreviewReviewSection>
         )}
         {proposal.zone && (
-          <ReviewSection section="zone" title="Zone" selected={selected.includes("zone")} current={currentSummary("zone", currentProfile)} onToggle={toggle}>
+          <WebsitePreviewReviewSection section="zone" title="Zone" selected={selected.includes("zone")} current={currentSummary("zone", currentProfile)} onToggle={toggle}>
             <input value={draft.zone} maxLength={200} onChange={(event) => setDraft({ ...draft, zone: event.target.value })} className={`mt-3 ${FIELD}`} />
-          </ReviewSection>
+          </WebsitePreviewReviewSection>
         )}
         {proposal.ton && (
-          <ReviewSection section="ton" title="Ton" selected={selected.includes("ton")} current={currentSummary("ton", currentProfile)} onToggle={toggle}>
+          <WebsitePreviewReviewSection section="ton" title="Ton" selected={selected.includes("ton")} current={currentSummary("ton", currentProfile)} onToggle={toggle}>
             <textarea rows={2} value={draft.tone} maxLength={500} onChange={(event) => setDraft({ ...draft, tone: event.target.value })} className={`mt-3 ${FIELD}`} />
-          </ReviewSection>
+          </WebsitePreviewReviewSection>
         )}
         {proposal.canaux.length > 0 && (
-          <ReviewSection section="canaux" title="Canaux" selected={selected.includes("canaux")} current={currentSummary("canaux", currentProfile)} onToggle={toggle}>
+          <WebsitePreviewReviewSection section="canaux" title="Canaux" selected={selected.includes("canaux")} current={currentSummary("canaux", currentProfile)} onToggle={toggle}>
             <ChannelsFields draft={draft} onChange={setDraft} options={CHANNEL_OPTIONS} />
-          </ReviewSection>
+          </WebsitePreviewReviewSection>
         )}
         {proposal.offres.length > 0 && (
-          <ReviewSection section="offres" title="Offres" selected={selected.includes("offres")} current={currentSummary("offres", currentProfile)} onToggle={toggle}>
+          <WebsitePreviewReviewSection section="offres" title="Offres" selected={selected.includes("offres")} current={currentSummary("offres", currentProfile)} onToggle={toggle}>
             <OffersFields draft={draft} onChange={setDraft} />
-          </ReviewSection>
+          </WebsitePreviewReviewSection>
         )}
         {proposal.presence.length > 0 && (
-          <ReviewSection section="presence" title="Présence publique" selected={selected.includes("presence")} current={currentSummary("presence", currentProfile)} onToggle={toggle}>
+          <WebsitePreviewReviewSection section="presence" title="Présence publique" selected={selected.includes("presence")} current={currentSummary("presence", currentProfile)} onToggle={toggle}>
             <textarea rows={Math.min(6, proposal.presence.length + 1)} value={draft.presence} maxLength={1205} onChange={(event) => setDraft({ ...draft, presence: event.target.value })} className={`mt-3 ${FIELD}`} />
             <p className="mt-1 text-[11px] text-faint">Une observation par ligne, six maximum.</p>
-          </ReviewSection>
+          </WebsitePreviewReviewSection>
         )}
       </div>
 
@@ -253,7 +206,7 @@ export function WebsitePreviewApplication({
         disabled={running || selected.length === 0 || !confirmed || applicationBlocked || !applicationContextAvailable}
         className="mt-3 rounded-[10px] bg-violet px-4 py-2.5 text-[12.5px] font-semibold text-white hover:bg-violet-deep disabled:cursor-not-allowed disabled:opacity-40"
       >
-        {running ? "Application en cours…" : `Appliquer ${selected.length || "les"} section${selected.length > 1 ? "s" : ""}`}
+        {running ? "Application en cours…" : `Appliquer les ${selected.length} section${selected.length > 1 ? "s" : ""}`}
       </button>
       <p className="mt-2 text-[11px] text-faint">
         Cette action est gratuite, atomique et journalisée. Aucun envoi ni campagne n&apos;est créé.

@@ -1,11 +1,11 @@
 import { createClient } from "@/lib/supabase/server";
-import { icons } from "@/components/icons";
 import { type MemoryContent } from "@/lib/memory";
+import { profileMemoryCompletion } from "@/lib/memory-completion";
 import { readMemory } from "@/lib/memory-store";
 import { researchConfigured } from "@/lib/research/provider";
 import { IdentityCard } from "./identity-card";
-import { OffersCard } from "./offers-card";
-import { DocumentsCard, LearningsCard } from "./side-cards";
+import { IdentityCompletionHero } from "./identity-completion-hero";
+import { DocumentsDetails, LearningsDetails } from "./side-cards";
 import Link from "next/link";
 
 /**
@@ -29,6 +29,8 @@ export async function IdentityPanel({
     (mem as Record<string, unknown>)[section] = content ?? {};
   }
   const editable = canEdit && !mutationBlockedByDemo;
+  const researchEnabled = researchConfigured();
+  const completion = profileMemoryCompletion(memCtx);
 
   return (
     <>
@@ -53,46 +55,36 @@ export async function IdentityPanel({
         </div>
       )}
 
-      <div className="mb-4 flex items-start gap-3 rounded-[18px] border border-line bg-gradient-to-b from-[#fbfbff] to-[#f4f3fc] px-5 py-4">
-        <span className="grid h-9 w-9 flex-none place-items-center rounded-[11px] border border-line bg-white text-violet">
-          {icons.bulb}
-        </span>
-        <div>
-          <h4 className="font-display text-[13.5px] font-semibold">
-            Remplissez ce que vous savez, comme vous le diriez à un client
-          </h4>
-          <p className="mt-0.5 text-[12.5px] leading-relaxed text-body">
-            Pas besoin des bons termes marketing. Nepteo enrichira ensuite
-            cette mémoire avec ce qu&apos;il observe dans vos données — et vous
-            garderez le dernier mot sur chaque apprentissage.
-          </p>
-        </div>
-      </div>
-
       {!canEdit && !mutationBlockedByDemo && (
         <p className="mb-4 rounded-[10px] bg-tint-soft px-4 py-2.5 text-[13px] text-muted">
           Lecture seule — votre rôle ne permet pas la modification.
         </p>
       )}
 
-      <div className="grid items-start gap-4 lg:grid-cols-[1.15fr_1fr]">
-        <div className="space-y-4">
-          <IdentityCard mem={mem} canEdit={editable} saved={saved} />
-          <OffersCard
-            offers={mem.offres?.items ?? []}
-            canEdit={editable}
-            saved={saved === "offres"}
-          />
-        </div>
-        <div className="space-y-4">
-          <DocumentsCard
-            canEdit={canEdit}
-            blockedByDemo={mutationBlockedByDemo}
-            researchEnabled={researchConfigured()}
-          />
-          <LearningsCard />
-        </div>
+      <IdentityCompletionHero
+        completed={completion.completed}
+        canAnalyzeWebsite={editable && researchEnabled}
+        researchEnabled={researchEnabled}
+      />
+
+      <IdentityCard
+        mem={mem}
+        offers={mem.offres?.items ?? []}
+        canEdit={editable}
+        saved={saved}
+      />
+
+      <div className="mt-5">
+        <LearningsDetails />
+        <DocumentsDetails
+          canEdit={canEdit}
+          researchEnabled={researchEnabled}
+        />
       </div>
+
+      <p className="mt-5 text-[11px] text-faint">
+        Chaque champ est modifiable à tout moment et s&apos;applique immédiatement.
+      </p>
     </>
   );
 }

@@ -21,13 +21,17 @@ test("CONN-0 — conserve les cinq catégories et les 22 intégrations proposée
 });
 
 test("CONN-0 — une proposition est explicitement non connectée", async () => {
-  const [card, panel, action] = await Promise.all([
+  const [card, panel, catalogUi, action] = await Promise.all([
     readFile(
       new URL("app/(cockpit)/connecteurs/_components/connector-card.tsx", root),
       "utf8",
     ),
     readFile(
       new URL("app/(cockpit)/entreprise/_components/connectors-panel.tsx", root),
+      "utf8",
+    ),
+    readFile(
+      new URL("app/(cockpit)/connecteurs/_components/connector-catalog.tsx", root),
       "utf8",
     ),
     readFile(new URL("app/(cockpit)/connecteurs/actions.ts", root), "utf8"),
@@ -37,7 +41,7 @@ test("CONN-0 — une proposition est explicitement non connectée", async () => 
   assert.match(card, /Demander l&apos;intégration/);
   assert.match(card, /Demande enregistrée — non connectée/);
   assert.match(card, /Connecter via OAuth/);
-  assert.match(panel, /aucun accès, synchronisation ou\s+échange de données/);
+  assert.match(panel + catalogUi, /aucun accès, synchronisation ou\s+échange de données/);
   assert.match(action, /reste `disconnected`/);
   assert.match(action, /event: "connector_requested"/);
 });

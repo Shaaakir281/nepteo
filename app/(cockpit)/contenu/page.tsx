@@ -161,12 +161,11 @@ export default async function ContenuPage({
           Créer
         </p>
         <h1 className="font-display text-[27px] font-light tracking-[-.02em] text-ink">
-          Votre contenu, prêt à publier
+          Atelier Story
         </h1>
         <p className="mt-1 max-w-xl text-[12.5px] leading-relaxed text-muted">
-          Reprenez une campagne : son brief, son message et le format conseillé
-          sont déjà prêts. Vous gardez la main sur chaque version ; rien n&apos;est
-          lancé ni publié sans votre validation.
+          La campagne récente, son message et son format conseillé sont déjà
+          sélectionnés. Chaque génération reste explicite ; rien n&apos;est publié.
         </p>
       </div>
 

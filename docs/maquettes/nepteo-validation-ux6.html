@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Nepteo — Tiroir de validation + sous-blocs d'Aujourd'hui (spec du lot UX-6)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;450;500;550;600;650&family=Manrope:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Tokens copiés à l'identique depuis app/globals.css (2026-08-10). */
+:root{
+  --ink:#1c1713; --body:#5a5046; --muted:#81776b; --faint:#a79d90;
+  --violet:#2d5ba7; --violet-deep:#244d91; --violet-ink:#234b8b;
+  --tint:#eaf0f9; --tint-soft:#f8f5f0; --page:#f7f4ee; --card:#fff;
+  --line:#e4ddd1; --line-soft:#eee8de;
+  --green:#3e6b4f; --green-tint:#edf3ee;
+  --amber:#91631c; --amber-tint:#f7f0e0;
+  --red:#a4393c; --red-tint:#f8e9e7;
+  --cherry:#8a232d; --cherry-soft:#f5e9e7;
+  --shadow-card:0 1px 2px rgba(28,23,19,.04), 0 8px 24px rgba(28,23,19,.045);
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:#efeae1;color:var(--body);font-family:"Geist",system-ui,sans-serif;font-size:14px;-webkit-font-smoothing:antialiased}
+h1,h2,h3,h4{font-family:"Manrope","Geist",system-ui,sans-serif;color:var(--ink);margin:0}
+button{font:inherit;cursor:pointer}
+summary{list-style:none;cursor:pointer}
+summary::-webkit-details-marker{display:none}
+
+.specbar{position:sticky;top:0;z-index:20;background:#1c1713;color:#e9e2d6;padding:10px 18px;display:flex;flex-wrap:wrap;align-items:center;gap:14px}
+.specbar b{font-family:"Manrope";color:#fff;font-weight:600;font-size:13px}
+.specbar .sep{opacity:.3}
+.tabs{display:flex;gap:4px;background:rgba(255,255,255,.08);padding:3px;border-radius:9px}
+.tabs button{background:none;border:0;color:#cfc6b8;padding:5px 12px;border-radius:7px;font-size:12.5px;font-weight:550}
+.tabs button[aria-selected="true"]{background:#f7f4ee;color:#1c1713}
+.readout{margin-left:auto;display:flex;gap:14px;font-size:11.5px;color:#b8ae9f;flex-wrap:wrap}
+.toggle{display:flex;align-items:center;gap:7px;font-size:12px;color:#cfc6b8}
+
+.view{display:none;padding:24px 22px}
+.view.on{display:block}
+.stage{max-width:1000px;margin:0 auto}
+.lead{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin:0 0 10px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:22px;align-items:start}
+.small{font-size:12.5px;line-height:1.6} .tiny{font-size:11.5px;line-height:1.6}
+.muted{color:var(--muted)} .faint{color:var(--faint)}
+.btn{display:inline-block;border:0;border-radius:9px;padding:9px 15px;font-size:12.5px;font-weight:600;text-decoration:none;text-align:center}
+.btn.primary{background:var(--violet);color:#fff;box-shadow:0 6px 16px rgba(45,91,167,.18)}
+.btn.outline{background:#fff;border:1px solid var(--line);color:var(--body)}
+.btn.ghost{background:var(--tint);color:var(--violet-ink)}
+.btn.danger{background:#fff;border:1px solid rgba(164,57,60,.3);color:var(--red)}
+.pill{display:inline-block;border-radius:99px;padding:2px 9px;font-size:10.5px;font-weight:600}
+.pill.g{background:var(--green-tint);color:var(--green)}
+.pill.a{background:var(--amber-tint);color:var(--amber)}
+.pill.b{background:var(--tint);color:var(--violet-ink)}
+
+.anno{display:none}
+body.anno-on .anno{display:block}
+.anno{margin-top:8px;background:var(--red-tint);border-left:3px solid var(--red);color:#7d2b2e;font-size:11.5px;line-height:1.55;padding:7px 11px;border-radius:0 8px 8px 0}
+
+/* tiroir */
+.drawer{background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:0 22px 60px rgba(28,23,19,.16);overflow:hidden}
+.dhead{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:16px 20px;border-bottom:1px solid var(--line-soft)}
+.dhead h2{font-size:16px;font-weight:600}
+.dbody{padding:16px 20px;max-height:620px;overflow:auto}
+.dfoot{padding:14px 20px;border-top:1px solid var(--line-soft);display:flex;gap:9px;flex-wrap:wrap;background:var(--tint-soft)}
+.x{border:0;background:none;color:var(--faint);font-size:17px;line-height:1}
+
+/* AVANT : blocs étiquetés */
+.lbl{margin-top:14px}
+.lbl p{margin:0;font-size:10.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--faint)}
+.lbl div{margin-top:4px;font-size:12.5px;line-height:1.6;color:var(--body);border-left:2px solid var(--line-soft);padding-left:11px}
+.box{margin-top:14px;border:1px solid var(--line-soft);border-radius:11px;padding:12px 14px}
+.box h3{font-size:13px;font-weight:600}
+.msg{margin-top:6px;background:var(--tint-soft);border-radius:9px;padding:11px 13px;font-size:12.5px;line-height:1.65;color:var(--ink)}
+
+/* ÉPURÉ */
+.zhead{padding:18px 22px 14px;border-bottom:1px solid var(--line-soft)}
+.zhead h2{font-family:"Manrope";font-size:19px;font-weight:500;line-height:1.35;margin-top:8px;max-width:28ch}
+.zhead .zsub{margin-top:6px;font-size:12.5px;color:var(--muted)}
+.zbody{padding:18px 22px}
+.zlabel{font-size:10.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
+.zmsg{margin-top:7px;border:1px solid var(--line);border-radius:11px;padding:13px 15px;font-size:13px;line-height:1.7;color:var(--ink);background:#fff}
+.zmsg:focus{outline:2px solid var(--violet)}
+details.zfold{border-bottom:1px solid var(--line-soft)}
+details.zfold>summary{display:flex;align-items:center;gap:11px;padding:12px 2px;font-size:12.5px;font-weight:550;color:var(--ink)}
+details.zfold>summary .chev{color:var(--faint);font-size:15px;transition:transform .15s}
+details.zfold[open]>summary .chev{transform:rotate(90deg)}
+details.zfold>summary b{margin-left:auto;font-size:11px;font-weight:600;color:var(--muted);background:var(--tint-soft);border-radius:99px;padding:2px 8px}
+details.zfold .inner{padding:0 2px 16px 24px}
+.zfoot{padding:14px 22px;border-top:1px solid var(--line-soft);display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:#fff}
+.zfoot .sp{margin-left:auto}
+
+/* retour terrain */
+.fb{background:#fff;border:1px solid var(--line-soft);border-radius:13px;box-shadow:var(--shadow-card);padding:14px 18px;margin-top:14px}
+.fbrow{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.thumb{border:1px solid var(--line);background:#fff;border-radius:9px;padding:7px 13px;font-size:13px}
+.kpi3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}
+.kpi3 div{border:1px solid var(--line-soft);border-radius:11px;padding:11px 13px;background:var(--tint-soft)}
+.kpi3 p{margin:0;font-size:10.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--faint)}
+.kpi3 b{display:block;margin-top:3px;font-family:"Manrope";font-size:18px;font-weight:600;color:var(--ink)}
+.tbl{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}
+.tbl td{padding:5px 8px;border-bottom:1px solid var(--line-soft)}
+.tbl td:last-child{text-align:right;font-weight:600;color:var(--ink)}
+
+/* CONSIGNES */
+.spec{max-width:900px;margin:0 auto;background:#fff;border:1px solid var(--line);border-radius:16px;padding:30px 34px;box-shadow:0 18px 50px rgba(28,23,19,.08)}
+.spec .eyebrow{font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--violet);margin:0 0 14px}
+.spec h2{font-size:19px;margin:26px 0 10px}
+.spec p,.spec li{font-size:13.5px;line-height:1.7}
+.spec code{background:var(--tint-soft);border:1px solid var(--line-soft);border-radius:5px;padding:1px 5px;font-size:12px}
+.spec table{width:100%;border-collapse:collapse;margin-top:10px;font-size:13px}
+.spec th,.spec td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line-soft);vertical-align:top}
+.spec th{font-family:"Manrope";color:var(--ink);font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+.rule{background:var(--tint-soft);border-left:3px solid var(--violet);border-radius:0 10px 10px 0;padding:12px 16px;margin-top:10px}
+.rule b{color:var(--ink)}
+@media(max-width:900px){.grid{grid-template-columns:1fr}.kpi3{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div class="specbar">
+  <b>Nepteo · tiroir de validation + sous-blocs d'Aujourd'hui</b>
+  <span class="sep">|</span>
+  <div class="tabs" role="tablist">
+    <button role="tab" aria-selected="true" data-view="avant">Avant (livré)</button>
+    <button role="tab" aria-selected="false" data-view="epure">Épuré ★</button>
+    <button role="tab" aria-selected="false" data-view="consignes">Consignes Codex</button>
+  </div>
+  <label class="toggle"><input type="checkbox" id="annoBox"> Annotations</label>
+  <div class="readout" id="readout"></div>
+</div>
+
+<!-- ============================ AVANT ============================ -->
+<section class="view on" id="v-avant">
+  <div class="stage">
+    <p class="lead">Le tiroir qui s'ouvre depuis « Examiner »</p>
+    <div class="grid">
+      <div>
+        <div class="drawer" id="canvas-avant">
+          <div class="dhead">
+            <div>
+              <span class="pill b">Relance</span>
+              <h2 style="margin-top:7px">Relancer 12 prospects dormants</h2>
+            </div>
+            <button class="x">✕</button>
+          </div>
+          <div class="dbody">
+            <div class="lbl"><p>Constat détaillé</p><div>12 prospects n'ont eu aucun contact depuis plus de 45 jours, dont 5 avaient répondu au moins une fois.</div></div>
+            <div class="lbl"><p>Pourquoi cette action</p><div>Un prospect qui a déjà répondu et qu'on laisse refroidir coûte moins cher à réactiver qu'un contact neuf à acquérir.</div></div>
+            <div class="lbl"><p>Données utilisées</p><div>Prospects importés (dernier contact), historique du journal, cohorte figée à l'approbation.</div></div>
+            <div class="lbl"><p>Impact estimé</p><div>2 à 3 réponses attendues. Confiance moyenne. Risque faible : aucun envoi externe en mode sûr.</div></div>
+            <div class="lbl"><p>Nature des informations</p><div>Contexte société uniquement. Aucune information sur une personne physique n'est recherchée ni stockée.</div></div>
+
+            <div class="box">
+              <h3>Message prêt à envoyer</h3>
+              <div class="msg">Bonjour, nous avions échangé il y a quelques semaines au sujet de vos besoins en aménagement. Je reviens vers vous au cas où le sujet serait redevenu d'actualité…</div>
+              <div style="margin-top:9px;display:flex;gap:8px"><button class="btn outline">Modifier</button><button class="btn outline">Annuler</button></div>
+            </div>
+
+            <div class="box">
+              <h3>Personnaliser par prospect</h3>
+              <p class="small muted" style="margin:4px 0 0">Ma note sur ce prospect — régénérez le message pour en tenir compte.</p>
+              <div class="msg" style="color:var(--faint)">Ex. Rencontré au salon, intéressé par l'offre premium…</div>
+            </div>
+
+            <div class="lbl"><p>Proposition de campagne</p><div>Non applicable pour ce type d'action.</div></div>
+            <div class="lbl"><p>Budget proposé</p><div>—</div></div>
+            <div class="lbl"><p>Coût / conversion estimé</p><div>—</div></div>
+            <div class="lbl"><p>Brief validé</p><div>—</div></div>
+            <div class="lbl"><p>Objectif</p><div>—</div></div>
+            <div class="lbl"><p>Audience</p><div>—</div></div>
+            <div class="lbl"><p>Hypothèse</p><div>—</div></div>
+            <div class="lbl"><p>Succès visé</p><div>—</div></div>
+            <div class="lbl"><p>Contexte</p><div>—</div></div>
+            <div class="lbl"><p>Hooks sélectionnés</p><div>—</div></div>
+            <div class="lbl"><p>Structure et allocation</p><div>—</div></div>
+            <div class="lbl"><p>Formats attendus</p><div>—</div></div>
+            <div class="lbl"><p>Limites de la proposition</p><div>Une corrélation n'est pas une cause. Un fait déclaré n'est jamais un statut fournisseur observé.</div></div>
+
+            <div class="box">
+              <h3>Raison du refus</h3>
+              <div class="msg" style="color:var(--faint)">Expliquez ce qui doit être corrigé (3 à 500 caractères).</div>
+              <button class="btn danger" style="margin-top:9px">Refuser avec cette raison</button>
+            </div>
+          </div>
+          <div class="dfoot">
+            <button class="btn primary">Valider</button>
+            <button class="btn outline">Reporter</button>
+            <button class="btn danger">Refuser</button>
+          </div>
+        </div>
+        <div class="anno"><b>1.</b> Jusqu'à 20 blocs étiquetés dans un tiroir. La plupart affichent « — » parce qu'ils appartiennent à un autre type d'action. Le testeur scrolle dans du vide étiqueté.</div>
+        <div class="anno"><b>2.</b> La justification passe avant le message. Or c'est le message qu'on juge : la justification, on ne la lit qu'en cas de doute.</div>
+        <div class="anno"><b>3.</b> Le formulaire de refus est ouvert en permanence, au milieu du tiroir, avec son propre bouton rouge — en plus du « Refuser » du pied. Deux chemins pour la même action.</div>
+      </div>
+
+      <div>
+        <p class="lead">Après décision, sur Aujourd'hui</p>
+        <div class="fb">
+          <h3 style="font-size:14px;font-weight:600">Votre retour terrain</h3>
+          <p class="small muted" style="margin:4px 0 0">Mesure de la valeur — vos réponses alimentent la scorecard et ne quittent pas votre organisation.</p>
+          <div class="lbl"><p>La suggestion</p><div>Était-elle utile ?</div></div>
+          <div style="margin-top:9px;display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn outline">Utile</button><button class="btn outline">Pas utile</button><button class="btn outline">Faux positif</button>
+          </div>
+          <div class="lbl"><p>Motif du faux positif</p><div>À préciser si « faux positif » est retenu.</div></div>
+          <div class="lbl"><p>Retouche du brouillon</p><div>Aucune · légère · importante · réécrit</div></div>
+          <div class="lbl"><p>Résultat déclaré</p><div>Réponse · rendez-vous · opportunité · rien</div></div>
+        </div>
+
+        <div class="fb">
+          <h3 style="font-size:14px;font-weight:600">Pilote prospects dormants</h3>
+          <p class="small muted" style="margin:4px 0 0">Preuve terrain déclarée · métriques disponibles avant C7</p>
+          <table class="tbl">
+            <tr><td>Recommandations examinées</td><td>0</td></tr>
+            <tr><td>Utiles</td><td>0</td></tr>
+            <tr><td>Faux positifs</td><td>0</td></tr>
+            <tr><td>Pas utiles</td><td>0</td></tr>
+            <tr><td>Rejets : contexte manquant</td><td>0</td></tr>
+            <tr><td>Brouillons examinés</td><td>0</td></tr>
+            <tr><td>Sans / peu de retouches</td><td>0</td></tr>
+            <tr><td>Relances manuelles déclarées</td><td>0</td></tr>
+            <tr><td>Réponses</td><td>0</td></tr>
+            <tr><td>Rendez-vous</td><td>0</td></tr>
+            <tr><td>Opportunités</td><td>0</td></tr>
+            <tr><td>Volume dans cette organisation</td><td>0</td></tr>
+          </table>
+        </div>
+        <div class="anno"><b>4.</b> Le retour terrain pose quatre questions d'un coup, juste après une décision. Une seule sera réellement remplie.</div>
+        <div class="anno"><b>5.</b> Douze métriques à zéro. Utile pour le pilote, illisible pour le testeur — et affiché au même niveau que le reste.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ ÉPURÉ ============================ -->
+<section class="view" id="v-epure">
+  <div class="stage">
+    <p class="lead">Le tiroir qui s'ouvre depuis « Examiner »</p>
+    <div class="grid">
+      <div>
+        <div class="drawer" id="canvas-epure">
+          <div class="zhead">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+              <span><span class="pill b">Relance</span> <span class="pill g">Risque faible</span></span>
+              <button class="x">✕</button>
+            </div>
+            <h2>Relancer 12 prospects dormants</h2>
+            <p class="zsub">Sans contact depuis 45 jours · 2 à 3 réponses attendues</p>
+          </div>
+          <div class="zbody">
+            <p class="zlabel">Le message</p>
+            <div class="zmsg" contenteditable="true">Bonjour, nous avions échangé il y a quelques semaines au sujet de vos besoins en aménagement. Je reviens vers vous au cas où le sujet serait redevenu d'actualité…</div>
+
+            <div style="margin-top:16px">
+              <details class="zfold">
+                <summary><span class="chev">›</span>Personnaliser par prospect<b>12</b></summary>
+                <div class="inner"><p class="small muted" style="margin:0">Une note par prospect, puis régénération du message.</p></div>
+              </details>
+              <details class="zfold">
+                <summary><span class="chev">›</span>Sur quoi Nepteo s'appuie<b>3 sources</b></summary>
+                <div class="inner">
+                  <p class="small" style="margin:0"><b>Constat.</b> 12 prospects sans contact depuis plus de 45 jours, dont 5 avaient déjà répondu.</p>
+                  <p class="small" style="margin:8px 0 0"><b>Raison.</b> Réactiver un prospect qui a déjà répondu coûte moins cher qu'acquérir un contact neuf.</p>
+                  <p class="small" style="margin:8px 0 0"><b>Données.</b> Prospects importés · journal · cohorte figée à l'approbation.</p>
+                  <p class="tiny faint" style="margin:10px 0 0">Contexte société uniquement, aucune information sur une personne physique. Une corrélation n'est pas une cause.</p>
+                </div>
+              </details>
+            </div>
+          </div>
+          <div class="zfoot">
+            <button class="btn primary">Valider</button>
+            <button class="btn outline">Reporter</button>
+            <button class="btn outline sp" style="color:var(--muted)">Refuser</button>
+          </div>
+        </div>
+        <div class="anno"><b>Note.</b> « Refuser » ouvre le champ de raison à la place du pied de tiroir. Un seul chemin, une seule fois, au moment où on en a besoin.</div>
+      </div>
+
+      <div>
+        <p class="lead">Après décision, sur Aujourd'hui</p>
+        <div class="fb">
+          <div class="fbrow">
+            <span style="font-size:13.5px;color:var(--ink);font-weight:500">C'était utile ?</span>
+            <button class="thumb">Oui</button>
+            <button class="thumb">Non</button>
+            <span class="tiny faint" style="margin-left:auto">Reste dans votre organisation</span>
+          </div>
+          <details class="zfold" style="margin-top:10px;border-bottom:0">
+            <summary><span class="chev">›</span>Préciser<b>3 questions</b></summary>
+            <div class="inner">
+              <p class="small" style="margin:0"><b>Faux positif ?</b> motif · <b>Retouche</b> : aucune / légère / importante / réécrit · <b>Résultat</b> : réponse / rendez-vous / opportunité / rien</p>
+            </div>
+          </details>
+        </div>
+
+        <div class="fb">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+            <h3 style="font-size:13.5px;font-weight:600">Pilote prospects dormants</h3>
+            <span class="tiny faint">30 derniers jours</span>
+          </div>
+          <div class="kpi3">
+            <div><p>Examinées</p><b>0</b></div>
+            <div><p>Jugées utiles</p><b>—</b></div>
+            <div><p>Réponses</p><b>0</b></div>
+          </div>
+          <details class="zfold" style="margin-top:10px;border-bottom:0">
+            <summary><span class="chev">›</span>Toutes les métriques<b>12</b></summary>
+            <div class="inner"><p class="small muted" style="margin:0">Faux positifs · pas utiles · rejets pour contexte manquant · brouillons examinés · sans ou peu de retouches · relances manuelles déclarées · rendez-vous · opportunités · volumes.</p></div>
+          </details>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ CONSIGNES ============================ -->
+<section class="view" id="v-consignes">
+<div class="spec">
+  <p class="eyebrow">Lot UX-6 · spec du 10 août 2026</p>
+
+  <h2>Portée</h2>
+  <p><code>app/(cockpit)/_components/validation-drawer.tsx</code> (650 l.), <code>action-value-feedback.tsx</code> (302 l.), <code>value-scorecard.tsx</code> (284 l.), <code>prospect-drafts.tsx</code> (235 l.), <code>action-draft-editor.tsx</code> (192 l.), <code>validation-queue.tsx</code> (101 l.).</p>
+  <p>UX-1 a replié ces blocs sans redessiner leur intérieur : dès que le testeur ouvre un accordéon ou clique « Examiner », il retrouve la densité d'avant. Ce lot ferme cet angle mort. <b>Il porte sur le moment de décision — le cœur du produit.</b></p>
+  <div class="rule" style="border-left-color:var(--cherry)"><b>Préalable : découper <code>validation-drawer.tsx</code>.</b> 650 lignes pour une convention à ~200. Un composant par famille d'action (relance, campagne, contenu) plus un socle commun.</div>
+
+  <h2>Le principe</h2>
+  <div class="rule"><b>Le brouillon d'abord, la justification ensuite.</b> Aujourd'hui le tiroir ouvre sur cinq blocs de justification, puis montre le message. C'est l'inverse : on juge le message, on ne consulte la justification qu'en cas de doute.</div>
+  <div class="rule"><b>Un bloc vide ne s'affiche pas.</b> Les 20 sections étiquetées couvrent trois familles d'action ; pour une relance, une douzaine affichent « — ». Aucun bloc sans valeur ne doit être rendu.</div>
+  <div class="rule"><b>Trois boutons, un seul chemin par décision.</b> Le formulaire de refus n'est plus affiché en permanence : il remplace le pied de tiroir quand on clique « Refuser ». La règle serveur (raison de 3 à 500 caractères) est inchangée.</div>
+  <div class="rule"><b>Une question à la fois pour le retour terrain.</b> « C'était utile ? Oui / Non » en ligne, le reste dans « Préciser ». Les quatre dimensions restent enregistrables — on change l'ordre, pas le modèle.</div>
+  <div class="rule"><b>La scorecard montre trois chiffres, pas douze.</b> Examinées · jugées utiles · réponses. Les neuf autres derrière « Toutes les métriques ». Aucune agrégation inter-organisations, conformément à la décision du 2026-07-30.</div>
+
+  <h2>Correspondance</h2>
+  <table>
+    <tr><th style="width:38%">Aujourd'hui (livré)</th><th>Devient</th></tr>
+    <tr><td>En-tête + jusqu'à 20 blocs étiquetés</td><td>En-tête de 3 lignes : type, risque, titre, une ligne de contexte chiffré tirée de <code>finding</code> et <code>expected_impact</code>.</td></tr>
+    <tr><td><code>Constat détaillé</code>, <code>Pourquoi cette action</code>, <code>Données utilisées</code>, <code>Nature des informations</code>, <code>Limites de la proposition</code></td><td>Un <code>&lt;details&gt;</code> fermé « Sur quoi Nepteo s'appuie », avec le nombre de sources en compteur. Les garanties (contexte société uniquement, corrélation ≠ cause) en 11px à l'intérieur.</td></tr>
+    <tr><td><code>Impact estimé</code>, <code>confidence</code>, <code>risk</code></td><td>Deux pastilles dans l'en-tête + la ligne de contexte. Plus de bloc dédié.</td></tr>
+    <tr><td>Bloc « Message prêt à envoyer » + boutons Modifier / Annuler</td><td>Remonte juste sous l'en-tête, éditable directement — plus de bascule « Modifier ».</td></tr>
+    <tr><td>Bloc « Personnaliser par prospect » ouvert</td><td><code>&lt;details&gt;</code> fermé avec le nombre de prospects en compteur.</td></tr>
+    <tr><td>11 blocs de campagne (<code>Budget</code>, <code>Objectif</code>, <code>Audience</code>, <code>Hypothèse</code>, <code>Hooks</code>, <code>Structure</code>, <code>Formats</code>…)</td><td>Rendus <b>uniquement</b> pour <code>kind === "launch_campaign"</code>, et regroupés dans un seul <code>&lt;details&gt;</code> « Détail de la proposition ».</td></tr>
+    <tr><td>Formulaire « Raison du refus » toujours visible</td><td>Apparaît à la place du pied de tiroir au clic sur « Refuser ».</td></tr>
+    <tr><td>« Votre retour terrain » : 4 questions empilées</td><td>Une ligne « C'était utile ? Oui / Non » + <code>&lt;details&gt;</code> « Préciser ».</td></tr>
+    <tr><td>Scorecard : 12 lignes à zéro</td><td>3 KPI + <code>&lt;details&gt;</code> « Toutes les métriques ».</td></tr>
+  </table>
+
+  <h2>Ce qui ne change pas</h2>
+  <ul>
+    <li>Les transitions transactionnelles de <code>0018</code> : décision et journal, vérification pause/autonomie et claim, finalisation et résultat. Aucun contournement, aucun claim ambigu réutilisé.</li>
+    <li>La contrainte serveur sur la raison de refus (3 à 500 caractères) et son message d'erreur.</li>
+    <li>Le modèle de <code>value_events</code> : append-only, quatre dimensions, <code>is_demo</code>, exclusion des rôles commerciaux et lecture. On change l'ordre de saisie, pas le schéma.</li>
+    <li>Aucune agrégation inter-organisations dans la scorecard.</li>
+    <li>Chaque action continue de porter constat, raison, données utilisées, impact estimé, confiance et risque — <b>tous restent présents</b>, certains repliés.</li>
+  </ul>
+
+  <h2>Critère de recette</h2>
+  <ol>
+    <li>À l'ouverture du tiroir sur une relance, le message est visible sans scroller.</li>
+    <li>Aucun bloc affichant « — » ou vide n'est rendu.</li>
+    <li>Un seul chemin pour refuser, et la raison reste obligatoire.</li>
+    <li>Le retour terrain tient sur une ligne tant qu'on ne clique pas « Préciser ».</li>
+    <li>Aucun fichier de ce lot au-dessus de 250 lignes après découpage.</li>
+    <li>Les tests existants sur les transitions d'action passent sans modification.</li>
+  </ol>
+
+  <h2>Statut de ce fichier</h2>
+  <p>Spec de lot, pas maquette historique et pas du code à recopier. Les contenus affichés sont illustratifs. Codex transpose hiérarchie, tokens et textes dans les composants existants.</p>
+</div>
+</section>
+
+<script>
+(function(){
+  var tabs=document.querySelectorAll('.tabs button');
+  var views={avant:'v-avant',epure:'v-epure',consignes:'v-consignes'};
+  tabs.forEach(function(b){
+    b.addEventListener('click',function(){
+      tabs.forEach(function(x){x.setAttribute('aria-selected',String(x===b));});
+      Object.keys(views).forEach(function(k){
+        document.getElementById(views[k]).classList.toggle('on',k===b.dataset.view);
+      });
+    });
+  });
+  document.getElementById('annoBox').addEventListener('change',function(e){
+    document.body.classList.toggle('anno-on',e.target.checked);
+  });
+  function scan(root){
+    var w=0;
+    (function walk(n){
+      if(n.nodeType===3){var m=n.textContent.match(/[\wÀ-ÿ'’€%]+/g); if(m)w+=m.length; return;}
+      if(n.nodeType!==1) return;
+      if(n.classList&&n.classList.contains('anno')) return;
+      if(n.tagName==='DETAILS'&&!n.open){var s=n.querySelector(':scope > summary'); if(s)walk(s); return;}
+      for(var i=0;i<n.childNodes.length;i++) walk(n.childNodes[i]);
+    })(root);
+    return w;
+  }
+  var a=scan(document.getElementById('canvas-avant')), b=scan(document.getElementById('canvas-epure'));
+  var ba=document.getElementById('canvas-avant').querySelectorAll('.lbl,.box').length;
+  document.getElementById('readout').innerHTML=
+    '<span>Mots dans le tiroir au 1<sup>er</sup> rendu — avant <b>'+a+'</b> · épuré <b>'+b+'</b> (−'+Math.round((1-b/a)*100)+'%)</span>'+
+    '<span>Blocs déployés — avant <b>'+ba+'</b> · épuré <b>1</b></span>';
+})();
+</script>
+</body>
+</html>

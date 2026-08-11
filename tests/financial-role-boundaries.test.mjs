@@ -26,12 +26,16 @@ const campaignActions = await readFile(
   new URL("../app/(cockpit)/campagnes/actions.ts", import.meta.url),
   "utf8",
 );
-const campaignPage = await readFile(
-  new URL("../app/(cockpit)/campagnes/page.tsx", import.meta.url),
+const campaignPage = await Promise.all([
+  "../app/(cockpit)/campagnes/page.tsx",
+  "../app/(cockpit)/campagnes/_lib/campaign-page-query.ts",
+].map((path) => readFile(new URL(path, import.meta.url), "utf8"))).then((parts) => parts.join("\n"));
+const todayQueueData = await readFile(
+  new URL("../app/(cockpit)/_lib/today-queue-data.ts", import.meta.url),
   "utf8",
 );
-const todayPage = await readFile(
-  new URL("../app/(cockpit)/page.tsx", import.meta.url),
+const todayDashboardData = await readFile(
+  new URL("../app/(cockpit)/_lib/today-dashboard-data.ts", import.meta.url),
   "utf8",
 );
 const planBanner = await readFile(
@@ -118,7 +122,7 @@ test("RLS briefings — les objectifs libres ne sont jamais exposés au commerci
   );
   assert.match(briefingEngine, /const content = await narrateBriefing/);
   assert.match(briefingEngine, /\.from\("briefings"\)\.upsert/);
-  assert.match(todayPage, /\.from\("briefings"\)/);
+  assert.match(todayQueueData, /\.from\("briefings"\)/);
 
   assert.match(
     migration,
@@ -282,15 +286,15 @@ test("RSC financières — aucun accès ne dépend du seul masquage visuel", () 
   assert.ok(guard >= 0 && guard < query, "la page Campagnes garde avant lecture");
 
   assert.match(
-    todayPage,
+    todayDashboardData,
     /canViewFinancials\s*\?\s*await supabase[\s\S]*\.from\("revenue_events"\)/,
   );
   assert.match(
-    todayPage,
+    todayDashboardData,
     /canViewFinancials\s*\?\s*await supabase[\s\S]*\.from\("ad_metrics"\)/,
   );
   assert.match(
-    todayPage,
+    todayQueueData,
     /canViewFinancials \|\| isCommercialSafeActionKind\(action\.kind\)/,
   );
   assert.match(

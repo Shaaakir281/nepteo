@@ -14,10 +14,8 @@ import {
   type WalkthroughScenario,
 } from "@/lib/onboarding/walkthrough";
 
-/** Chaque onglet garde l'introduction de l'écran dont il vient. */
-const INTRO: Record<TabId, string> = {
-  identite:
-    "C'est la mémoire de Nepteo : tout ce qu'il sait pour personnaliser ses recommandations. Plus elle est juste, meilleures sont les propositions — chaque élément est modifiable et s'applique immédiatement.",
+/** Les onglets secondaires gardent l'introduction de l'écran dont ils viennent. */
+const INTRO: Record<Exclude<TabId, "identite">, string> = {
   connecteurs:
     "Nepteo lit vos outils pour comprendre, et n'écrira que ce que vous validez. Chaque accès est tracé dans le journal et révocable à tout moment.",
   agent:
@@ -54,20 +52,17 @@ export default async function EntreprisePage({
     tab === "identite"
       ? (await readDemoPresentation(membership.organizationId)).hasDemoMarker
       : false;
-  const intro =
-    tab === "identite" && identityMutationBlocked
-      ? "C'est la mémoire de Nepteo : elle reste consultable en lecture seule pendant le scénario actif."
-      : INTRO[tab];
-
   return (
     <>
       <div className="mb-5">
         <h1 className="text-[22px] font-semibold tracking-tight">
           Mon entreprise
         </h1>
-        <p className="mt-1.5 max-w-2xl text-[13.5px] leading-relaxed text-muted">
-          {intro}
-        </p>
+        {tab !== "identite" && (
+          <p className="mt-1.5 max-w-2xl text-[13.5px] leading-relaxed text-muted">
+            {INTRO[tab]}
+          </p>
+        )}
       </div>
 
       <EntrepriseTabs active={tab} />

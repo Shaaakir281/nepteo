@@ -393,7 +393,7 @@ test("interface — le libellé reste honnête et le marqueur bloque toujours OA
   );
   assert.match(
     card,
-    /status === "available"[\s\S]*isOauthProvider\(tool\.provider\)[\s\S]*!canEdit[\s\S]*blockedByDemo[\s\S]*Environnement de test — connexion externe désactivée/,
+    /status === "available"[\s\S]*!canEdit && blockedByDemo[\s\S]*Environnement de test — connexion externe désactivée/,
   );
   assert.match(
     actions,
@@ -415,7 +415,7 @@ test("interface — le libellé reste honnête et le marqueur bloque toujours OA
   assert.match(journal, /Revenu d'exemple chargé/);
   assert.match(
     card,
-    /status !== "connected" && isOauthProvider\(tool\.provider\) && canEdit/,
+    /!connected && activation === "oauth" && canEdit/,
     "le bouton OAuth des éditeurs hors démonstration reste disponible",
   );
 });

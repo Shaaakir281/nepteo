@@ -5,16 +5,19 @@ import { readFile } from "node:fs/promises";
 const read = (path) =>
   readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
-const [history, outcomes, feedback, prospects, decisions, page, migration] =
+const [history, outcomes, feedbackShell, feedbackFields, prospects, decisions, queueData, migration] =
   await Promise.all([
   read("app/(cockpit)/_components/decisions-history.tsx"),
   read("app/(cockpit)/_components/action-outcomes.tsx"),
   read("app/(cockpit)/_components/action-value-feedback.tsx"),
+  read("app/(cockpit)/_components/action-value-feedback-fields.tsx"),
   read("app/(cockpit)/_actions/prospects.ts"),
   read("app/(cockpit)/_actions/decisions.ts"),
-  read("app/(cockpit)/page.tsx"),
+  read("app/(cockpit)/_lib/today-queue-data.ts"),
   read("supabase/migrations/0020_value_events.sql"),
   ]);
+
+const feedback = `${feedbackShell}\n${feedbackFields}`;
 
 test("les résultats terrain restent séparés par prospect et après décision", () => {
   assert.match(history, /isRelanceKind\(a\.kind\)/);
@@ -42,8 +45,8 @@ test("les résultats terrain restent séparés par prospect et après décision"
 test("la cohorte et l'historique terrain sont bornés à 50", () => {
   assert.match(prospects, /\.slice\(0, 50\)/);
 
-  const decidedQuery = page.indexOf("const { data: decidedRows }");
-  const decidedLimit = page.indexOf(".limit(50)", decidedQuery);
+  const decidedQuery = queueData.indexOf("const { data: decidedRows }");
+  const decidedLimit = queueData.indexOf(".limit(50)", decidedQuery);
   assert.ok(decidedQuery >= 0);
   assert.ok(decidedLimit > decidedQuery);
 });

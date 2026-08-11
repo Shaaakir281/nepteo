@@ -11,8 +11,8 @@ import {
 } from "../lib/today-priority-rules.ts";
 
 const NOW = "2026-07-29T12:00:00.000Z";
-const todayPage = await readFile(
-  new URL("../app/(cockpit)/page.tsx", import.meta.url),
+const todayQueueData = await readFile(
+  new URL("../app/(cockpit)/_lib/today-queue-data.ts", import.meta.url),
   "utf8",
 );
 const priorityRules = await readFile(
@@ -60,11 +60,11 @@ test("la file est strictement limitée à cinq propositions", () => {
 });
 
 test("contrat Today : 50 lignes, autorisation avant classement, puis cap à 5", () => {
-  const queueQuery = todayPage.indexOf("const { data: queueRows }");
-  const boundedRead = todayPage.indexOf(".limit(50)", queueQuery);
-  const authorization = todayPage.indexOf("const authorizedQueue", boundedRead);
-  const authorizationFilter = todayPage.indexOf(".filter(", authorization);
-  const ranking = todayPage.indexOf(
+  const queueQuery = todayQueueData.indexOf("const { data: queueRows }");
+  const boundedRead = todayQueueData.indexOf(".limit(50)", queueQuery);
+  const authorization = todayQueueData.indexOf("const authorizedQueue", boundedRead);
+  const authorizationFilter = todayQueueData.indexOf(".filter(", authorization);
+  const ranking = todayQueueData.indexOf(
     "prioritizeTodayActions(",
     authorizationFilter,
   );

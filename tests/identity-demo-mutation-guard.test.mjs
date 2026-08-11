@@ -62,11 +62,7 @@ test("identité — tout marqueur démo rend les formulaires explicitement non �
     enterprisePage,
     /mutationBlockedByDemo=\{identityMutationBlocked\}/,
   );
-  assert.match(
-    enterprisePage,
-    /tab === "identite" && identityMutationBlocked[\s\S]*consultable en lecture seule pendant le scénario actif/,
-  );
-  assert.match(enterprisePage, /: INTRO\[tab\]/);
+  assert.match(enterprisePage, /tab !== "identite"/);
 
   assert.match(
     identityPanel,
@@ -80,13 +76,9 @@ test("identité — tout marqueur démo rend les formulaires explicitement non �
     identityPanel,
     /Ouvrir les connecteurs pour retirer le scénario/,
   );
-  assert.match(identityPanel, /IdentityCard mem=\{mem\} canEdit=\{editable\}/);
-  assert.match(sideCards, /blockedByDemo \?/);
-  assert.match(
-    sideCards,
-    /L&apos;analyse de site est désactivée tant que le scénario Nepteo/,
-  );
-  assert.match(sideCards, /Retirer le scénario dans Connecteurs/);
+  assert.match(identityPanel, /canAnalyzeWebsite=\{editable && researchEnabled\}/);
+  assert.match(identityPanel, /<IdentityCard[\s\S]*mem=\{mem\}[\s\S]*canEdit=\{editable\}/);
+  assert.match(sideCards, /DocumentsDetails/);
 });
 
 test("identité — les écritures réelles restent gardées côté serveur", () => {

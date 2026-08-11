@@ -25,7 +25,12 @@ export const COCKPIT_NAV_ITEMS: NavItem[] = [
     requiresFinancialAccess: true,
   },
   { label: "Mon entreprise", href: "/entreprise", icon: icons.house },
-  { label: "Journal", href: "/journal", icon: icons.journal },
+  {
+    label: "Journal",
+    href: "/journal",
+    icon: icons.journal,
+    requiresFinancialAccess: true,
+  },
 ];
 
 function isCurrentPath(pathname: string, href: string): boolean {

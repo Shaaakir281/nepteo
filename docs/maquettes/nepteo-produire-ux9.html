@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Nepteo — Parcours « produire » (spec du lot UX-9)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;450;500;550;600;650&family=Manrope:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Tokens copiés à l'identique depuis app/globals.css (2026-08-10). */
+:root{
+  --ink:#1c1713; --body:#5a5046; --muted:#81776b; --faint:#a79d90;
+  --violet:#2d5ba7; --violet-deep:#244d91; --violet-ink:#234b8b;
+  --tint:#eaf0f9; --tint-soft:#f8f5f0; --page:#f7f4ee; --card:#fff;
+  --line:#e4ddd1; --line-soft:#eee8de;
+  --green:#3e6b4f; --green-tint:#edf3ee;
+  --amber:#91631c; --amber-tint:#f7f0e0;
+  --red:#a4393c; --red-tint:#f8e9e7;
+  --cherry:#8a232d; --cherry-soft:#f5e9e7;
+  --shadow-card:0 1px 2px rgba(28,23,19,.04), 0 8px 24px rgba(28,23,19,.045);
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:#efeae1;color:var(--body);font-family:"Geist",system-ui,sans-serif;font-size:14px;-webkit-font-smoothing:antialiased}
+h1,h2,h3,h4{font-family:"Manrope","Geist",system-ui,sans-serif;color:var(--ink);margin:0}
+button{font:inherit;cursor:pointer}
+summary{list-style:none;cursor:pointer}
+summary::-webkit-details-marker{display:none}
+input,select,textarea{font:inherit}
+
+.specbar{position:sticky;top:0;z-index:20;background:#1c1713;color:#e9e2d6;padding:10px 18px;display:flex;flex-wrap:wrap;align-items:center;gap:14px}
+.specbar b{font-family:"Manrope";color:#fff;font-weight:600;font-size:13px}
+.specbar .sep{opacity:.3}
+.tabs{display:flex;gap:4px;background:rgba(255,255,255,.08);padding:3px;border-radius:9px}
+.tabs button{background:none;border:0;color:#cfc6b8;padding:5px 12px;border-radius:7px;font-size:12.5px;font-weight:550}
+.tabs button[aria-selected="true"]{background:#f7f4ee;color:#1c1713}
+.readout{margin-left:auto;display:flex;gap:14px;font-size:11.5px;color:#b8ae9f;flex-wrap:wrap}
+.toggle{display:flex;align-items:center;gap:7px;font-size:12px;color:#cfc6b8}
+
+.view{display:none;padding:24px 22px}
+.view.on{display:block}
+.stage{max-width:1000px;margin:0 auto}
+.lead{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin:26px 0 10px}
+.lead:first-child{margin-top:0}
+.modal{background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:0 22px 60px rgba(28,23,19,.16);overflow:hidden}
+.mhead{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 20px;border-bottom:1px solid var(--line-soft)}
+.mhead h2{font-size:15.5px;font-weight:600}
+.mbody{padding:18px 20px;max-height:600px;overflow:auto}
+.mfoot{padding:13px 20px;border-top:1px solid var(--line-soft);display:flex;gap:9px;flex-wrap:wrap;background:var(--tint-soft)}
+.x{border:0;background:none;color:var(--faint);font-size:17px;line-height:1}
+.h1{font-family:"Manrope";font-size:21px;font-weight:600;letter-spacing:-.02em;color:var(--ink)}
+.small{font-size:12.5px;line-height:1.6} .tiny{font-size:11.5px;line-height:1.6}
+.muted{color:var(--muted)} .faint{color:var(--faint)}
+.btn{display:inline-block;border:0;border-radius:9px;padding:9px 15px;font-size:12.5px;font-weight:600;text-decoration:none;text-align:center}
+.btn.primary{background:var(--violet);color:#fff}
+.btn.cherry{background:var(--cherry);color:#fff}
+.btn.outline{background:#fff;border:1px solid var(--line);color:var(--body)}
+.btn.ghost{background:var(--tint);color:var(--violet-ink)}
+.pill{display:inline-block;border-radius:99px;padding:2px 9px;font-size:10.5px;font-weight:600}
+.pill.g{background:var(--green-tint);color:var(--green)}
+.pill.a{background:var(--amber-tint);color:var(--amber)}
+.pill.b{background:var(--tint);color:var(--violet-ink)}
+.field{width:100%;border:1px solid var(--line);border-radius:10px;padding:9px 12px;font-size:12.5px;color:var(--ink);background:#fff}
+.lab{display:block;font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--faint);margin-top:13px;margin-bottom:4px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.screen{background:var(--page);border:1px solid var(--line);border-radius:16px;box-shadow:0 14px 40px rgba(28,23,19,.09);padding:24px 26px}
+
+.anno{display:none}
+body.anno-on .anno{display:block}
+.anno{margin-top:8px;background:var(--red-tint);border-left:3px solid var(--red);color:#7d2b2e;font-size:11.5px;line-height:1.55;padding:7px 11px;border-radius:0 8px 8px 0}
+
+.blk{border:1px solid var(--line-soft);border-radius:12px;padding:13px 15px;margin-top:12px}
+.blk h3{font-size:13px;font-weight:600}
+.blk p{margin:4px 0 0;font-size:12px;line-height:1.6;color:var(--muted)}
+
+/* ÉPURÉ */
+.zstep{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.zstep i{height:4px;flex:1;border-radius:99px;background:var(--line);display:block}
+.zstep i.done{background:var(--green)} .zstep i.now{background:var(--violet)}
+.zstep span{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);flex:none}
+.zq{font-family:"Manrope";font-size:20px;font-weight:500;line-height:1.35;margin-bottom:4px}
+details.zfold{border-bottom:1px solid var(--line-soft)}
+details.zfold>summary{display:flex;align-items:center;gap:11px;padding:12px 2px;font-size:12.5px;font-weight:550;color:var(--ink)}
+details.zfold>summary .chev{color:var(--faint);font-size:15px;transition:transform .15s}
+details.zfold[open]>summary .chev{transform:rotate(90deg)}
+details.zfold>summary b{margin-left:auto;font-size:11px;font-weight:600;color:var(--muted);background:var(--tint-soft);border-radius:99px;padding:2px 8px}
+details.zfold .inner{padding:0 2px 14px 24px}
+.zrow{display:flex;align-items:center;gap:12px;padding:10px 2px;border-bottom:1px solid var(--line-soft);font-size:12.5px}
+.zrow b{color:var(--ink);font-weight:550;flex:1}
+.zrow span{color:var(--muted);flex:none}
+.hook{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border:1px solid var(--line-soft);border-radius:11px;margin-top:8px;font-size:12.5px;line-height:1.55}
+.hook.sel{border-color:var(--violet);background:var(--tint-soft)}
+.canvasimg{margin-top:14px;border:1px solid var(--line-soft);border-radius:14px;background:linear-gradient(135deg,var(--tint),var(--cherry-soft));height:180px;display:grid;place-items:center;color:var(--faint);font-size:12px}
+.q{display:inline-grid;place-items:center;width:15px;height:15px;border-radius:99px;border:1px solid var(--line);font-size:9px;color:var(--faint);cursor:help}
+
+/* CONSIGNES */
+.spec{max-width:900px;margin:0 auto;background:#fff;border:1px solid var(--line);border-radius:16px;padding:30px 34px;box-shadow:0 18px 50px rgba(28,23,19,.08)}
+.spec .eyebrow{font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--violet);margin:0 0 14px}
+.spec h2{font-size:19px;margin:26px 0 10px}
+.spec p,.spec li{font-size:13.5px;line-height:1.7}
+.spec code{background:var(--tint-soft);border:1px solid var(--line-soft);border-radius:5px;padding:1px 5px;font-size:12px}
+.spec table{width:100%;border-collapse:collapse;margin-top:10px;font-size:13px}
+.spec th,.spec td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line-soft);vertical-align:top}
+.spec th{font-family:"Manrope";color:var(--ink);font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+.rule{background:var(--tint-soft);border-left:3px solid var(--violet);border-radius:0 10px 10px 0;padding:12px 16px;margin-top:10px}
+.rule b{color:var(--ink)}
+@media(max-width:820px){.two{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div class="specbar">
+  <b>Nepteo · parcours « produire » — brief, proposition, Story</b>
+  <span class="sep">|</span>
+  <div class="tabs" role="tablist">
+    <button role="tab" aria-selected="true" data-view="avant">Avant (livré)</button>
+    <button role="tab" aria-selected="false" data-view="epure">Épuré ★</button>
+    <button role="tab" aria-selected="false" data-view="consignes">Consignes Codex</button>
+  </div>
+  <label class="toggle"><input type="checkbox" id="annoBox"> Annotations</label>
+  <div class="readout" id="readout"></div>
+</div>
+
+<!-- ============================ AVANT ============================ -->
+<section class="view on" id="v-avant">
+  <div class="stage">
+    <p class="lead">Nouvelle campagne — étape brief</p>
+    <div class="modal" id="canvas-avant">
+      <div class="mhead"><h2>Nouvelle campagne — l'agent construit, vous arbitrez</h2><button class="x">✕</button></div>
+      <div class="mbody">
+        <div class="two">
+          <div><span class="lab">Objectif</span><select class="field"><option>Générer des demandes</option></select></div>
+          <div><span class="lab">Étape / type de campagne</span><select class="field"><option>Acquisition</option></select></div>
+        </div>
+        <span class="lab">Audience</span><input class="field" placeholder="Ex. dirigeants de PME industrielles en France" />
+        <span class="lab">Offre</span><input class="field" placeholder="Ex. audit de positionnement à 2 400 €" />
+        <span class="lab">Hypothèse à tester</span><input class="field" placeholder="Ex. une preuve client concrète augmentera les demandes de rendez-vous" />
+        <div class="two">
+          <div><span class="lab">Canal</span><select class="field"><option>Meta Ads</option></select></div>
+          <div><span class="lab">Budget journalier (€)</span><input class="field" value="40" /></div>
+        </div>
+        <div class="two">
+          <div><span class="lab">Durée finie</span><input class="field" value="14 jours" /></div>
+          <div><span class="lab">Métrique principale</span><select class="field"><option>Demandes de rendez-vous</option></select></div>
+        </div>
+        <div class="two">
+          <div><span class="lab">Seuil à atteindre</span><input class="field" value="10" /></div>
+          <div><span class="lab">Contexte facultatif</span><input class="field" placeholder="Contraintes, ton ou élément à reprendre." /></div>
+        </div>
+      </div>
+      <div class="mfoot"><button class="btn primary">Construire la proposition</button><button class="btn outline">Fermer</button></div>
+    </div>
+    <div class="anno"><b>1.</b> Onze champs avant le premier retour de l'agent. Le testeur doit tout décider seul — alors que le titre promet « l'agent construit, vous arbitrez ».</div>
+    <div class="anno"><b>2.</b> Rien n'est prérempli depuis la fiche entreprise, alors que l'audience, l'offre et le ton y sont déjà.</div>
+
+    <p class="lead">Nouvelle campagne — étape proposition</p>
+    <div class="modal" id="canvas-avant-p">
+      <div class="mhead"><h2>Relire le récapitulatif</h2><button class="x">✕</button></div>
+      <div class="mbody">
+        <div class="blk"><h3>Objectif</h3><p>Succès visé : 10 demandes de rendez-vous en 14 jours.</p></div>
+        <div class="blk"><h3>Stratégie — hypothèse à arbitrer</h3><p>Une preuve client concrète augmentera les demandes de rendez-vous.</p></div>
+        <div class="blk"><h3>Structure et allocation</h3><p>Adset 1 — audience : dirigeants PME · hypothèse de cet adset · allocation 60 % · Retirer</p><p>Adset 2 — audience : responsables achats · allocation 40 % · Retirer</p></div>
+        <div class="blk"><h3>Hooks éditables et sélectionnés</h3><p>Six propositions de accroche. Sélectionnez au moins un hook avant la soumission.</p></div>
+        <div class="blk"><h3>Formats attendus — pas encore contrôlés par un fournisseur</h3><p>Story 9:16, carré 1:1.</p></div>
+        <div class="blk"><h3>Budget total</h3><p>Le budget total est redérivé à la soumission. Limite journalière de la proposition : 40 €. Durée finie de la proposition : 14 jours.</p></div>
+        <div class="blk"><h3>Coût / conversion — confiance de l'estimation</h3><p>Estimation indisponible : la preuve historique exige 7 jours distincts, une dépense positive et 10 conversions.</p></div>
+        <div class="blk"><h3>Récapitulatif complet avant ajout à la file</h3><p>Brief : … · Budget : … · Preuve : … · Adsets et budgets redérivés au serveur · Hooks retenus · Formats attendus · Condition avant tout lancement futur.</p></div>
+      </div>
+      <div class="mfoot"><button class="btn primary">Ajouter à la file</button><button class="btn outline">Créer le visuel de cette campagne</button><button class="btn outline">Le faire plus tard</button></div>
+    </div>
+    <div class="anno"><b>3.</b> Huit blocs à relire, dont un « récapitulatif complet » qui répète les sept précédents.</div>
+    <div class="anno"><b>4.</b> Trois boutons de sortie, dont deux sur la création de visuel. Lequel est le chemin normal ?</div>
+
+    <p class="lead">Atelier Story</p>
+    <div class="screen" id="canvas-avant-s">
+      <h1 class="h1">Votre contenu, prêt à publier</h1>
+      <div class="blk"><h3>Donnez d'abord un cap au visuel</h3><p>Une campagne permet à Nepteo de préparer le message et le format.</p>
+        <div style="margin-top:9px;display:flex;gap:8px"><button class="btn primary">Préparer une campagne</button><button class="btn outline">Création libre</button></div>
+        <p style="margin-top:7px">Le visuel ne sera rattaché à aucune campagne.</p></div>
+      <div class="blk"><h3>Campagne source</h3><p>Plus récentes · Plus anciennes</p><select class="field" style="margin-top:8px"><option>Rentrée artisans — Meta Ads</option></select></div>
+      <div class="blk"><h3>Format</h3><p>Story 9:16 · Carré 1:1 · Paysage 16:9</p></div>
+      <div class="blk"><h3>Suggestions de l'agent</h3><p>Trois directions issues du message de la campagne.</p></div>
+    </div>
+    <div class="anno"><b>5.</b> Quatre blocs de configuration avant de voir la moindre image. L'atelier créatif ne montre rien de créatif.</div>
+  </div>
+</section>
+
+<!-- ============================ ÉPURÉ ============================ -->
+<section class="view" id="v-epure">
+  <div class="stage">
+    <p class="lead">Nouvelle campagne — étape brief</p>
+    <div class="modal" id="canvas-epure">
+      <div class="mhead"><h2>Nouvelle campagne</h2><button class="x">✕</button></div>
+      <div class="mbody">
+        <div class="zstep"><span>Étape 1 sur 3</span><i class="now"></i><i></i><i></i></div>
+        <p class="zq">Que voulez-vous obtenir&nbsp;?</p>
+        <p class="tiny faint" style="margin:0 0 4px">Prérempli depuis votre fiche entreprise — corrigez ce qui ne va pas.</p>
+        <div class="two">
+          <div><span class="lab">Objectif</span><select class="field"><option>Générer des demandes</option></select></div>
+          <div><span class="lab">Budget par jour</span><input class="field" value="40 €" /></div>
+        </div>
+        <span class="lab">À qui</span><input class="field" value="Dirigeants de PME industrielles en France" />
+        <span class="lab">Quelle offre</span><input class="field" value="Audit de positionnement à 2 400 €" />
+        <div style="margin-top:16px">
+          <details class="zfold"><summary><span class="chev">›</span>Affiner<b>6 réglages</b></summary>
+            <div class="inner"><p class="small muted" style="margin:0">Type de campagne · hypothèse à tester · canal · durée · métrique principale · seuil à atteindre · contexte libre. Tous préremplis, tous corrigibles.</p></div></details>
+        </div>
+      </div>
+      <div class="mfoot"><button class="btn primary">Construire la proposition</button><span class="tiny faint" style="align-self:center">Rien n'est lancé à cette étape.</span></div>
+    </div>
+
+    <p class="lead">Nouvelle campagne — étape proposition</p>
+    <div class="modal" id="canvas-epure-p">
+      <div class="mhead"><h2>La proposition de Nepteo</h2><button class="x">✕</button></div>
+      <div class="mbody">
+        <div class="zstep"><span>Étape 2 sur 3</span><i class="done"></i><i class="now"></i><i></i></div>
+        <p class="zq">10 demandes en 14 jours, 560 € au total.</p>
+        <p class="small muted" style="margin:2px 0 0">Pari : une preuve client concrète augmentera les demandes. <span class="pill a">Estimation indisponible <span class="q" title="La preuve historique exige 7 jours distincts, une dépense positive et 10 conversions. Aucun benchmark de canal ne remplit ce vide.">?</span></span></p>
+
+        <div style="margin-top:18px">
+          <div class="zrow"><b>Dirigeants de PME</b><span>60 % · 24 €/j</span></div>
+          <div class="zrow"><b>Responsables achats</b><span>40 % · 16 €/j</span></div>
+        </div>
+
+        <p class="lab" style="margin-top:18px">Accroche retenue</p>
+        <div class="hook sel"><input type="radio" checked /><span>« Vos concurrents publient leurs références. Et vous ? »</span></div>
+        <details class="zfold" style="margin-top:8px"><summary><span class="chev">›</span>Voir les 5 autres accroches<b>6</b></summary>
+          <div class="inner"><p class="small muted" style="margin:0">Toutes éditables. Au moins une doit être retenue avant la soumission.</p></div></details>
+        <details class="zfold"><summary><span class="chev">›</span>Détail complet<b>budget, formats, conditions</b></summary>
+          <div class="inner"><p class="small muted" style="margin:0">Adsets et budgets redérivés au serveur à la soumission · formats attendus, pas encore contrôlés par un fournisseur · condition avant tout lancement futur.</p></div></details>
+      </div>
+      <div class="mfoot"><button class="btn primary">Ajouter à la file</button><button class="btn outline">Modifier le brief</button><span class="tiny faint" style="align-self:center;margin-left:auto">Validée ≠ lancée</span></div>
+    </div>
+
+    <p class="lead">Atelier Story</p>
+    <div class="screen" id="canvas-epure-s">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <h1 class="h1">Le visuel de « Rentrée artisans »</h1>
+        <button class="btn outline">Changer de campagne</button>
+      </div>
+      <div class="canvasimg">Aperçu 9:16 — cliquez « Générer » pour créer une version</div>
+      <div style="margin-top:14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+        <button class="btn cherry">✦ Générer</button>
+        <span class="tiny faint">Story 9:16, déduit du canal <span class="q" title="Autres formats disponibles : carré 1:1, paysage 16:9.">?</span></span>
+        <span class="tiny faint" style="margin-left:auto">Aucun visuel n'est publié chez un fournisseur.</span>
+      </div>
+      <div style="margin-top:16px">
+        <details class="zfold"><summary><span class="chev">›</span>Suggestions de l'agent<b>3</b></summary>
+          <div class="inner"><p class="small muted" style="margin:0">Trois directions issues du message de la campagne.</p></div></details>
+        <details class="zfold"><summary><span class="chev">›</span>Création libre, sans campagne<b></b></summary>
+          <div class="inner"><p class="small muted" style="margin:0">Le visuel ne sera rattaché à aucune campagne.</p></div></details>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ CONSIGNES ============================ -->
+<section class="view" id="v-consignes">
+<div class="spec">
+  <p class="eyebrow">Lot UX-9 · spec du 10 août 2026</p>
+
+  <h2>Portée</h2>
+  <p><code>campagnes/_components/new-campaign-modal.tsx</code> (439 l.), <code>campaign-brief-form.tsx</code> (309 l.), <code>campaign-proposal-review.tsx</code> (540 l.), <code>contenu/page.tsx</code> (197 l.), <code>contenu/_components/creative-workspace.tsx</code> (530 l.), <code>story-preview.tsx</code> (163 l.). Environ 2 180 lignes.</p>
+  <p>UX-4 traite l'écran de décision de Campagnes ; ce lot traite le <b>tunnel de création</b> et l'atelier Story, atteint depuis tous les écrans du cockpit par le bouton cerise.</p>
+
+  <h2>Le principe</h2>
+  <div class="rule"><b>L'agent construit, l'utilisateur arbitre — le formulaire doit le refléter.</b> Le titre le promet déjà, mais on demande onze champs avant le premier retour de l'agent. Quatre champs suffisent à démarrer ; les sept autres sont préremplis depuis la fiche entreprise et repliés sous « Affiner ».</div>
+  <div class="rule"><b>Une proposition se résume en une phrase chiffrée.</b> « 10 demandes en 14 jours, 560 € au total » remplace huit blocs étiquetés. Le détail reste, replié.</div>
+  <div class="rule"><b>Pas de récapitulatif qui répète l'écran.</b> Le bloc « Récapitulatif complet avant ajout à la file » redit les sept blocs précédents : il disparaît, l'écran <i>est</i> le récapitulatif.</div>
+  <div class="rule"><b>Un seul chemin de sortie normal.</b> « Ajouter à la file » en bouton plein. « Créer le visuel » et « Le faire plus tard » ne sont plus deux boutons concurrents : la Story se propose <b>après</b> l'ajout à la file, pas pendant.</div>
+  <div class="rule"><b>Un atelier créatif montre d'abord une image.</b> La campagne récente est présélectionnée, le format déduit du canal, l'aperçu occupe le haut de l'écran. La configuration passe en réglages secondaires.</div>
+
+  <h2>Correspondance</h2>
+  <table>
+    <tr><th style="width:38%">Aujourd'hui (livré)</th><th>Devient</th></tr>
+    <tr><td>Brief : 11 champs à plat</td><td>4 champs visibles — objectif, budget/jour, audience, offre — préremplis depuis la mémoire. Les 7 autres (type, hypothèse, canal, durée, métrique, seuil, contexte) dans un <code>&lt;details&gt;</code> « Affiner · 6 réglages », préremplis eux aussi.</td></tr>
+    <tr><td>Titre « Nouvelle campagne — l'agent construit, vous arbitrez »</td><td>« Nouvelle campagne » + un rail 1/3. La promesse se démontre par le préremplissage, elle n'a pas besoin d'être écrite.</td></tr>
+    <tr><td>Proposition : 8 blocs étiquetés</td><td>Une phrase chiffrée + la liste des adsets (nom, part, budget/jour) + l'accroche retenue. Le reste dans deux <code>&lt;details&gt;</code>.</td></tr>
+    <tr><td>« Coût / conversion — confiance de l'estimation » avec son motif d'indisponibilité</td><td>Pastille « Estimation indisponible (?) ». Le motif complet — 7 jours distincts, dépense positive, 10 conversions — reste dans l'infobulle. <b>Ne jamais remplacer par un benchmark de canal.</b></td></tr>
+    <tr><td>« Hooks éditables et sélectionnés » : 6 accroches déployées</td><td>L'accroche retenue visible, les 5 autres repliées. La règle « au moins un hook avant soumission » est inchangée.</td></tr>
+    <tr><td>3 boutons de pied</td><td>« Ajouter à la file » plein + « Modifier le brief » outline. La proposition de visuel apparaît après l'ajout.</td></tr>
+    <tr><td>Story : 4 blocs de configuration avant toute image</td><td>Aperçu en haut, bouton « Générer », format déduit affiché en 11px. Suggestions et création libre repliées.</td></tr>
+  </table>
+
+  <h2>Ce qui ne change pas</h2>
+  <ul>
+    <li>Les règles CAMP-0/1/2 : brief et variantes validés côté serveur, budget total redérivé depuis le brief, clé de soumission distincte de la clé d'exécution, action <code>launch_campaign</code> créée en <code>proposed</code> avec son journal unique et atomique.</li>
+    <li>« Validée — non lancée » et l'absence de bouton Exécuter.</li>
+    <li>Le seuil de preuve pour toute projection, et le refus explicite quand il n'est pas atteint.</li>
+    <li>La génération de variantes et la génération d'image restent des gestes explicites : un appel au plus, timeout, <code>maxRetries: 0</code>, télémétrie sans prompts ni réponses.</li>
+    <li>La Story reste rattachée à une campagne, le mode libre reste secondaire, le visuel reste versionné et aucun asset n'est publié automatiquement chez un fournisseur.</li>
+    <li>Le préremplissage lit la mémoire d'entreprise en lecture seule ; il ne l'écrit jamais et n'est pas un enregistrement.</li>
+  </ul>
+
+  <h2>Critère de recette</h2>
+  <ol>
+    <li>Le brief démarre avec 4 champs visibles, tous préremplis quand la fiche est renseignée.</li>
+    <li>La proposition tient sur un écran sans scroller jusqu'aux boutons.</li>
+    <li>Un seul bouton plein par étape.</li>
+    <li>Le motif d'estimation indisponible reste atteignable, et aucun chiffre n'est inventé à sa place.</li>
+    <li>L'atelier Story affiche une zone d'aperçu avant toute configuration.</li>
+    <li>Les tests CAMP-0/1/2 passent sans modification.</li>
+  </ol>
+
+  <h2>Statut de ce fichier</h2>
+  <p>Spec de lot, pas maquette historique et pas du code à recopier. Les chiffres et accroches affichés sont illustratifs et ne constituent ni une mesure, ni un état fournisseur.</p>
+</div>
+</section>
+
+<script>
+(function(){
+  var tabs=document.querySelectorAll('.tabs button');
+  var views={avant:'v-avant',epure:'v-epure',consignes:'v-consignes'};
+  tabs.forEach(function(b){
+    b.addEventListener('click',function(){
+      tabs.forEach(function(x){x.setAttribute('aria-selected',String(x===b));});
+      Object.keys(views).forEach(function(k){
+        document.getElementById(views[k]).classList.toggle('on',k===b.dataset.view);
+      });
+    });
+  });
+  document.getElementById('annoBox').addEventListener('change',function(e){
+    document.body.classList.toggle('anno-on',e.target.checked);
+  });
+  function scan(root){
+    var w=0;
+    (function walk(n){
+      if(n.nodeType===3){var m=n.textContent.match(/[\wÀ-ÿ'’€%]+/g); if(m)w+=m.length; return;}
+      if(n.nodeType!==1) return;
+      if(n.classList&&(n.classList.contains('anno')||n.classList.contains('q'))) return;
+      if(n.tagName==='DETAILS'&&!n.open){var s=n.querySelector(':scope > summary'); if(s)walk(s); return;}
+      for(var i=0;i<n.childNodes.length;i++) walk(n.childNodes[i]);
+    })(root);
+    return w;
+  }
+  function g(i){return document.getElementById(i);}
+  /* Sur un formulaire, compter les mots ne dit rien : les libellés sont courts
+     et les consignes vivent dans des placeholders. La mesure utile est le
+     nombre de champs à remplir avant le premier retour de l'agent. */
+  function fields(root){
+    var n=0;
+    root.querySelectorAll('input,select,textarea').forEach(function(el){
+      if(el.type==='checkbox'||el.type==='radio') return;
+      for(var p=el.parentElement;p;p=p.parentElement){
+        if(p.tagName==='DETAILS'&&!p.open) return;
+      }
+      n++;
+    });
+    return n;
+  }
+  var fa=fields(g('canvas-avant')), fe=fields(g('canvas-epure'));
+  var pa=scan(g('canvas-avant-p')), pe=scan(g('canvas-epure-p'));
+  var sa=scan(g('canvas-avant-s')), se=scan(g('canvas-epure-s'));
+  document.getElementById('readout').innerHTML=
+    '<span>Brief — champs à remplir : avant <b>'+fa+'</b> · épuré <b>'+fe+'</b></span>'+
+    '<span>Proposition — avant <b>'+pa+'</b> mots · épuré <b>'+pe+'</b> (−'+Math.round((1-pe/pa)*100)+'%)</span>'+
+    '<span>Story — avant <b>'+sa+'</b> · épuré <b>'+se+'</b> (−'+Math.round((1-se/sa)*100)+'%)</span>';
+})();
+</script>
+</body>
+</html>

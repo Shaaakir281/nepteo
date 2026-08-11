@@ -14,6 +14,7 @@ const [
   prospects,
   execution,
   todayPage,
+  todayScorecard,
   relaunchLoader,
   relaunchSnapshot,
 ] = await Promise.all([
@@ -25,6 +26,7 @@ const [
   read("app/(cockpit)/_actions/prospects.ts"),
   read("lib/execution.ts"),
   read("app/(cockpit)/page.tsx"),
+  read("app/(cockpit)/_lib/today-scorecard-data.ts"),
   read("lib/relaunch-prospect-loader.ts"),
   read("lib/relaunch-snapshot.ts"),
 ]);
@@ -262,16 +264,16 @@ test("Today - expose le play et une scorecard reelle, non-demo et bornee", () =>
   assert.match(todayPage, /dormant-play-launcher/);
   assert.match(todayPage, /<DormantPlayLauncher\b/);
   assert.match(todayPage, /value-scorecard/);
-  assert.match(todayPage, /buildValueScorecard\(/);
+  assert.match(todayScorecard, /buildValueScorecard\(/);
   assert.match(todayPage, /<ValueScorecard\b/);
 
-  const queryStart = todayPage.indexOf('.from("value_events")');
+  const queryStart = todayScorecard.indexOf('.from("value_events")');
   assert.notEqual(queryStart, -1);
-  const query = todayPage.slice(queryStart, queryStart + 1_500);
+  const query = todayScorecard.slice(queryStart, queryStart + 1_500);
   assert.match(query, /\.eq\("action_kind",\s*"relaunch_dormant"\)/);
   assert.match(query, /\.eq\("is_demo",\s*false\)/);
   assert.match(query, /\.range\(offset,\s*end\)/);
-  assert.match(todayPage, /MAX_VALUE_SCORECARD_EVENTS\s*=\s*5000/);
+  assert.match(todayScorecard, /MAX_VALUE_SCORECARD_EVENTS\s*=\s*5000/);
   assert.match(todayPage, /valueScorecardIncomplete/);
   assert.match(todayPage, /valueScorecardReadFailed/);
 });

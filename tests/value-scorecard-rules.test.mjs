@@ -3,13 +3,17 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { buildValueScorecard } from "../lib/value-scorecard-rules.ts";
 
-const component = await readFile(
-  new URL(
-    "../app/(cockpit)/_components/value-scorecard.tsx",
-    import.meta.url,
-  ),
-  "utf8",
-);
+const component = (
+  await Promise.all(
+    ["value-scorecard.tsx", "value-scorecard-details.tsx", "value-scorecard-metrics.tsx"].map(
+      (file) =>
+        readFile(
+          new URL(`../app/(cockpit)/_components/${file}`, import.meta.url),
+          "utf8",
+        ),
+    ),
+  )
+).join("\n");
 
 let sequence = 0;
 function event(overrides = {}) {

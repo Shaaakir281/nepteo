@@ -27,7 +27,7 @@ type Feedback = {
 export function AnalysisRunner({
   variant = "primary",
 }: {
-  variant?: "primary" | "link";
+  variant?: "primary" | "link" | "hero";
 }) {
   const router = useRouter();
   const [running, setRunning] = useState(false);
@@ -108,13 +108,21 @@ export function AnalysisRunner({
       >
         Relancer l&apos;analyse
       </button>
+    ) : variant === "hero" ? (
+      <button
+        type="button"
+        onClick={run}
+        className="rounded-[10px] bg-violet px-5 py-2.5 text-[13px] font-semibold text-white shadow-[0_6px_16px_rgba(45,91,167,.18)] transition hover:bg-violet-deep"
+      >
+        Analyser
+      </button>
     ) : (
       <button
         type="button"
         onClick={run}
-        className="rounded-[10px] bg-tint px-4 py-2 text-[13px] font-semibold text-violet transition hover:bg-violet hover:text-white"
+        className="rounded-[10px] border border-line bg-white px-4 py-2 text-[13px] font-semibold text-body transition hover:border-violet/30 hover:text-violet"
       >
-        Analyser mes données maintenant
+        Analyser
       </button>
     );
 

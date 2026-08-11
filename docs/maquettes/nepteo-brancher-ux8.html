@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Nepteo — Parcours « brancher » (spec du lot UX-8)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;450;500;550;600;650&family=Manrope:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Tokens copiés à l'identique depuis app/globals.css (2026-08-10). */
+:root{
+  --ink:#1c1713; --body:#5a5046; --muted:#81776b; --faint:#a79d90;
+  --violet:#2d5ba7; --violet-deep:#244d91; --violet-ink:#234b8b;
+  --tint:#eaf0f9; --tint-soft:#f8f5f0; --page:#f7f4ee; --card:#fff;
+  --line:#e4ddd1; --line-soft:#eee8de;
+  --green:#3e6b4f; --green-tint:#edf3ee;
+  --amber:#91631c; --amber-tint:#f7f0e0;
+  --red:#a4393c; --red-tint:#f8e9e7;
+  --cherry:#8a232d; --cherry-soft:#f5e9e7;
+  --shadow-card:0 1px 2px rgba(28,23,19,.04), 0 8px 24px rgba(28,23,19,.045);
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:#efeae1;color:var(--body);font-family:"Geist",system-ui,sans-serif;font-size:14px;-webkit-font-smoothing:antialiased}
+h1,h2,h3,h4{font-family:"Manrope","Geist",system-ui,sans-serif;color:var(--ink);margin:0}
+button{font:inherit;cursor:pointer}
+summary{list-style:none;cursor:pointer}
+summary::-webkit-details-marker{display:none}
+input{font:inherit}
+
+.specbar{position:sticky;top:0;z-index:20;background:#1c1713;color:#e9e2d6;padding:10px 18px;display:flex;flex-wrap:wrap;align-items:center;gap:14px}
+.specbar b{font-family:"Manrope";color:#fff;font-weight:600;font-size:13px}
+.specbar .sep{opacity:.3}
+.tabs{display:flex;gap:4px;background:rgba(255,255,255,.08);padding:3px;border-radius:9px}
+.tabs button{background:none;border:0;color:#cfc6b8;padding:5px 12px;border-radius:7px;font-size:12.5px;font-weight:550}
+.tabs button[aria-selected="true"]{background:#f7f4ee;color:#1c1713}
+.readout{margin-left:auto;display:flex;gap:14px;font-size:11.5px;color:#b8ae9f;flex-wrap:wrap}
+.toggle{display:flex;align-items:center;gap:7px;font-size:12px;color:#cfc6b8}
+
+.view{display:none;padding:24px 22px}
+.view.on{display:block}
+.stage{max-width:1080px;margin:0 auto}
+.lead{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin:26px 0 10px}
+.lead:first-child{margin-top:0}
+.screen{background:var(--page);border:1px solid var(--line);border-radius:16px;box-shadow:0 14px 40px rgba(28,23,19,.09);padding:24px 26px}
+.h1{font-family:"Manrope";font-size:22px;font-weight:600;letter-spacing:-.02em;color:var(--ink)}
+.small{font-size:12.5px;line-height:1.6} .tiny{font-size:11.5px;line-height:1.6}
+.muted{color:var(--muted)} .faint{color:var(--faint)}
+.btn{display:inline-block;border:0;border-radius:9px;padding:8px 14px;font-size:12.5px;font-weight:600;text-decoration:none;text-align:center}
+.btn.primary{background:var(--violet);color:#fff}
+.btn.outline{background:#fff;border:1px solid var(--line);color:var(--body)}
+.btn.ghost{background:var(--tint);color:var(--violet-ink)}
+.pill{display:inline-block;border-radius:99px;padding:2px 9px;font-size:10.5px;font-weight:600}
+.pill.g{background:var(--green-tint);color:var(--green)}
+.pill.a{background:var(--amber-tint);color:var(--amber)}
+.pill.b{background:var(--tint);color:var(--violet-ink)}
+.pill.n{background:var(--tint-soft);color:var(--faint)}
+.pill.r{background:var(--red-tint);color:var(--red)}
+.field{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 13px;font-size:13px;color:var(--ink);background:#fff}
+
+.anno{display:none}
+body.anno-on .anno{display:block}
+.anno{margin-top:8px;background:var(--red-tint);border-left:3px solid var(--red);color:#7d2b2e;font-size:11.5px;line-height:1.55;padding:7px 11px;border-radius:0 8px 8px 0}
+
+/* AVANT catalogue */
+.cat{margin-top:20px}
+.cat > h3{font-size:14px;font-weight:600}
+.cat > p{margin:3px 0 0;font-size:12px;line-height:1.55;color:var(--muted)}
+.cgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:11px;margin-top:11px}
+.ccard{background:#fff;border:1px solid var(--line-soft);border-radius:13px;padding:13px 15px;box-shadow:var(--shadow-card)}
+.ccard b{display:block;font-size:13px;color:var(--ink)}
+.ccard p{margin:4px 0 0;font-size:11.5px;line-height:1.55;color:var(--muted)}
+.ccard .act{margin-top:10px;display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+.preamble{margin-top:14px;border:1px solid var(--line);background:var(--tint-soft);border-radius:13px;padding:13px 16px;font-size:12.5px;line-height:1.65}
+
+/* AVANT tunnel */
+.blockp{background:#fff;border:1px solid var(--line-soft);border-radius:13px;padding:15px 17px;margin-top:12px;box-shadow:var(--shadow-card)}
+.blockp h3{font-size:13.5px;font-weight:600}
+.blockp p{margin:5px 0 0;font-size:12.5px;line-height:1.65;color:var(--muted)}
+.constraints{margin:8px 0 0;padding-left:18px;font-size:12px;line-height:1.7;color:var(--muted)}
+
+/* ÉPURÉ */
+.zbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:14px}
+.chip{border:1px solid var(--line);background:#fff;border-radius:99px;padding:6px 13px;font-size:12px;color:var(--body)}
+.chip.on{background:var(--ink);border-color:var(--ink);color:#fff;font-weight:600}
+.zsearch{flex:1;min-width:180px;border:1px solid var(--line);border-radius:99px;padding:8px 15px;font-size:12.5px;background:#fff}
+.zgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-top:14px}
+.zc{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--line-soft);border-radius:12px;padding:11px 13px;box-shadow:var(--shadow-card)}
+.zc .ic{width:26px;height:26px;border-radius:7px;background:var(--tint);display:grid;place-items:center;font-size:11px;font-weight:700;color:var(--violet-ink);flex:none}
+.zc b{font-size:12.5px;color:var(--ink);font-weight:550;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.zc.on{border-color:rgba(62,107,79,.35)}
+.zstep{display:flex;align-items:center;gap:10px;margin-top:16px}
+.zstep i{height:4px;flex:1;border-radius:99px;background:var(--line);display:block}
+.zstep i.done{background:var(--green)} .zstep i.now{background:var(--violet)}
+.zstep span{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);flex:none}
+.zpanel{background:#fff;border:1px solid var(--line-soft);border-radius:16px;box-shadow:var(--shadow-card);padding:24px 26px;margin-top:12px}
+.zpanel h2{font-family:"Manrope";font-size:19px;font-weight:500;line-height:1.35}
+.zactions{margin-top:18px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+details.zfold{border-bottom:1px solid var(--line-soft)}
+details.zfold>summary{display:flex;align-items:center;gap:11px;padding:12px 4px;font-size:12.5px;font-weight:550;color:var(--ink)}
+details.zfold>summary .chev{color:var(--faint);font-size:15px;transition:transform .15s}
+details.zfold[open]>summary .chev{transform:rotate(90deg)}
+details.zfold>summary b{margin-left:auto;font-size:11px;font-weight:600;color:var(--muted);background:var(--tint-soft);border-radius:99px;padding:2px 8px}
+details.zfold .inner{padding:0 4px 14px 26px}
+.zsec{display:flex;align-items:center;gap:12px;padding:11px 2px;border-bottom:1px solid var(--line-soft);font-size:13px}
+.zsec b{color:var(--ink);font-weight:550;flex:1}
+.q{display:inline-grid;place-items:center;width:15px;height:15px;border-radius:99px;border:1px solid var(--line);font-size:9px;color:var(--faint);cursor:help}
+
+/* CONSIGNES */
+.spec{max-width:900px;margin:0 auto;background:#fff;border:1px solid var(--line);border-radius:16px;padding:30px 34px;box-shadow:0 18px 50px rgba(28,23,19,.08)}
+.spec .eyebrow{font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--violet);margin:0 0 14px}
+.spec h2{font-size:19px;margin:26px 0 10px}
+.spec p,.spec li{font-size:13.5px;line-height:1.7}
+.spec code{background:var(--tint-soft);border:1px solid var(--line-soft);border-radius:5px;padding:1px 5px;font-size:12px}
+.spec table{width:100%;border-collapse:collapse;margin-top:10px;font-size:13px}
+.spec th,.spec td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line-soft);vertical-align:top}
+.spec th{font-family:"Manrope";color:var(--ink);font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+.rule{background:var(--tint-soft);border-left:3px solid var(--violet);border-radius:0 10px 10px 0;padding:12px 16px;margin-top:10px}
+.rule b{color:var(--ink)}
+@media(max-width:900px){.cgrid{grid-template-columns:1fr 1fr}.zgrid{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+
+<div class="specbar">
+  <b>Nepteo · parcours « brancher » — catalogue, tunnel, laboratoire web</b>
+  <span class="sep">|</span>
+  <div class="tabs" role="tablist">
+    <button role="tab" aria-selected="true" data-view="avant">Avant (livré)</button>
+    <button role="tab" aria-selected="false" data-view="epure">Épuré ★</button>
+    <button role="tab" aria-selected="false" data-view="consignes">Consignes Codex</button>
+  </div>
+  <label class="toggle"><input type="checkbox" id="annoBox"> Annotations</label>
+  <div class="readout" id="readout"></div>
+</div>
+
+<!-- ============================ AVANT ============================ -->
+<section class="view on" id="v-avant">
+  <div class="stage">
+    <p class="lead">Mon entreprise → onglet Connecteurs</p>
+    <div class="screen" id="canvas-avant">
+      <h1 class="h1">Mon entreprise</h1>
+      <p class="small muted" style="margin:8px 0 0;max-width:66ch">Nepteo lit vos outils pour comprendre, et n'écrira que ce que vous validez. Chaque accès est tracé dans le journal et révocable à tout moment.</p>
+      <div class="preamble">
+        <p style="margin:0"><b>Ce catalogue distingue les intégrations réellement disponibles de celles qui sont proposées.</b> Un bouton « Connecter » suppose un parcours réel et vérifié. Sinon la carte indique honnêtement « Demander », « Configurer » ou « Prévu ». Une carte connectée ne garantit pas une lecture en temps réel : l'état affiché est celui de la dernière vérification enregistrée.</p>
+      </div>
+      <div id="cat-avant"></div>
+      <div class="anno"><b>1.</b> 22 cartes, 5 catégories, un préambule de 5 lignes, une description sous chaque carte. Le testeur cherche un nom précis et doit balayer tout l'écran.</div>
+      <div class="anno"><b>2.</b> Aucun champ de recherche, aucun filtre. Les deux ou trois connecteurs réellement branchables sont noyés parmi vingt propositions.</div>
+      <div class="anno"><b>3.</b> Cinq états de statut différents rédigés en phrases longues (« Accès autorisé — source à vérifier », « Dernière lecture en erreur — vérification requise »), placés au même niveau que le nom du connecteur.</div>
+    </div>
+
+    <p class="lead">Tunnel d'import CSV</p>
+    <div class="screen" id="canvas-avant-t">
+      <h1 class="h1">Importer les prospects du testeur</h1>
+      <div class="blockp">
+        <h3>Fichier CSV UTF-8</h3>
+        <p>Le fichier remplace intégralement l'import précédent. Le remplacement est atomique et journalisé : en cas d'échec, aucun mélange entre deux imports n'est possible.</p>
+        <ul class="constraints">
+          <li>Encodage UTF-8 obligatoire</li>
+          <li>900 Ko maximum</li>
+          <li>5 000 lignes maximum</li>
+          <li>Mapping non ambigu des six champs utiles</li>
+          <li>Colonnes inconnues ignorées</li>
+          <li>Identifiants stables requis pour le rapprochement</li>
+        </ul>
+      </div>
+      <div class="blockp">
+        <h3>Correspondance des colonnes</h3>
+        <p>Six champs : nom, e-mail, entreprise, statut, notes, dernier contact. La détection automatique est proposée, puis corrigible.</p>
+      </div>
+      <div class="blockp">
+        <h3>Scénario Nepteo actif</h3>
+        <p>Retirez d'abord le scénario Nepteo pour importer ce fichier. Les deux voies ne coexistent jamais.</p>
+      </div>
+      <div class="blockp">
+        <h3>Import actuel</h3>
+        <p>Aucun import en cours. Votre rôle permet de consulter les prospects, pas de les importer.</p>
+      </div>
+      <div class="anno"><b>4.</b> Six contraintes techniques listées avant même d'avoir choisi un fichier. La plupart ne concernent l'utilisateur que si elles sont violées — c'est le rôle d'un message de validation, pas d'un préambule.</div>
+    </div>
+
+    <p class="lead">Laboratoire web</p>
+    <div class="screen" id="canvas-avant-l">
+      <h1 class="h1">Laboratoire web</h1>
+      <p class="small muted" style="margin:8px 0 0;max-width:70ch">Votre site ou un autre site public : l'analyse reste isolée, y compris pendant un scénario d'exemple. Hors scénario, vous pourrez ensuite appliquer uniquement les sections validées.</p>
+      <div class="blockp">
+        <h3>Site à étudier</h3>
+        <p>Adresse du site public</p>
+        <input class="field" style="margin-top:8px" value="https://entreprise.fr" />
+        <div style="margin-top:10px;display:flex;gap:8px"><button class="btn primary">Préparer l'analyse</button><button class="btn outline">Annuler</button></div>
+      </div>
+      <div class="blockp">
+        <h3>Proposition à relire</h3>
+        <p>Chaque section est une proposition en lecture seule. Rien n'est enregistré tant que vous n'appliquez pas explicitement une section. Une observation par ligne, six maximum.</p>
+        <div style="margin-top:10px"><b style="font-size:12.5px;color:var(--ink)">Activité et audience</b><p class="small muted" style="margin:3px 0 0">Fiche actuelle : à compléter</p><button class="btn ghost" style="margin-top:7px">Appliquer cette section</button></div>
+        <div style="margin-top:14px"><b style="font-size:12.5px;color:var(--ink)">Canaux</b><p class="small muted" style="margin:3px 0 0">Fiche actuelle : à compléter</p><button class="btn ghost" style="margin-top:7px">Appliquer cette section</button></div>
+        <div style="margin-top:14px"><b style="font-size:12.5px;color:var(--ink)">Offres</b><p class="small muted" style="margin:3px 0 0">Fiche actuelle : à compléter</p><button class="btn ghost" style="margin-top:7px">Appliquer cette section</button></div>
+        <div style="margin-top:14px"><b style="font-size:12.5px;color:var(--ink)">Présence publique</b><p class="small muted" style="margin:3px 0 0">Fiche actuelle : à compléter</p><button class="btn ghost" style="margin-top:7px">Appliquer cette section</button></div>
+      </div>
+      <div class="anno"><b>5.</b> Quatre boutons « Appliquer cette section » identiques, sans possibilité de tout appliquer d'un coup ni de voir ce que chaque section changerait.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ ÉPURÉ ============================ -->
+<section class="view" id="v-epure">
+  <div class="stage">
+    <p class="lead">Mon entreprise → onglet Connecteurs</p>
+    <div class="screen" id="canvas-epure">
+      <h1 class="h1">Mes outils</h1>
+      <div class="zbar">
+        <input class="zsearch" placeholder="Chercher un outil…" />
+        <span class="chip on">Tous</span><span class="chip">Branchés</span><span class="chip">Disponibles</span>
+        <span class="tiny faint">2 branchés sur 22 <span class="q" title="Un bouton « Connecter » suppose un parcours réel et vérifié. Sinon la carte indique « Demander », « Configurer » ou « Prévu ». Une carte branchée ne garantit pas une lecture en temps réel : l'état affiché est celui de la dernière vérification enregistrée.">?</span></span>
+      </div>
+      <div class="zgrid" id="cat-epure"></div>
+      <p class="tiny faint" style="margin-top:14px">Chaque accès est tracé dans le journal et révocable à tout moment.</p>
+    </div>
+
+    <p class="lead">Tunnel d'import CSV</p>
+    <div class="screen" id="canvas-epure-t">
+      <div class="zstep"><span>Étape 1 sur 3</span><i class="now"></i><i></i><i></i></div>
+      <div class="zpanel">
+        <h2>Déposez votre fichier de contacts.</h2>
+        <div style="margin-top:16px;border:1.5px dashed var(--line);border-radius:13px;padding:26px;text-align:center;font-size:13px;color:var(--faint)">Glissez un CSV ici, ou cliquez pour choisir</div>
+        <div class="zactions">
+          <button class="btn primary">Choisir un fichier</button>
+          <span class="tiny faint">CSV, 900 Ko max <span class="q" title="Encodage UTF-8 obligatoire · 5 000 lignes maximum · mapping non ambigu des six champs utiles · colonnes inconnues ignorées · identifiants stables requis. Le fichier remplace intégralement l'import précédent, de façon atomique et journalisée.">?</span></span>
+        </div>
+      </div>
+      <div style="margin-top:16px">
+        <details class="zfold"><summary><span class="chev">›</span>Étape 2 — vérifier les colonnes<b>6 champs</b></summary>
+          <div class="inner"><p class="small muted" style="margin:0">Nom, e-mail, entreprise, statut, notes, dernier contact. Détection automatique proposée, puis corrigible.</p></div></details>
+        <details class="zfold"><summary><span class="chev">›</span>Étape 3 — confirmer le remplacement<b>0 import</b></summary>
+          <div class="inner"><p class="small muted" style="margin:0">Le nouveau fichier remplace intégralement l'import précédent.</p></div></details>
+      </div>
+    </div>
+
+    <p class="lead">Laboratoire web</p>
+    <div class="screen" id="canvas-epure-l">
+      <div class="zpanel">
+        <h2>Quel site Nepteo doit-il lire&nbsp;?</h2>
+        <input class="field" style="margin-top:16px" value="https://entreprise.fr" />
+        <div class="zactions">
+          <button class="btn primary">Analyser</button>
+          <span class="tiny faint">Lecture seule — rien n'est enregistré sans votre accord</span>
+        </div>
+      </div>
+      <div style="margin-top:16px;background:#fff;border:1px solid var(--line-soft);border-radius:14px;box-shadow:var(--shadow-card);padding:16px 20px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <h3 style="font-size:14px;font-weight:600">4 sections proposées</h3>
+          <button class="btn primary">Appliquer les 4</button>
+        </div>
+        <div class="zsec"><input type="checkbox" checked /><b>Activité et audience</b><span class="pill n">vide → proposé</span></div>
+        <div class="zsec"><input type="checkbox" checked /><b>Canaux</b><span class="pill n">vide → proposé</span></div>
+        <div class="zsec"><input type="checkbox" checked /><b>Offres</b><span class="pill n">vide → proposé</span></div>
+        <div class="zsec" style="border-bottom:0"><input type="checkbox" checked /><b>Présence publique</b><span class="pill n">vide → proposé</span></div>
+        <p class="tiny faint" style="margin:12px 0 0">Chaque section reste une proposition : décochez ce que vous ne voulez pas.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ CONSIGNES ============================ -->
+<section class="view" id="v-consignes">
+<div class="spec">
+  <p class="eyebrow">Lot UX-8 · spec du 10 août 2026</p>
+
+  <h2>Portée</h2>
+  <p><code>entreprise/_components/connectors-panel.tsx</code> (228 l.), <code>connecteurs/_components/connector-card.tsx</code> (192 l.), <code>connecteurs/[provider]/page.tsx</code> (238 l.), <code>connecteurs/csv/page.tsx</code> (227 l.) et les quatre fichiers de <code>entreprise/laboratoire-web/</code> (795 l.). Environ 1 680 lignes.</p>
+  <p>Ces trois vues forment un seul parcours — « faire entrer des données dans Nepteo » — et souffrent du même défaut : <b>elles expliquent les règles avant de proposer le geste</b>.</p>
+
+  <h2>Le principe</h2>
+  <div class="rule"><b>Les contraintes sont des validations, pas des préambules.</b> UTF-8, 900 Ko, 5 000 lignes, identifiants stables : l'utilisateur n'a besoin de les connaître que si son fichier les viole. Elles passent en infobulle, et surtout en <b>message d'erreur précis au moment du dépôt</b>. La règle serveur ne bouge pas.</div>
+  <div class="rule"><b>Un catalogue de 22 entrées a besoin d'une recherche.</b> Champ de recherche + trois pastilles (Tous · Branchés · Disponibles). Les branchés remontent en premier.</div>
+  <div class="rule"><b>Un statut est une pastille, pas une phrase.</b> « Accès autorisé — source à vérifier » devient une pastille « À vérifier » ; la phrase complète reste en infobulle et dans le détail du connecteur.</div>
+  <div class="rule"><b>Un tunnel se parcourt une étape à la fois.</b> Import CSV : déposer → vérifier les colonnes → confirmer le remplacement. Même grammaire que le guide (UX-2).</div>
+  <div class="rule"><b>Quatre boutons identiques deviennent des cases à cocher plus une action.</b> Le laboratoire web propose « Appliquer les 4 » avec des cases décochables, au lieu de quatre boutons « Appliquer cette section ».</div>
+
+  <h2>Correspondance</h2>
+  <table>
+    <tr><th style="width:38%">Aujourd'hui (livré)</th><th>Devient</th></tr>
+    <tr><td>Préambule « Ce catalogue distingue… » (5 lignes)</td><td>Infobulle sur « 2 branchés sur 22 ». Le texte reste intégral — c'est une garantie d'honnêteté, pas du remplissage.</td></tr>
+    <tr><td>22 cartes à 3-4 lignes en 5 catégories</td><td>22 tuiles d'une ligne : pictogramme, nom, pastille d'état. La description passe au survol et dans le détail. Les 5 catégories restent comme filtre, pas comme titres empilés.</td></tr>
+    <tr><td>États en phrases longues (5 variantes)</td><td>Pastilles : <b>Branché</b> · <b>À vérifier</b> · <b>En pause</b> · <b>Erreur</b> · <b>Prévu</b>. Libellé complet en infobulle.</td></tr>
+    <tr><td>Import CSV : 6 contraintes listées avant le dépôt</td><td>Une mention « CSV, 900 Ko max (?) » à côté du bouton, plus des messages de validation précis au dépôt.</td></tr>
+    <tr><td>Import CSV : 4 blocs empilés (fichier, mapping, scénario, import actuel)</td><td>3 étapes, une visible à la fois. Le blocage « scénario actif » devient un message d'étape, pas un bloc permanent.</td></tr>
+    <tr><td>Laboratoire : intro 3 lignes + « Site à étudier » + « Adresse du site public »</td><td>Un titre-question, un champ, un bouton. Le libellé redondant disparaît.</td></tr>
+    <tr><td>Laboratoire : 4 × « Appliquer cette section »</td><td>4 cases cochées par défaut + un bouton « Appliquer les 4 ». Chaque ligne montre l'effet : <code>vide → proposé</code> ou <code>rempli → remplacé</code>.</td></tr>
+  </table>
+
+  <h2>Ce qui ne change pas</h2>
+  <ul>
+    <li>Le catalogue conserve <b>exactement</b> ses 22 propositions et ses 5 catégories, conformément à la décision CONN-0 du 2026-08-08. Aucune n'est retirée, aucune n'est ajoutée.</li>
+    <li>L'honnêteté des états : un bouton « Connecter » suppose toujours un parcours réel et vérifié. Une pastille « Branché » ne prétend pas une lecture temps réel.</li>
+    <li>Les gardes CSV de <code>0021</code> : bornes, mapping non ambigu, remplacement atomique, verrou et journal. Seule leur présentation change.</li>
+    <li>L'exclusivité des voies : scénario d'exemple et données du testeur ne coexistent jamais.</li>
+    <li>Le laboratoire reste en lecture seule et isolé, y compris pendant un scénario. Aucune section n'est appliquée sans un geste explicite — « Appliquer les 4 » <b>est</b> ce geste explicite, il n'est jamais déclenché automatiquement.</li>
+    <li>Les rôles : « votre rôle permet de consulter les prospects, pas de les importer » reste appliqué côté serveur.</li>
+  </ul>
+
+  <h2>Critère de recette</h2>
+  <ol>
+    <li>Trouver un connecteur par son nom prend une frappe de recherche, pas un balayage.</li>
+    <li>Les 22 connecteurs et les 5 catégories sont toujours présents.</li>
+    <li>Aucune contrainte technique affichée avant le dépôt du fichier, mais un message précis si le fichier est refusé.</li>
+    <li>Le tunnel CSV n'affiche qu'une étape à la fois.</li>
+    <li>Le laboratoire n'applique rien sans clic, et chaque ligne indique ce qu'elle remplacerait.</li>
+  </ol>
+
+  <h2>Statut de ce fichier</h2>
+  <p>Spec de lot, pas maquette historique et pas du code à recopier. Les états affichés sur les tuiles sont illustratifs et ne constituent aucune preuve de connexion fournisseur.</p>
+</div>
+</section>
+
+<script>
+/* Les 22 connecteurs et 5 catégories, repris de la décision CONN-0 (2026-08-08). */
+var CATS=[
+ ["CRM & fichiers","Là où vivent vos contacts.",[["HubSpot","prévu"],["Pipedrive","prévu"],["Salesforce","prévu"],["Airtable","prévu"],["Fichier CSV","branché"],["Google Sheets","branché"],["Notion","disponible"]]],
+ ["Analytique","Ce que font vos visiteurs.",[["Google Analytics","prévu"],["Matomo","prévu"],["PostHog","prévu"],["Site internet","disponible"]]],
+ ["Publicité","Ce que vous dépensez.",[["Meta Ads","à vérifier"],["Google Ads","prévu"],["LinkedIn Ads","prévu"]]],
+ ["E-mail","Ce que vous envoyez.",[["Brevo","prévu"],["Mailchimp","prévu"],["ActiveCampaign","prévu"],["Gmail","prévu"]]],
+ ["Ventes & paiement","Ce que vous encaissez.",[["Stripe","prévu"],["Shopify","prévu"],["WooCommerce","prévu"],["Logiciel de facturation","prévu"]]]
+];
+var LONG={"branché":"Connecté — dernière lecture vérifiée","disponible":"Parcours de connexion disponible","à vérifier":"Accès autorisé — source à vérifier","prévu":"Intégration proposée — demande par un administrateur"};
+var CLS={"branché":"g","disponible":"b","à vérifier":"a","prévu":"n"};
+(function(){
+  var out='';
+  CATS.forEach(function(c){
+    out+='<div class="cat"><h3>'+c[0]+'</h3><p>'+c[1]+'</p><div class="cgrid">';
+    c[2].forEach(function(k){
+      out+='<div class="ccard"><b>'+k[0]+'</b><p>'+LONG[k[1]]+'</p><div class="act"><span class="pill '+CLS[k[1]]+'">'+k[1]+'</span>'+
+           '<button class="btn outline">'+(k[1]==='branché'?'Gérer →':k[1]==='prévu'?"Demander l'intégration":'Connecter')+'</button></div></div>';
+    });
+    out+='</div></div>';
+  });
+  document.getElementById('cat-avant').innerHTML=out;
+
+  var z='';
+  CATS.forEach(function(c){ c[2].forEach(function(k){
+    z+='<div class="zc'+(k[1]==='branché'?' on':'')+'" title="'+LONG[k[1]]+'"><span class="ic">'+k[0].slice(0,2).toUpperCase()+'</span><b>'+k[0]+'</b><span class="pill '+CLS[k[1]]+'">'+(k[1]==='branché'?'✓':k[1]==='prévu'?'·':'!')+'</span></div>';
+  });});
+  document.getElementById('cat-epure').innerHTML=z;
+})();
+
+(function(){
+  var tabs=document.querySelectorAll('.tabs button');
+  var views={avant:'v-avant',epure:'v-epure',consignes:'v-consignes'};
+  tabs.forEach(function(b){
+    b.addEventListener('click',function(){
+      tabs.forEach(function(x){x.setAttribute('aria-selected',String(x===b));});
+      Object.keys(views).forEach(function(k){
+        document.getElementById(views[k]).classList.toggle('on',k===b.dataset.view);
+      });
+    });
+  });
+  document.getElementById('annoBox').addEventListener('change',function(e){
+    document.body.classList.toggle('anno-on',e.target.checked);
+  });
+  function scan(root){
+    var w=0;
+    (function walk(n){
+      if(n.nodeType===3){var m=n.textContent.match(/[\wÀ-ÿ'’€%]+/g); if(m)w+=m.length; return;}
+      if(n.nodeType!==1) return;
+      if(n.classList&&(n.classList.contains('anno')||n.classList.contains('q'))) return;
+      if(n.tagName==='DETAILS'&&!n.open){var s=n.querySelector(':scope > summary'); if(s)walk(s); return;}
+      for(var i=0;i<n.childNodes.length;i++) walk(n.childNodes[i]);
+    })(root);
+    return w;
+  }
+  function g(i){return document.getElementById(i);}
+  var ca=scan(g('canvas-avant')), ce=scan(g('canvas-epure'));
+  var ta=scan(g('canvas-avant-t'))+scan(g('canvas-avant-l'));
+  var te=scan(g('canvas-epure-t'))+scan(g('canvas-epure-l'));
+  document.getElementById('readout').innerHTML=
+    '<span>Catalogue — avant <b>'+ca+'</b> mots · épuré <b>'+ce+'</b> (−'+Math.round((1-ce/ca)*100)+'%)</span>'+
+    '<span>Tunnel + laboratoire — avant <b>'+ta+'</b> · épuré <b>'+te+'</b> (−'+Math.round((1-te/ta)*100)+'%)</span>';
+})();
+</script>
+</body>
+</html>

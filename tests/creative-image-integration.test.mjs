@@ -37,17 +37,16 @@ const contentPage = fs.readFileSync(
   new URL("../app/(cockpit)/contenu/page.tsx", import.meta.url),
   "utf8",
 );
-const workspace = fs.readFileSync(
-  new URL(
-    "../app/(cockpit)/contenu/_components/creative-workspace.tsx",
-    import.meta.url,
-  ),
+const workspace = [
+  "creative-workspace.tsx",
+  "use-creative-workspace.ts",
+  "creative-story-settings.tsx",
+  "creative-asset-gallery.tsx",
+  "creative-secondary-options.tsx",
+].map((name) => fs.readFileSync(
+  new URL(`../app/(cockpit)/contenu/_components/${name}`, import.meta.url),
   "utf8",
-);
-const todayPage = fs.readFileSync(
-  new URL("../app/(cockpit)/page.tsx", import.meta.url),
-  "utf8",
-);
+)).join("\n");
 const executionSwitch = fs.readFileSync(
   new URL(
     "../app/(cockpit)/_components/execution-switch.tsx",
@@ -192,18 +191,26 @@ test("creative image — une campagne validée sans visuel peut le finaliser plu
 });
 
 test("creative image — ne signe que les campagnes déjà retenues pour Aujourd'hui", () => {
-  const priority = todayPage.indexOf("const prioritizedQueue = prioritizeTodayActions");
-  const signedAssets = todayPage.indexOf("await loadCampaignCreativeAssets");
+  const queueData = fs.readFileSync(
+    new URL("../app/(cockpit)/_lib/today-queue-data.ts", import.meta.url),
+    "utf8",
+  );
+  const priority = queueData.indexOf("const prioritizedQueue = prioritizeTodayActions");
+  const signedAssets = queueData.indexOf("await loadCampaignCreativeAssets");
   assert.ok(priority > 0 && signedAssets > priority);
   assert.match(
-    todayPage.slice(priority, signedAssets + 500),
+    queueData.slice(priority, signedAssets + 500),
     /prioritizedQueue[\s\S]*loadCampaignCreativeAssets[\s\S]*prioritizedQueue/,
   );
 });
 
 test("creative image — l'état inconnu du coupe-circuit reste visible et fermé", () => {
-  assert.match(todayPage, /error: organizationReadError/);
-  assert.match(todayPage, /organizationReadError[\s\S]*\? null/);
+  const queueData = fs.readFileSync(
+    new URL("../app/(cockpit)/_lib/today-queue-data.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(queueData, /error: organizationReadError/);
+  assert.match(queueData, /organizationReadError[\s\S]*\? null/);
   assert.match(executionSwitch, /paused: boolean \| null/);
   assert.match(executionSwitch, /État exécution indisponible/);
   assert.match(executionSwitch, /if \(busy \|\| on === null\) return/);
