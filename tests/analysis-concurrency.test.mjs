@@ -5,10 +5,11 @@ import test from "node:test";
 const read = (path) =>
   readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
-const [cron, manualAction, demoAction, engine] = await Promise.all([
+const [cron, manualAction, demoAction, demoLoader, engine] = await Promise.all([
   read("app/api/cron/sync/route.ts"),
   read("app/(cockpit)/_actions/analysis.ts"),
   read("app/(cockpit)/agent/actions.ts"),
+  read("lib/demo/load-scenario.ts"),
   read("lib/analysis.ts"),
 ]);
 
@@ -42,8 +43,9 @@ test("analyse cron — journal et moteur ne démarrent qu'après acquisition", (
 
 test("analyse — le moteur reste non réentrant et la démo garde son verrou externe", () => {
   assert.doesNotMatch(engine, /withDemoMutationLock/);
+  assert.match(demoAction, /loadAndAnalyzeDemoScenario/);
   assert.match(
-    demoAction,
-    /withDemoMutationLock\(\s*admin,\s*ctx\.orgId,\s*"demo",[\s\S]*runAnalysis\(/,
+    demoLoader,
+    /withDemoMutationLock\(admin, args\.orgId, "demo",[\s\S]*runAnalysis\(/,
   );
 });

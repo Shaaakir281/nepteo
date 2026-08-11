@@ -22,10 +22,12 @@ import { ONBOARDING_CHOICE_COPY } from "../app/onboarding/_components/onboarding
 
 const [
   onboardingAction,
+  onboardingExampleAction,
   onboardingPage,
   guidedOnboarding,
   onboardingChoice,
   onboardingExample,
+  demoIdentityProgress,
   center,
   hero,
   progressHook,
@@ -38,6 +40,7 @@ const [
 ] =
   await Promise.all([
     readFile(new URL("../app/onboarding/actions.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/onboarding/example-actions.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/onboarding/page.tsx", import.meta.url), "utf8"),
     readFile(
       new URL(
@@ -56,6 +59,13 @@ const [
     readFile(
       new URL(
         "../app/onboarding/_components/onboarding-example.tsx",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+    readFile(
+      new URL(
+        "../app/onboarding/_components/demo-identity-progress.tsx",
         import.meta.url,
       ),
       "utf8",
@@ -274,13 +284,16 @@ test("UX-3 — quatre champs hors contexte ne valident pas le guide", () => {
   assert.equal(walkthroughContextCompletion(memory).complete, false);
 });
 
-test("onboarding — choix explicite avant formulaire et aucune exécution automatique", () => {
+test("onboarding — le choix explicite lance le scénario par la frontière protégée", () => {
   assert.match(onboardingPage, /GuidedOnboarding/);
   assert.match(guidedOnboarding, /setScreen\("example"\)/);
   assert.match(guidedOnboarding, /setScreen\("real"\)/);
   assert.match(onboardingAction, /onboardingPath: z\.enum\(\["example", "real"\]\)/);
   assert.match(onboardingAction, /\/prise-en-main\?depart=example&scenario=/);
-  assert.doesNotMatch(onboardingAction, /loadDemoScenarioAction|runResearch|proposeIdentityForOrg/);
+  assert.match(onboardingExampleAction, /startExampleScenario/);
+  assert.match(onboardingExampleAction, /loadAndAnalyzeDemoScenario/);
+  assert.match(onboardingExampleAction, /scenario_intent: scenario\.id/);
+  assert.doesNotMatch(onboardingExampleAction, /runResearch|proposeIdentityForOrg/);
 });
 
 test("onboarding UX-5 — écran de choix épuré à 38 mots", () => {
@@ -306,17 +319,21 @@ test("onboarding UX-5 — écran de choix épuré à 38 mots", () => {
   assert.doesNotMatch(onboardingChoice, /Bienvenue dans Nepteo|Recommandé/);
 });
 
-test("onboarding UX-5 — scénarios illustrés et confirmation distincte", () => {
+test("onboarding — une carte choisit et lance sans clic de confirmation redondant", () => {
   assert.match(onboardingExample, /icons\.house/);
   assert.match(onboardingExample, /icons\.people/);
   assert.match(onboardingExample, /icons\.send/);
-  assert.match(
-    onboardingExample,
-    /Le scénario ne se charge qu’après une confirmation explicite\./,
-  );
-  assert.match(onboardingExample, /name="scenario" value=\{scenario\}/);
-  assert.match(onboardingExample, /<form action=\{action\}/);
-  assert.doesNotMatch(onboardingExample, /loadDemoScenario|runAnalysis/);
+  assert.match(onboardingExample, /onClick=\{\(\) => launch\(item\)\}/);
+  assert.match(onboardingExample, /action\(scenario\.id\)/);
+  assert.match(onboardingExample, /launchStarted\.current/);
+  assert.match(onboardingExample, /catch \{/);
+  assert.match(onboardingExample, /Explorer →/);
+  assert.doesNotMatch(onboardingExample, /role="radio"|name="scenario"|<form/);
+  assert.match(demoIdentityProgress, /Démonstration fictive · aucun site consulté/);
+  assert.match(demoIdentityProgress, /scenario\.identity\.map/);
+  assert.match(demoIdentityProgress, /150 \* \(index \+ 1\)/);
+  assert.match(demoIdentityProgress, /Commencer la prise en main/);
+  assert.doesNotMatch(demoIdentityProgress, /runResearch|proposeIdentity/);
 });
 
 test("centre UX-2 — une mission, un bouton plein et retour déduit", () => {

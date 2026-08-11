@@ -25,8 +25,12 @@ test("seed V2 — le marqueur stocké permet de certifier un scénario Nepteo", 
 });
 
 test("chargement — les deux analyses ne peuvent plus échouer silencieusement", async () => {
-  const [seed, action, panel] = await Promise.all([
+  const [seed, loader, action, panel] = await Promise.all([
     readFile(new URL("../lib/demo/seed.ts", import.meta.url), "utf8"),
+    readFile(
+      new URL("../lib/demo/load-scenario.ts", import.meta.url),
+      "utf8",
+    ),
     readFile(
       new URL("../app/(cockpit)/agent/actions.ts", import.meta.url),
       "utf8",
@@ -58,11 +62,14 @@ test("chargement — les deux analyses ne peuvent plus échouer silencieusement"
   );
 
   assert.doesNotMatch(action, /catch\s*\{\s*\/\* ignoré volontairement \*\//);
-  assert.match(action, /analysis\.prospects = \{\s*ok: false/);
-  assert.match(action, /analysis\.campaigns = \{\s*ok: false/);
-  assert.match(action, /return \{ ok: true, prospects: result\.prospects, created, analysis \}/);
-  assert.match(action, /event: "analysis_run"/);
-  assert.match(action, /mode: "demo_seed"/);
+  assert.match(action, /loadAndAnalyzeDemoScenario/);
+  assert.match(action, /return \{ ok: true, prospects, created, analysis \}/);
+  assert.match(loader, /settleDemoAnalysis/);
+  assert.match(loader, /runAnalysis[\s\S]*prospectSource: DEMO_PROVIDER/);
+  assert.match(loader, /runAdsAnalysis[\s\S]*campaignIdPrefix: DEMO_CAMPAIGN_PREFIX/);
+  assert.match(loader, /event: "analysis_run"/);
+  assert.match(loader, /mode: "demo_seed"/);
+  assert.match(loader, /detail: \[step\.detail/);
   assert.match(panel, /Analyse à relancer/);
 });
 

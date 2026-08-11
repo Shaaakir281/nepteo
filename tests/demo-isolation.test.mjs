@@ -240,6 +240,7 @@ test("verrou — contenu validé et ligne illisible fail-closed", () => {
 test("frontières I/O — admin, lock propriétaire, scopes et clear no-op", async () => {
   const [
     actions,
+    demoLoader,
     lock,
     isolation,
     seed,
@@ -258,6 +259,7 @@ test("frontières I/O — admin, lock propriétaire, scopes et clear no-op", asy
     actionDrafts,
   ] = await Promise.all([
     readFile(new URL("../app/(cockpit)/agent/actions.ts", import.meta.url), "utf8"),
+    readFile(new URL("../lib/demo/load-scenario.ts", import.meta.url), "utf8"),
     readFile(new URL("../lib/demo/lock.ts", import.meta.url), "utf8"),
     readFile(new URL("../lib/demo/isolation.ts", import.meta.url), "utf8"),
     readFile(new URL("../lib/demo/seed.ts", import.meta.url), "utf8"),
@@ -325,9 +327,10 @@ test("frontières I/O — admin, lock propriétaire, scopes et clear no-op", asy
   ]);
 
   assert.match(actions, /ctx\.role !== "admin"/);
-  assert.match(actions, /withDemoMutationLock\(/);
-  assert.match(actions, /prospectSource:\s*DEMO_PROVIDER/);
-  assert.match(actions, /campaignIdPrefix:\s*DEMO_CAMPAIGN_PREFIX/);
+  assert.match(actions, /loadAndAnalyzeDemoScenario\(/);
+  assert.match(demoLoader, /withDemoMutationLock\(/);
+  assert.match(demoLoader, /prospectSource:\s*DEMO_PROVIDER/);
+  assert.match(demoLoader, /campaignIdPrefix:\s*DEMO_CAMPAIGN_PREFIX/);
 
   assert.match(lock, /\.eq\("id", lockId\)/);
   assert.match(lock, /\.contains\("content", \{ token \}\)/);
