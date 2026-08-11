@@ -4,6 +4,7 @@ import { PHILOSOPHY_MAX } from "@/lib/memory";
 import { DEMO_SCENARIOS } from "@/lib/demo/scenarios";
 import { logout } from "@/app/(auth)/actions";
 import { createOrganization } from "./actions";
+import { startExampleScenario } from "./example-actions";
 import { GuidedOnboarding } from "./_components/guided-onboarding";
 
 export default async function OnboardingPage({
@@ -28,12 +29,33 @@ export default async function OnboardingPage({
         <div className="mt-5 rounded-[18px] border border-line-soft bg-white p-6 shadow-card sm:p-7">
           <GuidedOnboarding
             action={createOrganization}
+            exampleAction={startExampleScenario}
             error={error}
             philosophyMax={PHILOSOPHY_MAX}
-            scenarios={DEMO_SCENARIOS.map(({ id, label, pitch }) => ({
+            scenarios={DEMO_SCENARIOS.map(({ id, label, pitch, orgName, memory }) => ({
               id: id as "artisan" | "agence" | "ecommerce",
               label,
               pitch,
+              orgName,
+              identity: [
+                {
+                  label: "Activité",
+                  value: `${memory.activity_type} · ${memory.audience}`,
+                },
+                { label: "Zone", value: memory.zone },
+                {
+                  label: "Offres",
+                  value: `${memory.offres.length} offres structurées`,
+                },
+                { label: "Ton", value: memory.ton },
+                { label: "Philosophie", value: memory.philosophie },
+                { label: "Canaux", value: memory.canaux.join(" · ") },
+                {
+                  label: "Communication",
+                  value: `${memory.presence.length} signaux simulés`,
+                },
+                { label: "Objectifs", value: memory.objectifs.join(" · ") },
+              ],
             }))}
           />
         </div>

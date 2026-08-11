@@ -5,12 +5,8 @@ import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getEditorContext } from "@/lib/auth/context";
 import { changeExecutionControl } from "@/lib/execution-controls";
-import { clearDemoData, loadDemoScenario } from "@/lib/demo/seed";
+import { clearDemoData } from "@/lib/demo/seed";
 import { DEMO_SCENARIO_IDS } from "@/lib/demo/scenarios";
-import {
-  DEMO_CAMPAIGN_PREFIX,
-  DEMO_PROVIDER,
-} from "@/lib/demo/isolation-rules";
 import {
   DEMO_ISOLATION_CONFLICT_LABELS,
   DemoIsolationError,
@@ -19,40 +15,10 @@ import {
   DemoBusyError,
   withDemoMutationLock,
 } from "@/lib/demo/lock";
-import { runAnalysis } from "@/lib/analysis";
-import { runAdsAnalysis } from "@/lib/ads/analysis";
-import {
-  demoAnalysisDetail,
-  settleDemoAnalysis,
-  type DemoAnalysisStep,
-} from "@/lib/demo/analysis-outcome";
+import { demoAnalysisDetail, type DemoAnalysisStep } from "@/lib/demo/analysis-outcome";
+import { loadAndAnalyzeDemoScenario } from "@/lib/demo/load-scenario";
 
 const LEVELS = ["suggest", "prepare"] as const;
-
-async function journalDemoAnalysis(
-  admin: ReturnType<typeof createAdminClient>,
-  orgId: string,
-  actorId: string,
-  scope: "prospects" | "campaigns",
-  status: "succeeded" | "failed",
-  created: number,
-  detail?: string,
-): Promise<void> {
-  const { error } = await admin.from("journal").insert({
-    organization_id: orgId,
-    event: "analysis_run",
-    actor: "agent",
-    actor_id: actorId,
-    payload: {
-      mode: "demo_seed",
-      scope,
-      status,
-      created,
-      ...(detail ? { error: detail } : {}),
-    },
-  });
-  if (error) throw new Error(`[demo-analysis] journal ${scope}: ${error.message}`);
-}
 
 /** Change le niveau d'autonomie de l'agent (proposer seulement / préparer). */
 export async function setAutonomyLevel(level: string): Promise<void> {
@@ -129,93 +95,15 @@ export async function loadDemoScenarioAction(scenarioId: string): Promise<DemoRe
 
   const admin = createAdminClient();
   try {
-    const { result, created, analysis } = await withDemoMutationLock(
-      admin,
-      ctx.orgId,
-      "demo",
-      async () => {
-        const result = await loadDemoScenario(admin, {
-          orgId: ctx.orgId,
-          actorId: ctx.userId,
-          scenarioId,
-        });
-
-        // Le scope explicite interdit à l'analyse de mélanger un prospect ou
-        // une campagne réelle apparus pendant le chargement.
-        const analysis: {
-          prospects: DemoAnalysisStep;
-          campaigns: DemoAnalysisStep;
-        } = {
-          prospects: await settleDemoAnalysis(() =>
-            runAnalysis(
-              admin,
-              ctx.orgId,
-              ctx.userId,
-              {
-                prospectSource: DEMO_PROVIDER,
-                demo: true,
-              },
-            ),
-          ),
-          campaigns: { ok: true, created: 0 },
-        };
-        try {
-          await journalDemoAnalysis(
-            admin,
-            ctx.orgId,
-            ctx.userId,
-            "prospects",
-            analysis.prospects.ok ? "succeeded" : "failed",
-            analysis.prospects.created,
-            analysis.prospects.detail,
-          );
-        } catch (error) {
-          analysis.prospects = {
-            ok: false,
-            created: analysis.prospects.created,
-            detail: [analysis.prospects.detail, detailOf(error)]
-              .filter(Boolean)
-              .join(" · "),
-          };
-        }
-        analysis.campaigns = await settleDemoAnalysis(() =>
-          runAdsAnalysis(
-            admin,
-            ctx.orgId,
-            ctx.userId,
-            {
-              campaignIdPrefix: DEMO_CAMPAIGN_PREFIX,
-              demo: true,
-            },
-          ),
-        );
-        try {
-          await journalDemoAnalysis(
-            admin,
-            ctx.orgId,
-            ctx.userId,
-            "campaigns",
-            analysis.campaigns.ok ? "succeeded" : "failed",
-            analysis.campaigns.created,
-            analysis.campaigns.detail,
-          );
-        } catch (error) {
-          analysis.campaigns = {
-            ok: false,
-            created: analysis.campaigns.created,
-            detail: [analysis.campaigns.detail, detailOf(error)]
-              .filter(Boolean)
-              .join(" · "),
-          };
-        }
-        const created =
-          analysis.prospects.created + analysis.campaigns.created;
-        return { result, created, analysis };
-      },
-    );
+    const { prospects, created, analysis } =
+      await loadAndAnalyzeDemoScenario(admin, {
+        orgId: ctx.orgId,
+        actorId: ctx.userId,
+        scenarioId,
+      });
 
     revalidateCockpit();
-    return { ok: true, prospects: result.prospects, created, analysis };
+    return { ok: true, prospects, created, analysis };
   } catch (err) {
     if (err instanceof DemoIsolationError) {
       // Le rendu client peut dater d'avant un import ou une synchronisation.
