@@ -38,7 +38,10 @@ test("UX-4 — l’onglet Décision reste centré sur trois KPI et un geste domi
   assert.match(hero, /kpis\.slice\(0, 3\)/);
   assert.match(hero, /Rien à mesurer pour l’instant/);
   assert.match(hero, /Brancher un compte publicitaire/);
-  assert.match(hero, /Pourquoi \?/);
+  assert.match(hero, /Aucune décision prioritaire/);
+  assert.match(hero, /Point de vigilance/);
+  assert.match(hero, /Pourquoi cette conclusion \?/);
+  assert.match(hero, /Rechercher des actions à valider/);
   assert.match(hero, /<form action=\{analyzeAdsForm\}>/);
   assert.doesNotMatch(hero, /NewCampaignModal/);
 });

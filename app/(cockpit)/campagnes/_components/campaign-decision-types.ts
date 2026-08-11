@@ -144,7 +144,14 @@ export interface CampaignPastAttempt {
 }
 
 export interface CampaignDailySummary {
+  title: string;
   text: string;
+  watch:
+    | {
+        title: string;
+        detail: string;
+      }
+    | null;
   source: CampaignEvidenceReference;
 }
 

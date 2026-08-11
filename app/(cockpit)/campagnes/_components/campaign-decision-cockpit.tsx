@@ -114,7 +114,7 @@ export function CampaignDecisionCockpit(props: CampaignDecisionCockpitProps) {
             period={props.period}
             kpis={props.kpis}
             recommendation={props.recommendation}
-            dailySummary={props.dailySummary?.text ?? null}
+            dailySummary={props.dailySummary}
             hasMeasuredData={hasMeasuredData}
           />
           <CampaignDecisionDetails

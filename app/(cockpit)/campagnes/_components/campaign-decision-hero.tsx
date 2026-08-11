@@ -2,11 +2,12 @@ import Link from "next/link";
 import { analyzeAdsForm } from "../actions";
 import type {
   CampaignCockpitDataState,
+  CampaignDailySummary,
   CampaignDecisionPeriod,
   CampaignObservedKpi,
   CampaignPriorityRecommendation,
 } from "./campaign-decision-types";
-import { ReadingEvidence } from "./campaign-evidence";
+import { EvidenceReference, ReadingEvidence } from "./campaign-evidence";
 import { ObservedKpiCard } from "./campaign-kpi-card";
 
 export function CampaignDecisionHero({
@@ -23,17 +24,17 @@ export function CampaignDecisionHero({
   period: CampaignDecisionPeriod;
   kpis: CampaignObservedKpi[];
   recommendation: CampaignPriorityRecommendation | null;
-  dailySummary: string | null;
+  dailySummary: CampaignDailySummary | null;
   hasMeasuredData: boolean;
 }) {
   const globallyEmpty = dataState.kind === "empty" && !hasMeasuredData;
   const title = globallyEmpty
     ? "Rien à mesurer pour l’instant."
-    : recommendation?.title ?? dailySummary ?? "Aucune recommandation étayée";
+    : recommendation?.title ?? dailySummary?.title ?? "Aucune décision prioritaire";
   const reason = period.comparisonUnavailableReason
     ? `Comparaison indisponible : ${period.comparisonUnavailableReason}`
     : dataState.kind === "ready"
-      ? "Les seuils de preuve exigent sept jours distincts, une dépense positive et dix conversions."
+      ? "Une décision prioritaire exige un blocage documenté non résolu ou une campagne en perte observée qui n’a pas déjà été traitée. Les évolutions défavorables sans perte démontrée restent signalées comme points de vigilance."
       : dataState.description;
 
   return (
@@ -50,6 +51,19 @@ export function CampaignDecisionHero({
 
       {!globallyEmpty && (
         <>
+          {!recommendation && dailySummary?.watch && (
+            <div className="mt-4 rounded-[11px] border border-amber/20 bg-amber-tint px-3.5 py-3">
+              <p className="text-[10.5px] font-semibold uppercase tracking-[.08em] text-amber">
+                Point de vigilance
+              </p>
+              <p className="mt-1 text-[13px] font-semibold text-ink">
+                {dailySummary.watch.title}
+              </p>
+              <p className="mt-1 text-[11.5px] leading-relaxed text-body">
+                {dailySummary.watch.detail}
+              </p>
+            </div>
+          )}
           <div className="mt-4 grid gap-2 sm:grid-cols-3">
             {kpis.slice(0, 3).map((kpi) => (
               <ObservedKpiCard key={kpi.id} kpi={kpi} />
@@ -65,9 +79,17 @@ export function CampaignDecisionHero({
           ) : (
             <details className="mt-3 text-[11.5px] text-muted">
               <summary className="w-fit cursor-pointer font-semibold text-violet">
-                Pourquoi ?
+                Pourquoi cette conclusion ?
               </summary>
-              <p className="mt-1 max-w-2xl leading-relaxed">{reason}</p>
+              <div className="mt-1 max-w-2xl space-y-1 leading-relaxed">
+                <p>{reason}</p>
+                {dailySummary && (
+                  <>
+                    <p>{dailySummary.text}</p>
+                    <EvidenceReference source={dailySummary.source} />
+                  </>
+                )}
+              </div>
             </details>
           )}
         </>
@@ -93,7 +115,7 @@ export function CampaignDecisionHero({
                 type="submit"
                 className="rounded-[10px] bg-violet px-4 py-2.5 text-[12.5px] font-semibold text-white transition hover:bg-violet-deep"
               >
-                Analyser
+                Rechercher des actions à valider
               </button>
             </form>
           ) : null}
