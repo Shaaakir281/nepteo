@@ -1,4 +1,5 @@
 import type { CampaignAttempt, CampaignCockpit } from "@/lib/campaign-cockpit";
+import { campaignDecisionWatch } from "@/lib/campaign-decision-watch";
 import type { DemoPresentation } from "@/lib/demo/presentation-rules";
 import type { CampaignActivityEvent, CampaignDailySummary, CampaignPastAttempt } from "../_components/campaign-decision-types";
 import { formatDateTime, integer, money } from "./campaign-formatters";
@@ -105,11 +106,14 @@ export function presentDailySummary(
   const measuredCampaigns = cockpit.campaigns.filter(
     (campaign) => campaign.performance?.scope === "selected_window",
   ).length;
-  const recommendation = cockpit.recommendation
-    ? ` Une priorité sourcée concerne « ${cockpit.recommendation.campaignName} ».`
-    : " Aucune priorité supplémentaire n’est étayée par les faits disponibles.";
   return {
-    text: `${measuredCampaigns} campagne(s) avec métriques dans la fenêtre, ${money.format(metrics.spend)} de dépense, ${integer.format(metrics.conversions)} conversion(s) et ${money.format(metrics.revenue)} de revenu enregistrés sur cette même fenêtre.${recommendation}`,
+    title: "Aucune décision prioritaire avec les données disponibles",
+    text: `${campaignCountLabel(measuredCampaigns)} sur la période : ${money.format(metrics.spend)} de dépense, ${integer.format(metrics.conversions)} ${metrics.conversions === 1 ? "conversion" : "conversions"} et ${money.format(metrics.revenue)} de revenu enregistrés.`,
+    watch: campaignDecisionWatch(cockpit.comparison),
     source: evidenceForMetrics(source, presentation),
   };
+}
+
+function campaignCountLabel(value: number): string {
+  return value === 1 ? "1 campagne mesurée" : `${integer.format(value)} campagnes mesurées`;
 }
