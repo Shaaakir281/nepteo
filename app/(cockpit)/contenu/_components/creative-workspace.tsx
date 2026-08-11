@@ -30,13 +30,13 @@ export function CreativeWorkspace(props: CreativeWorkspaceProps) {
     ? "Création libre"
     : workspace.campaign
       ? `Le visuel de « ${workspace.campaign.title} »`
-      : "Préparez une campagne pour créer sa Story";
+      : "Préparez une campagne pour créer son visuel";
 
   return (
     <section className="space-y-5 rounded-[12px] border border-line bg-white p-5 shadow-card sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="flex items-center gap-2 text-[10.5px] font-semibold uppercase tracking-[.1em] text-violet">{icons.sparkle} Atelier Story</p>
+          <p className="flex items-center gap-2 text-[10.5px] font-semibold uppercase tracking-[.1em] text-violet">{icons.sparkle} Studio de visuels</p>
           <h2 className="mt-1 font-display text-[21px] font-medium text-ink">{title}</h2>
         </div>
         {!workspace.freeMode && props.campaigns.length > 1 && (

@@ -54,7 +54,7 @@ export function Sidebar({
           className="mx-3.5 mb-4 flex items-center justify-center gap-2 rounded-[9px] bg-[#8a232d] px-3 py-2.5 text-[12.5px] font-semibold text-white shadow-[0_6px_16px_rgba(138,35,45,.16)] transition hover:bg-[#741d25]"
         >
           {icons.sparkle}
-          Créer une story
+          Créer un visuel
         </Link>
       )}
       <CockpitNav canViewFinancials={canViewFinancials} />

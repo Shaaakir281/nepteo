@@ -161,11 +161,12 @@ export default async function ContenuPage({
           Créer
         </p>
         <h1 className="font-display text-[27px] font-light tracking-[-.02em] text-ink">
-          Atelier Story
+          Studio de visuels
         </h1>
         <p className="mt-1 max-w-xl text-[12.5px] leading-relaxed text-muted">
           La campagne récente, son message et son format conseillé sont déjà
-          sélectionnés. Chaque génération reste explicite ; rien n&apos;est publié.
+          sélectionnés. Story, carré ou paysage : chaque génération reste
+          explicite et rien n&apos;est publié.
         </p>
       </div>
 

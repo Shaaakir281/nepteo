@@ -21,7 +21,7 @@ export function CreativeSecondaryOptions({ suggestions, campaigns, freeMode, loa
       <details className="rounded-[11px] border border-line-soft px-4 py-3">
         <summary className="cursor-pointer text-[12.5px] font-semibold text-violet">Création libre, sans campagne</summary>
         <div className="mt-3 text-[11.5px] leading-relaxed text-muted">
-          <p>Ce mode reste séparé de l&apos;atelier Story : son visuel ne sera rattaché à aucune campagne.</p>
+          <p>Ce mode reste séparé des campagnes : son visuel ne sera rattaché à aucune campagne.</p>
           {campaigns.length > 0 && <button type="button" onClick={freeMode ? onReturnToCampaign : onStartFree} disabled={loading} className="mt-2 rounded-[8px] border border-line px-3 py-2 font-semibold text-body disabled:opacity-45">{freeMode ? "Revenir à la campagne récente" : "Ouvrir la création libre"}</button>}
         </div>
       </details>
