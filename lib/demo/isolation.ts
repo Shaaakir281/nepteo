@@ -8,6 +8,8 @@ import {
   hasActiveDemoMarker,
   isDemoAction,
   isDemoMutationLock,
+  isConnectorRequestPlaceholder,
+  isEmptyBriefingStats,
   isTrustedDemoConnectorConfig,
   isTrustedDemoArtifact,
   legacyDemoCleanupAllowed,
@@ -255,7 +257,7 @@ export async function readDemoIsolation(
   ] = await Promise.all([
     admin
       .from("connectors")
-      .select("id", { count: "exact", head: true })
+      .select("status, config")
       .eq("organization_id", orgId)
       .or(`provider.neq.${DEMO_PROVIDER},provider.is.null`),
     admin
@@ -296,6 +298,13 @@ export async function readDemoIsolation(
   ]);
 
   const actionRows = checkedRows(actions, "inventaire des propositions");
+  const realConnectorRows = checkedRows<{
+    status: unknown;
+    config: unknown;
+  }>(connectors, "inventaire des connecteurs réels").filter(
+    (connector) =>
+      !isConnectorRequestPlaceholder(connector.status, connector.config),
+  );
   const untrustedDemoConnectors = checkedRows<{ config: unknown }>(
     providerDemoConnectors,
     "inventaire des connecteurs portant le provider réservé",
@@ -323,7 +332,7 @@ export async function readDemoIsolation(
     legacy,
     inventory: {
       realConnectors:
-        checkedCount(connectors, "inventaire des connecteurs réels") +
+        realConnectorRows.length +
         untrustedDemoConnectors,
       realProspects: checkedCount(prospects, "inventaire des prospects réels"),
       realCampaignRows:
@@ -344,6 +353,7 @@ export async function readDemoIsolation(
       ).length,
       realBriefings:
         briefing.data &&
+        !isEmptyBriefingStats(briefing.data.stats) &&
         !isTrustedDemoArtifact(
           active,
           briefingStats.demo === true || legacy,

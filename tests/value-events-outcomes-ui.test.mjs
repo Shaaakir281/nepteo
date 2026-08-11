@@ -95,7 +95,7 @@ test("la cohorte de relance est figée atomiquement avec l'approbation", () => {
   assert.match(decisions, /approveRelaunchWithTargetSnapshot\(id\)/);
   assert.match(
     decisions,
-    /if \(relaunchApproval\.handled\) redirect\("\/"\)/,
+    /if \(relaunchApproval\.handled\)[\s\S]*relaunchApproval\.changed \? "\/\?walkthrough=decision" : "\/"/,
   );
 });
 

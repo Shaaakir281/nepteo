@@ -322,6 +322,7 @@ test("onboarding UX-5 — scénarios illustrés et confirmation distincte", () =
 test("centre UX-2 — une mission, un bouton plein et retour déduit", () => {
   assert.match(progressHook, /WALKTHROUGH_STORAGE_KEY/);
   assert.match(progressHook, /sessionStorage\.setItem\(PENDING_MISSION_KEY/);
+  assert.match(progressHook, /path === "example" && pending === "activity"/);
   assert.match(progressHook, /pending !== "activity" && pending !== "voice"/);
   assert.match(center, /currentMission/);
   assert.doesNotMatch(center, /WALKTHROUGH_MISSIONS\.map|MissionCard/);

@@ -88,19 +88,21 @@ export default async function CockpitLayout({
         </div>
         <main className="mx-auto max-w-[1120px] px-4 pb-28 pt-6 sm:px-7 sm:pt-8 lg:pb-12">
           {demoPresentation === "certified-demo" && (
-            <div className="mb-5 rounded-[12px] border border-amber/25 bg-amber-tint px-4 py-3 text-[12.5px] leading-relaxed text-body">
-              <b>Scénario d&apos;exemple Nepteo.</b> Ce jeu versionné contient
-              uniquement des données d&apos;exemple et illustre les analyses et
-              propositions de l&apos;agent. Aucun compte externe n&apos;est
-              connecté et ces résultats ne comptent pas dans la preuve terrain.
+            <div className="mb-4 flex min-h-9 items-center gap-2 rounded-[10px] border border-amber/25 bg-amber-tint px-3 py-2 text-[11.5px] text-body">
+              <span className="h-1.5 w-1.5 flex-none rounded-full bg-amber" />
+              <b>Scénario d&apos;exemple</b>
+              <span className="hidden text-muted sm:inline">
+                Jeu d&apos;exemple · aucun compte externe connecté.
+              </span>
             </div>
           )}
           {demoPresentation === "test-environment" && (
-            <div className="mb-5 rounded-[12px] border border-violet/20 bg-tint px-4 py-3 text-[12.5px] leading-relaxed text-body">
-              <b>Environnement de test.</b> Les données affichées peuvent avoir
-              été saisies ou importées par le testeur (CSV ou connecteur), ou
-              provenir d&apos;un scénario Nepteo. Vérifiez leur origine avant
-              d&apos;utiliser les résultats comme preuve terrain.
+            <div className="mb-4 flex min-h-9 items-center gap-2 rounded-[10px] border border-violet/20 bg-tint px-3 py-2 text-[11.5px] text-body">
+              <span className="h-1.5 w-1.5 flex-none rounded-full bg-violet" />
+              <b>Environnement de test</b>
+              <span className="hidden text-muted sm:inline">
+                Données non certifiées comme preuve terrain.
+              </span>
             </div>
           )}
           {children}

@@ -12,6 +12,7 @@ import { TodayPriorityHero } from "./_components/today-priority-hero";
 import { TodayDetails } from "./_components/today-details";
 import { TodayFooter } from "./_components/today-footer";
 import { AnalysisRunner } from "./_components/analysis-runner";
+import { WalkthroughCompletion } from "./_components/walkthrough-completion";
 import { loadTodayQueueData } from "./_lib/today-queue-data";
 import { loadTodayDashboardData } from "./_lib/today-dashboard-data";
 import { loadTodayScorecardData } from "./_lib/today-scorecard-data";
@@ -19,9 +20,12 @@ import { loadTodayScorecardData } from "./_lib/today-scorecard-data";
 export default async function TodayPage({
   searchParams,
 }: {
-  searchParams: Promise<{ decision_error?: string }>;
+  searchParams: Promise<{
+    decision_error?: string;
+    walkthrough?: string;
+  }>;
 }) {
-  const { decision_error: decisionError } = await searchParams;
+  const { decision_error: decisionError, walkthrough } = await searchParams;
   const { supabase, membership } = await getCurrentAuthContext();
   const canEdit = membership?.canEdit ?? false;
   const canViewFinancials = membership?.canViewFinancials ?? false;
@@ -52,6 +56,11 @@ export default async function TodayPage({
 
   return (
     <>
+      {walkthrough === "decision" && (
+        <WalkthroughCompletion
+          missions={["summary", "priorities", "rationale", "customize", "decide"]}
+        />
+      )}
       <header className="mb-6 flex items-center justify-between gap-4">
         <h1 className="text-[10.5px] font-semibold uppercase tracking-[.12em] text-cherry">
           Aujourd&apos;hui

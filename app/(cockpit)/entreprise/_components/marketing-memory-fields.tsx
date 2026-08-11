@@ -28,7 +28,7 @@ export function MarketingMemoryFields({
         label="Canaux"
         canEdit={canEdit}
         saved={saved === "canaux"}
-        value={channels.length ? `${channels.length} canal${channels.length > 1 ? "aux" : ""}` : undefined}
+        value={channels.length ? `${channels.length} ${channels.length > 1 ? "canaux" : "canal"}` : undefined}
         sub="Comment vos clients vous trouvent aujourd’hui"
       >
         <form action={saveCanaux}>

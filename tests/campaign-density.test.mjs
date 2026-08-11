@@ -17,6 +17,11 @@ test("UX-4 — les deux sentinelles surdimensionnées sont découpées", () => {
   assert.ok(cockpit.split(/\r?\n/).length <= 250);
 });
 
+test("UX-4 — le studio Story reste accessible hors du menu", () => {
+  assert.match(page, /href="\/contenu\?libre=1"/);
+  assert.match(page, /Créer une story/);
+});
+
 test("UX-4 — Décision, Rapport et Historique sont exclusifs", () => {
   assert.match(cockpit, /type CampaignTab = "decision" \| "report" \| "history"/);
   for (const label of ["Décision", "Rapport", "Historique"]) {

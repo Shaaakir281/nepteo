@@ -5,10 +5,14 @@ export function IdentityCompletionHero({
   completed,
   canAnalyzeWebsite,
   researchEnabled,
+  exampleMode,
+  guided,
 }: {
   completed: number;
   canAnalyzeWebsite: boolean;
   researchEnabled: boolean;
+  exampleMode: boolean;
+  guided: boolean;
 }) {
   const percent = Math.round((completed / 8) * 100);
 
@@ -31,9 +35,29 @@ export function IdentityCompletionHero({
       </div>
       <div className="min-w-[220px] flex-1">
         <h2 className="font-display text-[20px] font-medium text-ink">
-          Complétez votre fiche.
+          {exampleMode
+            ? "Fiche d'exemple complète."
+            : completed === 8
+              ? "Votre fiche est complète."
+              : "Complétez votre fiche."}
         </h2>
-        {canAnalyzeWebsite ? (
+        {exampleMode ? (
+          <>
+            <p className="mt-2 max-w-xl text-[12px] leading-relaxed text-muted">
+              Le scénario a rempli ces 8 éléments. Pour votre entreprise,
+              saisissez simplement l&apos;adresse du site : Nepteo propose la
+              fiche et vous validez avant de l&apos;appliquer.
+            </p>
+            {guided && (
+              <Link
+                href="/prise-en-main"
+                className="mt-3 inline-flex items-center rounded-[9px] bg-violet px-4 py-2.5 text-[12.5px] font-semibold text-white transition hover:bg-violet-deep"
+              >
+                Continuer la prise en main
+              </Link>
+            )}
+          </>
+        ) : canAnalyzeWebsite ? (
           <Link
             href="/onboarding/identite"
             className="mt-3 inline-flex items-center gap-2 rounded-[9px] bg-violet px-4 py-2.5 text-[12.5px] font-semibold text-white transition hover:bg-violet-deep"

@@ -27,7 +27,8 @@ test("UX-7 — Prospects met les chiffres avant l'explication et garde l'aide ac
   assert.match(files.prospects, /<ProspectCountSummary[\s\S]*total=\{prospectCohort\.dedupedCount\}[\s\S]*relaunchable=\{actionablePriorityCount\}/);
   assert.match(files.countSummary, /Deux comptages, deux usages/);
   assert.match(files.countSummary, /tabIndex=\{0\}/);
-  assert.match(files.countSummary, /group-hover:visible[\s\S]*group-focus-within:visible/);
+  assert.match(files.countSummary, /peer-hover:visible[\s\S]*peer-focus:visible/);
+  assert.match(files.countSummary, /calc\(100vw-4rem\)/);
   assert.match(files.prospects, /Aucun board,[\s\S]*total ou taux partiel/);
 });
 

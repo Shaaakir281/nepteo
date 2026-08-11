@@ -299,6 +299,7 @@ test("interface — le libellé reste honnête et le marqueur bloque toujours OA
     actions,
     csvActions,
     journal,
+    presentation,
   ] = await Promise.all([
     readFile(
       new URL("../app/(cockpit)/layout.tsx", import.meta.url),
@@ -341,9 +342,12 @@ test("interface — le libellé reste honnête et le marqueur bloque toujours OA
       "utf8",
     ),
     readFile(new URL("../lib/journal.ts", import.meta.url), "utf8"),
+    readFile(new URL("../lib/demo/presentation.ts", import.meta.url), "utf8"),
   ]);
 
   assert.match(panel, /canEdit=\{canEdit && !hasDemo\}/);
+  assert.match(presentation, /\.select\("provider, status, config"\)/);
+  assert.match(presentation, /isConnectorRequestPlaceholder\(row\.status, row\.config\)/);
   assert.match(panel, /blockedByDemo=\{hasDemo\}/);
   assert.match(panel, /demoPresentation=\{demoPresentation\}/);
   assert.match(panel, /readDemoLoadState\(admin, orgId\)\.catch\(\(\) => null\)/);
@@ -375,11 +379,11 @@ test("interface — le libellé reste honnête et le marqueur bloque toujours OA
   assert.match(demoPanel, /\{hasDemoMarker && \(/);
   assert.match(
     layout,
-    /demoPresentation === "certified-demo"[\s\S]*Scénario d&apos;exemple Nepteo\.[\s\S]*Aucun[\s\S]*compte externe n&apos;est[\s\S]*connecté/,
+    /demoPresentation === "certified-demo"[\s\S]*Scénario d&apos;exemple[\s\S]*Jeu d&apos;exemple[\s\S]*aucun compte externe connecté/,
   );
   assert.match(
     layout,
-    /demoPresentation === "test-environment"[\s\S]*Environnement de test\.[\s\S]*saisies ou importées par le testeur/,
+    /demoPresentation === "test-environment"[\s\S]*Environnement de test[\s\S]*Données non certifiées comme preuve terrain/,
   );
   assert.match(sidebar, /Scénario d'exemple Nepteo/);
   assert.match(sidebar, /Environnement de test/);

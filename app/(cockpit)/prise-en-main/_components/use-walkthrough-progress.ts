@@ -51,11 +51,14 @@ export function useWalkthroughProgress({
         // La progression reste disponible pour la session courante.
       }
       const pathChanged = Boolean(initialPath && initialPath !== stored.path);
+      const path = initialPath ?? stored.path;
       let completed = pathChanged ? [] : stored.completed;
       if (!pathChanged) {
         try {
           const pending = window.sessionStorage.getItem(PENDING_MISSION_KEY);
-          if (pending && pending !== "activity" && pending !== "voice") {
+          if (pending && path === "example" && pending === "activity") {
+            completed = [...completed, "activity", "voice"];
+          } else if (pending && pending !== "activity" && pending !== "voice") {
             const visited = WALKTHROUGH_MISSIONS.some(
               (mission) => mission.id === pending,
             );
@@ -66,10 +69,12 @@ export function useWalkthroughProgress({
           // La visite ne sera simplement pas mémorisée.
         }
       }
-      completed = walkthroughCompletedWithContext(completed, contextCompletion);
+      if (path !== "example") {
+        completed = walkthroughCompletedWithContext(completed, contextCompletion);
+      }
       const next: WalkthroughState = {
         ...stored,
-        path: initialPath ?? stored.path,
+        path,
         scenario:
           initialScenario ?? (pathChanged ? undefined : stored.scenario),
         completed,

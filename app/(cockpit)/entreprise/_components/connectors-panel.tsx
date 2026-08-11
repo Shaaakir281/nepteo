@@ -122,7 +122,7 @@ export async function ConnectorsPanel({
         ? "Le scénario est actif. Vous pouvez reprendre la prise en main après avoir vérifié le résultat."
         : "Le chargement reste volontaire : vérifiez le scénario, puis confirmez l'action ci-dessous."
       : demoPresentation === "certified-demo"
-      ? "Changez de métier ou retirez le scénario actuel en conservant votre fiche d'origine."
+      ? null
       : demoLoadGuard.canLoad
         ? "Chargez un jeu cohérent — identité, prospects, campagnes et ventes en un clic."
         : "Ils sont réservés à une organisation de test dédiée et vide ; vos données actuelles sont préservées.";
@@ -143,9 +143,11 @@ export async function ConnectorsPanel({
             <h3 className="font-display text-[15px] font-semibold">
               {scenarioPanelTitle}
             </h3>
-            <p className="mt-0.5 text-[12px] text-muted">
-              {scenarioPanelSubtitle}
-            </p>
+            {scenarioPanelSubtitle && (
+              <p className="mt-0.5 text-[12px] text-muted">
+                {scenarioPanelSubtitle}
+              </p>
+            )}
           </div>
           <div className="p-[22px]">
             <DemoPanel

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentAuthContext } from "@/lib/auth/context";
 import { readMemory } from "@/lib/memory-store";
@@ -48,7 +49,17 @@ export default async function CampagnesPage({
 
   return (
     <>
-      <h1 className="mb-5 text-[22px] font-semibold tracking-tight">Campagnes</h1>
+      <header className="mb-5 flex items-center justify-between gap-3">
+        <h1 className="text-[22px] font-semibold tracking-tight">Campagnes</h1>
+        {membership.canEdit && (
+          <Link
+            href="/contenu?libre=1"
+            className="rounded-[9px] bg-[#8a232d] px-3.5 py-2 text-[12px] font-semibold text-white transition hover:bg-[#741d25]"
+          >
+            Créer une story
+          </Link>
+        )}
+      </header>
       <AnalysisNotice proposed={proposed} />
       <CampaignDecisionCockpit
         {...model.view}

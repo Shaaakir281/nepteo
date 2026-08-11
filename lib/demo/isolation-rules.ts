@@ -65,6 +65,39 @@ export interface DemoIsolationInventory {
   realBriefings: number;
 }
 
+/**
+ * Une demande de connecteur du catalogue n'est pas une connexion : elle ne
+ * porte ni consentement, ni données synchronisées. Elle ne doit donc pas
+ * rendre une organisation visuellement vide impropre aux scénarios.
+ *
+ * On n'exempte que la forme exacte créée par `requestConnector`. Tout autre
+ * connecteur reste protégé par le préflight.
+ */
+export function isConnectorRequestPlaceholder(
+  status: unknown,
+  config: unknown,
+): boolean {
+  return (
+    status === "disconnected" &&
+    typeof config === "object" &&
+    config !== null &&
+    !Array.isArray(config) &&
+    (config as Record<string, unknown>).requested === true &&
+    !("connection" in (config as Record<string, unknown>))
+  );
+}
+
+/** Un briefing sans aucun prospect n'est qu'un message d'attente généré. */
+export function isEmptyBriefingStats(stats: unknown): boolean {
+  return (
+    typeof stats === "object" &&
+    stats !== null &&
+    !Array.isArray(stats) &&
+    (stats as Record<string, unknown>).total === 0 &&
+    (stats as Record<string, unknown>).demo !== true
+  );
+}
+
 export interface DemoModeMarkerCounts {
   backups: number;
   seededProspects: number;

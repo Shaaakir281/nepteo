@@ -16,8 +16,10 @@ import {
   demoIsolationConflicts,
   demoRevenueId,
   hasActiveDemoMarker,
+  isConnectorRequestPlaceholder,
   isDemoAction,
   isDemoMutationLock,
+  isEmptyBriefingStats,
   isNamespacedDemoCampaign,
   isNamespacedDemoRevenue,
   isTrustedDemoConnectorConfig,
@@ -111,6 +113,44 @@ test("connecteur démo — le provider seul ne vaut jamais marqueur de confiance
     isTrustedDemoConnectorConfig({ demo: true, scenario: "legacy" }),
     true,
   );
+});
+
+test("organisation vide — une demande de connecteur ne bloque pas un scénario", () => {
+  assert.equal(
+    isConnectorRequestPlaceholder("disconnected", {
+      requested: true,
+      requested_at: "2026-08-11T08:00:00.000Z",
+    }),
+    true,
+  );
+  assert.equal(
+    isConnectorRequestPlaceholder("connected", { requested: true }),
+    false,
+  );
+  assert.equal(
+    isConnectorRequestPlaceholder("disconnected", {
+      requested: true,
+      connection: { version: 1 },
+    }),
+    false,
+  );
+  assert.equal(isConnectorRequestPlaceholder("disconnected", {}), false);
+});
+
+test("organisation vide — le briefing d'attente ne bloque pas un scénario", () => {
+  assert.equal(
+    isEmptyBriefingStats({
+      total: 0,
+      priority: 0,
+      noEmail: 0,
+      noStage: 0,
+      topStage: null,
+    }),
+    true,
+  );
+  assert.equal(isEmptyBriefingStats({ total: 1 }), false);
+  assert.equal(isEmptyBriefingStats({ total: 0, demo: true }), false);
+  assert.equal(isEmptyBriefingStats(null), false);
 });
 
 test("prospects démo — chaque ligne doit dépendre d'un connecteur vérifié", () => {
