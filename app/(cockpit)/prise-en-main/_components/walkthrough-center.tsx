@@ -43,6 +43,9 @@ export function WalkthroughCenter({
   const currentStage = currentMission?.stage ?? WALKTHROUGH_STAGES.length - 1;
   const stage = WALKTHROUGH_STAGES[showLoadingMission ? 0 : currentStage];
   const connectUnlocked = walkthroughRequiredMissionsComplete(state);
+  const isExampleContextMission =
+    state.path === "example" &&
+    (currentMission?.id === "activity" || currentMission?.id === "voice");
 
   const chip =
     state.path === "example"
@@ -60,7 +63,17 @@ export function WalkthroughCenter({
         unavailableLabel: "Un administrateur doit charger le scénario.",
       }
     : currentMission
-      ? { ...currentMission, canAct: true, unavailableLabel: undefined }
+      ? isExampleContextMission
+        ? {
+            title: "Découvrez la fiche remplie.",
+            goal:
+              "Voyez ce que Nepteo connaît déjà et comment une simple adresse de site peut préparer la même fiche pour votre entreprise.",
+            action: "Voir l'identité de l'entreprise",
+            href: "/entreprise?onglet=identite&prise_en_main=1",
+            canAct: true,
+            unavailableLabel: undefined,
+          }
+        : { ...currentMission, canAct: true, unavailableLabel: undefined }
       : {
           title: "Guide terminé.",
           goal: "Les cinq étapes essentielles sont terminées.",

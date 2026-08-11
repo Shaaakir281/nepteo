@@ -77,6 +77,7 @@ export default async function EntreprisePage({
         <IdentityPanel
           canEdit={canEdit}
           mutationBlockedByDemo={identityMutationBlocked}
+          guided={prise_en_main === "1"}
           saved={saved}
         />
       )}

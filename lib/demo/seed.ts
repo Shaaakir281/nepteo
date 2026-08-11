@@ -22,6 +22,7 @@ import {
   demoProspectsMatchTrustedConnectors,
   demoRevenueId,
   isDemoAction,
+  isEmptyBriefingStats,
 } from "@/lib/demo/isolation-rules";
 import {
   assertDemoLoadIsSafe,
@@ -109,7 +110,7 @@ async function resetCockpitState(
     !Array.isArray(briefing.stats)
       ? (briefing.stats as Record<string, unknown>)
       : {};
-  if (briefing && (stats.demo === true || legacy)) {
+  if (briefing && (stats.demo === true || legacy || isEmptyBriefingStats(stats))) {
     const deleted = await admin
       .from("briefings")
       .delete()

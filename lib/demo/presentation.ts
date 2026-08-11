@@ -4,6 +4,7 @@ import {
   DEMO_CAMPAIGN_PREFIX,
   DEMO_PROVIDER,
   DEMO_REVENUE_PREFIX,
+  isConnectorRequestPlaceholder,
   isTrustedDemoConnectorConfig,
 } from "@/lib/demo/isolation-rules";
 import { DEMO_BACKUP_SECTION } from "@/lib/demo/memory-backup-rules";
@@ -48,7 +49,7 @@ export const readDemoPresentation = cache(
         .eq("section", DEMO_BACKUP_SECTION),
       admin
         .from("connectors")
-        .select("provider, config")
+        .select("provider, status, config")
         .eq("organization_id", organizationId),
       admin
         .from("prospects")
@@ -118,8 +119,9 @@ export const readDemoPresentation = cache(
       demoProspects: demoProspectsResult.count ?? 0,
       nonDemoConnectors: rows.filter(
         (row) =>
-          row.provider !== DEMO_PROVIDER ||
-          !isTrustedDemoConnectorConfig(row.config),
+          (row.provider !== DEMO_PROVIDER ||
+            !isTrustedDemoConnectorConfig(row.config)) &&
+          !isConnectorRequestPlaceholder(row.status, row.config),
       ).length,
       nonDemoProspects: nonDemoProspectsResult.count ?? 0,
       demoCampaignRows: demoCampaigns,

@@ -17,34 +17,38 @@ export function TodayPriorityHero({
   const [open, setOpen] = useState(false);
 
   return (
-    <section className="rounded-[20px] border border-line-soft bg-white px-6 py-7 shadow-card sm:px-9 sm:py-8">
-      <p className="flex items-center gap-2 text-[10.5px] font-semibold uppercase tracking-[.08em] text-violet-ink">
+    <section className="overflow-hidden rounded-[13px] border border-line-soft bg-white shadow-card">
+      <div className="flex items-center gap-2 border-b border-line-soft px-[18px] py-3">
         <span className="grid h-5 w-5 place-items-center rounded-full bg-violet text-[10px] font-bold text-white">
           N
         </span>
-        À faire maintenant
-      </p>
-      <h2 className="mt-4 max-w-2xl font-display text-[24px] font-medium leading-tight tracking-[-.02em] text-ink sm:text-[29px]">
-        {action.title}
-      </h2>
-      <div className="mt-6 flex flex-wrap items-start gap-4">
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          className="rounded-[10px] bg-violet px-5 py-2.5 text-[13px] font-semibold text-white shadow-[0_6px_16px_rgba(45,91,167,.18)] transition hover:bg-violet-deep"
-        >
-          Examiner
-        </button>
-        <details className="group pt-2">
-          <summary className="cursor-pointer text-[11.5px] font-semibold text-violet-ink">
-            Pourquoi ?
-          </summary>
-          <div className="mt-2 max-w-xl border-l-2 border-line pl-3 text-[12px] leading-relaxed text-muted">
-            <p>{action.whyNow}</p>
-            <p className="mt-1">{action.finding}</p>
-          </div>
-        </details>
+        <p className="text-[10.5px] font-semibold uppercase tracking-[.08em] text-violet-ink">
+          Priorité du jour
+        </p>
       </div>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="block w-full px-[18px] py-3 text-left transition hover:bg-tint-soft"
+      >
+        <span className="flex items-center justify-between gap-3">
+          <span className="text-[13.5px] font-semibold text-ink">
+            {action.title}
+          </span>
+          <span className="flex-none rounded-[7px] bg-tint px-3 py-[5px] text-[12px] font-semibold text-violet">
+            Examiner
+          </span>
+        </span>
+      </button>
+      <details className="group border-t border-line-soft px-[18px] py-2.5">
+        <summary className="cursor-pointer text-[11.5px] font-semibold text-violet-ink">
+          Pourquoi maintenant ?
+        </summary>
+        <div className="mt-2 max-w-xl border-l-2 border-line pl-3 text-[12px] leading-relaxed text-muted">
+          <p>{action.whyNow}</p>
+          <p className="mt-1">{action.finding}</p>
+        </div>
+      </details>
       <ValidationDrawer
         action={open ? action : null}
         canEdit={canEdit}

@@ -69,7 +69,9 @@ export async function decideAction(formData: FormData) {
 
   if (decision === "approve") {
     const relaunchApproval = await approveRelaunchWithTargetSnapshot(id);
-    if (relaunchApproval.handled) redirect("/");
+    if (relaunchApproval.handled) {
+      redirect(relaunchApproval.changed ? "/?walkthrough=decision" : "/");
+    }
   }
 
   const admin = createAdminClient();
@@ -84,7 +86,7 @@ export async function decideAction(formData: FormData) {
   );
   if (!changed) redirect("/");
 
-  redirect("/");
+  redirect("/?walkthrough=decision");
 }
 
 /** Remet une action reportée dans la file (statut → proposed). Aucune exécution. */

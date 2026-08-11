@@ -7,7 +7,7 @@
 
 > **Références de recette** : `docs/demo/GUIDE-TEST.md` pour le parcours, `docs/tests/SCORECARD-COMMANDITAIRE.md` pour mesurer la valeur, `docs/TESTS.md` pour les connecteurs et `docs/tests/SMOKE-AUTH-RLS.md` pour l'isolation Supabase. Au 2026-08-10, Azure sert à 100 % la révision `nepteo-prod--0000024`, image du merge `6f54cee5cc7c594956515cea2a94204d5da2a5a2`. La PR #33, sa CI, le déploiement et les contrôles HTTP du callback Auth sont attestés ci-dessous ; la recette Story authentifiée reste celle de la PR #29. Le smoke RLS multi-rôles/tenants complet reste réservé à des organisations de recette séparées.
 
-## État actuel (2026-08-10)
+## État actuel (2026-08-11)
 
 **CAMP-0, CAMP-1, CAMP-2, CONN-0, CONN-1, META-READ et le studio Story campagne-first sont fusionnés dans `main` et servis par la révision courante `nepteo-prod--0000024`.** L'agent lit, détecte et propose pour les seules capacités autorisées. Les lots Campagnes et Connecteurs ne publient aucun visuel, n'envoient rien et n'autorisent aucune écriture Ads. La [roadmap Campagnes supervisées et intégrateurs](projets/roadmap-campagnes-supervisees.md) séquence la suite ; elle ne remplace ni la [roadmap valeur — tests commanditaires](projets/roadmap-valeur-commanditaires.md), ni la [roadmap de prise en main](projets/roadmap-prise-en-main.md), qui gardent leurs propres gates.
 
@@ -20,6 +20,7 @@
 État du produit déployé ou local, avec le niveau de recette précisé dans chaque lot :
 
 - **Refonte de densité UX-1 à UX-9 — terminée et validée localement, non publiée** : Aujourd'hui, onboarding, prise en main, identité d'entreprise, Campagnes, validation, Prospects, Journal, « Brancher » et le parcours de production Campagne → Story appliquent la direction « Épuré ». Les références locales antérieures sont `cf66442`, `db97b5e`, `a4fede7`, `0dc6e40`, `c9c8db4` et `8a287ec` ; UX-6 à UX-9 sont consignés en tête de l'historique. La vague UX-1 à UX-9 est terminée localement.
+- **Correctifs de recette de la prise en main — validés localement, non publiés** : un geste de décision fait progresser le compteur partagé, le parcours exemple montre la fiche 8/8 et explique l'amorçage par une adresse de site, la priorité du jour reprend la densité de la file, et une organisation sans données n'est plus bloquée par une simple demande de connecteur ou un briefing d'attente. L'avertissement global de scénario tient désormais sur une ligne compacte sur mobile ; l'introduction et le pied de panneau répétitifs ont été retirés, ainsi que la phrase générique sous le scénario actif. Le débordement horizontal de l'aide Prospects ne peut plus décaler la barre mobile ; le Studio Story est accessible depuis l'en-tête Campagnes sans devenir une sixième entrée de navigation.
 - **Socle et produit** : auth, organisation/RLS de base, mémoire, journal, couche LLM, analyse, validation, funnel/kanban, onboarding enrichi, recherche web et navigation à cinq entrées.
 - **Connecteurs en lecture seule** : Google Sheets et Notion, OAuth chiffré, mapping configurable, sync manuelle et cron. La lecture Notion est désormais paginée ; les appels connecteurs ont un timeout. Les demandes, configurations, callbacks OAuth, déconnexions et synchronisations participent au verrou d'isolation démo.
 - **Exécution sûre** : idempotence, journal avant exécution, pause, plafonds serveur et messages au statut `prepared`. C7, l'envoi externe, n'est pas activé.
@@ -103,6 +104,14 @@ Pour l'intégration actuelle, les lots Connecteurs accessibles sont déjà dans 
 - **Coût de la recherche web OpenAI** : le prix affiché (10 $ / 1 000 appels d'outil) n'est **que la moitié de la facture** — les *search content tokens* sont facturés au tarif du modèle et dominent le total (~0,06 $ par recherche avec `gpt-5.5`). Toujours chiffrer les deux parts, et se rappeler que `MAX_RESEARCH_PER_DAY` compte des appels `runResearch`, **pas** des `web_search_call`.
 
 ## Historique des sessions
+
+### 2026-08-11 — Codex — **Correctifs de recette prise en main et navigation, local uniquement**
+
+**Scénario et identité** : le préflight distingue désormais une demande de connecteur non connectée d'un outil réel et ignore le briefing automatique dont le funnel est vide. La certification d'affichage applique la même règle : le scénario chargé reste donc certifié au lieu de retomber en « Environnement de test ». Le chargement continue de sauvegarder puis remplacer la fiche par les huit sections du scénario ; l'interface propose ensuite « Voir la fiche remplie ». Le guide fait explicitement visiter la fiche 8/8 et explique qu'une simple adresse de site permet de préparer la même fiche pour une entreprise réelle. Le texte répétitif des scénarios a été raccourci.
+
+**Progression, densité et accès** : après une validation, un report ou un refus réussi, Aujourd'hui émet le marqueur de progression et met à jour le compteur local partagé. La priorité du jour reprend la typographie, les espacements et le bouton des autres propositions. L'infobulle de comptage Prospects est maintenant ancrée au résumé et bornée au viewport : à 540 px, `documentWidth` et `clientWidth` valent tous deux 525 px, et les cinq destinations de la barre basse restent visibles. Le Studio Story reste hors du menu principal mais dispose d'un CTA « Créer une story » dans l'en-tête Campagnes, vers `/contenu?libre=1`. La coquille « 3 canalaux » est corrigée en « 3 canaux ».
+
+**Recette locale authentifiée** : sur le compte de test autorisé, Menuiserie Dubreuil a été chargée et certifiée, la fiche affiche 8/8, Aujourd'hui rend six propositions et la première carte est visuellement alignée avec la file. Un report de test a fait passer la progression de 1/5 à 3/5, puis la proposition a été remise en attente. Le scénario reste chargé pour poursuivre la recette. La suite complète passe 632/632 ; `npm run lint`, `npm run typecheck`, `git diff --check` et le build Next.js 16.2.10 de 29 routes sont verts. Le serveur local final reste disponible sur `http://localhost:3003`. Aucun commit, push, PR, publication ni déploiement n'a été effectué.
 
 ### 2026-08-10 — Codex — **UX-9 « Produire » épuré, local uniquement**
 

@@ -82,6 +82,7 @@ export function DemoPanel({
     null,
   );
   const [showWalkthroughResume, setShowWalkthroughResume] = useState(false);
+  const [showLoadedIdentity, setShowLoadedIdentity] = useState(false);
 
   async function run(
     id: string,
@@ -105,6 +106,7 @@ export function DemoPanel({
     setDetail(null);
     setStep(0);
     setShowWalkthroughResume(false);
+    setShowLoadedIdentity(false);
 
     let current = 0;
     const timer = setInterval(() => {
@@ -119,6 +121,7 @@ export function DemoPanel({
       ]);
       if (result.ok) {
         setShowWalkthroughResume(guided && id !== "clear");
+        setShowLoadedIdentity(id !== "clear");
         const created = result.created ?? 0;
         const failedAnalyses = result.analysis
           ? Object.entries(result.analysis).filter(([, value]) => !value.ok)
@@ -183,15 +186,6 @@ export function DemoPanel({
 
   return (
     <div>
-      <p className="mb-3 rounded-[10px] bg-tint-soft px-3.5 py-2.5 text-[12.5px] leading-relaxed text-body">
-        {scenarios.length === 1
-          ? "Ce scénario contient uniquement des données d’exemple."
-          : "Les trois scénarios contiennent uniquement des données d’exemple."}{" "}
-        Votre fiche entreprise sera remplacée pendant le scénario, puis
-        restaurée à son retrait. Le chargement est désactivé dès que
-        l&apos;organisation contient des données ou outils apportés par le
-        testeur.
-      </p>
       {!canLoad && (
         <div
           id="demo-load-block"
@@ -302,6 +296,14 @@ export function DemoPanel({
           Reprendre la prise en main →
         </Link>
       )}
+      {showLoadedIdentity && !showWalkthroughResume && (
+        <Link
+          href="/entreprise?onglet=identite&prise_en_main=1"
+          className="mt-3 inline-flex rounded-[9px] bg-ink px-3 py-2 text-[12px] font-semibold text-white hover:opacity-90"
+        >
+          Voir la fiche remplie →
+        </Link>
+      )}
       {error && (
         <div className="mt-4 rounded-[10px] bg-red-tint px-3.5 py-2.5">
           <p className="text-[13px] font-medium text-red">{error}</p>
@@ -313,16 +315,8 @@ export function DemoPanel({
         </div>
       )}
 
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-line-soft pt-3">
-        <p className="max-w-xl text-[11.5px] leading-relaxed text-faint">
-          Scénarios de test préchargés avec des données d&apos;exemple.{" "}
-          {canLoad
-            ? "Changer de scénario retire uniquement le scénario actif, puis relance l'analyse."
-            : hasDemoMarker
-              ? "Le retrait vise uniquement les éléments marqués par le scénario ; les données apportées par le testeur sont préservées."
-              : "Les données et outils déjà présents restent dans cette organisation."}
-        </p>
-        {hasDemoMarker && (
+      {hasDemoMarker && (
+        <div className="mt-4 flex justify-end border-t border-line-soft pt-3">
           <button
             type="button"
             disabled={busy !== null}
@@ -333,8 +327,8 @@ export function DemoPanel({
               ? "Retirer l'ancien scénario"
               : "Retirer le scénario Nepteo"}
           </button>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

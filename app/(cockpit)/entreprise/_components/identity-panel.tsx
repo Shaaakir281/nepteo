@@ -16,10 +16,12 @@ import Link from "next/link";
 export async function IdentityPanel({
   canEdit,
   mutationBlockedByDemo,
+  guided,
   saved,
 }: {
   canEdit: boolean;
   mutationBlockedByDemo: boolean;
+  guided: boolean;
   saved?: string;
 }) {
   const supabase = await createClient();
@@ -65,6 +67,8 @@ export async function IdentityPanel({
         completed={completion.completed}
         canAnalyzeWebsite={editable && researchEnabled}
         researchEnabled={researchEnabled}
+        exampleMode={mutationBlockedByDemo}
+        guided={guided}
       />
 
       <IdentityCard
