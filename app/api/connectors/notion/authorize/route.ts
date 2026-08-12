@@ -1,17 +1,28 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { randomUUID } from "node:crypto";
 import { getEditorContext } from "@/lib/auth/context";
 import { notionAuthUrl } from "@/lib/connectors/notion";
 import { assertConnectorFlowAllowed } from "@/lib/connectors/store";
+import {
+  buildConnectorPublicUrl,
+  createOAuthState,
+  oauthStateCookieName,
+  oauthStateCookieOptions,
+} from "@/lib/connectors/oauth-security";
 
 export async function GET(request: NextRequest) {
+  const isProduction = process.env.NODE_ENV === "production";
+  const publicUrl = (path: string) =>
+    buildConnectorPublicUrl(path, {
+      appUrl: process.env.APP_URL,
+      requestUrl: request.url,
+      isProduction,
+    });
   const ctx = await getEditorContext();
-  if (!ctx) return NextResponse.redirect(new URL("/login", request.url));
+  if (!ctx) return NextResponse.redirect(publicUrl("/login"));
   if (!ctx.canEdit) {
     return NextResponse.redirect(
-      new URL(
+      publicUrl(
         `/entreprise?onglet=connecteurs&error=${encodeURIComponent("Rôle insuffisant.")}`,
-        request.url,
       ),
     );
   }
@@ -19,23 +30,22 @@ export async function GET(request: NextRequest) {
     await assertConnectorFlowAllowed(ctx.orgId);
   } catch {
     return NextResponse.redirect(
-      new URL(
+      publicUrl(
         `/entreprise?onglet=connecteurs&error=${encodeURIComponent("Connexion indisponible tant que le scénario Nepteo ou une autre opération est en cours.")}`,
-        request.url,
       ),
     );
   }
-  const state = randomUUID();
-  const redirectUri = new URL(
-    "/api/connectors/notion/callback",
-    request.url,
-  ).toString();
-  const res = NextResponse.redirect(notionAuthUrl(redirectUri, state));
-  res.cookies.set("oauth_state_notion", state, {
-    httpOnly: true,
-    maxAge: 600,
-    path: "/",
-    sameSite: "lax",
+  const state = createOAuthState({
+    provider: "notion",
+    userId: ctx.userId,
+    orgId: ctx.orgId,
   });
+  const redirectUri = publicUrl("/api/connectors/notion/callback");
+  const res = NextResponse.redirect(notionAuthUrl(redirectUri, state));
+  res.cookies.set(
+    oauthStateCookieName("notion"),
+    state,
+    oauthStateCookieOptions(isProduction),
+  );
   return res;
 }
