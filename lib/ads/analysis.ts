@@ -32,6 +32,7 @@ export async function runAdsAnalysis(
     )
     .eq("organization_id", orgId)
     .eq("provider", "meta_ads")
+    .in("outcome_provenance", ["demo", "verified_downstream"])
     .gte("date", bounds.currentFrom)
     .lte("date", bounds.currentTo)
     .order("date", { ascending: false })

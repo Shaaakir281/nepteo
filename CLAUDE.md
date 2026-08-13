@@ -82,8 +82,24 @@ docs/           architecture, roadmap, décisions, maquettes HTML
 
 ## Phase actuelle
 
-**Phase 3A déployée ; porte terrain de la phase 2 encore ouverte.** Les fondations permettent à l'agent de détecter, proposer et préparer. **Étape A = mode sûr** : une action validée prépare les messages dans `outbox_messages` (statut `prepared`), **AUCUN envoi externe**. R1A/C9A, R1B et R2 sont en production : preuve terrain structurée et déclarative dans `value_events`, cohortes de relance figées à l'approbation, Top 5 explicable dans « Aujourd'hui » et play dormant supervisé. L'ordre opérationnel reste défini dans `docs/projets/roadmap-valeur-commanditaires.md` : finir R0 sur fixtures dédiées, mener le pilote, puis envisager un connecteur ou C7 seulement si leurs gates sont franchis.
+**Priorité immédiate : boucle Campagnes réelle et mesurable.** CAMP-0/1/2,
+CONN-0/1 et META-READ sont déployés sans écriture Ads. META-METRICS est
+implémenté localement : lecture `ads_read`, photographie quotidienne atomique
+dans `ad_metrics`, résultats Meta séparés des outcomes aval et migration
+additive `0029`. Le gate G1 reste ouvert jusqu'à application autorisée sur une
+base staging, smoke JWT/réconciliation et rapprochement d'un échantillon Meta
+autorisé. Ensuite seulement vient BUDGET-RESULTS, puis recommandation Meta,
+mesure avant/après et porte de mutation distincte. META-PAUSE, Google Ads,
+Salesforce, LinkedIn et C7 ne sont pas les prochaines implémentations.
 
-Au 2026-07-30, les migrations `0012` à `0020` sont appliquées à Supabase production et `app_schema_version = 20`. Elles couvrent le temps dans la relance, la mono-organisation bêta, les écritures mémoire au service role, la frontière financière par rôle, la readiness, le quota de recherche atomique, les transitions d'action transactionnelles, le rattrapage additif des privilèges/RLS, les événements de valeur append-only et les snapshots immuables des cibles. L'isolation démo protège aussi les mutations réelles avec le même verrou distribué. Azure sert l'image `a2bbc34dcb97ab00951a3efa631c4f7c0a0428ca`, révision `nepteo-prod--0000007`. Les migrations restent manuelles et doivent toujours précéder le code qui les exige.
+Au 2026-08-12, Supabase production reste attesté à
+`app_schema_version = 28` et Azure sert `nepteo-prod--0000030`. Le checkout
+local exige 29 ; les migrations restent manuelles et staging doit toujours
+précéder production. Aucun agent ne doit appliquer `0029`, appeler Meta, créer
+un commit/push/PR ou déployer sans autorisation séparée.
 
-Le prochain connecteur de contexte, s'il est justifié par les tests **et explicitement choisi par Fathi**, est **Google Workspace/Gmail ou Microsoft 365, jamais les deux dans le même cycle**, d'abord en lecture seule et avec données minimisées. Un envoi manuel déclaré n'est jamais un statut fournisseur `sent`. Avant C7 restent notamment à fermer la suppression-list, le quota/claim global atomique de l'outbox, les états ambigus et la chaîne outbound complète ; aucun envoi externe sans validation explicite de Fathi. La télémétrie LLM peut mesurer la technique, mais ne doit enregistrer ni prompts ni réponses par défaut.
+Le mode sûr reste inchangé : propositions et validations humaines ne confèrent
+aucun droit d'envoi ou de mutation fournisseur. Aucun CAC ni ROAS réel sans
+conversion/revenu aval rapproché et vérifiable ; une action déclarée par Meta
+reste `provider_reported`. La télémétrie LLM peut mesurer la technique, mais ne
+doit enregistrer ni prompts ni réponses par défaut.

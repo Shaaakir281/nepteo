@@ -58,6 +58,9 @@ jobs:
           GOOGLE_OAUTH_CLIENT_SECRET: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
           NOTION_OAUTH_CLIENT_ID: ${{ vars.NOTION_OAUTH_CLIENT_ID }}
           NOTION_OAUTH_CLIENT_SECRET: ${{ secrets.NOTION_OAUTH_CLIENT_SECRET }}
+          META_OAUTH_APP_ID: ${{ vars.META_OAUTH_APP_ID }}
+          META_OAUTH_APP_SECRET: ${{ secrets.META_OAUTH_APP_SECRET }}
+          META_GRAPH_API_VERSION: ${{ vars.META_GRAPH_API_VERSION }}
           RESEARCH_PROVIDER: ${{ vars.RESEARCH_PROVIDER }}
           PERPLEXITY_API_KEY: ${{ secrets.PERPLEXITY_API_KEY }}
           LANGFUSE_PUBLIC_KEY: ${{ vars.LANGFUSE_PUBLIC_KEY }}
@@ -124,6 +127,18 @@ jobs:
           if [[ -n "${NOTION_OAUTH_CLIENT_ID:-}" && -z "${NOTION_OAUTH_CLIENT_SECRET:-}" ]] ||
              [[ -z "${NOTION_OAUTH_CLIENT_ID:-}" && -n "${NOTION_OAUTH_CLIENT_SECRET:-}" ]]; then
             echo "::error::Notion OAuth requires both client ID and client secret."
+            exit 1
+          fi
+          meta_oauth_count=0
+          [[ -n "${META_OAUTH_APP_ID:-}" ]] && ((meta_oauth_count += 1))
+          [[ -n "${META_OAUTH_APP_SECRET:-}" ]] && ((meta_oauth_count += 1))
+          [[ -n "${META_GRAPH_API_VERSION:-}" ]] && ((meta_oauth_count += 1))
+          if [[ "$meta_oauth_count" -ne 0 && "$meta_oauth_count" -ne 3 ]]; then
+            echo "::error::Meta OAuth requires app ID, app secret and Graph API version together."
+            exit 1
+          fi
+          if [[ -n "${META_GRAPH_API_VERSION:-}" && ! "$META_GRAPH_API_VERSION" =~ ^v[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::META_GRAPH_API_VERSION must use the vN.N format."
             exit 1
           fi
           if [[ -n "${LANGFUSE_PUBLIC_KEY:-}" && -z "${LANGFUSE_SECRET_KEY:-}" ]] ||
@@ -275,7 +290,7 @@ jobs:
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          REQUIRED_SCHEMA_VERSION: "28"
+          REQUIRED_SCHEMA_VERSION: "29"
         run: |
           set -euo pipefail
 
@@ -328,6 +343,7 @@ jobs:
           MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
           GOOGLE_OAUTH_CLIENT_SECRET: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
           NOTION_OAUTH_CLIENT_SECRET: ${{ secrets.NOTION_OAUTH_CLIENT_SECRET }}
+          META_OAUTH_APP_SECRET: ${{ secrets.META_OAUTH_APP_SECRET }}
           PERPLEXITY_API_KEY: ${{ secrets.PERPLEXITY_API_KEY }}
           LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
         run: |
@@ -353,6 +369,7 @@ jobs:
           add_optional_secret mistral-api-key "${MISTRAL_API_KEY:-}"
           add_optional_secret google-oauth-client-secret "${GOOGLE_OAUTH_CLIENT_SECRET:-}"
           add_optional_secret notion-oauth-client-secret "${NOTION_OAUTH_CLIENT_SECRET:-}"
+          add_optional_secret meta-oauth-app-secret "${META_OAUTH_APP_SECRET:-}"
           add_optional_secret perplexity-api-key "${PERPLEXITY_API_KEY:-}"
           add_optional_secret langfuse-secret-key "${LANGFUSE_SECRET_KEY:-}"
 
@@ -386,6 +403,9 @@ jobs:
           GOOGLE_OAUTH_CLIENT_SECRET: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
           NOTION_OAUTH_CLIENT_ID: ${{ vars.NOTION_OAUTH_CLIENT_ID }}
           NOTION_OAUTH_CLIENT_SECRET: ${{ secrets.NOTION_OAUTH_CLIENT_SECRET }}
+          META_OAUTH_APP_ID: ${{ vars.META_OAUTH_APP_ID }}
+          META_OAUTH_APP_SECRET: ${{ secrets.META_OAUTH_APP_SECRET }}
+          META_GRAPH_API_VERSION: ${{ vars.META_GRAPH_API_VERSION }}
           RESEARCH_PROVIDER: ${{ vars.RESEARCH_PROVIDER }}
           RESEARCH_OPENAI_MODEL: ${{ vars.RESEARCH_OPENAI_MODEL }}
           PERPLEXITY_PRESET: ${{ vars.PERPLEXITY_PRESET }}
@@ -435,6 +455,7 @@ jobs:
           add_secret_ref MISTRAL_API_KEY mistral-api-key "${MISTRAL_API_KEY:-}"
           add_secret_ref GOOGLE_OAUTH_CLIENT_SECRET google-oauth-client-secret "${GOOGLE_OAUTH_CLIENT_SECRET:-}"
           add_secret_ref NOTION_OAUTH_CLIENT_SECRET notion-oauth-client-secret "${NOTION_OAUTH_CLIENT_SECRET:-}"
+          add_secret_ref META_OAUTH_APP_SECRET meta-oauth-app-secret "${META_OAUTH_APP_SECRET:-}"
           add_secret_ref PERPLEXITY_API_KEY perplexity-api-key "${PERPLEXITY_API_KEY:-}"
           add_secret_ref LANGFUSE_SECRET_KEY langfuse-secret-key "${LANGFUSE_SECRET_KEY:-}"
 
@@ -445,6 +466,7 @@ jobs:
             LLM_TASK_WEEKLY_REPORT LLM_TASK_IDENTITY_SYNTHESIS
             LLM_TASK_RECOMMEND_ACTION LLM_TASK_CAMPAIGN_BRIEF
             GOOGLE_OAUTH_CLIENT_ID NOTION_OAUTH_CLIENT_ID
+            META_OAUTH_APP_ID META_GRAPH_API_VERSION
             RESEARCH_PROVIDER RESEARCH_OPENAI_MODEL PERPLEXITY_PRESET
             LANGFUSE_PUBLIC_KEY LANGFUSE_BASE_URL OPENAI_IMAGE_MODEL
           )
@@ -460,6 +482,18 @@ jobs:
           if [[ -n "${NOTION_OAUTH_CLIENT_ID:-}" && -z "${NOTION_OAUTH_CLIENT_SECRET:-}" ]] ||
              [[ -z "${NOTION_OAUTH_CLIENT_ID:-}" && -n "${NOTION_OAUTH_CLIENT_SECRET:-}" ]]; then
             echo "::error::Notion OAuth requires both client ID and client secret."
+            exit 1
+          fi
+          meta_oauth_count=0
+          [[ -n "${META_OAUTH_APP_ID:-}" ]] && ((meta_oauth_count += 1))
+          [[ -n "${META_OAUTH_APP_SECRET:-}" ]] && ((meta_oauth_count += 1))
+          [[ -n "${META_GRAPH_API_VERSION:-}" ]] && ((meta_oauth_count += 1))
+          if [[ "$meta_oauth_count" -ne 0 && "$meta_oauth_count" -ne 3 ]]; then
+            echo "::error::Meta OAuth requires app ID, app secret and Graph API version together."
+            exit 1
+          fi
+          if [[ -n "${META_GRAPH_API_VERSION:-}" && ! "$META_GRAPH_API_VERSION" =~ ^v[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::META_GRAPH_API_VERSION must use the vN.N format."
             exit 1
           fi
           if [[ "${RESEARCH_PROVIDER:-}" == "perplexity" && -z "${PERPLEXITY_API_KEY:-}" ]]; then

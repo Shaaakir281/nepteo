@@ -27,17 +27,22 @@ import {
   hasConnectorConsent,
   isConnectorPaused,
   recordReadFailure,
-  recordReadSuccess,
   setConnectorPaused,
 } from "@/lib/connectors/lifecycle";
 import { decryptJson } from "@/lib/crypto";
 import {
   listMetaAdAccounts,
+  MetaReadError,
   readMetaAdAccountCandidates,
-  readMetaCampaignInsights,
   readSelectedMetaAdAccount,
   type MetaCreds,
 } from "@/lib/connectors/meta-ads";
+import {
+  applyMetaMetricsSnapshot,
+  metaReadError,
+  readMetaMetricsSnapshot,
+  recordMetaMetricsFailure,
+} from "@/lib/connectors/meta-metrics";
 
 /** Liste des connecteurs = onglet de « Mon entreprise » depuis C4. La fiche
  *  par outil (`/connecteurs/<provider>`) reste, elle, un écran à part entière. */
@@ -330,6 +335,7 @@ export async function saveMetaAdAccount(formData: FormData) {
       meta_ad_account: account,
     };
     delete (config as { meta_insights_snapshot?: unknown }).meta_insights_snapshot;
+    delete (config as { meta_metrics_state?: unknown }).meta_metrics_state;
     const updated = await admin.from("connectors").update({ config }).eq("id", meta.id);
     if (updated.error) throw new Error(updated.error.message);
     const journal = await admin.from("journal").insert({
@@ -344,52 +350,81 @@ export async function saveMetaAdAccount(formData: FormData) {
   redirect("/connecteurs/meta_ads?saved=1");
 }
 
-/**
- * Première lecture de performances : GET Meta borné à 7/14/30 jours et 100
- * lignes. Une pagination ou une valeur ambiguë rend la lecture invalide au lieu
- * de tronquer ou de compléter silencieusement.
- */
+/** Lecture distante hors verrou, puis remplacement atomique de la photographie. */
 export async function readMetaInsightsNow(formData: FormData) {
   const days = Number(formData.get("days"));
   const ctx = await requireEditor("meta_ads");
-  await mutateConnector("meta_ads", ctx.orgId, async (admin) => {
-    const { connector } = await loadConnector(ctx.orgId, "meta_ads", admin);
-    const meta = requireMetaConnector(connector);
-    const account = readSelectedMetaAdAccount(meta.config);
-    if (!account) throw new ConnectorActionError("Choisissez d'abord un compte Meta Ads.");
-    try {
+  const admin = createAdminClient();
+  let prepared: {
+    connectorId: string;
+    account: NonNullable<ReturnType<typeof readSelectedMetaAdAccount>>;
+    accessToken: string;
+  };
+  try {
+    prepared = await withRealDataMutationLock(admin, ctx.orgId, async () => {
+      const { connector } = await loadConnector(ctx.orgId, "meta_ads", admin);
+      const meta = requireMetaConnector(connector);
+      const account = readSelectedMetaAdAccount(meta.config);
+      if (!account) throw new ConnectorActionError("Choisissez d'abord un compte Meta Ads.");
       const credentials = decryptJson<MetaCreds>(meta.encrypted_credentials!);
-      const snapshot = await readMetaCampaignInsights(credentials.access_token, account, days);
-      const now = new Date().toISOString();
-      const config = {
-        ...(meta.config ?? {}),
-        meta_insights_snapshot: snapshot,
-        ...recordReadSuccess(meta.config ?? {}, now),
-      };
-      const updated = await admin
-        .from("connectors")
-        .update({ status: "connected", config })
-        .eq("id", meta.id);
-      if (updated.error) throw new Error(updated.error.message);
-      const journal = await admin.from("journal").insert({
-        organization_id: ctx.orgId,
-        event: "meta_ads_metrics_read",
-        actor: "user",
-        actor_id: ctx.userId,
-        payload: {
-          provider: "meta_ads",
-          account_id: account.id,
-          currency: snapshot.currency,
-          window_days: snapshot.window_days,
-          count: snapshot.rows.length,
-        },
-      });
-      if (journal.error) throw new Error(journal.error.message);
-    } catch (error) {
-      if (error instanceof ConnectorActionError) throw error;
-      await metaReadFailure(admin, meta, ctx.userId);
-      throw new ConnectorActionError("Lecture des métriques Meta Ads impossible. Aucune donnée partielle n'est affichée.");
+      return { connectorId: meta.id, account, accessToken: credentials.access_token };
+    });
+  } catch (error) {
+    if (error instanceof DemoDataMutationBlockedError) {
+      fail("meta_ads", "Retirez d'abord le scénario Nepteo avant cette action.");
     }
-  });
+    if (error instanceof DemoBusyError) {
+      fail("meta_ads", "Une autre opération est en cours. Réessayez dans un instant.");
+    }
+    if (error instanceof ConnectorActionError) fail("meta_ads", error.message);
+    fail("meta_ads", "Préparation de la lecture Meta Ads impossible.");
+  }
+
+  const startedAt = new Date().toISOString();
+  try {
+    const snapshot = await readMetaMetricsSnapshot(
+      prepared.accessToken,
+      prepared.account,
+      days,
+    );
+    await withRealDataMutationLock(admin, ctx.orgId, async () => {
+      const { connector } = await loadConnector(ctx.orgId, "meta_ads", admin);
+      const meta = requireMetaConnector(connector);
+      const selected = readSelectedMetaAdAccount(meta.config);
+      if (meta.id !== prepared.connectorId || selected?.id !== prepared.account.id) {
+        throw new MetaReadError("account_changed", "Le compte Meta Ads sélectionné a changé.");
+      }
+      await applyMetaMetricsSnapshot(admin, {
+        organizationId: ctx.orgId,
+        connectorId: meta.id,
+        actorId: ctx.userId,
+        startedAt,
+        snapshot,
+      });
+    });
+  } catch (error) {
+    const failure = metaReadError(error);
+    try {
+      if (failure.code === "persistence_ambiguous") {
+        throw failure;
+      }
+      await withRealDataMutationLock(admin, ctx.orgId, async () => {
+        const { connector } = await loadConnector(ctx.orgId, "meta_ads", admin);
+        if (!connector || connector.id !== prepared.connectorId) return;
+        await recordMetaMetricsFailure(admin, {
+          organizationId: ctx.orgId,
+          connectorId: prepared.connectorId,
+          actorId: ctx.userId,
+          accountId: prepared.account.id,
+          startedAt,
+          error: failure,
+        });
+      });
+    } catch {
+      // La lecture n'a jamais été appliquée. Une panne de journalisation reste
+      // fail-closed et est renvoyée sans inventer un état complet.
+    }
+    fail("meta_ads", "Lecture des métriques Meta Ads impossible. Aucune donnée partielle n'a été appliquée.");
+  }
   redirect("/connecteurs/meta_ads?saved=1");
 }

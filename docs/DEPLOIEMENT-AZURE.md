@@ -205,7 +205,8 @@ publiques par nature et sont injectées au build Next.js **et** au runtime.
 
 Variables :
 
-- `GOOGLE_OAUTH_CLIENT_ID`, `NOTION_OAUTH_CLIENT_ID` ;
+- `GOOGLE_OAUTH_CLIENT_ID`, `NOTION_OAUTH_CLIENT_ID`, `META_OAUTH_APP_ID`,
+  `META_GRAPH_API_VERSION` ;
 - `RESEARCH_PROVIDER`, `RESEARCH_OPENAI_MODEL`, `PERPLEXITY_PRESET` ;
 - `OPENAI_IMAGE_MODEL` — propagé au runtime ; absent = `gpt-image-2` ;
 - `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_BASE_URL` ;
@@ -213,13 +214,15 @@ Variables :
 
 Secrets :
 
-- `GOOGLE_OAUTH_CLIENT_SECRET`, `NOTION_OAUTH_CLIENT_SECRET` ;
+- `GOOGLE_OAUTH_CLIENT_SECRET`, `NOTION_OAUTH_CLIENT_SECRET`,
+  `META_OAUTH_APP_SECRET` ;
 - `PERPLEXITY_API_KEY` ;
 - `LANGFUSE_SECRET_KEY` ;
 - `GOOGLE_GENERATIVE_AI_API_KEY`, `MISTRAL_API_KEY`.
 
-Un connecteur OAuth doit toujours avoir son ID **et** son secret. Le workflow
-refuse une paire incomplète. Les secrets applicatifs sont enregistrés comme
+Un connecteur OAuth Google ou Notion doit toujours avoir son ID **et** son
+secret. Meta exige ensemble l'ID d'application, le secret et une version Graph
+au format `vN.N`. Le workflow refuse toute configuration incomplète. Les secrets applicatifs sont enregistrés comme
 secrets Container Apps et référencés par `secretref:` ; ils ne sont jamais
 intégrés dans l’image.
 

@@ -2,6 +2,13 @@
 
 > **Statut au 2026-07-31** : feuille de route opérationnelle de référence pour les améliorations produit.
 >
+> **Recadrage du 2026-08-12** : ce document continue de gouverner la preuve du
+> play Prospects et les gates outbound. Il ne fixe plus la prochaine priorité
+> produit globale. La boucle Campagnes réelle et mesurable, ordonnée dans
+> `docs/projets/roadmap-campagnes-supervisees.md`, passe devant les nouveaux CRM,
+> l'outbound et toute mutation Ads. Le plan « dix prochains jours » ci-dessous
+> est conservé comme historique tant qu'il n'est pas réactivé explicitement.
+>
 > Elle complète `docs/ROADMAP.md` et **remplace l'ordre d'exécution de la phase C** décrit historiquement dans `docs/projets/roadmap-beta.md`. Les fiches C1–C12 restent utiles comme historique et comme premières spécifications, mais ne valent ni autorisation d'envoi externe ni ordre de lancement.
 >
 > **Avancement de release** : la PR #17 est fusionnée dans `main` au SHA
@@ -273,7 +280,7 @@ Les séquences C12 ne sont cadrées qu'après au moins **100 envois supervisés*
 
 R2 est maintenant déployé avec son schéma à 21, mais il attend encore la fin de la recette R0 et la promotion supervisée de R1A/R1B avant tout pilote. R5 attend les gates valeur, RGPD et exploitation ; il ne se parallélise pas avec une autre mutation de l'outbox.
 
-## Dix prochains jours ouvrés
+## Dix prochains jours ouvrés — plan historique au 2026-08-12
 
 1. **J1 — terminé** : commit du worktree complet, PR/CI, fusion dans `main`, déploiement manuel protégé et contrôles publics verts.
 2. **J2 — vitrine reconstruite, PR #16 et PR #17 recettées** : smoke RPC CSV réel, reconstruction de la vitrine et cycles de chargement et d'analyse des trois scénarios verts ; chaque scénario a produit six propositions avec une console vide. La recette authentifiée de PR #16 valide le briefing, les gardes en lecture seule et l'explication des cohortes. PR #17 est promue et recettée sur la terminologie des deux voies, la provenance du briefing, la lecture seule avec redirection et le refus/latch `unsafe_existing_data` ; Northwind est resté sans mutation et la console vide. Restent le gate `reset → reseed → préparation → exécution`, le smoke RLS multi-rôles, les OAuth réels et les parcours terrain C8/R1A/R1B/R2.
@@ -281,7 +288,11 @@ R2 est maintenant déployé avec son schéma à 21, mais il attend encore la fin
 4. **J4–J5** : recette du play dormant borné, de l'exclusion des vagues antérieures, du snapshot atomique et de la scorecard.
 5. **J6–J10** : premières sessions commanditaires, correction des blocages P0/P1 et collecte des 30 premières évaluations.
 
-À J10, la décision attendue n'est pas « quel connecteur préfère-t-on ? », mais : **le play est-il utile, et son principal manque vient-il réellement du contexte email/calendrier ?**
+À J10, la décision attendue de ce plan historique n'était pas « quel connecteur
+préfère-t-on ? », mais : **le play est-il utile, et son principal manque
+vient-il réellement du contexte email/calendrier ?** Ce checkpoint reste utile
+pour le play Prospects, sans concurrencer `META-METRICS` comme prochaine
+implémentation produit.
 
 ## Hors roadmap immédiate
 
@@ -289,7 +300,10 @@ R2 est maintenant déployé avec son schéma à 21, mais il attend encore la fin
 - automatisation LinkedIn ;
 - enrichissement de masse ;
 - CRM complet ou canvas de workflows ;
-- attribution complexe et revenu estimé ;
+- attribution complexe et revenu estimé — la provenance et l'attribution
+  minimale nécessaires pour interdire un faux ROAS font au contraire partie du
+  contrat Campagnes immédiat ;
 - génération d'images comme priorité produit ;
-- campagnes publicitaires réelles ;
+- lancement payant et mutations de campagnes — la lecture Meta réelle et la
+  mesure Campagnes sont désormais prioritaires ;
 - séquences autonomes avant la preuve supervisée.

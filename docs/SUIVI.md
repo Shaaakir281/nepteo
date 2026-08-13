@@ -5,11 +5,23 @@
 > 2. À la fin de ta session : ajouter une entrée en haut de l'« Historique des sessions » (date, ce qui a été fait, décisions prises, ce qui reste), et mettre à jour « État actuel » si besoin.
 > 3. Ne jamais construire en avance des phases suivantes (voir docs/ROADMAP.md). Vérifier `npm run typecheck` + `npm run build` avant de conclure.
 
-> **Références de recette** : `docs/demo/GUIDE-TEST.md` pour le parcours, `docs/tests/SCORECARD-COMMANDITAIRE.md` pour mesurer la valeur, `docs/TESTS.md` pour les connecteurs et `docs/tests/SMOKE-AUTH-RLS.md` pour l'isolation Supabase. Au 2026-08-12, Azure sert à 100 % la révision `nepteo-prod--0000030`, image du merge `77a34ebd05c6d9290115b821b5dc4eeaf42de949`. Les PR #37, #39, #41 et #43, leurs CI, leurs déploiements et leurs recettes sont attestés ci-dessous. Le smoke RLS multi-rôles/tenants complet reste réservé à des organisations de recette séparées.
+> **Références de recette** : `docs/demo/GUIDE-TEST.md` pour le parcours, `docs/tests/SCORECARD-COMMANDITAIRE.md` pour mesurer la valeur, `docs/TESTS.md` pour les connecteurs et `docs/tests/SMOKE-AUTH-RLS.md` pour l'isolation Supabase. Au 2026-08-13, Azure sert à 100 % la révision de configuration `nepteo-prod--0000034`, toujours sur l'image du merge `77a34ebd05c6d9290115b821b5dc4eeaf42de949`. Les PR #37, #39, #41 et #43, leurs CI, leurs déploiements et leurs recettes sont attestés ci-dessous. Le smoke RLS multi-rôles/tenants complet reste réservé à des organisations de recette séparées.
 
-## État actuel (2026-08-12)
+## État actuel (2026-08-13)
 
-**CAMP-0, CAMP-1, CAMP-2, CONN-0, CONN-1, META-READ, le Studio de visuels campagne-first, le scénario en un clic et le durcissement sécurité sont fusionnés dans `main` et servis par la révision courante `nepteo-prod--0000030`.** L'agent lit, détecte et propose pour les seules capacités autorisées. Les lots Campagnes et Connecteurs ne publient aucun visuel, n'envoient rien et n'autorisent aucune écriture Ads. La [roadmap Campagnes supervisées et intégrateurs](projets/roadmap-campagnes-supervisees.md) séquence la suite ; elle ne remplace ni la [roadmap valeur — tests commanditaires](projets/roadmap-valeur-commanditaires.md), ni la [roadmap de prise en main](projets/roadmap-prise-en-main.md), qui gardent leurs propres gates.
+**CAMP-0, CAMP-1, CAMP-2, CONN-0, CONN-1, META-READ, le Studio de visuels campagne-first, le scénario en un clic et le durcissement sécurité sont fusionnés dans `main` et servis par la révision courante `nepteo-prod--0000034`.** Cette révision ajoute uniquement la configuration OAuth Meta à l'image applicative déjà publiée ; META-METRICS reste local. L'agent lit, détecte et propose pour les seules capacités autorisées. Les lots Campagnes et Connecteurs ne publient aucun visuel, n'envoient rien et n'autorisent aucune écriture Ads. La [roadmap Campagnes](projets/roadmap-campagnes-supervisees.md) fixe l'ordre des prochains incréments produit ; la [roadmap valeur — tests commanditaires](projets/roadmap-valeur-commanditaires.md) et la [roadmap de prise en-main](projets/roadmap-prise-en-main.md) conservent leurs gates propres sans concurrencer cet ordre immédiat.
+
+**Priorité produit actée le 12 août 2026 — fermer la boucle Campagnes réelle et
+mesurable.** Le moteur de préparation et d'analyse existe. META-METRICS est
+implémenté localement et le projet Supabase lié est attesté au schéma `29` avec
+ses trois tables. OAuth `ads_read`, le compte `Fathi Mts`, EUR, Europe/Paris et
+une lecture vide de 7 jours sont prouvés en production. Restent ouverts : smoke
+atomique/JWT, publication du code META-METRICS et échantillon non vide
+compte/campagne/date/dépense/résultat. Après G1, le lot proposé est BUDGET-RESULTS, puis une
+recommandation prudente entre campagnes Meta et sa mesure avant/après.
+Salesforce, LinkedIn, pause/lancement Meta, lancement payant, écritures
+fournisseur, automatisation avancée et intégration Andromeda directe ne sont pas
+les prochaines étapes. Aucune mutation Ads n'est ouverte.
 
 **Mise à jour du 9 août — états séparés et attestés.** Le projet Supabase lié `hrqnzorapjnosjphftur` est à `app_schema_version = 28`. Les tables créatives et le bucket privé sont contrôlés après déploiement. La PR #29 est fusionnée au merge `c5e7148`, la CI `31332578671` et le déploiement `31332676182` sont verts, et Azure servait alors la révision `nepteo-prod--0000022`. La recette runtime authentifiée campagne → Story → sélection → validation est verte sur fixture synthétique ; elle reste distincte des recettes OAuth Connecteurs et du smoke RLS inter-tenant complet.
 
@@ -20,6 +32,7 @@
 État du produit déployé ou local, avec le niveau de recette précisé dans chaque lot :
 
 - **Release sécurité — déployée dans `0000030`** : la PR #43 porte Next.js 16.2.11 et des dépendances transitives sans vulnérabilité connue selon les audits npm de production et complets. Les six routes OAuth Google Sheets, Notion et Meta construisent désormais leurs URLs publiques depuis `APP_URL`, signent et lient l'état au navigateur, au fournisseur, à l'utilisateur et à l'organisation, puis utilisent des cookies `HttpOnly`, `SameSite=Lax` et `Secure` en production. CSP, HSTS, anti-iframe, `nosniff`, politique de référent, COOP et restrictions de permissions sont servis globalement. Les CI de PR et de `main`, le déploiement protégé `31588447865` et les contrôles publics sont verts. Aucun appel OAuth réel, aucune permission Ads supplémentaire ni écriture fournisseur n'a été effectué.
+- **OAuth Meta de recette — configuré et prouvé dans `0000034`** : l'application développeur de recette demande uniquement `ads_read`; le callback public, le jeton chiffré, la liste de comptes, la sélection explicite et la lecture vide 7 jours sont verts sur `Fathi Mts` en EUR/Europe/Paris. L'App Secret reste un secret Container Apps. Le workflow local propage désormais ID, secret et version Graph ensemble pour éviter qu'un futur déploiement perde la configuration. Aucune permission `ads_management`, campagne, budget, pause ou écriture Meta n'a été utilisée.
 - **Refonte de densité UX-1 à UX-9 — terminée et validée localement, non publiée** : Aujourd'hui, onboarding, prise en main, identité d'entreprise, Campagnes, validation, Prospects, Journal, « Brancher » et le parcours de production Campagne → Story appliquent la direction « Épuré ». Les références locales antérieures sont `cf66442`, `db97b5e`, `a4fede7`, `0dc6e40`, `c9c8db4` et `8a287ec` ; UX-6 à UX-9 sont consignés en tête de l'historique. La vague UX-1 à UX-9 est terminée localement.
 - **Correctifs de recette de la prise en main — validés localement, non publiés** : un geste de décision fait progresser le compteur partagé, le parcours exemple montre la fiche 8/8 et explique l'amorçage par une adresse de site, la priorité du jour reprend la densité de la file, et une organisation sans données n'est plus bloquée par une simple demande de connecteur ou un briefing d'attente. L'avertissement global de scénario tient désormais sur une ligne compacte sur mobile ; l'introduction et le pied de panneau répétitifs ont été retirés, ainsi que la phrase générique sous le scénario actif. Le débordement horizontal de l'aide Prospects ne peut plus décaler la barre mobile ; le Studio Story est accessible depuis l'en-tête Campagnes sans devenir une sixième entrée de navigation.
 - **Parcours scénario en un clic — déployé et recetté dans `0000027`** : depuis l'écran des trois entreprises fictives, la carte choisie est maintenant l'unique geste explicite qui crée l'espace de découverte, charge le scénario derrière les verrous d'isolation existants et lance les analyses bornées au seed. Le même écran montre « Nepteo analyse », puis révèle progressivement les huit rubriques de l'identité avec la mention « Démonstration fictive · aucun site consulté », avant un CTA unique vers la prise en main. Aucun appel de recherche web ou fournisseur payant n'est ajouté.
@@ -30,9 +43,9 @@
 - **Exécution sûre** : idempotence, journal avant exécution, pause, plafonds serveur et messages au statut `prepared`. C7, l'envoi externe, n'est pas activé.
 - **CAMP-0 — déployé dans `0000022`, recette métier partielle** : « Nouvelle campagne » part désormais de onze champs explicites sans valeur engageante par défaut. Le serveur nettoie et valide le brief, recalcule le plan et le budget total, borne deux variantes, puis `0025` crée atomiquement et de façon idempotente une action `launch_campaign` `proposed` avec son journal. La validation est libellée « Validée — non lancée » ; aucun bouton Exécuter, aucune outbox et aucun appel Ads/email ne sont ajoutés.
 - **CAMP-1 — déployé dans `0000022`, recette métier partielle** : le studio v2 rend éditables un à cinq adsets, leur allocation totale, deux à six hooks et leur sélection ; les formats sont dérivés du canal côté serveur. La preuve agrège 30 jours du fournisseur correspondant et ne rend une projection qu'avec au moins 7 jours distincts, une dépense positive et 10 conversions ; sinon aucun benchmark ne remplace les données manquantes. Une veille concurrentielle séparée exige confirmation et passe par `runResearch`. `0026` distingue intention et snapshot serveur pour conserver l'idempotence malgré l'évolution des métriques. La sortie reste une action `launch_campaign` `proposed` avec son journal, sans exécution, outbox, publication ni mutation Ads/email.
-- **CAMP-2 — déployé dans `0000022`, recette métier partielle** : le cockpit de décision agrège `ad_metrics` sur deux fenêtres calendaires explicites et rattache l'historique réel de `actions`/`journal`. Dépense, conversions, revenu, CAC, ROAS, CPM et CTR, événements et recommandations conservent une source inspectable ; une confiance non calibrée reste absente. Le résumé opérationnel distingue contrôles persistés, dernier démarrage et connecteurs hors scénario ; la recherche prospect est expurgée et bornée. Un rapport strict 7 jours contre 7 jours et quatre questions fixes sont dérivés sans IA. La récence des métriques produit seulement « Données récentes » ou « Historique » : aucun état « Active »/« Terminée » n'est inféré sans statut fournisseur. Le refus d'une proposition exige un motif. `0027` rend atomique et idempotente la création des actions `ads_pause_*` avec leur journal, adopte les anciennes propositions à confiance fixe avec une trace liée, refuse les doublons ouverts préexistants sans les fusionner et ferme claim comme finalisation à toute pause Ads ; une validation affiche « Validée — non appliquée ». Aucun appel Ads, outbox, IA, envoi ou dépense n'est ajouté.
-- **Schéma Campagnes + Créatif — Supabase et application alignés à 28** : les migrations `0022` à `0028` sont présentes dans le projet lié, qui expose `app_schema_version = 28`, et la révision applicative `0000022` exige ce niveau. La recette JWT a prouvé la lecture RLS de l'asset propre et les refus d'accès directs ; le smoke inter-tenant/concurrence complet reste distinct.
-- **Connecteurs Growth — déployés dans `0000022`, sans migration supplémentaire** : CONN-0 conserve le catalogue existant et rend les capacités honnêtes ; CONN-1 porte consentement, pause, reprise et révocation ; META-READ ajoute une lecture Meta bornée. Ces lots réutilisent `connectors`, `journal`, `ad_metrics` et `connectors.config`, sans toucher aux tables ou RPC créatives. Le catalogue et les trois liens OAuth se rendent sans erreur ; les callbacks et lectures réelles restent à recetter.
+- **CAMP-2 — déployé dans `0000022`, recette métier partielle** : le cockpit de décision agrège `ad_metrics` sur deux fenêtres calendaires explicites et rattache l'historique réel de `actions`/`journal`. Dépense, conversions, revenu, CAC, ROAS, CPM et CTR, événements et recommandations conservent une source de ligne inspectable ; cela prouve la reproductibilité du calcul, pas encore la sémantique d'une conversion ou la provenance d'un revenu réel. La roadmap recadrée impose donc CAC/ROAS indisponibles sur les futures données réelles tant qu'une source aval rapprochée ne les justifie pas. Une confiance non calibrée reste absente. Le résumé opérationnel distingue contrôles persistés, dernier démarrage et connecteurs hors scénario ; la recherche prospect est expurgée et bornée. Un rapport strict 7 jours contre 7 jours et quatre questions fixes sont dérivés sans IA. La récence des métriques produit seulement « Données récentes » ou « Historique » : aucun état « Active »/« Terminée » n'est inféré sans statut fournisseur. Le refus d'une proposition exige un motif. `0027` rend atomique et idempotente la création des actions `ads_pause_*` avec leur journal, adopte les anciennes propositions à confiance fixe avec une trace liée, refuse les doublons ouverts préexistants sans les fusionner et ferme claim comme finalisation à toute pause Ads ; une validation affiche « Validée — non appliquée ». Aucun appel Ads, outbox, IA, envoi ou dépense n'est ajouté.
+- **Schéma Campagnes + Créatif + META-METRICS — Supabase à 29, code distant encore META-READ** : les migrations `0022` à `0029` sont présentes dans le projet lié, qui expose `app_schema_version = 29`, `ad_metric_sync_runs`, `ad_campaigns` et `ad_metric_results`. La recette JWT créative historique reste valable ; le smoke META-METRICS atomique/inter-tenant et la publication du code exigeant 29 restent distincts.
+- **Connecteurs Growth — META-READ déployé, META-METRICS local** : CONN-0 conserve le catalogue existant et rend les capacités honnêtes ; CONN-1 porte consentement, pause, reprise et révocation ; META-READ ajoute une lecture Meta bornée. Le callback Meta réel, la liste de comptes et une lecture vide sont désormais recettés ; Google/Notion réels et la photographie atomique META-METRICS restent séparés.
 - **Créatif IA campagne-first — fusionné via PR #29 et déployé dans `0000022`** : `/contenu` part d'une campagne récente, reprend son message et recommande la Story 9:16 pour Meta ; la création libre reste secondaire et paginée. La recette production a généré une Story `gpt-image-2` 1008 × 1792, persisté un JPEG privé, rechargé sa version signée, sélectionné puis validé atomiquement le visuel avec la campagne. Le JWT voit son asset mais reçoit `42501` sur les requêtes internes et l'update direct ; le Storage direct répond `404`. L'objet, l'asset, la requête de génération, l'action/campagne et l'acteur synthétiques du run ont été supprimés. L'organisation-coquille et le journal append-only sont conservés ; un nouvel acteur dédié a ensuite été provisionné et le smoke CSV officiel a repassé ses six contrôles. Aucun lancement, aucune publication fournisseur, aucune outbox et aucune écriture Ads n'ont eu lieu.
 - **C8 — temps dans la relance** : déployé, à recetter sur les connecteurs. Le champ facultatif `last_contact_at` est synchronisé depuis Sheets/Notion ; un contact de moins de 7 jours est exclu des relances et une attente d'au moins 21 jours renforce la priorité.
 - **R1A/C9A — preuve terrain structurée** : `0020` ajoute `value_events`, une saisie déclarative minimisée et append-only, les garde-fous de rôle/tenant, la séparation `manual`/fournisseur et le marqueur `is_demo`. À l'approbation d'une relance, sa cohorte non vide (50 prospects maximum) est figée avec la décision et son journal dans une transaction ; les suites terrain sont ensuite rattachées prospect par prospect. Rien n'est envoyé et aucun statut fournisseur n'est fabriqué.
@@ -45,23 +58,52 @@
 - **Tenancy, rôles et RLS en production** : `0013` impose une organisation au plus par utilisateur sans arbitrer les doublons ; `0014` retire l'écriture directe de `company_memory` ; `0015` centralise les capacités ; `0019` réapplique la frontière de façon additive. Le commercial ne lit aucun contenu libre/dérivé (mémoire, recherche, briefing, action, journal, outbox) et conserve uniquement les colonnes prospects expurgées, le nom d'organisation et les métadonnées non sensibles des connecteurs CRM/fichiers. `organizations.activity`, `connectors.config` et `connectors.encrypted_credentials` restent côté service role. Les rôles inconnus échouent fermés.
 - **Deux voies de test techniques exclusives déployées ; RPC CSV et chargements/analyses recettés** : **A**, l'un des trois scénarios Nepteo V2 certifiés dans une organisation vide et classé `certified-demo` ; **B**, un environnement de test alimenté par des données saisies ou importées par le testeur via interface, connecteur ou CSV, qu'elles soient réelles ou synthétiques. Le scénario doit être retiré avant toute saisie ou tout import. Le préflight, les marqueurs namespacés et le verrou distribué empêchent le mélange ; une sauvegarde corrompue bloque tout seed. Sans fencing distribué, un verrou orphelin reste bloquant jusqu'à récupération manuelle vérifiée. Le smoke réel de `0021` est vert sur `E2E_RLS_CSV_OWN` / `E2E_RLS_CSV_OTHER`, y compris après reprovisionnement de l'acteur dédié le 2026-08-09. Les cycles de chargement et d'analyse des trois variantes sont verts ; chaque scénario a produit six propositions avec une console vide et Atelier Northwind reste actif. Le gate `reset → reseed → préparation → exécution` reste ouvert.
 - **Concurrence et coûts** : `0018` rend transactionnels décisions, reprises, claim, finalisation, pause/autonomie et leurs journaux ; un état ambigu exige une reprise manuelle. Le quota de recherche payante est réservé atomiquement par jour et organisation dans `0017`, séparément du cache et sous le même verrou d'organisation que la pause.
-- **Readiness de schéma active** : `0016` introduit le marqueur privé. Le projet Supabase lié est vérifié à 28 après `0022` à `0028`. L'application et le workflow exigent 28 pour le lot créatif ; le contrôle distant atteste les objets du schéma, pas leur comportement sous JWT, concurrence ou panne Storage.
-- **Release applicative courante attestée** : la PR #43 a passé la CI `31587995982`, puis a été fusionnée au merge `77a34ebd05c6d9290115b821b5dc4eeaf42de949` ; la CI `main` `31588318580` est verte. Le déploiement protégé `31588447865` est vert sur la révision Azure `nepteo-prod--0000030`, latest et ready, qui sert 100 % du trafic.
-- **Qualité de release et recettes ciblées** : 642/642 tests, typecheck, lint et build de 29 routes sont verts. `/api/health`, `/api/ready` et `/login` répondent 200. `/login` sert bien CSP — avec les deux origines Google Fonts nécessaires — HSTS, `DENY`, `nosniff`, `strict-origin-when-cross-origin`, COOP et la restriction des permissions. La recette mobile authentifiée du scénario en un clic reste valide. Sur une organisation vide à 390 × 844, « + Nouvelle campagne » et « Créer un visuel » sont visibles avant toute fiche ou métrique et le document ne déborde pas. Sans génération payante, le cadre Story mesure 268 × 476,44 px sur mobile puis 332 × 590,22 px sur ordinateur ; carré et paysage mesurent 590 × 590 px et 885 × 590 px. La recette authentifiée de Décision confirme à 390 × 844 et 1280 × 720 le titre neutre, la vigilance `+17,4 % / −21,1 % / +48,7 %`, les trois KPI, les preuves sourcées et l'action « Rechercher des actions à valider », sans débordement, erreur navigateur ni appel fournisseur. La console est vide et les fixtures synthétiques ont été entièrement supprimées, avec utilisateur, membership, organisation et métriques vérifiés absents. Les OAuth Google Sheets, Notion et Meta réels, le clic positif d'un email neuf et le clic Déconnexion puis Retour depuis une session mobile authentifiée restent ouverts. Le gate `reset → reseed → préparation → exécution` reste ouvert.
+- **Readiness de schéma active** : `0016` introduit le marqueur privé. Le projet Supabase lié est vérifié à 29 après `0029`. Le code local et le workflow local exigent 29 ; le contrôle distant atteste les objets du schéma, pas encore leur comportement sous JWT, concurrence ou échec de persistance.
+- **Release applicative courante attestée** : la PR #43 a passé la CI `31587995982`, puis a été fusionnée au merge `77a34ebd05c6d9290115b821b5dc4eeaf42de949` ; la CI `main` `31588318580` est verte. La même image est servie par la révision de configuration Azure `nepteo-prod--0000034`, latest et ready, à 100 % du trafic.
+- **Qualité de release et recettes ciblées** : 642/642 tests, typecheck, lint et build de 29 routes sont verts. `/api/health`, `/api/ready` et `/login` répondent 200. `/login` sert bien CSP — avec les deux origines Google Fonts nécessaires — HSTS, `DENY`, `nosniff`, `strict-origin-when-cross-origin`, COOP et la restriction des permissions. La recette mobile authentifiée du scénario en un clic reste valide. Sur une organisation vide à 390 × 844, « + Nouvelle campagne » et « Créer un visuel » sont visibles avant toute fiche ou métrique et le document ne déborde pas. Sans génération payante, le cadre Story mesure 268 × 476,44 px sur mobile puis 332 × 590,22 px sur ordinateur ; carré et paysage mesurent 590 × 590 px et 885 × 590 px. La recette authentifiée de Décision confirme à 390 × 844 et 1280 × 720 le titre neutre, la vigilance `+17,4 % / −21,1 % / +48,7 %`, les trois KPI, les preuves sourcées et l'action « Rechercher des actions à valider », sans débordement, erreur navigateur ni appel fournisseur. La console est vide et les fixtures synthétiques ont été entièrement supprimées, avec utilisateur, membership, organisation et métriques vérifiés absents. OAuth Meta réel est désormais prouvé pour un compte vide ; Google Sheets, Notion et l'échantillon Meta non vide restent ouverts, ainsi que le clic positif d'un email neuf et le clic Déconnexion puis Retour depuis une session mobile authentifiée. Le gate `reset → reseed → préparation → exécution` reste ouvert.
 - **Historique PR #17 conservé** : son contrat de scénario d'exemple et ses preuves restent valables à leur date, mais ne décrivent plus la révision de production courante.
 - **Gate C7 toujours fermé** : il n'existe pas encore de suppression-list indépendante et non contournable. L'exclusion d'une opposition portée par le statut ne la remplace pas ; R2 impose donc la validation humaine et ne déverrouille aucun envoi externe.
 
-Environnement : Supabase `hrqnzorapjnosjphftur`, repo GitHub `Shaaakir281/nepteo` (branche `main`), dev local port 3001, Node 22+. Production Azure dans `francecentral`, domaine `https://nepteo.bogasolution.com` et HTTPS opérationnels. Au 2026-08-12, la base est à la version 28 et la révision déployée est `nepteo-prod--0000030`, issue du SHA `77a34ebd05c6d9290115b821b5dc4eeaf42de949`, image `nepteoacr27de3b.azurecr.io/nepteo:77a34ebd05c6d9290115b821b5dc4eeaf42de949`. Elle est latest et ready, `Succeeded`/`Running`, sert 100 % du trafic et les contrôles HTTP sont verts.
+Environnement : Supabase `hrqnzorapjnosjphftur`, repo GitHub `Shaaakir281/nepteo` (branche `main`), dev local port 3001, Node 22+. Production Azure dans `francecentral`, domaine `https://nepteo.bogasolution.com` et HTTPS opérationnels. Au 2026-08-13, la base est à la version 29 et la révision de configuration déployée est `nepteo-prod--0000034`, toujours sur l'image `nepteoacr27de3b.azurecr.io/nepteo:77a34ebd05c6d9290115b821b5dc4eeaf42de949`. Elle est latest et ready, `Succeeded`/`Running`, sert 100 % du trafic et les contrôles HTTP sont verts.
 
 ## Prochaines étapes (dans l'ordre)
 
-Pour l'intégration actuelle, les lots Connecteurs accessibles sont déjà dans `main` et ne réservent aucune migration après `0027`. Le lot créatif occupe désormais définitivement `0028`, déjà appliquée sur le projet lié ; toute nouvelle migration doit commencer à `0029` ou au numéro supérieur présent dans `main`.
+Pour toute nouvelle tâche, vérifier le HEAD, les branches locales visibles et le
+numéro de migration réellement présent avant de choisir un numéro. `0029` est
+déjà appliquée sur le projet lié ; toute nouvelle migration part au minimum de
+`0030`. Le commit local `0091a12` atteste des recettes
+OAuth Google/Notion et un audit connecteurs, mais il ne doit pas être supposé
+fusionné dans l'état source.
 
-### Simplification UX suivante
+### Priorité produit immédiate — boucle Campagnes
 
-1. **Terminé — corriger et publier le callback Auth** : PR #33, CI `31372881341` et déploiement `31373032666` sont verts ; `nepteo-prod--0000024` sert 100 % du trafic et les quatre variantes négatives de `/auth/confirm` restent sur le domaine public.
-2. **Fermer les deux smokes auth restants** : vérifier la déconnexion depuis une session mobile authentifiée et l'impossibilité de restaurer le cockpit avec le bouton Retour ; générer ensuite un email neuf, cliquer une seule fois et confirmer la création de session puis l'arrivée dans l'application sur le domaine public.
-3. **Poursuivre l'allègement par parcours** : reprendre ensuite les écrans les plus denses un par un, en supprimant les répétitions et en gardant une action principale visible par surface, sans retirer les preuves, validations humaines ou garde-fous métier.
+1. **Contrat de vérité** : budget prévu, budget fournisseur, dépense, type de
+   résultat, coût par résultat, conversions aval, revenu, attribution, devise,
+   fuseau, fraîcheur, provenance et qualité. Inconnu ne vaut jamais zéro ; aucun
+   ROAS réel sans revenu rapproché et vérifiable.
+2. **META-METRICS — schéma 29 et OAuth vide prouvés, G1 encore ouvert** : ne pas
+   rejouer `0029`; exécuter le smoke atomique/JWT, publier le code local exigeant
+   29, puis rapprocher un échantillon Meta non vide autorisé. La lecture vide ne
+   remplace pas le tuple compte/campagne/date/dépense/résultat.
+3. **BUDGET-RESULTS — prochain lot proposé après G1** : prévu/réalisé, résultats Meta, coût par résultat,
+   tendances 7/30 jours et qualité. CAC/ROAS restent indisponibles si leur source
+   n'est pas justifiée.
+4. **META-RECOMMEND** : recommandation et simulation prudentes entre campagnes
+   Meta comparables, décision humaine et aucun effet fournisseur.
+5. **RECOMMENDATION-MEASURE** : baseline figée, version de recommandation,
+   fenêtre après et verdict reconstructible, sans prétendre à une causalité non
+   prouvée.
+6. **Ensuite seulement** : readiness puis pause Meta supervisée ; Google Ads en
+   lecture ; arbitrage Meta ↔ Google si les métriques sont comparables.
+
+### Travaux transverses ouverts, non prioritaires devant G1 puis BUDGET-RESULTS
+
+1. **Fermer les deux smokes auth restants** : déconnexion mobile authentifiée,
+   bouton Retour, puis email neuf et arrivée sur le domaine public.
+2. **Poursuivre les recettes déjà engagées** sans ouvrir de nouveau connecteur,
+   migration concurrente ou mutation fournisseur.
+3. **Reprendre l'allègement UX seulement si bloquant** pour la recette de la
+   boucle Campagnes ; conserver preuves, provenance et contrôle humain.
 
 ### Recette post-déploiement
 
@@ -72,6 +114,21 @@ Pour l'intégration actuelle, les lots Connecteurs accessibles sont déjà dans 
 5. **Terminé — recetter Story en production** : génération payée unique, sélection, validation atomique, rechargement Storage signé, contrôles JWT/RLS et nettoyage exact sont verts ; la fixture CSV utilisée ponctuellement a été réparée et son smoke repassé. **Ouvert** : créer une fixture `E2E_CREATIVE_*` distincte avant toute nouvelle recette Story, puis jouer OAuth/lecture réelle Google Sheets, Notion et Meta, le smoke créatif inter-tenant/concurrence complet et le scénario `reset → reseed → préparation → exécution`.
 
 ### Gates produit toujours ouverts
+
+#### Campagnes — ordre prioritaire
+
+1. **G0 vérité** : contrat des métriques testable, inconnus distincts de zéro.
+2. **G1 lecture réelle** : photographie Meta complète dans `ad_metrics`,
+   pagination/bornes/idempotence et absence d'écriture prouvées.
+3. **G2 analyse honnête** : budget/résultats, tendances et qualité
+   reconstructibles ; CAC/ROAS masqués sans preuve aval.
+4. **G3 recommandation** : comparabilité et insuffisance traitées explicitement.
+5. **G4 mesure** : baseline, décision et après rattachés à la même
+   recommandation. Ces cinq preuves ne donnent aucun droit d'écriture.
+6. **G5/G6 mutation séparée** : scope, claim, états ambigus, kill switch,
+   réconciliation et autorisation dédiée avant une unique pause de recette.
+
+#### Prospects, recettes transverses et outbound — toujours ouverts, mais pas la prochaine implémentation
 
 1. **Fermer le gate de scénario encore ouvert** : jouer `reset → reseed → préparation → exécution` sur chacune des trois variantes et vérifier les comptages, les artefacts restaurés, les propositions et l'absence d'envoi externe.
 2. **Terminer le smoke RLS multi-rôles** : compte neuf, rôles, lecture/écriture autorisées et refus inter-tenant sur des organisations `E2E_RLS_*` ; contrôler à nouveau l'absence d'envoi externe.
@@ -90,7 +147,7 @@ Pour l'intégration actuelle, les lots Connecteurs accessibles sont déjà dans 
 - Le callback de confirmation accepte `?code=` (PKCE) et `?token_hash=&type=`. Toutes ses redirections absolues utilisent `APP_URL` comme origine publique et jamais `request.url` en production derrière un proxy ; ne pas « simplifier » ce contrat.
 - La table `journal` refuse UPDATE/DELETE (trigger) — c'est voulu.
 - Design : reprendre les tokens validés de la maquette Growth Cockpit dans `globals.css` et documenter toute adaptation ; ne pas inventer un second système visuel.
-- **Migrations parallèles** : le numéro d'une migration de branche n'est pas une réservation durable tant qu'elle n'est pas appliquée. `0028` est désormais verrouillée par son application sur le projet lié ; les chantiers suivants doivent partir de `0029` ou du numéro supérieur présent dans `main`, sans renuméroter `0028`.
+- **Migrations parallèles** : le numéro d'une migration de branche n'est pas une réservation durable tant qu'elle n'est pas appliquée. `0029` est désormais verrouillée par son application sur le projet lié ; les chantiers suivants doivent partir de `0030` ou du numéro supérieur présent dans `main`, sans renuméroter `0028` ou `0029`.
 - **Copie produit** : ne PAS définir le lexique marketing standard (prospect, lead, funnel…). CLAUDE.md corrigé en ce sens (retour de Fathi 2026-07-21).
 - **Recherche web (OpenAI ou Perplexity)** : appel **facturé**. Toujours passer par `runResearch` (garde-fous + journal + cache + réservation atomique) — ne jamais appeler `askPerplexity` / `askOpenAiSearch` / `askResearch` directement depuis une action. Seul un résultat `status = ok` est réutilisé comme réponse ; un échec reste tracé et consomme sa réservation quotidienne, sans décrément automatique.
 - **Chez OpenAI, une requête ≠ une recherche facturée** : le modèle peut enchaîner plusieurs `web_search_call` dans un même appel, à ~1 centime pièce. `MAX_RESEARCH_PER_DAY` compte des appels `runResearch`, **pas** des recherches. Deux conséquences : `reasoning.effort` reste à `"low"` dans `lib/research/openai-search.ts` (ne pas monter sans revoir les plafonds), et le nombre réel est écrit au journal (`searches`). Ne pas « simplifier » l'un ou l'autre.
@@ -108,6 +165,75 @@ Pour l'intégration actuelle, les lots Connecteurs accessibles sont déjà dans 
 - **Coût de la recherche web OpenAI** : le prix affiché (10 $ / 1 000 appels d'outil) n'est **que la moitié de la facture** — les *search content tokens* sont facturés au tarif du modèle et dominent le total (~0,06 $ par recherche avec `gpt-5.5`). Toujours chiffrer les deux parts, et se rappeler que `MAX_RESEARCH_PER_DAY` compte des appels `runResearch`, **pas** des `web_search_call`.
 
 ## Historique des sessions
+
+### 2026-08-13 — Codex — **Schéma 29 et OAuth Meta réel attestés, publication META-METRICS encore locale**
+
+- Fathi a confirmé par SQL `app_schema_version = 29` ainsi que
+  `ad_metric_sync_runs`, `ad_campaigns` et `ad_metric_results`; `0029` ne doit
+  pas être rejouée. Le smoke atomique/JWT dédié n'a pas encore été exécuté.
+- L'application Meta de recette a reçu le cas d'utilisation de mesure Marketing
+  API et l'URI de callback Nepteo. L'écran de consentement a demandé uniquement
+  l'accès aux publicités et statistiques associé à `ads_read`, jamais
+  `ads_management`.
+- Azure `nepteo-prod--0000034` est `Succeeded`/`Running`, latest et ready. Les
+  trois noms de variables Meta sont présents, l'App Secret reste masqué, et
+  `/api/health` comme `/api/ready` répondent 200.
+- Le parcours authentifié a prouvé OAuth, jeton chiffré, liste de comptes,
+  sélection `Fathi Mts`, EUR, Europe/Paris et lecture réelle vide du 7 au 13
+  août. Le compte sans campagne ne permet pas de rapprocher le tuple non vide
+  campagne/date/dépense/résultat exigé par G1.
+- Le workflow local propage désormais les trois paramètres Meta ensemble et
+  refuse une configuration partielle; le secret devient une référence Container
+  Apps. Le contrat ciblé passe 24/24. Suite complète 652/652, typecheck, lint,
+  build de 29 routes et `git diff --check` sont verts. Aucun commit, push, PR,
+  fusion ni déploiement du code META-METRICS n'a encore été effectué.
+
+### 2026-08-12 — Codex — **META-METRICS implémenté localement, recette distante en attente**
+
+- Flux fermé localement : relecture du compte sélectionné, campagnes et
+  insights quotidiens paginés par curseur, fenêtres 7/14/30 jours dans le fuseau
+  du compte, limites 500 campagnes/5 000 lignes/50 pages et GET uniquement sous
+  `ads_read`.
+- `0029_meta_metrics.sql` porte le checkout de 28 à 29, qualifie compte, devise,
+  fuseau, attribution, provenance, fraîcheur et qualité, sépare les résultats
+  Meta dans `ad_metric_results` et applique une photographie transactionnelle,
+  idempotente et réconciliable. Inconnus, conversions et revenus non prouvés
+  restent `NULL` ; aucun CAC/ROAS réel n'est produit.
+- Une tentative invalide, partielle, expirée, trop grande ou non persistable ne
+  remplace pas la dernière photographie complète. Le run d'échec certain et son
+  journal sont idempotents et ne contiennent qu'un code sûr ; une réponse de
+  commit perdue est d'abord réconciliée et ne crée pas de trace contradictoire.
+  Les RPC sont service-role,
+  sous contrôle tenant/acteur ; aucun endpoint Ads de mutation n'a été ajouté.
+- Cockpit connecteur mis à jour avec fenêtre, compte, devise, fuseau, volumes et
+  qualité. Les moteurs financiers historiques excluent les lignes Meta sans
+  provenance aval vérifiée.
+- Contrats ciblés : 34/34 verts. La suite complète passe 652/652 après adaptation
+  des doubles Supabase historiques au filtre de provenance ; `npm run typecheck`,
+  `npm run lint`, `npm run build`, `git diff --check` et la vérification
+  syntaxique du smoke sont verts. Le passage final Next.js 16.2.11 compile en
+  38,8 s, termine TypeScript en 26,3 s et génère 29 pages statiques.
+- `scripts/smoke-meta-metrics.mjs` prépare la preuve staging atomique/JWT et son
+  nettoyage exact, mais n'a pas été exécuté. Aucun commit, push, PR, migration
+  distante, déploiement, secret ou appel Meta n'a été effectué. G1 reste ouvert ;
+  le prochain lot proposé après sa fermeture est BUDGET-RESULTS, jamais META-PAUSE.
+
+### 2026-08-12 — Codex — **Roadmap recadrée sur la boucle Campagnes mesurable, documentation uniquement**
+
+- Audit de la tâche Codex `019ff58a-afa6-7600-84f7-1fdd7ec669df`, du dépôt au
+  HEAD `40d4e03`, du cockpit, de `ad_metrics`, de META-READ et de l'audit
+  connecteurs visible dans `0091a12` ; aucun appel fournisseur ni secret.
+- Verdict : le moteur CAMP-1/2 existe, mais META-READ n'alimente pas encore
+  `ad_metrics`; budget prévu, résultat, attribution, devise et revenu ne sont
+  pas assez qualifiés pour un arbitrage réel ou un ROAS réel.
+- Ordre acté : vérité des métriques → META-METRICS → BUDGET-RESULTS →
+  META-RECOMMEND → RECOMMENDATION-MEASURE → porte de mutation → pause Meta →
+  Google en lecture → éventuel multicanal.
+- Salesforce, LinkedIn, lancement payant, écritures fournisseur,
+  automatisation avancée et Andromeda directe sont explicitement dépriorisés.
+- Documents seulement : roadmap générale et Campagnes, roadmap valeur, suivi,
+  décisions et audit de priorisation. Aucun code, migration, commit, push, PR ou
+  déploiement.
 
 ### 2026-08-12 — Codex — **Release sécurité déployée et attestée**
 

@@ -133,6 +133,7 @@ async function loadCampaignEvidence(
     .select("provider, campaign_id, campaign_name, date, spend, conversions, revenue, synced_at")
     .eq("organization_id", orgId)
     .eq("provider", provider.provider)
+    .in("outcome_provenance", ["demo", "verified_downstream"])
     .gte("date", isoDaysAgo(CAMPAIGN_EVIDENCE_WINDOW_DAYS - 1))
     .lte("date", windowEnd);
   return buildCampaignEvidence({

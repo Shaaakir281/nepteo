@@ -60,6 +60,7 @@ export async function readCampaignPageSnapshot(
         { count: "exact" },
       )
       .eq("organization_id", organizationId)
+      .in("outcome_provenance", ["demo", "verified_downstream"])
       .order("date", { ascending: false })
       .limit(METRIC_ROW_LIMIT),
     supabase

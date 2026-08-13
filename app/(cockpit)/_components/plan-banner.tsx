@@ -68,6 +68,7 @@ export async function PlanBanner({
           "campaign_id, campaign_name, impressions, clicks, spend, conversions, revenue",
         )
         .eq("provider", "meta_ads")
+        .in("outcome_provenance", ["demo", "verified_downstream"])
         .gte("date", windowBounds().currentFrom)
     : { data: [] };
   const campaigns = rollupByCampaign(

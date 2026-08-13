@@ -1,550 +1,331 @@
-# Roadmap — Campagnes supervisées et intégrateurs
+# Roadmap — boucle Campagnes mesurable et supervisée
 
-> **Statut au 2026-08-09** : CAMP-0, CAMP-1, CAMP-2, CONN-0, CONN-1,
-> META-READ et CREATIVE-1 sont fusionnés dans `main` et déployés par la PR #29
-> dans `nepteo-prod--0000022`. Le projet Supabase lié est vérifié à la version
-> 28 après `0028`, avec tables, bucket privé et cinq RPC visibles. Le parcours
-> campagne → Story → sélection → approbation est recetté en production sans
-> effet fournisseur ; OAuth/lecture Meta, concurrence et pannes Storage restent
-> à éprouver. Les états fusionné, migré, déployé et recetté restent distincts.
+> **Statut au 2026-08-13** — La priorité produit immédiate est de fermer une
+> boucle Campagnes fondée sur des données réelles : **collecter → qualifier →
+> comparer budget et résultats → recommander → faire décider → mesurer
+> l'avant/après**. CAMP-0, CAMP-1, CAMP-2, CONN-0, CONN-1 et META-READ existent
+> déjà. META-METRICS est implémenté dans le checkout local; le projet Supabase
+> lié est au schéma 29 et OAuth `ads_read` a prouvé le compte, EUR, Europe/Paris
+> et une lecture vide de 7 jours. Le code atomique reste non publié, le smoke
+> JWT n'est pas joué et aucun échantillon Meta non vide n'est disponible ;
+> l'alimentation réelle de `ad_metrics` n'est donc pas encore recettée. L'arbitrage budgétaire et la mesure d'une
+> recommandation restent absents.
 >
-> Elle ne remplace pas la
-> [roadmap valeur — tests commanditaires](roadmap-valeur-commanditaires.md) :
-> les gates R0, R1 et R2 restent prioritaires avant toute mutation fournisseur.
+> Cette roadmap remplace l'ancien ordre qui faisait du lancement d'une campagne
+> Meta la ligne d'arrivée immédiate. Le prochain gate est la recette G1 de
+> **META-METRICS**, puis le prochain lot proposé est **BUDGET-RESULTS**. Aucune
+> écriture Ads n'est ouverte par ce recadrage.
 
-## 1. Ligne d'arrivée
+## 1. Ligne d'arrivée immédiate
 
-La première ligne d'arrivée Campagnes est la porte de la phase 4 :
+La première ligne d'arrivée n'est ni un lancement payant ni une pause distante.
+Elle est la preuve qu'un utilisateur peut, pour un compte Meta réel :
 
-> une campagne est proposée, validée, lancée sur un fournisseur pilote, puis
-> mesurée avec un coût et un statut vérifiables dans Nepteo et chez le
-> fournisseur.
+1. identifier le compte, la campagne et la période observés ;
+2. comparer un budget prévu explicite à une dépense réelle ;
+3. voir un type de résultat, son volume et son coût avec leur provenance ;
+4. recevoir une recommandation prudente entre campagnes Meta ;
+5. accepter ou refuser cette recommandation sans effet fournisseur ;
+6. constater ensuite un avant/après calculé sur des fenêtres figées et
+   traçables.
 
-Le chemin minimal est :
+Le chemin critique devient :
 
 ```text
-CAMP-0 brief fiable et non-lancement                  déployé, recette production partielle
-  → CAMP-1 studio arbitrable                          déployé, recette production partielle
-  → CAMP-2 cockpit reproductible                      déployé, recette production partielle
-  → CAMP-3 lecture Meta bornée                        socle déployé, OAuth/lecture réels à recetter
-  → CAMP-4 pause réelle supervisée                    après preuve CAMP-3
-  → CAMP-5 lancement mono-fournisseur contrôlé        ferme la phase 4
+Contrat de vérité des métriques
+  → META-METRICS : compte → campagnes → métriques quotidiennes → ad_metrics
+  → BUDGET-RESULTS : cockpit prévu/réalisé, résultats et qualité
+  → META-RECOMMEND : recommandation/simulation entre campagnes Meta
+  → RECOMMENDATION-MEASURE : baseline, décision et avant/après
+  → gate distinct de preuve lecture/analyse/mesure
+  → META-PAUSE : une pause supervisée, si elle est ensuite autorisée
+  → GOOGLE-METRICS en lecture
+  → arbitrage Meta ↔ Google, seulement avec des métriques comparables
 ```
 
-CAMP-6 à CAMP-10 sont des extensions conditionnelles. Elles ne sont pas des
-prérequis à la première campagne pilote.
+## 2. État réel à ne pas confondre avec la maquette
 
-## 2. Mode de livraison par micro-lots
-
-Après la release de rattrapage CAMP-0/1/2, chaque lot suit exactement la même
-boucle :
-
-1. Codex implémente **un seul micro-lot local** et préserve le reste du
-   worktree.
-2. Tests ciblés, tests de non-régression proportionnés, typecheck, lint, build
-   et revue du diff sont verts.
-3. Codex fournit une note de release, un script de test en ligne et le plan de
-   retour arrière.
-4. Fathi donne une autorisation distincte pour commit, push, migration,
-   déploiement ou appel fournisseur.
-5. Un seul micro-lot est publié sur l'environnement prévu.
-6. Fathi teste en ligne et donne le verdict `vert`, `à corriger` ou `retour
-   arrière`.
-7. Le lot suivant ne démarre qu'après consignation du verdict.
-
-Une modification de schéma et une modification d'outbox ne sont jamais menées
-en parallèle. Une recette fournisseur n'est jamais incluse implicitement dans
-le développement local.
-
-### Échange obligatoire à la fin de chaque lot
-
-Chaque lot se termine dans sa tâche Codex par une fiche courte, utilisable par
-Fathi en déplacement, dans cet ordre :
-
-1. **Confirmation** — identifiant du lot et état exact `terminé localement`,
-   `publié` ou `disponible en ligne`.
-2. **Changements** — ce qui devient visible, les principaux fichiers ou
-   contrats modifiés et ce qui reste volontairement inchangé.
-3. **Contrôles Codex** — tests, typecheck, lint, build, revue du diff et limites
-   de preuve, sans demander à Fathi de reproduire les contrôles techniques.
-4. **Mini-recette téléphone** — URL ou chemin exact, prérequis, trois à cinq
-   gestes maximum, résultat visible attendu après chaque geste et un contrôle
-   de non-effet quand il est pertinent. Elle doit tenir en cinq minutes, sans
-   terminal, console développeur ni copie de longues données.
-5. **Verdict simple** — Fathi répond `VERT <lot>`, `À CORRIGER <lot> :
-   <symptôme>`, `BLOQUÉ <lot> : <écran>` ou, pour un lot publié, `RETOUR ARRIÈRE
-   <lot>`. Une capture d'écran peut remplacer une longue explication.
-6. **Lot suivant** — titre proposé, objectif, résultat visible, hors-périmètre,
-   dépendances ou risques et mini-recette envisagée.
-7. **Approbation** — Codex attend `GO <lot suivant>` avant de l'ouvrir et de le
-   commencer, de préférence dans une nouvelle tâche de ce projet.
-8. **Commande à copier-coller** — la fiche se termine par un bloc de code
-   contenant une seule commande recommandée complète. Fathi ne doit jamais
-   avoir à reconstruire la commande depuis le texte précédent.
-
-Si un résultat n'est pas raisonnablement vérifiable sur téléphone, Codex le dit
-explicitement et fournit la preuve technique correspondante ; aucun faux test
-mobile n'est inventé. Toute surface utilisateur doit néanmoins subir les
-contrôles responsive et clavier proportionnés avant publication.
-
-### Portée des validations courtes
-
-- `GO <lot>` autorise la création rapide d'une nouvelle tâche et le travail
-  **local** sur ce seul lot. Il n'autorise aucune publication.
-- `PUBLIER <lot>` n'est demandé qu'après la validation locale et énumère les
-  actions exactes envisagées : commit, push, PR, migration, déploiement ou appel
-  fournisseur. Seules les actions explicitement annoncées sont autorisées.
-- `VERT <lot> + GO <lot suivant>` permet de consigner la recette et d'ouvrir
-  immédiatement la tâche suivante ; il ne vaut pas `PUBLIER` pour celle-ci.
-- `À CORRIGER` ou `BLOQUÉ` maintient le travail dans la tâche courante. Aucun
-  lot suivant n'est ouvert tant que le verdict n'est pas résolu.
-
-### Contrôle d'ouverture d'une nouvelle tâche
-
-Avant l'ouverture, Codex annonce :
-
-- le titre du lot ;
-- l'état source attendu : chemin, HEAD et fichiers sentinelles du lot ;
-- le modèle : soit celui explicitement demandé par Fathi, soit `modèle par
-  défaut de l'application — aucun override Codex`.
-
-Après l'ouverture, Codex lit le premier diagnostic de la nouvelle tâche et
-compare immédiatement le chemin, le HEAD et les fichiers sentinelles. Une tâche
-ouverte depuis un autre checkout est déclarée invalide et recréée depuis l'état
-correct ; Fathi n'a pas à retransmettre lui-même les fichiers déjà présents. Le
-lot n'est considéré comme lancé qu'après cette concordance.
-
-### Exception de rattrapage — état fusionné
-
-CAMP-0, CAMP-1 et CAMP-2 sont fusionnés dans `main` avec les migrations
-séquentielles `0025`, `0026` et `0027` ; le projet Supabase lié est désormais
-vérifié à 28 après l'ajout créatif `0028`.
-Ils sont déployés dans `nepteo-prod--0000022`. La recette Story atteste une
-partie du parcours Campagnes et l'absence d'effet externe ; elle ne remplace ni
-la recette mobile complète CAMP-0/1/2, ni un OAuth et une lecture Meta réels.
-
-## 3. Contrat commun de tout intégrateur
-
-Un intégrateur est une capacité métier portée par un adaptateur vérifié. La
-maquette peut suggérer `API` ou `MCP`, mais le transport définitif est choisi
-seulement après lecture de la documentation officielle et un essai serveur.
-
-Tout intégrateur doit fournir :
-
-- organisation et compte distant explicitement identifiés ;
-- secrets chiffrés, jamais renvoyés au navigateur ni écrits dans le journal ;
-- scopes minimaux et révocation réelle ;
-- états honnêtes : `prévu`, `déconnecté`, `connexion_en_cours`,
-  `connecté_lecture`, `action_requise`, `connecté_écriture_bornée`, `en_pause`
-  ou `erreur` ;
-- dernière synchronisation, fenêtre de données, devise et fuseau quand ils
-  existent ;
-- pagination, bornes, idempotence et détection des lectures partielles ;
-- journal métier append-only et trace technique expurgée ;
-- aucune conservation par défaut de corps d'email, paramètres secrets ou
-  réponses fournisseur brutes ;
-- timeout explicite et **aucun retry automatique d'une écriture ambiguë** ;
-- isolation stricte scénario d'exemple / organisation de recette / pilote ;
-- test de déconnexion et preuve qu'aucune synchronisation ne reprend après
-  révocation.
-
-Une carte n'affiche jamais « Connecté » parce qu'une ligne existe en base. La
-connexion exige une identité distante vérifiée et un appel complet réussi. Un
-cron n'est pas présenté comme du temps réel.
-
-## 4. Ce que la maquette conserve — sans le simuler
-
-### 4.1 Catalogue existant — socle à préserver
-
-CONN-0 est **additif**. Il ne supprime, ne fusionne, ne masque et ne
-recatégorise aucun des vingt-deux connecteurs déjà proposés dans
-`lib/connectors.ts`. Les cinq familles, leur ordre et leurs cartes restent
-visibles :
-
-| Catégorie conservée | Propositions conservées |
-|---|---|
-| Trouver et suivre les prospects | HubSpot, Pipedrive, Salesforce, Airtable, Fichier CSV, Google Sheets, Notion |
-| Comprendre les visiteurs | Google Analytics, Matomo, PostHog, Site internet |
-| Suivre les campagnes | Meta Ads, Google Ads, LinkedIn Ads |
-| Communiquer | Brevo, Mailchimp, ActiveCampaign, Gmail |
-| Suivre les ventes | Stripe, Shopify, WooCommerce, Logiciel de facturation |
-
-Les connecteurs supplémentaires issus de la maquette Growth Cockpit sont des
-**ajouts**, jamais des remplacements. Ils rejoignent une famille existante ou
-une famille supplémentaire validée explicitement, sans renommer les cinq
-familles ci-dessus. Les capacités déjà réelles — notamment CSV, Google Sheets,
-Notion et l'analyse explicite du site — conservent leurs parcours et ne sont pas
-rétrogradées en simple promesse.
-
-### 4.2 Intégrateurs supplémentaires de la maquette Growth Cockpit
-
-Les intégrateurs visibles dans cette seconde maquette sont conservés dans le
-backlog produit :
-
-| Intégrateur | Promesse utile conservée | Première tranche autorisable | Écriture future |
-|---|---|---|---|
-| Meta Ads | campagnes, adsets, annonces, audiences et performances | lecture pilote CAMP-3 | pause CAMP-4, lancement CAMP-5 ; budgets/créas plus tard |
-| LinkedIn Ads | campagnes, Thought Leader Ads, Lead Gen Forms, CPM par audience | lecture conditionnelle | pilotage après preuve Meta ou choix explicite du pilote |
-| HeyReach | séquences LinkedIn, statuts et réponses | lecture seule des faits minimisés | séquence/handoff seulement après gates outbound |
-| Resend | domaine, templates, délivrabilité et nurturing | configuration et santé du domaine | self-test puis lot de cinq destinataires maximum après C7 |
-| PostHog | funnels, cohortes, activation, tendances et rétention | agrégats en lecture seule | aucune écriture dans le premier cycle |
-| Stripe | paiements, abonnements et revenu observé | lecture seule et rapprochement prudent | aucune mutation financière par Nepteo |
-| Google Ads | Search, PMax, campagnes et métriques | lecture si le pilote le justifie | pause/lancement après preuve mono-fournisseur |
-| Supabase interne | comptes, essais et événements d'activation | vues/RPC étroites en lecture seule | jamais d'accès agent générique à la base |
-| TikTok Ads | campagnes et performance par créatif | backlog lecture | rotation/création seulement après CAMP-8 |
-| n8n | workflows disponibles et état d'exécution | inventaire en lecture seule | un workflow allowlisté après CAMP-6 |
-| MCP personnalisé | découverte d'un serveur et de ses outils | catalogue administrateur vérifié | outil par outil, jamais activation globale |
-
-Les libellés de la maquette « officiel », « zéro glue code », « connecté en
-quelques secondes », « temps réel », les URLs, versions, scopes, outils et dates
-ne sont pas des contrats. Google Ads y est même présenté à la fois comme `API`
-et comme `MCP` : la roadmap spécifie donc les capacités, pas le transport
-illustré.
-
-## 5. Séquence exécutable
-
-### Cadence regroupée pour les intégrateurs
-
-Les lots suivants ne sont plus découpés artificiellement lorsqu'ils partagent
-le même contrat et la même recette mobile. Un lot reste publiable seulement
-quand sa preuve est complète, mais peut contenir plusieurs étapes cohérentes :
-
-| Lot regroupé | Contenu | Porte avant publication |
+| Capacité | État constaté | Conséquence de roadmap |
 |---|---|---|
-| **CONN-1** | consentement, chiffrement, état de lecture vérifiée, erreur, pause et révocation des connecteurs existants | aucun jeton restant après révocation ; aucune lecture pendant une pause |
-| **META-READ** | contrat officiel, OAuth lecture seule, sélection explicite du compte et première lecture bornée des métriques | identité distante, scopes et métriques relues côté serveur ; aucune écriture Ads |
-| **REV-READ** | connecteurs Stripe et PostHog, chacun seulement si le pilote fournit l'accès de recette | rapprochement lecture seule et données minimisées ; aucune mutation financière ou produit |
-| **OUTBOUND-READ** | cadrage puis lecture HeyReach/Resend, après les gates outbound | aucun envoi, séquence ou handoff ; erreurs et révocation prouvées |
-| **AUTOMATION-LATE** | n8n et MCP personnalisé après les connecteurs officiels | allowlist, egress borné et outil par outil ; jamais d'activation globale |
-
-Les sous-étapes historiques restent des repères d'audit. Elles ne créent plus
-une publication autonome si le lot regroupé n'est pas entièrement vérifiable.
-
-### META-READ — lecture Meta Ads bornée (déployé ; OAuth et première lecture réels à recetter)
-
-- OAuth demande exclusivement `ads_read` ; le retour vérifie ce droit côté
-  serveur avant de chiffrer le jeton ;
-- aucun compte n'est choisi par défaut : la liste courte (25 maximum) est lue
-  seulement sur geste explicite, puis la sélection est revalidée côté serveur ;
-- une lecture explicite demande 7, 14 ou 30 jours et au plus 100 lignes. Toute
-  pagination ou valeur ambiguë échoue fermée : aucun résultat partiel n'est
-  affiché ;
-- le snapshot persisté est normalisé et minimisé (compte, devise, campagne,
-  jour, impressions, clics, dépense). Il n'alimente pas `ad_metrics` ni les
-  propositions CAMP tant que revenu/conversions et contrat d'ingestion ne sont
-  pas explicitement établis ;
-- pause, révocation, rôles et verrou d'isolation démo sont ceux de CONN-1 ;
-  aucun endpoint de mutation Meta Ads n'est introduit.
-
-### REL-0 — Release de rattrapage CAMP-0/1/2 (fusionnée et déployée ; recette complète ouverte)
-
-**But** : compléter la recette en ligne de l'état désormais déployé.
-
-- réconcilier les documents et l'inventaire exact des fichiers ;
-- vérifier les migrations `0025` à `0027` et la readiness 27 ;
-- déployer un seul artefact reproductible ;
-- ne lancer aucun appel IA payant ni appel Ads pendant le déploiement.
-
-**Test en ligne Fathi** : brief sans présélection et double clic CAMP-0, studio
-CAMP-1, cockpit/filtres/refus/non-exécution CAMP-2, puis contrôle de l'outbox et
-du journal. La procédure mobile détaillée est
-[`REL-0-RECETTE-MOBILE.md`](../tests/REL-0-RECETTE-MOBILE.md).
-
-**Porte** : exactement les actions et journaux attendus, zéro effet externe.
-
-### CONN-0 — Catalogue honnête et registre de capacités (déployé ; recette catalogue complète ouverte)
-
-**But** : rendre visibles les intégrateurs de la maquette sans inventer leur
-connexion.
-
-- les cinq catégories et les vingt-deux cartes existantes sont conservées sans
-  disparition, fusion ou recatégorisation ;
-- un test de contrat fige leurs cinq titres et leurs vingt-deux identifiants ;
-  hors décision explicite de Fathi, seules les additions sont acceptées ;
-- les nouvelles propositions sont ajoutées sans remplacer les anciennes ;
-- chaque carte affiche un état réel parmi `Disponible`, `À configurer`,
-  `Demandé`, `Prévu`, `Connecté vérifié` ou `Erreur` ;
-- adaptateur annoncé `API`, `MCP` ou `à vérifier` depuis un registre serveur ;
-- séparation des capacités `lecture`, `proposition` et `écriture` ;
-- `Connecter` n'est affiché que lorsqu'un parcours de connexion réel existe ;
-  sinon l'action honnête reste `Demander`, `Configurer` ou une carte `Prévu` ;
-- aucune URL libre, aucun secret et aucun bouton d'activation fictif ;
-- Google Sheets et Notion existants restent inchangés.
+| Préparer, expliquer et valider une campagne sans la lancer | Réel dans CAMP-0/1 et le Studio | Socle conservé ; ce n'est pas une preuve de diffusion |
+| Analyser `ad_metrics`, comparer des fenêtres et afficher un cockpit | Réel dans CAMP-2 | Moteur à conserver, mais données réelles et sémantique à durcir |
+| Lire Meta en `ads_read` | OAuth, compte, devise, fuseau et lecture vide sont prouvés ; META-METRICS étend localement la lecture paginée | Publier le code atomique et recetter une photographie non vide |
+| Alimenter `ad_metrics` depuis Meta | Schéma `0029` attesté à 29 ; code local non publié et smoke JWT non joué | Fermer G1 sur le smoke puis un échantillon Meta non vide autorisé |
+| Budget prévu relié à une campagne fournisseur | Partiel : budget dans les propositions/studio, sans rapprochement fournisseur prouvé | Aucun prévu/réalisé tant que la correspondance n'est pas explicite |
+| Résultats Meta | Types et volumes `provider_reported` implémentés localement, sans preuve distante | Ne pas appeler une action Meta « conversion prouvée » |
+| Revenu attribué et ROAS réel | Non prouvé | ROAS indisponible jusqu'à une source de revenu rapprochée et vérifiable |
+| Pause ou lancement Meta | Absent ; les actions `ads_pause_*` ne sont pas exécutables | Toute mutation reste fermée |
+| Google Ads ou LinkedIn Ads réels | Absents | Google vient après la boucle Meta mesurée ; LinkedIn est dépriorisé |
+
+Les écrans et maquettes commerciales décrivent une direction. Ils ne prouvent
+ni connexion, ni fraîcheur, ni conversion, ni revenu, ni effet fournisseur.
+
+## 3. Contrat de vérité des indicateurs
+
+Le contrat suivant est une précondition de META-METRICS. Il doit être traduit en
+types, stockage et libellés inspectables ; aucune valeur inconnue ne doit être
+remplacée par zéro.
+
+| Indicateur | Définition autorisée | Provenance minimale | Affichage si preuve absente |
+|---|---|---|---|
+| Budget prévu | Montant et période explicitement validés par l'utilisateur, reliés sans ambiguïté à la campagne fournisseur | snapshot de proposition/plan + identifiant de rapprochement + devise | `Non rapproché` ou `Non défini` |
+| Budget configuré fournisseur | Budget lu chez Meta, distinct du budget prévu Nepteo | compte/campagne Meta + horodatage | `Indisponible` |
+| Dépense réelle | Somme quotidienne `spend` renvoyée par Meta sur la période | fournisseur, compte, campagne, dates, devise, sync | `Dépense indisponible` |
+| Type de résultat | Résultat choisi et nommé avec la définition Meta correspondante | clé d'action/metric Meta + libellé normalisé | `Résultat non défini` |
+| Résultats Meta | Volume directement déclaré par Meta pour le type et la fenêtre d'attribution retenus | Meta + type + fenêtre d'attribution | `Non fourni par Meta` |
+| Coût par résultat | dépense réelle / résultats Meta homogènes et strictement positifs | mêmes campagne, période, devise, type et attribution | `Non calculable` |
+| Conversion vérifiée | Événement rapproché par une source CRM, paiement ou analytics autorisée | source aval + identifiant/méthode de rapprochement | `Non vérifiée` |
+| CAC | dépense / acquisitions vérifiées ; jamais simple synonyme du coût par résultat Meta | source Ads + source aval rapprochée | `CAC indisponible` |
+| Revenu attribué | Revenu rapproché par une règle documentée et vérifiable | paiement/CRM/analytics + méthode d'attribution | `Revenu non rapproché` |
+| ROAS réel | revenu attribué vérifié / dépense réelle | les deux preuves précédentes, même devise et période | `ROAS indisponible` |
+| Fraîcheur | ancienneté de la dernière photographie complète appliquée | `synced_at`, fenêtre couverte, statut complet/partiel | retard ou erreur explicite |
+
+Chaque série persistée doit aussi porter ou permettre de retrouver :
+
+- `organization_id`, fournisseur, compte, campagne et granularité ;
+- date métier, devise et fuseau du compte ;
+- type de résultat, origine `provider_reported` ou `verified_downstream` ;
+- fenêtre/modèle d'attribution lorsqu'ils existent ;
+- début et fin de fenêtre, horodatage de synchronisation et provenance ;
+- état de qualité `complete`, `stale`, `partial`, `unavailable` ou `unverified`.
+
+### Règles non négociables
+
+- Ne jamais afficher un ROAS réel sans revenu rapproché et vérifiable.
+- Ne jamais appeler `CAC` un simple coût par lead/action fourni par Meta.
+- Distinguer visuellement les résultats **déclarés par Meta** des conversions et
+  revenus **vérifiés en aval**.
+- Ne jamais sommer des devises, types de résultat ou fenêtres d'attribution
+  incompatibles.
+- Une page manquante, une borne dépassée ou un échec de persistance invalide la
+  photographie entière ; aucun snapshot partiel n'alimente le cockpit.
+- Un rejeu de synchronisation produit le même état final : l'unicité minimale
+  est organisation + fournisseur + compte + campagne + date + type de résultat.
+
+## 4. Gates du programme Campagnes
+
+| Gate | Condition d'entrée | Preuve de sortie | Ce qu'il n'autorise pas |
+|---|---|---|---|
+| **G0 — vérité** | inventaire des métriques Meta et du schéma actuel | matrice ci-dessus traduite en contrat testable ; inconnus distincts de zéro | aucun appel fournisseur |
+| **G1 — lecture réelle** | G0 + compte Meta de recette autorisé | compte → campagnes → toutes les pages quotidiennes → `ad_metrics`, borné et idempotent ; comparaison à Meta | aucune recommandation financière non prouvée |
+| **G2 — analyse honnête** | G1 | cockpit prévu/réalisé, résultats, coût par résultat, tendances 7/30 j et qualité ; CAC/ROAS absents si non justifiés | aucune mutation Ads |
+| **G3 — recommandation Meta** | G2 + historique suffisant et comparable | recommandation/simulation entre campagnes Meta, hypothèses et refus explicites | aucun arbitrage inter-fournisseur |
+| **G4 — mesure** | G3 + décision humaine journalisée | baseline figée, fenêtre après, métriques comparables et verdict sans causalité exagérée | aucune écriture Ads |
+| **G5 — aptitude à muter** | G1 à G4 verts sur le pilote | revue scopes, claim, idempotence, statut ambigu, kill switch, journal et réconciliation | ne vaut pas autorisation de mutation |
+| **G6 — pause supervisée** | G5 + autorisation dédiée | une pause de recette voulue, relue chez Meta et réconciliable | aucun lancement ni hausse de budget |
+| **G7 — lecture Google** | boucle Meta mesurée et besoin pilote confirmé | compte Google → campagnes → métriques comparables, toujours en lecture | aucun arbitrage automatique |
+| **G8 — multicanal** | G7 + définitions, devises et résultats comparables | recommandation Meta ↔ Google prudente et mesurable | aucune réallocation automatique |
+
+La preuve **lecture/analyse/mesure** est une porte autonome. Même verte, elle ne
+donne ni scope d'écriture, ni autorisation de pause, ni droit de lancer une
+campagne.
+
+## 5. Lots exécutables
+
+### Lot 1 — META-METRICS — implémenté localement, G1 encore ouvert
+
+**État au 13 août 2026** : le code local et la migration `0029_meta_metrics.sql`
+ferment la chaîne compte sélectionné → campagnes paginées → insights quotidiens
+paginés → photographie atomique. Le projet lié est attesté à 29 et un appel
+Meta autorisé a prouvé OAuth `ads_read`, compte, devise, fuseau et lecture vide.
+Les contrats locaux sont verts. G1 n'est pas encore acquis : le smoke
+atomique/JWT n'est pas joué, le code META-METRICS n'est pas publié et le compte
+vide ne fournit aucun tuple campagne/date/dépense/résultat. Le prochain geste
+n'est donc ni une pause ni un lancement, mais publication supervisée, smoke et
+rapprochement d'un échantillon non vide sous autorisation séparée.
+
+**Objectif** : transformer la lecture Meta existante en photographie quotidienne
+complète, qualifiée et exploitable par `ad_metrics`, sans écriture fournisseur.
+
+**Dépendances** : META-READ et socle connecteurs ; contrat G0 ; prochaine
+migration numérotée depuis le niveau réellement présent dans `main` au démarrage
+de la tâche. Le commit local `0091a12` atteste les recettes OAuth Google/Notion
+et documente les écarts connecteurs, mais ne vaut pas preuve Meta.
+
+**Contenu** :
+
+1. relire le compte sélectionné et ses métadonnées de devise/fuseau ;
+2. lister toutes les campagnes dans des bornes explicites ;
+3. lire les insights quotidiens avec pagination contrôlée ;
+4. mapper dépense, impressions, clics et résultats Meta sans inventer de
+   conversion ou de revenu ;
+5. appliquer une photographie complète par upsert/remplacement transactionnel
+   et idempotent ;
+6. tracer fenêtre, pages, lignes, fraîcheur, provenance et qualité ;
+7. conserver `ads_read` uniquement et ne créer aucun endpoint de mutation.
 
-**Test en ligne Fathi** : recompter les cinq catégories et les vingt-deux cartes
-existantes, vérifier séparément les ajouts, leurs libellés, leurs états, le
-mobile et l'absence de prétendue connexion.
+**Gate de recette G1** :
 
-**Porte** : aucune catégorie ni proposition existante ne manque et aucune carte
-ne promet plus que l'état persistant vérifié.
+- compte et campagnes identiques à l'interface Meta ;
+- échantillon de dates, dépense, devise et type de résultat rapproché à la
+  source ;
+- pagination forcée et borne dépassée testées ;
+- double synchronisation sans doublon ni dérive ;
+- page/timeout/persistance en échec = zéro photographie partielle appliquée ;
+- changement ou disparition d'une campagne réconcilié selon le contrat ;
+- journal unique par tentative et absence démontrée de requête d'écriture Meta.
 
-### CONN-1 — Noyau de connexion et de révocation (déployé ; révocation réelle à recetter)
+**Hors périmètre** : UI finale, recommandation, pause, lancement, Google Ads,
+CRM/revenu, Conversions API et modification d'une campagne.
 
-**But** : partager seulement les primitives réellement communes.
+### Lot 2 — BUDGET-RESULTS
 
-- identité du compte distant, scopes accordés et statut de consentement ;
-- chiffrement des secrets et façade serveur expurgée ;
-- dernière lecture complète, erreur honnête et révocation ;
-- capacité de pause du connecteur ;
-- trace technique sans payload personnel brut.
+**Objectif** : construire le cockpit honnête « Budget et résultats » à partir de
+la photographie réelle.
 
-Ce lot ne construit pas encore de framework MCP générique et ne modifie aucun
-fournisseur.
+**Dépendance** : G1 vert, y compris migration staging et échantillon Meta
+rapproché. Tant que ces deux preuves manquent, BUDGET-RESULTS reste le lot
+suivant proposé mais ne doit pas être présenté comme alimenté par des données
+réelles recettées.
 
-**Regroupement décidé** : CONN-1 porte ensemble le consentement distinct de la
-connexion vérifiée, la preuve de dernière lecture, l'erreur expurgée, la pause,
-la révocation et les tests de contrat des 22 cartes. Il ne publie aucun nouveau
-connecteur et ne lance aucun appel fournisseur de recette.
+**Contenu** : prévu/réalisé avec correspondance explicite ; résultats Meta et
+coût par résultat ; tendances 7 et 30 jours ; date de dernière donnée complète ;
+badges de devise, fuseau, attribution, provenance et qualité. Les cartes CAC,
+revenu et ROAS restent absentes ou indisponibles tant que leur preuve aval
+n'existe pas.
 
-**Test en ligne Fathi** : connecteur de recette simulé localement puis état
-connecté/déconnecté/erreur ; aucune donnée métier ni appel payant.
+**Gate G2** : pour chaque nombre visible, la recette retrouve la campagne, la
+période, le numérateur, le dénominateur et la source. Une campagne sans mapping,
+une série périmée ou un résultat ambigu est présentée comme telle.
 
-**Porte** : un adaptateur peut être révoqué sans laisser de secret ou de tâche
-active.
+### Lot 3 — META-RECOMMEND
 
-## 6. CAMP-3 — Meta Ads en lecture seule, micro-lot par micro-lot
+**Objectif** : recommander et simuler prudemment une allocation entre campagnes
+du même compte Meta.
 
-Meta Ads est le fournisseur pilote par défaut parce que le cockpit et les
-propositions actuelles portent déjà ce provider. Un autre choix reste possible
-si le client pilote n'utilise pas Meta.
+**Dépendance** : G2 vert et historique suffisant selon un seuil documenté.
 
-### META-0 — Contrat officiel vérifié
+**Contenu** : comparer uniquement des campagnes compatibles par objectif, type
+de résultat, devise, attribution et période ; afficher hypothèses, limites,
+plancher/plafond et scénario inchangé ; produire une proposition à décision
+humaine, sans outbox ni effet Meta.
 
-- vérifier API ou MCP disponible, conditions d'accès, version, OAuth, scopes,
-  quotas, sandbox et révocation ;
-- définir l'account ID canonique et la matrice des capacités ;
-- documenter devise, fuseau, fenêtres d'attribution et données indisponibles ;
-- aucun code fournisseur et aucun secret de production.
+**Gate G3** : mêmes données = même recommandation ; données insuffisantes ou
+incomparables = refus explicite ; la somme simulée respecte le budget total ;
+aucun gain garanti ni projection présentée comme résultat observé.
 
-**Test en ligne** : aucun ; revue documentaire et décision explicite de Fathi.
+### Lot 4 — RECOMMENDATION-MEASURE
 
-### META-1 — Connexion lecture seule
+**Objectif** : mesurer l'avant/après d'une recommandation sans fabriquer de
+causalité.
 
-- OAuth/scopes lecture uniquement ;
-- sélection explicite d'un compte publicitaire de recette ;
-- identité et permissions relues côté serveur ;
-- déconnexion et tombstone de révocation ;
-- aucune synchronisation de métriques dans ce lot.
+**Dépendance** : G3 vert.
 
-**Test en ligne Fathi** : connecter le compte de recette, voir son identité et
-ses scopes, puis le révoquer et vérifier que l'état repasse à `Déconnecté`.
+**Contenu** : figer au moment de la décision la version de la recommandation,
+les campagnes, le budget, les hypothèses, la fenêtre de référence et les
+métriques ; définir une fenêtre après comparable ; journaliser acceptation,
+refus ou application manuelle déclarée ; produire écarts absolus/relatifs et
+qualité des deux fenêtres.
 
-### META-2 — Synchronisation bornée des campagnes et métriques
+**Gate G4** : un tiers peut reconstruire baseline, décision et résultat depuis
+les identifiants persistés. L'interface dit « évolution observée après la
+décision », jamais « gain causé par Nepteo » sans protocole d'attribution.
 
-- campagnes/adsets/annonces en lecture ;
-- métriques quotidiennes vers `ad_metrics` avec pagination et upsert
-  idempotent ;
-- fenêtre explicite, comptage exact, fraîcheur et lecture partielle bloquante ;
-- aucune audience personnelle, créatif binaire ou permission d'écriture.
+### Lot 5 — OUTCOME-PROOF, conditionnel
 
-**Test en ligne Fathi** : comparer un petit échantillon de dates et montants
-avec l'interface Meta, rejouer la synchronisation et vérifier l'absence de
-doublon.
+**Objectif** : ajouter des conversions ou revenus vérifiés seulement si une
+source aval du pilote permet un rapprochement déterministe.
 
-### META-3 — Vérité du cockpit
+**Dépendances** : choix d'une seule source CRM, paiement ou analytics ; contrat
+de consentement, minimisation et rétention ; G2 déjà vert sans cette source.
 
-- statuts fournisseur datés ;
-- devise et fuseau visibles ;
-- fenêtre d'attribution déclarée ;
-- campagne/adset/créatif distingués ;
-- erreurs, retard et absence de données affichés sans fabriquer `Actif`.
+**Gate** : rapprochement reproductible, non-attribués visibles, devise et
+période cohérentes. Ce lot seul peut rendre CAC, revenu attribué ou ROAS
+éligibles à l'affichage.
 
-**Test en ligne Fathi** : contrôler une campagne active, une terminée et une
-sans données, puis filtres, rapport 7+7 et journal.
+### Lot 6 — META-PAUSE-READINESS puis META-PAUSE
 
-**Porte CAMP-3** : un compte pilote alimente le cockpit de façon idempotente et
-bornée, sans aucun scope d'écriture.
+**Objectif** : ouvrir au plus une pause Meta supervisée, après la preuve de la
+boucle en lecture.
 
-## 7. Sources de mesure en lecture seule
+**Dépendances** : G1 à G4 verts ; scope `ads_management` distinct ; compte de
+recette ; autorisation séparée de Fathi.
 
-Ces intégrateurs sont ouverts un par un après META-3, selon les données du
-pilote. Ils ne sont pas tous obligatoires.
+**Readiness** : relecture statut/budget, claim atomique, journal avant appel,
+aucun retry ambigu, résultat `unknown` réconciliable, kill switch et révocation.
 
-### PROD-1 — Supabase interne étroit
+**Gate G6** : une pause voulue est confirmée chez Meta et dans Nepteo, sans
+doublon. Le lot n'autorise ni lancement, ni hausse, ni réallocation automatique.
 
-- vues ou RPC allowlistées pour essais et activation ;
-- agrégats par organisation et période ;
-- aucun SQL libre, service role ou schéma arbitraire exposé à l'agent.
+### Lot 7 — GOOGLE-METRICS
 
-**Test en ligne** : rapprocher un total d'essais connu sans exposer les lignes
-personnelles.
+**Objectif** : reproduire le patron lecture réelle et vérité UI pour Google Ads.
 
-### REV-1 — Stripe en lecture seule
+**Dépendance** : boucle Meta mesurée ; besoin pilote explicite ; contrat officiel
+Google vérifié.
 
-- compte et mode test explicitement visibles ;
-- paiements/abonnements et devise ;
-- rapprochement seulement avec un identifiant ou une convention vérifiable ;
-- une réconciliation reste distincte d'une attribution causale.
+**Gate G7** : photographie Google complète, bornée et idempotente ; définitions
+de résultats et attribution visibles ; aucune écriture Google.
 
-**Test en ligne** : comparer quelques paiements du mode test, puis vérifier que
-les lignes sans preuve restent `non attribuées`.
+### Lot 8 — CROSS-CHANNEL-RECOMMEND
 
-### ANALYTICS-1 — PostHog en lecture seule
+**Objectif** : envisager un arbitrage Meta ↔ Google seulement sur des résultats
+réellement comparables.
 
-- projet/région identifiés ;
-- funnels, cohortes et tendances agrégés ;
-- bornes temporelles et dénominateurs ;
-- aucun événement personnel brut envoyé au LLM ou conservé dans le journal.
+**Gate G8** : refus automatique si objectifs, devises, fenêtres ou définitions
+diffèrent ; recommandation humaine et mesure avant/après ; aucune réallocation
+automatique.
 
-**Test en ligne** : reproduire un funnel connu avec les mêmes filtres et la même
-période.
+## 6. Ordre dépriorisé explicitement
 
-## 8. CAMP-4 et CAMP-5 — écritures Meta strictement séparées
+Ne sont pas la prochaine étape produit :
 
-### META-4 — Pause supervisée
+- Salesforce et tout autre CRM complet ;
+- LinkedIn Ads et l'automatisation LinkedIn ;
+- lancement Meta, lancement payant ou hausse de budget ;
+- écriture chez un fournisseur, hors future pause Meta séparément autorisée ;
+- automatisation avancée, n8n, MCP personnalisé et autonomie multi-canal ;
+- intégration directe à Andromeda ou Conversions API ;
+- attribution complexe, revenu estimé, LTV, churn ou prédictions ambitieuses.
 
-- une seule campagne distante ;
-- relecture statut et budget avant mutation ;
-- claim atomique et journal avant appel ;
-- clé d'idempotence fournisseur si disponible ;
-- aucun retry automatique ;
-- relecture distante après appel et état `unknown` réconcilié manuellement ;
-- kill switch et révocation de l'écriture.
+Le catalogue peut continuer à montrer ces propositions avec un état honnête.
+Leur visibilité n'en fait ni des capacités disponibles ni des priorités.
 
-**Test en ligne Fathi** : d'abord dry-run, puis une pause autorisée sur une
-campagne de recette et vérification des deux journaux. Toute mutation réelle
-exige une autorisation dédiée.
+## 7. Mode de livraison et preuves
 
-**Porte CAMP-4** : zéro pause non voulue, zéro doublon et réconciliation
-possible entre Nepteo et Meta.
+Chaque lot conserve quatre états distincts : `terminé localement`, `publié`,
+`disponible en ligne`, `recetté`. `GO <lot>` autorise seulement le travail local ;
+commit, push, migration, déploiement et appel fournisseur exigent des
+autorisations explicites séparées.
 
-### META-5 — Lancement contrôlé
+La fiche de sortie de chaque lot contient :
 
-- payload et créatif client figés ;
-- compte, paiement, permissions et formats vérifiés ;
-- budget journalier, total et durée imposés côté serveur ;
-- aperçu final et seconde confirmation ;
-- identifiant distant obligatoire ;
-- timeout sans identifiant = `unknown`, sans retry ;
-- pause immédiate disponible ;
-- aucune hausse automatique de budget.
+1. périmètre exact et hors-périmètre ;
+2. contrat de données ou d'API modifié ;
+3. tests, typecheck, lint, build et revue du diff ;
+4. preuve de recette, avec source de chaque chiffre ;
+5. preuve de non-effet fournisseur tant que G6 n'est pas ouvert ;
+6. verdict `VERT`, `À CORRIGER`, `BLOQUÉ` ou `RETOUR ARRIÈRE` ;
+7. prochain lot proposé et commande/prompt complet à copier-coller.
 
-**Test en ligne Fathi** : préflight puis campagne de recette ; un lancement
-payant demande une autorisation et un budget pilote séparés.
+## 8. Prompt exact de la future tâche d'implémentation
 
-**Porte CAMP-5** : une campagne pilote est proposée, validée, lancée et mesurée
-avec un statut et un coût vérifiables des deux côtés.
+```text
+Objectif : implémenter le lot META-METRICS de Nepteo, première priorité de la roadmap Campagnes, afin d'alimenter réellement ad_metrics depuis Meta Ads en lecture seule.
 
-## 9. Autres fournisseurs — lecture avant écriture
+Contexte obligatoire :
+- Lire docs/projets/roadmap-campagnes-supervisees.md, docs/AUDIT-PRIORISATION-CAMPAGNES-2026-08-12.md, docs/AUDIT-CONNECTEURS-2026-08-12.md si ce fichier existe dans l'état source ou le commit local 0091a12, docs/SUIVI.md, docs/DECISIONS.md, docs/ARCHITECTURE.md et docs/TESTS.md.
+- Examiner l'état réel de META-READ, lib/connectors/meta-ads.ts, lib/connectors/sync.ts, ad_metrics, le cockpit Campagnes et les tests Meta/Campagnes. Ne pas reprendre les capacités de la maquette comme des capacités disponibles.
+- Partir du HEAD et du numéro de migration réellement présents dans le checkout ; ne pas supposer que 0091a12 est fusionné.
 
-Chaque fournisseur répète le patron `contrat → connexion → lecture → vérité UI`
-avant toute capacité d'écriture.
+Résultat attendu :
+1. Formaliser en types et stockage la provenance, la devise, le fuseau, la fenêtre d'attribution, le type de résultat, la fraîcheur et l'état complet/partiel/indisponible. Une valeur inconnue ne doit jamais devenir zéro.
+2. Fermer le flux compte Meta sélectionné → liste complète et bornée des campagnes → insights quotidiens paginés → photographie complète dans ad_metrics.
+3. Garantir idempotence et réconciliation sur organisation + fournisseur + compte + campagne + date + type de résultat ; un rejeu ne crée ni doublon ni dérive.
+4. Refuser toute application partielle en cas de page manquante, timeout, réponse invalide, borne dépassée ou échec de persistance. Journaliser une seule tentative avec un code sûr.
+5. Distinguer les résultats directement déclarés par Meta des conversions/revenus vérifiés en aval. Ne pas écrire de revenu, CAC ou ROAS réel sans source rapprochée et vérifiable.
+6. Conserver exclusivement ads_read. Aucun endpoint de mutation, aucune pause, aucun lancement, aucun budget modifié, aucun secret ajouté au dépôt et aucun appel fournisseur sans autorisation explicite.
 
-### LINKEDIN-0 à LINKEDIN-3
+Recette exigée :
+- tests unitaires/contrats pour pagination, bornes, mapping, devise/fuseau/attribution, résultat absent, double sync, suppression/changement, snapshot partiel et erreur de persistance ;
+- tests d'intégration de la photographie atomique et de l'isolation tenant/RLS sur une base de staging si une migration est nécessaire ;
+- preuve qu'un échantillon compte/campagne/date/dépense/résultat correspond à Meta sur un compte de recette, seulement après autorisation d'appel fournisseur ;
+- preuve qu'aucune requête d'écriture Meta n'existe et qu'aucun ROAS/CAC non prouvé n'est produit ;
+- npm test, typecheck, lint, build et revue du diff.
 
-1. contrat officiel, OAuth et compte pilote ;
-2. campagnes et métriques en lecture ;
-3. Lead Gen Forms minimisés et dédupliqués ;
-4. écriture seulement après preuve CAMP-5 et autorisation distincte.
-
-### GOOGLE-0 à GOOGLE-3
-
-1. vérifier API ou MCP au lieu de reprendre l'incohérence de la maquette ;
-2. Search/PMax et métriques en lecture ;
-3. requêtes et estimations clairement séparées des résultats observés ;
-4. pause/lancement seulement après preuve mono-fournisseur.
-
-### TIKTOK-0 à TIKTOK-2
-
-1. contrat et lecture des campagnes ;
-2. performance par créatif avec définition inspectable ;
-3. création ou rotation seulement après CAMP-8 et preuve du besoin pilote.
-
-## 10. Outbound — dépendance stricte à la roadmap valeur
-
-### HEYREACH-0 — Lecture des séquences et réponses
-
-- séquences, statut, dernière interaction et réponse minimisés ;
-- aucune création, relance ou handoff automatique ;
-- correspondance prospect déterministe et révocable.
-
-### RESEND-0 — Domaine et délivrabilité
-
-- domaine, SPF/DKIM, identité d'expéditeur et état de délivrabilité ;
-- templates inspectables sans envoi ;
-- aucune réutilisation du SMTP d'authentification comme transport marketing.
-
-Les écritures `HEYREACH-1` et `RESEND-1` restent bloquées par la Gate C7 :
-suppression-list indépendante, base légale, fournisseur retenu, budget/claim
-atomique, états `sending | sent | failed | unknown`, idempotence fournisseur,
-kill switch, allowlist, self-test puis lot de cinq destinataires maximum.
-
-## 11. MCP personnalisé et n8n — derniers lots
-
-Le MCP personnalisé ne signifie jamais « coller une URL et faire confiance ».
-
-### MCP-0 — Registre administrateur
-
-- serveurs prédéclarés ou allowlistés ;
-- validation d'origine, DNS/IP, redirections et protection SSRF ;
-- auth, chiffrement et révocation ;
-- aucune URL libre pour les rôles métier.
-
-### MCP-1 — Handshake et découverte non fiables par défaut
-
-- identité/version/schéma vérifiés ;
-- manifeste et descriptions traités comme contenu non fiable ;
-- outils classés `lecture`, `écriture réversible`, `écriture engageante` ou
-  `interdit` ;
-- chaque outil est désactivé par défaut.
-
-### MCP-2 — Dry-run lecture seule
-
-- paramètres validés par schéma serveur ;
-- egress et volume bornés ;
-- sortie minimisée ;
-- journal expurgé et rétention décidée juridiquement, jamais fixée par la
-  maquette.
-
-### MCP-3 — Première écriture allowlistée
-
-- un seul outil réversible ;
-- proposition, approbation, claim, journal avant appel, idempotence et
-  réconciliation ;
-- aucun outil financier, message ou workflow arbitraire.
-
-### N8N-0 puis N8N-1
-
-- inventaire et état des workflows en lecture ;
-- puis un seul workflow versionné et allowlisté, avec entrée/sortie bornées,
-  timeout, idempotence et arrêt global.
-
-## 12. Extensions après la première porte
-
-- CAMP-6 : supervision continue bornée, sans hausse autonome de budget ;
-- CAMP-7 : boucle leads/nurturing alignée sur la Gate C7 ;
-- CAMP-8 : créatifs finis texte/image, vidéo plus tard ;
-- CAMP-9 : prévisions uniquement calibrées sur des campagnes closes ;
-- CAMP-10 : multi-canal, reporting consolidé et autonomie réversible.
-
-## 13. Lot déployé — CREATIVE-1
-
-**But** : terminer une campagne avec un visuel fini sans confondre génération,
-publication et performance fournisseur.
-
-- conserver l'alignement déjà réalisé sur le dernier `main`, CAMP-0/1/2 ainsi
-  que CONN-0/1/META-READ ;
-- sélectionner une campagne récente par défaut et préremplir message et format ;
-- générer explicitement via `gpt-image-2`, sans appel automatique ;
-- stocker le JPEG dans un bucket privé, avec quotas, versions et sélection ;
-- valider campagne et visuel sélectionné dans la même transaction via
-  `transition_action_decision_v2` ;
-- permettre à une campagne approuvée sans visuel d'en finaliser un plus tard par
-  un choix explicite, toujours sans publication ;
-- libérer le verrou organisation pendant l'appel OpenAI et réconcilier par cron
-  tout chemin Storage pending abandonné ;
-- porter le schéma de 27 à 28 avec `0028_creative_assets.sql`.
-
-**Frontière** : aucun asset n'est publié chez Meta ou un autre fournisseur. Les
-créatifs ne sont pas injectés dans `ad_metrics` et ne constituent pas encore un
-audit de performance créative. Toute écriture Ads reste dans les lots ultérieurs.
-
-**État de sortie** : schéma 28 vérifié → PR #29 fusionnée → CI et déploiement
-verts → recette de production Story réussie avec génération payante unique,
-rechargement signé privé, sélection, validation atomique, refus JWT/RLS et
-nettoyage des artefacts synthétiques. La surface Connecteurs est accessible sans
-erreur et expose les parcours OAuth attendus, mais aucun OAuth réel n'a été
-lancé. Restent ouverts : concurrence multi-session, isolation inter-tenant,
-échecs Storage/pending et lecture Meta réelle. `0028` est verrouillée ; toute
-nouvelle migration commence à `0029` ou au numéro supérieur présent dans
-`main`.
+Contraintes de livraison :
+- Travailler d'abord localement ; ne faire aucun commit, push, PR, migration distante, déploiement ou appel Meta sans autorisation séparée.
+- Préserver les changements utilisateur non liés.
+- Mettre à jour uniquement la documentation technique et de recette rendue nécessaire par l'implémentation.
+- Terminer par l'état exact, les preuves, les limites restantes, une mini-recette et la proposition du lot BUDGET-RESULTS. Ne pas ouvrir META-PAUSE.
+```

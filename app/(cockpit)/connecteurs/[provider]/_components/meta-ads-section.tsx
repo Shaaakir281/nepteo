@@ -1,9 +1,9 @@
 import { SAVE_BTN } from "@/components/ui/styles";
 import {
   readMetaAdAccountCandidates,
-  readMetaInsightSnapshot,
   readSelectedMetaAdAccount,
 } from "@/lib/connectors/meta-ads";
+import { readMetaMetricsState } from "@/lib/connectors/meta-metrics";
 import {
   listMetaAccounts,
   readMetaInsightsNow,
@@ -21,7 +21,7 @@ export function MetaAdsSection({
 }) {
   const accounts = readMetaAdAccountCandidates(config);
   const selected = readSelectedMetaAdAccount(config);
-  const snapshot = readMetaInsightSnapshot(config);
+  const metricsState = readMetaMetricsState(config);
 
   return (
     <div className="space-y-4">
@@ -87,7 +87,7 @@ export function MetaAdsSection({
         <div className="border-b border-line-soft px-[22px] py-4">
           <h3 className="font-display text-[15px] font-semibold">Métriques de campagne</h3>
           <p className="mt-0.5 text-[12px] text-muted">
-            Lecture manuelle bornée à 100 lignes et 7, 14 ou 30 jours. Aucune action Ads n&apos;est disponible.
+            Lecture manuelle paginée et bornée à 500 campagnes, 5 000 lignes et 7, 14 ou 30 jours. Aucune action Ads n&apos;est disponible.
           </p>
         </div>
         <div className="p-[22px]">
@@ -113,21 +113,15 @@ export function MetaAdsSection({
           {paused && selected && (
             <p className="mt-3 text-[12.5px] text-amber">Lecture en pause : aucune requête Meta ne peut démarrer.</p>
           )}
-          {snapshot && (
-            <div className="mt-4">
-              <p className="text-[13px] font-medium text-ink">
-                Dernier relevé : {snapshot.rows.length} ligne{snapshot.rows.length > 1 ? "s" : ""} du {snapshot.observation_from} au {snapshot.observation_to} ({snapshot.currency}).
-              </p>
-              {snapshot.rows.length > 0 && (
-                <ul className="mt-2 space-y-1.5 text-[12.5px] text-body">
-                  {snapshot.rows.slice(0, 5).map((row) => (
-                    <li key={`${row.campaign_id}-${row.date}`}>
-                      <b>{row.campaign_name}</b> Â· {row.date} Â· {row.impressions} impressions Â· {row.clicks} clics Â· {row.spend} {snapshot.currency}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
+          {metricsState?.quality === "complete" && (
+            <p className="mt-4 text-[13px] font-medium text-ink">
+              Photographie complète : {metricsState.campaign_count ?? 0} campagne{metricsState.campaign_count === 1 ? "" : "s"}, {metricsState.row_count ?? 0} ligne{metricsState.row_count === 1 ? "" : "s"} quotidienne{metricsState.row_count === 1 ? "" : "s"} et {metricsState.result_count ?? 0} résultat{metricsState.result_count === 1 ? "" : "s"} Meta, du {metricsState.observation_from} au {metricsState.observation_to} · {metricsState.currency} · {metricsState.timezone}.
+            </p>
+          )}
+          {metricsState && metricsState.quality !== "complete" && (
+            <p className="mt-4 rounded-[10px] bg-amber-tint px-3.5 py-2.5 text-[12.5px] text-amber">
+              Dernière tentative non appliquée ({metricsState.quality === "partial" ? "photographie partielle" : "données indisponibles"}). Les dernières métriques complètes restent inchangées.
+            </p>
           )}
         </div>
       </section>

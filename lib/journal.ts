@@ -24,6 +24,8 @@ export const EVENT_LABELS: Record<string, string> = {
   meta_ads_accounts_listed: "Comptes Meta Ads lus",
   meta_ads_account_selected: "Compte Meta Ads sélectionné",
   meta_ads_metrics_read: "Métriques Meta Ads lues",
+  meta_ads_metrics_snapshot_applied: "Photographie Meta Ads appliquée",
+  meta_ads_metrics_sync_failed: "Photographie Meta Ads non appliquée",
   meta_ads_read_failed: "Lecture Meta Ads échouée",
   analysis_run: "Analyse lancée",
   dormant_play_proposed: "Relance dormante proposée",

@@ -1,4 +1,4 @@
-export const REQUIRED_SCHEMA_VERSION = 28;
+export const REQUIRED_SCHEMA_VERSION = 29;
 export const READINESS_TIMEOUT_MS = 5_000;
 
 export function supportsRequiredSchemaVersion(version: unknown): boolean {
