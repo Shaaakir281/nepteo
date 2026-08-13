@@ -2,7 +2,14 @@
 
 Une phase = un objectif unique + une porte go/no-go. On ne passe pas la porte, on ne passe pas à la suite.
 
-> **Lecture au 2026-08-09** : la phase 3A et le socle Campagnes/Story sont déployés ; le parcours campagne → génération → sélection → validation a été recetté en production sans lancement ni publication fournisseur. La porte de valeur de la phase 2, les OAuth réels et les écritures fournisseur restent ouverts. L'ordre opérationnel des prochains incréments est défini dans la [roadmap valeur — tests commanditaires](projets/roadmap-valeur-commanditaires.md).
+> **Lecture au 2026-08-12** : la phase 3A et le socle Campagnes/Story sont
+> déployés, mais la priorité produit immédiate est maintenant la boucle Campagnes
+> mesurable. L'ordre opérationnel est défini dans la
+> [roadmap Campagnes](projets/roadmap-campagnes-supervisees.md) : vérité des
+> métriques, `META-METRICS`, budget/résultats, recommandation Meta et mesure
+> avant/après. La [roadmap valeur — tests commanditaires](projets/roadmap-valeur-commanditaires.md)
+> continue de gouverner le play Prospects et l'outbound ; elle ne fixe plus la
+> priorité globale suivante.
 
 > **Chantier transverse — prise en main** : le parcours guidé est piloté par sa
 > [roadmap dédiée](projets/roadmap-prise-en-main.md), distincte de la roadmap
@@ -39,13 +46,29 @@ Livrables : 1 ou 2 types d'action réels (ex. email de relance), idempotence + j
 
 ## Phase 4 — Campagnes & contenu
 
-**Objectif** : préparer puis superviser une première campagne complète (brief → proposition → validation → lecture fournisseur → action bornée).
+**Objectif** : fermer une première boucle Campagnes mesurable (brief → budget
+prévu → lecture fournisseur réelle → résultats qualifiés → recommandation →
+décision humaine → mesure avant/après).
 
-Livrables : modal nouvelle campagne, variantes de messages, typologie (acquisition, retargeting, conversion, nurturing, réactivation…), génération de contenus texte et d'un visuel Story/carré/paysage rattaché à la campagne, cockpit fondé sur des faits inspectables, puis un fournisseur Ads pilote en lecture avant toute écriture. Le visuel est déployé via `0028` et reste sans publication fournisseur.
+Livrables : le socle créatif existant, puis un contrat explicite pour budget,
+dépense, résultat, coût par résultat, conversions, revenu, attribution, devise,
+fuseau, fraîcheur et provenance ; Meta alimente réellement `ad_metrics` de
+façon bornée et idempotente ; le cockpit affiche prévu/réalisé, résultats,
+tendances 7/30 jours et qualité ; une recommandation Meta est mesurée avant et
+après. CAC et ROAS ne sont visibles que si une source aval les justifie.
 
-Le détail exécutable, les micro-lots CAMP-0 à CAMP-10 et le backlog des intégrateurs visibles dans la maquette sont définis dans la [roadmap Campagnes supervisées et intégrateurs](projets/roadmap-campagnes-supervisees.md). CAMP-0, CAMP-1, le socle CAMP-2 et CREATIVE-1 sont fusionnés et déployés ; une recette de production partielle couvre le parcours campagne → Story → approbation sans effet externe. La lecture Meta réelle et CAMP-4 à CAMP-5 restent nécessaires pour franchir la porte. Chaque intégrateur suit `contrat → connexion → lecture → vérité UI` avant une permission d'écriture séparée.
+Le détail exécutable est défini dans la [roadmap Campagnes](projets/roadmap-campagnes-supervisees.md).
+CAMP-0, CAMP-1, le socle CAMP-2 et CREATIVE-1 sont acquis. `META-METRICS` est
+implémenté localement mais attend ses preuves staging/JWT et son échantillon
+Meta autorisé ; après G1, le prochain lot proposé est `BUDGET-RESULTS`. Une
+pause Meta n'est étudiée qu'après la preuve lecture/analyse/mesure, et un
+lancement payant n'est pas dans l'ordre immédiat.
 
-**Porte** : une campagne proposée par l'agent est validée, lancée sur un fournisseur pilote et mesurée avec un statut et un coût vérifiables des deux côtés.
+**Porte** : un compte Meta pilote alimente le cockpit avec une photographie
+complète ; budget prévu, dépense, type et coût du résultat sont traçables ; une
+recommandation prudente a une baseline, une décision et un avant/après
+reconstructibles, sans écriture fournisseur. La mutation Ads possède sa propre
+porte ultérieure.
 
 ## Phase 5 — Passage à l'échelle
 
@@ -55,9 +78,13 @@ Livrables : slider d'autonomie par client, connecteurs additionnels, onboarding 
 
 **Porte** : 3 clients actifs sans support quotidien.
 
-## À ne pas faire au début
+## À ne pas faire dans l'ordre immédiat
 
-Tous les canaux, les deux écosystèmes email en parallèle, attribution complexe, prédictions ambitieuses, campagnes totalement autonomes, multi-agents complexe, ML sans données. Prouver d'abord : « l'agent comprend les données, détecte une priorité et aide à agir. »
+Salesforce, LinkedIn Ads, automatisation LinkedIn, lancement payant, écritures
+fournisseur, attribution complexe, prédictions ambitieuses, campagnes
+autonomes, intégration Andromeda directe, multi-agents complexe et ML sans
+données. Prouver d'abord : « les données réelles alimentent une recommandation
+prudente dont le résultat peut être mesuré ».
 
 ## Chantiers transverses cadrés
 

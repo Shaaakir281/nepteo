@@ -252,7 +252,7 @@ test("rebuild showcase — les postconditions exigent un socle neutre", () => {
     value_events: [{ id: "v1" }],
   };
   const before = {
-    schema_version: 28,
+    schema_version: 29,
     organization: {
       id: TARGET_ORGANIZATION_ID,
       name: TARGET_ORGANIZATION_NAME,
@@ -268,7 +268,7 @@ test("rebuild showcase — les postconditions exigent un socle neutre", () => {
     },
   };
   const after = {
-    schema_version: 28,
+    schema_version: 29,
     organization: { ...before.organization, activity: null },
     tables: {
       ...emptyOperationalTables(),

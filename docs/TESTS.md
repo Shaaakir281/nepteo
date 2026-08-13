@@ -24,7 +24,8 @@ Jeu de données : `docs/tests/prospects-test.csv` (24 prospects, 5 sans email, s
     - `0025_campaign_proposals.sql` ;
     - `0026_campaign_studio.sql` ;
     - `0027_campaign_decision_cockpit.sql` ;
-    - `0028_creative_assets.sql`.
+    - `0028_creative_assets.sql` ;
+    - `0029_meta_metrics.sql`.
 
    Avant `0013`, contrôler les doublons :
 
@@ -35,7 +36,7 @@ Jeu de données : `docs/tests/prospects-test.csv` (24 prospects, 5 sans email, s
    having count(*) > 1;
    ```
 
-   Si la requête renvoie une ligne, arrêter et arbitrer explicitement les memberships concernés. `0013` échoue volontairement sans modifier les données ; ne pas supprimer automatiquement une appartenance. Après `0015`, exécuter le [smoke authentifié/RLS](tests/SMOKE-AUTH-RLS.md), puis compléter par une recette manuelle du rôle commercial ; le smoke automatisé actuel couvre le rôle lecture. `0016` crée le marqueur de readiness après avoir vérifié les prérequis critiques ; les migrations suivantes le portent progressivement à 28. Depuis une base à 21, respecter `0022 → 0023 → 0024 → 0025 → 0026 → 0027 → 0028`. Le projet lié est déjà à 28 : ne jamais rejouer `0028`. Toute nouvelle base doit recevoir la migration d'abord en staging/recette, dans l'ordre, avant une promotion explicitement autorisée. (« Success. No rows returned » est normal pour une migration de schéma.)
+   Si la requête renvoie une ligne, arrêter et arbitrer explicitement les memberships concernés. `0013` échoue volontairement sans modifier les données ; ne pas supprimer automatiquement une appartenance. Après `0015`, exécuter le [smoke authentifié/RLS](tests/SMOKE-AUTH-RLS.md), puis compléter par une recette manuelle du rôle commercial ; le smoke automatisé actuel couvre le rôle lecture. `0016` crée le marqueur de readiness après avoir vérifié les prérequis critiques ; les migrations suivantes le portent progressivement à 29. Depuis une base à 21, respecter `0022 → 0023 → 0024 → 0025 → 0026 → 0027 → 0028 → 0029`. Le projet lié est attesté à 29 au 13 août 2026 : ne rejouer ni `0028` ni `0029`. Toute nouvelle base doit recevoir les migrations d'abord en staging/recette, dans l'ordre, avant une promotion explicitement autorisée. (« Success. No rows returned » est normal pour une migration de schéma.)
 2. **`CONNECTOR_TOKEN_ENCRYPTION_KEY` et `CRON_SECRET`** : ces clés ne se « trouvent » nulle part — **c'est toi qui les fabriques**. Ouvre PowerShell et lance **deux fois** :
 
    ```powershell
@@ -104,6 +105,33 @@ La release courante inclut ce contrat et sa preuve de production :
 - le retrait supprime contacts, propositions liées à la source et briefing courant ; le journal append-only et le cache des recherches d'entreprise déjà demandées restent conservés. Ce retrait de source ne vaut pas effacement RGPD complet du tenant.
 
 ### Contrats de sécurité locaux
+
+Pour META-METRICS, les contrats locaux dédiés sont
+`tests/meta-ads-read.test.mjs` et `tests/meta-metrics-migration.test.mjs`.
+Sur une base staging dédiée déjà portée à `29`, exécuter le smoke atomique/RLS
+sans aucun appel Meta :
+
+```powershell
+$env:META_METRICS_STAGING_WRITE="I_ACKNOWLEDGE_META_METRICS_STAGING_WRITE"
+node --env-file-if-exists=.env.local scripts/smoke-meta-metrics.mjs
+```
+
+Variables requises en plus des clés Supabase :
+`META_METRICS_SMOKE_EMAIL`, `META_METRICS_SMOKE_PASSWORD`,
+`META_METRICS_SMOKE_ORG_ID` et `META_METRICS_SMOKE_OTHER_ORG_ID`.
+L'organisation propre doit être une fixture vide nommée
+`E2E_META_METRICS_*`, sans connecteur Meta ; le tenant tiers doit contenir au
+moins un run META-METRICS et ne pas appartenir à l'utilisateur de recette. Le
+script crée un connecteur sans secret, vérifie photographie, rejeu,
+réconciliation, rollback, journal d'échec idempotent et isolation JWT, puis
+supprime ses métriques et son connecteur exacts. Le journal append-only de la
+fixture demeure.
+
+La recette du 13 août 2026 a prouvé OAuth `ads_read`, liste et sélection du
+compte, EUR, Europe/Paris et une lecture vide de 7 jours. Le gate G1 exige encore
+le smoke atomique/JWT et une autorisation distincte pour comparer manuellement
+au moins un tuple non vide compte/campagne/date/dépense/type de résultat. Sans
+cette preuve, ne pas présenter la photographie réelle comme recettée.
 
 Avant toute recette distante, lancer :
 

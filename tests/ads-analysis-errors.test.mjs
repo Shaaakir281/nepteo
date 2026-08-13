@@ -42,6 +42,9 @@ function createAdmin(overrides = {}) {
         eq() {
           return builder;
         },
+        in() {
+          return builder;
+        },
         like() {
           return builder;
         },

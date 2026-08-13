@@ -64,6 +64,7 @@ export default async function ContenuPage({
           "campaign_id, campaign_name, impressions, clicks, spend, conversions, revenue",
         )
         .eq("provider", "meta_ads")
+        .in("outcome_provenance", ["demo", "verified_downstream"])
         .gte("date", windowBounds().currentFrom)
     : { data: [] };
   const losingCampaigns = rollupByCampaign(

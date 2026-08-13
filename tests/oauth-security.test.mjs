@@ -50,7 +50,9 @@ test("OAuth — le state est lié au navigateur, au provider, à l'utilisateur e
 
 test("OAuth — toute altération du state échoue fermé", () => {
   const state = createOAuthState(context);
-  const tampered = `${state.slice(0, -1)}${state.endsWith("A") ? "B" : "A"}`;
+  const parts = state.split(".");
+  parts[2] = `${parts[2].startsWith("A") ? "B" : "A"}${parts[2].slice(1)}`;
+  const tampered = parts.join(".");
   assert.equal(verifyOAuthState(tampered, tampered, context), false);
   assert.equal(verifyOAuthState("v1.incomplet", "v1.incomplet", context), false);
 });
