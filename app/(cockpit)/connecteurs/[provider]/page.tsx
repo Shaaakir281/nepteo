@@ -19,6 +19,11 @@ import { MetaAdsSection } from "./_components/meta-ads-section";
 import { readSelectedMetaAdAccount } from "@/lib/connectors/meta-ads";
 import { ConnectorSetupSteps } from "./_components/connector-setup-steps";
 import { ConnectorDetailHeader } from "./_components/connector-detail-header";
+import { MetaPilotAccessSection } from "./_components/meta-pilot-access-section";
+import {
+  readMetaPilotAccessRequest,
+  type MetaPilotAccessRequest,
+} from "@/lib/connectors/meta-pilot-access";
 
 interface VisibleConnector {
   id: string;
@@ -109,21 +114,36 @@ export default async function ConnectorDetailPage({
       })
     : { databases: null, columns: null, mapping: {} };
 
+  let metaPilotRequest: MetaPilotAccessRequest | null = null;
+  if (provider === "meta_ads" && !authorized) {
+    const { data, error: requestError } = await supabase
+      .from("meta_ads_pilot_access_requests")
+      .select(
+        "id, facebook_email, facebook_profile_url, status, requested_at, ready_at, connected_at",
+      )
+      .eq("organization_id", membership.organizationId)
+      .eq("requested_by", user.id)
+      .maybeSingle();
+    if (requestError) throw new Error(requestError.message);
+    metaPilotRequest = readMetaPilotAccessRequest(data);
+  }
+
   return (
     <>
       <ConnectorDetailHeader tool={tool} presentation={presentation} config={config} saved={saved} synced={synced} error={error} />
 
       <ConnectorSetupSteps authorized={authorized} configured={configured} />
 
-      {!authorized ? (
+      {!authorized ? provider === "meta_ads" ? (
+        <MetaPilotAccessSection request={metaPilotRequest} canEdit={canEdit} />
+      ) : (
         <div className="rounded-[18px] border border-line-soft bg-white p-6 shadow-card">
           <h2 className="font-display text-[16px] font-semibold text-ink">
             Autoriser la lecture de {tool.name}
           </h2>
           <p className="mt-2 text-[13px] text-body">
-            {provider === "meta_ads"
-              ? "Autorisez uniquement la lecture Meta Ads (ads_read) : aucun budget, campagne, créa ou pause publicitaire ne peut être modifié par Nepteo."
-              : "Autorisez Nepteo à lire vos données — lecture seule, jetons chiffrés, accès révocable ici à tout moment."}
+            Autorisez Nepteo à lire vos données — lecture seule, jetons chiffrés,
+            accès révocable ici à tout moment.
           </p>
           {canEdit && (
             <a

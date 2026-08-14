@@ -43,6 +43,10 @@ import {
   readMetaMetricsSnapshot,
   recordMetaMetricsFailure,
 } from "@/lib/connectors/meta-metrics";
+import {
+  MetaPilotAccessInputError,
+  parseMetaPilotAccessInput,
+} from "@/lib/connectors/meta-pilot-access";
 
 /** Liste des connecteurs = onglet de « Mon entreprise » depuis C4. La fiche
  *  par outil (`/connecteurs/<provider>`) reste, elle, un écran à part entière. */
@@ -141,6 +145,36 @@ export async function saveNotionDatabase(formData: FormData) {
   const database_title = database?.title ?? "";
   if (!database_id) fail("notion", "Choisissez une base de données.");
   await saveConfig("notion", { database_id, database_title }, ctx.userId);
+}
+
+export async function requestMetaPilotAccess(formData: FormData) {
+  const ctx = await requireEditor("meta_ads");
+  let input: ReturnType<typeof parseMetaPilotAccessInput>;
+  try {
+    input = parseMetaPilotAccessInput({
+      email: formData.get("facebook_email"),
+      profileUrl: formData.get("facebook_profile_url"),
+    });
+  } catch (error) {
+    if (error instanceof MetaPilotAccessInputError) {
+      fail("meta_ads", error.message);
+    }
+    fail("meta_ads", "Demande d’accès Meta invalide.");
+  }
+
+  const { error } = await createAdminClient().rpc(
+    "request_meta_ads_pilot_access",
+    {
+      p_organization_id: ctx.orgId,
+      p_actor_id: ctx.userId,
+      p_facebook_email: input.facebookEmail,
+      p_facebook_profile_url: input.facebookProfileUrl,
+    },
+  );
+  if (error) {
+    fail("meta_ads", "Demande d’accès impossible. Réessayez dans un instant.");
+  }
+  redirect("/connecteurs/meta_ads?access_request=requested");
 }
 
 export async function saveFieldMapping(formData: FormData) {

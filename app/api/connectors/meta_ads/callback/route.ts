@@ -15,6 +15,7 @@ import {
   oauthStateCookieOptions,
   verifyOAuthState,
 } from "@/lib/connectors/oauth-security";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function GET(request: NextRequest) {
   const isProduction = process.env.NODE_ENV === "production";
@@ -28,7 +29,7 @@ export async function GET(request: NextRequest) {
   const clearCookie = { ...oauthStateCookieOptions(isProduction), maxAge: 0 };
   const fail = (message: string) => {
     const response = NextResponse.redirect(
-      publicUrl(`/entreprise?onglet=connecteurs&error=${encodeURIComponent(message)}`),
+      publicUrl(`/connecteurs/meta_ads?error=${encodeURIComponent(message)}`),
     );
     response.cookies.set(cookieName, "", clearCookie);
     return response;
@@ -40,12 +41,17 @@ export async function GET(request: NextRequest) {
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
   const cookieState = request.cookies.get(cookieName)?.value;
-  if (!code || !verifyOAuthState(state, cookieState, {
+  if (!verifyOAuthState(state, cookieState, {
     provider: "meta_ads",
     userId: ctx.userId,
     orgId: ctx.orgId,
   })) {
     return fail("Connexion Meta Ads interrompue ou invalide.");
+  }
+  if (!code) {
+    return fail(
+      "Meta n’a pas autorisé la connexion. Si votre compte n’est pas encore testeur, demandez d’abord l’accès pilote dans Nepteo.",
+    );
   }
 
   try {
@@ -65,6 +71,21 @@ export async function GET(request: NextRequest) {
     );
   } catch {
     return fail("Connexion Meta Ads impossible. Réessayez après avoir vérifié l'accès.");
+  }
+
+  // Le suivi pilote est secondaire : un incident ici ne doit pas invalider
+  // le consentement et les credentials déjà stockés avec succès.
+  try {
+    const { error } = await createAdminClient().rpc(
+      "mark_meta_ads_pilot_access_connected",
+      {
+      p_organization_id: ctx.orgId,
+      p_actor_id: ctx.userId,
+      },
+    );
+    if (error) throw error;
+  } catch {
+    // `connector_authorized` reste la preuve append-only de la connexion.
   }
 
   const response = NextResponse.redirect(publicUrl("/connecteurs/meta_ads"));
