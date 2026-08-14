@@ -5,23 +5,27 @@
 > 2. À la fin de ta session : ajouter une entrée en haut de l'« Historique des sessions » (date, ce qui a été fait, décisions prises, ce qui reste), et mettre à jour « État actuel » si besoin.
 > 3. Ne jamais construire en avance des phases suivantes (voir docs/ROADMAP.md). Vérifier `npm run typecheck` + `npm run build` avant de conclure.
 
-> **Références de recette** : `docs/demo/GUIDE-TEST.md` pour le parcours, `docs/tests/SCORECARD-COMMANDITAIRE.md` pour mesurer la valeur, `docs/TESTS.md` pour les connecteurs et `docs/tests/SMOKE-AUTH-RLS.md` pour l'isolation Supabase. Au 2026-08-14, Azure sert à 100 % la révision `nepteo-prod--0000036`, sur l'image du merge du parcours pilote Meta `a7cd9c2e070c866efc8acd6645451d168549f48d`. La PR #46, ses CI, son déploiement et ses sondes sont attestés ci-dessous. Le smoke RLS multi-rôles/tenants complet reste réservé à des organisations de recette séparées.
+> **Références de recette** : `docs/demo/GUIDE-TEST.md` pour le parcours, `docs/tests/SCORECARD-COMMANDITAIRE.md` pour mesurer la valeur, `docs/TESTS.md` pour les connecteurs et `docs/tests/SMOKE-AUTH-RLS.md` pour l'isolation Supabase. Au 2026-08-14, Azure sert à 100 % la révision `nepteo-prod--0000036`, sur l'image du merge du parcours pilote Meta `a7cd9c2e070c866efc8acd6645451d168549f48d`. La production Supabase reste au schéma 30 ; le staging partagé est réconcilié sur la chaîne canonique et attesté au schéma 32. Le smoke RLS multi-rôles/tenants complet reste réservé à des organisations de recette séparées.
 
 ## État actuel (2026-08-14)
 
-**CAMP-0, CAMP-1, CAMP-2, CONN-0, CONN-1, META-READ, META-METRICS, le parcours pilote Meta, le Studio de visuels campagne-first, le scénario en un clic et le durcissement sécurité sont fusionnés dans `main` et servis par la révision courante `nepteo-prod--0000036`.** META-METRICS lit uniquement via `ads_read` et applique ses photographies atomiques dans le schéma 30 ; aucune mutation Ads n'est ouverte. La migration `0030` du parcours temporaire de demande d'accès testeur est appliquée en production et son code est servi après fusion de la PR #46. La [roadmap Campagnes](projets/roadmap-campagnes-supervisees.md) conserve G1 avant BUDGET-RESULTS.
+**CAMP-0, CAMP-1, CAMP-2, CONN-0, CONN-1, META-READ, META-METRICS, le parcours pilote Meta, le Studio de visuels campagne-first, le scénario en un clic et le durcissement sécurité sont fusionnés dans `main` et servis par la révision courante `nepteo-prod--0000036`.** META-METRICS lit uniquement via `ads_read` et applique ses photographies atomiques dans le schéma de production 30 ; aucune mutation Ads n'est ouverte. BUDGET-RESULTS est construit et validé localement, et le staging est réconcilié au schéma 32. Le lot n'est pas encore publié ni déployé ; déploiement, recette technique et recette sur données Meta réelles non vides restent des preuves séparées.
 
-**Priorité produit actée le 12 août 2026 — fermer la boucle Campagnes réelle et
-mesurable.** Le moteur de préparation et d'analyse existe. META-METRICS est
-déployé et le projet Supabase lié est attesté au schéma `30` avec ses trois
-tables de métriques et la table du parcours pilote. OAuth `ads_read`, le compte `Fathi Mts`, EUR, Europe/Paris et une lecture
-vide de 7 jours sont prouvés en production. Restent ouverts : smoke
-atomique/JWT et échantillon non vide
-compte/campagne/date/dépense/résultat. Après G1, le lot proposé est BUDGET-RESULTS, puis une
-recommandation prudente entre campagnes Meta et sa mesure avant/après.
-Salesforce, LinkedIn, pause/lancement Meta, lancement payant, écritures
-fournisseur, automatisation avancée et intégration Andromeda directe ne sont pas
-les prochaines étapes. Aucune mutation Ads n'est ouverte.
+**Priorité produit confirmée le 14 août 2026 — construire le cockpit pendant la
+préparation de la recette réelle.** Le moteur de préparation et d'analyse existe.
+META-METRICS est déployé et le projet Supabase lié est attesté au schéma `30`
+avec ses trois tables de métriques et la table du parcours pilote. OAuth
+`ads_read`, le compte `Fathi Mts`, EUR, Europe/Paris et une lecture vide de 7
+jours sont prouvés en production. G1 reste ouvert faute du seul élément qui
+manque encore à la preuve métier : un échantillon Meta non vide rapproché par
+compte, campagne, date, dépense et type de résultat. `BUDGET-RESULTS` avance en
+parallèle, mais G2 ne pourra pas être déclaré vert avant cette comparaison.
+Une inconnue ne devient jamais zéro, un budget prévu sans rapprochement explicite
+reste « Budget prévu non rapproché », et revenu, CAC ou ROAS réel restent absents
+sans source aval vérifiée. Les maquettes commerciales ne prouvent aucune capacité
+runtime. `META-RECOMMEND`, `META-PAUSE`, Salesforce, LinkedIn, pause/lancement
+Meta, lancement payant, écritures fournisseur, automatisation avancée et
+intégration Andromeda directe restent fermés.
 
 **Mise à jour du 9 août — états séparés et attestés.** Le projet Supabase lié `hrqnzorapjnosjphftur` est à `app_schema_version = 28`. Les tables créatives et le bucket privé sont contrôlés après déploiement. La PR #29 est fusionnée au merge `c5e7148`, la CI `31332578671` et le déploiement `31332676182` sont verts, et Azure servait alors la révision `nepteo-prod--0000022`. La recette runtime authentifiée campagne → Story → sélection → validation est verte sur fixture synthétique ; elle reste distincte des recettes OAuth Connecteurs et du smoke RLS inter-tenant complet.
 
@@ -46,6 +50,7 @@ les prochaines étapes. Aucune mutation Ads n'est ouverte.
 - **CAMP-2 — déployé dans `0000022`, recette métier partielle** : le cockpit de décision agrège `ad_metrics` sur deux fenêtres calendaires explicites et rattache l'historique réel de `actions`/`journal`. Dépense, conversions, revenu, CAC, ROAS, CPM et CTR, événements et recommandations conservent une source de ligne inspectable ; cela prouve la reproductibilité du calcul, pas encore la sémantique d'une conversion ou la provenance d'un revenu réel. La roadmap recadrée impose donc CAC/ROAS indisponibles sur les futures données réelles tant qu'une source aval rapprochée ne les justifie pas. Une confiance non calibrée reste absente. Le résumé opérationnel distingue contrôles persistés, dernier démarrage et connecteurs hors scénario ; la recherche prospect est expurgée et bornée. Un rapport strict 7 jours contre 7 jours et quatre questions fixes sont dérivés sans IA. La récence des métriques produit seulement « Données récentes » ou « Historique » : aucun état « Active »/« Terminée » n'est inféré sans statut fournisseur. Le refus d'une proposition exige un motif. `0027` rend atomique et idempotente la création des actions `ads_pause_*` avec leur journal, adopte les anciennes propositions à confiance fixe avec une trace liée, refuse les doublons ouverts préexistants sans les fusionner et ferme claim comme finalisation à toute pause Ads ; une validation affiche « Validée — non appliquée ». Aucun appel Ads, outbox, IA, envoi ou dépense n'est ajouté.
 - **Schéma Campagnes + Créatif + META-METRICS — Supabase à 30, code META-METRICS déployé** : les migrations `0022` à `0030` sont présentes dans le projet lié, qui expose `app_schema_version = 30`, `ad_metric_sync_runs`, `ad_campaigns`, `ad_metric_results` et `meta_ads_pilot_access_requests`. L'historique CLI 0001–0029, auparavant vide car les migrations avaient été appliquées par l'éditeur SQL, a été aligné après attestation du marqueur 29 et des trois tables META-METRICS ; le dry-run final ne relève aucun reliquat. Le smoke META-METRICS atomique/inter-tenant reste distinct.
 - **Connecteurs Growth — META-METRICS et parcours pilote déployés** : CONN-0 conserve le catalogue existant et rend les capacités honnêtes ; CONN-1 porte consentement, pause, reprise et révocation. Le callback Meta réel, la liste de comptes et une lecture vide sont recettés. Le parcours `requested → ready → connected` ne contacte pas Meta et laisse l'ajout du testeur et sa notification à l'exploitation.
+- **BUDGET-RESULTS — construit et validé localement, staging au schéma 32, non publié et non recetté sur données Meta non vides** : le cockpit en lecture seule est dédié aux lignes `provider_reported` de `ad_metrics`, `ad_campaigns` et `ad_metric_results`, sans les injecter dans l'ancien parcours financier CAMP-2. Il affiche dépense, résultats Meta typés, coût par résultat, fenêtres et tendances 7/30 jours, devise, fuseau, attribution, fraîcheur, provenance et qualité. Faute de rapprochement persistant explicite dans le schéma, le prévu affiche « Budget prévu non rapproché » ; faute de champ fournisseur, son budget reste indisponible. Les sept états `ready`, `empty`, `missing`, `stale`, `partial`, `incompatible` et `error` sont couverts sans transformer l'absence en zéro. Le lot n'ajoute ni recommandation, ni pause, ni mutation Meta, et n'affiche aucun revenu, CAC ou ROAS réel sans preuve aval. Les 687 tests, typecheck, lint et build de 29 pages/routes sont verts localement ; publication, CI distante, production et recette réelle restent à attester.
 - **Créatif IA campagne-first — fusionné via PR #29 et déployé dans `0000022`** : `/contenu` part d'une campagne récente, reprend son message et recommande la Story 9:16 pour Meta ; la création libre reste secondaire et paginée. La recette production a généré une Story `gpt-image-2` 1008 × 1792, persisté un JPEG privé, rechargé sa version signée, sélectionné puis validé atomiquement le visuel avec la campagne. Le JWT voit son asset mais reçoit `42501` sur les requêtes internes et l'update direct ; le Storage direct répond `404`. L'objet, l'asset, la requête de génération, l'action/campagne et l'acteur synthétiques du run ont été supprimés. L'organisation-coquille et le journal append-only sont conservés ; un nouvel acteur dédié a ensuite été provisionné et le smoke CSV officiel a repassé ses six contrôles. Aucun lancement, aucune publication fournisseur, aucune outbox et aucune écriture Ads n'ont eu lieu.
 - **C8 — temps dans la relance** : déployé, à recetter sur les connecteurs. Le champ facultatif `last_contact_at` est synchronisé depuis Sheets/Notion ; un contact de moins de 7 jours est exclu des relances et une attente d'au moins 21 jours renforce la priorité.
 - **R1A/C9A — preuve terrain structurée** : `0020` ajoute `value_events`, une saisie déclarative minimisée et append-only, les garde-fous de rôle/tenant, la séparation `manual`/fournisseur et le marqueur `is_demo`. À l'approbation d'une relance, sa cohorte non vide (50 prospects maximum) est figée avec la décision et son journal dans une transaction ; les suites terrain sont ensuite rattachées prospect par prospect. Rien n'est envoyé et aucun statut fournisseur n'est fabriqué.
@@ -68,12 +73,20 @@ Environnement : Supabase `hrqnzorapjnosjphftur`, repo GitHub `Shaaakir281/nepteo
 
 ## Prochaines étapes (dans l'ordre)
 
-Pour toute nouvelle tâche, vérifier le HEAD, les branches locales visibles et le
-numéro de migration réellement présent avant de choisir un numéro. `0029` est
-déjà appliquée sur le projet lié ; toute nouvelle migration part au minimum de
-`0030`. Le commit local `0091a12` atteste des recettes
-OAuth Google/Notion et un audit connecteurs, mais il ne doit pas être supposé
-fusionné dans l'état source.
+Pour toute nouvelle tâche, vérifier le HEAD, les branches locales visibles et les
+historiques de migrations réellement appliqués avant de choisir un numéro. La
+production porte `0029_meta_metrics.sql` puis `0030_meta_ads_pilot_access.sql`
+et reste au schéma 30. Le staging partagé avait porté sous ces mêmes numéros
+`0029_connector_foundation.sql` puis `0030_connector_conflict_http.sql`. Après
+inspection des objets et de l'historique, seules ces entrées divergentes ont été
+réparées comme révoquées, sans suppression d'objet ; le staging a ensuite
+appliqué la chaîne canonique `0029_meta_metrics.sql` →
+`0030_meta_ads_pilot_access.sql` → `0031_connector_foundation.sql` →
+`0032_connector_conflict_http.sql` et expose readiness 32. Aucun contenu
+historique n'a été réécrit et le nettoyage destructif de `prospects.raw` de la
+branche connecteurs n'a pas été promu. Le commit local `0091a12`
+atteste des recettes OAuth Google/Notion et un audit connecteurs, mais il ne doit
+pas être supposé fusionné dans l'état source.
 
 ### Priorité produit immédiate — boucle Campagnes
 
@@ -81,22 +94,23 @@ fusionné dans l'état source.
    résultat, coût par résultat, conversions aval, revenu, attribution, devise,
    fuseau, fraîcheur, provenance et qualité. Inconnu ne vaut jamais zéro ; aucun
    ROAS réel sans revenu rapproché et vérifiable.
-2. **META-METRICS — schéma 29 et code déployés, G1 encore ouvert** : ne pas
-   rejouer `0029`; exécuter le smoke atomique/JWT, puis rapprocher un échantillon
-   Meta non vide autorisé. La lecture vide ne
-   remplace pas le tuple compte/campagne/date/dépense/résultat.
-3. **BUDGET-RESULTS — prochain lot proposé après G1** : prévu/réalisé, résultats Meta, coût par résultat,
-   tendances 7/30 jours et qualité. CAC/ROAS restent indisponibles si leur source
-   n'est pas justifiée.
-4. **META-RECOMMEND** : recommandation et simulation prudentes entre campagnes
-   Meta comparables, décision humaine et aucun effet fournisseur.
-5. **RECOMMENDATION-MEASURE** : baseline figée, version de recommandation,
-   fenêtre après et verdict reconstructible, sans prétendre à une causalité non
-   prouvée.
-6. **Ensuite seulement** : readiness puis pause Meta supervisée ; Google Ads en
-   lecture ; arbitrage Meta ↔ Google si les métriques sont comparables.
+2. **META-METRICS — schéma 30 et code déployés, G1 encore ouvert** : ne rejouer
+   ni `0029` ni `0030` en production. La lecture vide ne remplace pas le tuple
+   compte/campagne/date/dépense/type de résultat ; rapprocher un échantillon Meta
+   non vide autorisé reste la preuve manquante.
+3. **BUDGET-RESULTS — prêt à publier pendant G1** : prévu/réalisé, résultats Meta, coût
+   par résultat, tendances 7/30 jours, fraîcheur et qualité. Les absences,
+   incompatibilités et erreurs restent explicites ; CAC, revenu et ROAS restent
+   indisponibles si leur source aval n'est pas vérifiée. Le lot peut être publié
+   et déployé avant la recette non vide, mais G2 reste alors ouvert.
+4. **Recette G1/G2 sur données non vides** : retrouver dans Meta chaque nombre
+   échantillonné et conserver distincts « déployé », « recette technique » et
+   « recetté sur données réelles non vides ».
+5. **Ne pas ouvrir le lot suivant** : `META-RECOMMEND`,
+   `RECOMMENDATION-MEASURE`, `META-PAUSE` et toute mutation fournisseur restent
+   hors périmètre de BUDGET-RESULTS.
 
-### Travaux transverses ouverts, non prioritaires devant G1 puis BUDGET-RESULTS
+### Travaux transverses ouverts, non prioritaires devant BUDGET-RESULTS et sa recette G1/G2
 
 1. **Fermer les deux smokes auth restants** : déconnexion mobile authentifiée,
    bouton Retour, puis email neuf et arrivée sur le domaine public.
@@ -147,7 +161,7 @@ fusionné dans l'état source.
 - Le callback de confirmation accepte `?code=` (PKCE) et `?token_hash=&type=`. Toutes ses redirections absolues utilisent `APP_URL` comme origine publique et jamais `request.url` en production derrière un proxy ; ne pas « simplifier » ce contrat.
 - La table `journal` refuse UPDATE/DELETE (trigger) — c'est voulu.
 - Design : reprendre les tokens validés de la maquette Growth Cockpit dans `globals.css` et documenter toute adaptation ; ne pas inventer un second système visuel.
-- **Migrations parallèles** : le numéro d'une migration de branche n'est pas une réservation durable tant qu'elle n'est pas appliquée. `0029` est désormais verrouillée par son application sur le projet lié ; les chantiers suivants doivent partir de `0030` ou du numéro supérieur présent dans `main`, sans renuméroter `0028` ou `0029`.
+- **Migrations parallèles** : un numéro ne désigne pas nécessairement le même SQL sur deux environnements. Production a appliqué `0029_meta_metrics` puis `0030_meta_ads_pilot_access`; le staging partagé a appliqué `0029_connector_foundation` puis `0030_connector_conflict_http`. Ne modifier ni ne remplacer aucun fichier ou historique déjà appliqué. La séquence canonique du dépôt garde Meta en `0029/0030`, reprend le socle connecteurs en `0031`, puis son correctif HTTP en `0032`; toute migration suivante vient après cette réconciliation et doit relever readiness avec ses propres postconditions.
 - **Copie produit** : ne PAS définir le lexique marketing standard (prospect, lead, funnel…). CLAUDE.md corrigé en ce sens (retour de Fathi 2026-07-21).
 - **Recherche web (OpenAI ou Perplexity)** : appel **facturé**. Toujours passer par `runResearch` (garde-fous + journal + cache + réservation atomique) — ne jamais appeler `askPerplexity` / `askOpenAiSearch` / `askResearch` directement depuis une action. Seul un résultat `status = ok` est réutilisé comme réponse ; un échec reste tracé et consomme sa réservation quotidienne, sans décrément automatique.
 - **Chez OpenAI, une requête ≠ une recherche facturée** : le modèle peut enchaîner plusieurs `web_search_call` dans un même appel, à ~1 centime pièce. `MAX_RESEARCH_PER_DAY` compte des appels `runResearch`, **pas** des recherches. Deux conséquences : `reasoning.effort` reste à `"low"` dans `lib/research/openai-search.ts` (ne pas monter sans revoir les plafonds), et le nombre réel est écrit au journal (`searches`). Ne pas « simplifier » l'un ou l'autre.
@@ -165,6 +179,15 @@ fusionné dans l'état source.
 - **Coût de la recherche web OpenAI** : le prix affiché (10 $ / 1 000 appels d'outil) n'est **que la moitié de la facture** — les *search content tokens* sont facturés au tarif du modèle et dominent le total (~0,06 $ par recherche avec `gpt-5.5`). Toujours chiffrer les deux parts, et se rappeler que `MAX_RESEARCH_PER_DAY` compte des appels `runResearch`, **pas** des `web_search_call`.
 
 ## Historique des sessions
+
+### 2026-08-14 — Codex — **BUDGET-RESULTS construit localement et staging réconcilié pendant la recette G1**
+
+- **Décision produit** : le cockpit « Budget et résultats » peut être construit, publié et déployé pendant que la recette G1 sur une campagne Meta réelle est préparée. G1 reste ouvert parce que le seul compte recetté est vide ; G2 restera ouvert tant qu'un échantillon Meta non vide n'aura pas été comparé campagne/date/dépense/type de résultat. Un statut « déployé » ne sera jamais utilisé comme synonyme de « recetté sur données réelles ».
+- **Contrat du lot** : lecture de `ad_metrics`, `ad_campaigns` et `ad_metric_results`; prévu/réalisé, budget fournisseur lorsqu'il existe, dépense réelle, résultats déclarés par Meta, coût par résultat et tendances 7/30 jours ; devise, fuseau, attribution, fraîcheur, provenance et qualité visibles. Toute inconnue reste indisponible, le prévu sans correspondance explicite affiche « Budget prévu non rapproché », et compte vide, absence, péremption, partiel, incompatibilité et erreur restent des états distincts. Aucun revenu, CAC ou ROAS réel n'est autorisé sans source aval vérifiée.
+- **Frontière** : la maquette commerciale ne certifie aucune capacité. Ce lot ne crée ni recommandation, ni pause, ni endpoint ou appel de mutation Meta, n'ajoute aucun secret et ne joue aucun appel Meta pendant le développement ou les smokes techniques.
+- **Implémentation et recette locale** : domaine pur fail-closed, lecture serveur tenant+compte Meta courant, onglet « Budget et résultats » et sept états sont en place. Les 16 tests du domaine, 8 tests d'intégration statique, 5 tests de réconciliation et les contrôles readiness passent ; la suite complète passe **687/687**, puis `npm run typecheck`, `npm run lint`, `npm run build` (29 pages/routes) et `git diff --check` sont verts. La revue statique ne trouve aucun appel Meta, secret, `ads_management`, endpoint d'écriture, recommandation, pause, revenu, CAC ou ROAS dans le nouveau parcours.
+- **Migrations staging** : l'état réel divergent a été inspecté. Les entrées d'historique staging `0029_connector_foundation` et `0030_connector_conflict_http` ont été réparées comme révoquées sans `DROP`, puis le dry-run a proposé exactement la chaîne canonique `0029` à `0032`. Elle a été appliquée ; l'historique, les objets Meta et pilote, `connectors.revision`, les cinq fonctions `PT409`, l'absence de `40001` et `app_schema_version = 32` sont attestés. Production reste au schéma 30 jusqu'à la CI et la fusion.
+- **Statut à cette entrée** : implémenté et recetté techniquement en local, migration staging appliquée, non publié, non déployé et non recetté sur données Meta réelles non vides. Commit, PR, CI, fusion, migration production, déploiement Azure, sondes et mini-recette de production restent à consigner avec leurs identifiants réels ; G1 et G2 restent ouverts.
 
 ### 2026-08-14 — Codex — **Parcours pilote Meta publié en PR et migration production appliquée**
 - La PR #45 a d'abord livré META-METRICS dans `nepteo-prod--0000035`; la PR #46 est ensuite fusionnée au merge `a7cd9c2e070c866efc8acd6645451d168549f48d` et déployée dans `nepteo-prod--0000036` avec le schéma 30 et quatre sondes publiques vertes.
@@ -223,7 +246,9 @@ fusionné dans l'état source.
 - `scripts/smoke-meta-metrics.mjs` prépare la preuve staging atomique/JWT et son
   nettoyage exact, mais n'a pas été exécuté. Aucun commit, push, PR, migration
   distante, déploiement, secret ou appel Meta n'a été effectué. G1 reste ouvert ;
-  le prochain lot proposé après sa fermeture est BUDGET-RESULTS, jamais META-PAUSE.
+  à cette date, BUDGET-RESULTS était encore proposé après sa fermeture. La
+  décision du 14 août ci-dessus remplace cet enchaînement et autorise le lot
+  pendant G1 ; `META-PAUSE` reste fermé.
 
 ### 2026-08-12 — Codex — **Roadmap recadrée sur la boucle Campagnes mesurable, documentation uniquement**
 

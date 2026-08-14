@@ -74,6 +74,7 @@ export default async function CampagnesPage({
         prospectSearch={model.prospectSearch}
         prospectPresentation={model.prospectPresentation}
         weeklyInsights={model.weeklyInsights}
+        budgetResults={model.budgetResults}
       />
       <p className="mt-4 text-[11px] leading-relaxed text-faint">
         {model.footerNotice} CAMP-2 ne lance, ne met en pause et ne dépense rien :

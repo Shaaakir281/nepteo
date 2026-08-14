@@ -10,6 +10,7 @@ import { presentOperationalSummary } from "./campaign-operational-presentation";
 import type { CampaignSearchParam } from "./campaign-page-constants";
 import type { CampaignPageSnapshot } from "./campaign-page-query";
 import { presentWeeklyInsights, unavailableWeeklyInsights } from "./campaign-weekly-presentation";
+import { presentBudgetResults } from "./budget-results-presentation";
 
 export function buildCampaignPageView(
   snapshot: CampaignPageSnapshot,
@@ -96,6 +97,11 @@ export function buildCampaignPageView(
     snapshot.connectorsResult,
     snapshot.analysisJournalResult,
   );
+  const budgetResults = presentBudgetResults(
+    snapshot.budgetResultsData,
+    snapshot.organizationId,
+    snapshot.asOf,
+  );
   const weeklyInsights = weeklyResult.ok
     ? presentWeeklyInsights(
         buildCampaignWeeklyReport(weeklyResult.cockpit),
@@ -117,6 +123,7 @@ export function buildCampaignPageView(
     filters,
     operationalSummary,
     weeklyInsights,
+    budgetResults,
     prospectSearch: snapshot.prospectSearch,
     prospectPresentation: prospectDatasetLabel(snapshot.demoSnapshot.presentation),
     footerNotice: datasetNotice(

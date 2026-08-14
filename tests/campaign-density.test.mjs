@@ -24,12 +24,16 @@ test("UX-4 — les deux créations restent accessibles dans l’en-tête", () =>
   assert.ok(page.indexOf("<NewCampaignModal") < page.indexOf("<CampaignDecisionCockpit"));
 });
 
-test("UX-4 — Décision, Rapport et Historique sont exclusifs", () => {
-  assert.match(cockpit, /type CampaignTab = "decision" \| "report" \| "history"/);
-  for (const label of ["Décision", "Rapport", "Historique"]) {
+test("UX-4 — Décision, Budget, Rapport et Historique sont exclusifs", () => {
+  assert.match(
+    cockpit,
+    /type CampaignTab = "decision" \| "budget" \| "report" \| "history"/,
+  );
+  for (const label of ["Décision", "Budget et résultats", "Rapport", "Historique"]) {
     assert.match(cockpit, new RegExp(`"${label}"`));
   }
   assert.match(cockpit, /tab === "decision"/);
+  assert.match(cockpit, /tab === "budget"/);
   assert.match(cockpit, /tab === "report"/);
   assert.match(cockpit, /tab === "history"/);
 });

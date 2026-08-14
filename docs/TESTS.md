@@ -23,9 +23,13 @@ Jeu de données : `docs/tests/prospects-test.csv` (24 prospects, 5 sans email, s
     - `0024_unlimited_research_and_structured_preview.sql` ;
     - `0025_campaign_proposals.sql` ;
     - `0026_campaign_studio.sql` ;
-    - `0027_campaign_decision_cockpit.sql` ;
-    - `0028_creative_assets.sql` ;
-    - `0029_meta_metrics.sql`.
+     - `0027_campaign_decision_cockpit.sql` ;
+     - `0028_creative_assets.sql` ;
+     - `0029_meta_metrics.sql` ;
+     - `0030_meta_ads_pilot_access.sql` ;
+     - `0031_connector_foundation.sql` puis
+       `0032_connector_conflict_http.sql` pour la séquence canonique de
+       réconciliation, uniquement après contrôle de l'historique distant.
 
    Avant `0013`, contrôler les doublons :
 
@@ -36,7 +40,7 @@ Jeu de données : `docs/tests/prospects-test.csv` (24 prospects, 5 sans email, s
    having count(*) > 1;
    ```
 
-   Si la requête renvoie une ligne, arrêter et arbitrer explicitement les memberships concernés. `0013` échoue volontairement sans modifier les données ; ne pas supprimer automatiquement une appartenance. Après `0015`, exécuter le [smoke authentifié/RLS](tests/SMOKE-AUTH-RLS.md), puis compléter par une recette manuelle du rôle commercial ; le smoke automatisé actuel couvre le rôle lecture. `0016` crée le marqueur de readiness après avoir vérifié les prérequis critiques ; les migrations suivantes le portent progressivement à 29. Depuis une base à 21, respecter `0022 → 0023 → 0024 → 0025 → 0026 → 0027 → 0028 → 0029`. Le projet lié est attesté à 29 au 13 août 2026 : ne rejouer ni `0028` ni `0029`. Toute nouvelle base doit recevoir les migrations d'abord en staging/recette, dans l'ordre, avant une promotion explicitement autorisée. (« Success. No rows returned » est normal pour une migration de schéma.)
+   Si la requête renvoie une ligne, arrêter et arbitrer explicitement les memberships concernés. `0013` échoue volontairement sans modifier les données ; ne pas supprimer automatiquement une appartenance. Après `0015`, exécuter le [smoke authentifié/RLS](tests/SMOKE-AUTH-RLS.md), puis compléter par une recette manuelle du rôle commercial ; le smoke automatisé actuel couvre le rôle lecture. `0016` crée le marqueur de readiness après avoir vérifié les prérequis critiques. Au 14 août 2026, la production a appliqué `0029_meta_metrics` puis `0030_meta_ads_pilot_access` et reste au schéma 30. Le staging partagé avait appliqué sous les mêmes numéros `0029_connector_foundation` puis `0030_connector_conflict_http` ; après inspection, ces seules entrées d'historique ont été réparées comme révoquées sans `DROP`, puis la chaîne canonique Meta `0029/0030` et connecteurs `0031/0032` a été appliquée. Le staging expose désormais les objets attendus et readiness 32. Avant tout `db push`, comparer l'historique et les objets du projet ciblé, vérifier le dry-run et les postconditions, puis seulement relever readiness. La promotion de `0031/0032` en production reste une preuve distante séparée. (« Success. No rows returned » est normal pour une migration de schéma.)
 2. **`CONNECTOR_TOKEN_ENCRYPTION_KEY` et `CRON_SECRET`** : ces clés ne se « trouvent » nulle part — **c'est toi qui les fabriques**. Ouvre PowerShell et lance **deux fois** :
 
    ```powershell
@@ -57,14 +61,18 @@ Jeu de données : `docs/tests/prospects-test.csv` (24 prospects, 5 sans email, s
    Pour cette release, `OPENAI_API_KEY` est obligatoire dans l'environnement de déploiement afin d'activer la Story. `OPENAI_IMAGE_MODEL` est facultative, propagée au runtime et vaut `gpt-image-2` par défaut. L'analyse utilise la tâche `recommend_action` → niveau premium, d'où les trois lignes `LLM_MODEL*`. Sans clé de texte compatible, l'analyse retombe sur ses templates, mais la génération d'image ne dispose pas de ce repli.
 4. Redémarrer `npm run dev` après toute modif d'env.
 
-> **État au 10 août 2026 — release courante attestée** : la PR #33 est fusionnée
-> dans `main` au SHA `6f54cee5cc7c594956515cea2a94204d5da2a5a2` après la CI
-> `31372881341`. Le déploiement `31373032666` est vert et la révision
-> `nepteo-prod--0000024`, latest et ready, sert 100 % du trafic avec l'image
-> `nepteoacr27de3b.azurecr.io/nepteo:6f54cee5cc7c594956515cea2a94204d5da2a5a2`.
-> Supabase et l'application restent alignés sur le schéma 28. La recette Story,
-> les contrôles JWT/RLS et le Storage privé signé restent attestés par la PR #29 ;
-> la concurrence et l'isolation inter-tenant complètes restent des recettes séparées.
+> **État au 14 août 2026 — BUDGET-RESULTS validé localement, pas encore publié** : la
+> PR #46 est fusionnée dans `main` au SHA
+> `a7cd9c2e070c866efc8acd6645451d168549f48d`. La CI `main` `31783054120` et le
+> déploiement protégé `31783151837` sont verts ; la révision
+> `nepteo-prod--0000036`, active, saine et prête, sert 100 % du trafic avec
+> l'image du même SHA. Supabase production est au schéma 30. BUDGET-RESULTS passe
+> 687/687 tests, typecheck, lint et le build de 29 pages/routes en local ; son
+> staging est réconcilié sur la chaîne canonique 0029→0032 et readiness 32.
+> OAuth `ads_read`, le compte, EUR, Europe/Paris et l'état compte vide sont
+> recettés ; aucune donnée Meta non vide n'a encore fermé G1. Aucune CI, PR,
+> migration production, révision Azure ou recette réelle n'est encore attribuée
+> à BUDGET-RESULTS dans ce document.
 
 ### Deux voies de données, jamais mélangées
 
@@ -108,8 +116,12 @@ La release courante inclut ce contrat et sa preuve de production :
 
 Pour META-METRICS, les contrats locaux dédiés sont
 `tests/meta-ads-read.test.mjs` et `tests/meta-metrics-migration.test.mjs`.
-Sur une base staging dédiée déjà portée à `29`, exécuter le smoke atomique/RLS
-sans aucun appel Meta :
+Sur une base de recette dont les objets META-METRICS sont attestés, exécuter le
+smoke atomique/RLS sans aucun appel Meta. Le staging partagé a été réconcilié
+après inspection : son ancien historique `0029/0030` connecteurs a été réparé
+sans suppression d'objet, puis la chaîne canonique Meta `0029/0030` et
+connecteurs `0031/0032` a été appliquée avec ses postconditions. Toute nouvelle
+cible doit suivre la même procédure contrôlée :
 
 ```powershell
 $env:META_METRICS_STAGING_WRITE="I_ACKNOWLEDGE_META_METRICS_STAGING_WRITE"
@@ -145,10 +157,73 @@ Une erreur Meta ramène sur cette même fiche avec l'explication pilote. Aucune 
 ces étapes ne doit demander ou transporter un mot de passe ou un secret client.
 
 La recette du 13 août 2026 a prouvé OAuth `ads_read`, liste et sélection du
-compte, EUR, Europe/Paris et une lecture vide de 7 jours. Le gate G1 exige encore
-le smoke atomique/JWT et une autorisation distincte pour comparer manuellement
-au moins un tuple non vide compte/campagne/date/dépense/type de résultat. Sans
-cette preuve, ne pas présenter la photographie réelle comme recettée.
+compte, EUR, Europe/Paris et une lecture vide de 7 jours. Elle prouve le parcours
+et l'état compte vide, pas des calculs métier. G1 reste ouvert faute d'une
+autorisation et d'un échantillon non vide permettant de comparer manuellement au
+moins un tuple compte/campagne/date/dépense/type de résultat. Les smokes
+atomiques/JWT et de réconciliation restent des preuves techniques séparées et
+doivent être rejoués si le stockage évolue ; ils ne remplacent jamais cette
+comparaison réelle.
+
+### BUDGET-RESULTS — contrat de recette G2
+
+Le cockpit est une lecture de `ad_metrics`, `ad_campaigns` et
+`ad_metric_results`. Sa recette locale et automatisée emploie des fixtures ou des
+lignes déjà persistées : elle ne déclenche aucun appel Meta et n'ajoute aucun
+secret. Une maquette commerciale, même fidèle visuellement, ne prouve pas qu'une
+capacité, une donnée ou une action existe réellement dans le produit.
+
+Les tests de calcul et de présentation doivent couvrir au minimum :
+
+1. **Prévu, fournisseur et réalisé** : un budget prévu n'est agrégé qu'après un
+   rapprochement explicite avec la campagne ; sinon le libellé exact est
+   « Budget prévu non rapproché ». Le budget fournisseur reste indépendant et
+   indisponible lorsqu'il n'est pas fourni. La dépense réelle provient des
+   métriques déclarées par Meta et une valeur inconnue reste
+   `null`/indisponible, jamais `0`.
+2. **Résultats et coût par résultat** : les résultats déclarés par Meta sont
+   conservés par type et attribution. Le coût par résultat est calculé uniquement
+   à partir d'une dépense et d'un résultat présents, compatibles et strictement
+   positif. Un résultat absent ou inconnu ne produit ni zéro, ni infini, ni coût
+   inventé ; un zéro explicitement déclaré reste distinguable d'une absence.
+3. **Fenêtres 7 et 30 jours** : tester les bornes de dates incluses et exclues,
+   dans le fuseau du compte, ainsi que les tendances lorsque la fenêtre courante
+   ou la fenêtre de comparaison est incomplète. Aucun agrégat ne mélange des
+   devises, fuseaux, attributions ou types de résultat incompatibles.
+4. **Contexte et qualité** : pour chaque vue pertinente, vérifier devise, fuseau,
+   attribution, fraîcheur, provenance et qualité. Couvrir explicitement les
+   états compte vide, données absentes, périmées, partielles, incompatibles,
+   inconnues et en erreur, sans rabattre l'un d'eux sur un tableau de zéros.
+5. **Frontière financière** : revenu, CAC et ROAS réels restent absents tant
+   qu'aucune source aval vérifiée ne les fournit. Une action Meta déclarée ne
+   devient ni conversion aval, ni revenu, et aucun calcul dérivé ne doit suggérer
+   le contraire.
+6. **Isolation** : si le lot ajoute ou modifie du stockage, rejouer une matrice
+   tenant/RLS avec lecture autorisée sur l'organisation propre, refus sur une
+   organisation tierce et vérification équivalente pour toute RPC ou vue ajoutée.
+
+La revue statique du diff doit en outre prouver qu'aucune route ou méthode
+d'écriture Meta, permission `ads_management`, recommandation, pause, mutation ou
+modification de campagne n'a été ajoutée. Le contrat GET + `ads_read` déjà couvert
+par `tests/meta-ads-read.test.mjs` reste obligatoire ; `META-RECOMMEND` et
+`META-PAUSE` ne sont pas ouverts par ce lot.
+
+La mini-recette se déroule en trois preuves distinctes :
+
+1. **Locale puis staging, sans appel Meta** : charger des jeux contrôlés pour le
+   cas nominal et chaque état ci-dessus, comparer les agrégats 7/30 jours et le
+   coût par résultat aux lignes sources, puis vérifier les libellés et métadonnées
+   affichés. Le staging n'est utilisé qu'après réconciliation explicite de son
+   historique `0029/0030` et de la séquence canonique `0031/0032`.
+2. **Après déploiement** : vérifier `/api/health`, `/api/ready`, la révision Azure
+   active et une navigation minimale du cockpit. Le compte Meta vide actuellement
+   autorisé peut seulement prouver l'état compte vide ; il ne valide aucun calcul
+   prévu/réalisé et ne rend pas G2 vert.
+3. **Recette réelle ultérieure** : sur une campagne Meta autorisée et non vide,
+   comparer manuellement compte, campagne, dates, dépense, budget fournisseur si
+   présent, type/volume de résultat et attribution. Tant que cette comparaison
+   n'est pas consignée, annoncer « déployé » ou « recetté techniquement », jamais
+   « recetté sur données réelles » ni G2 vert.
 
 Avant toute recette distante, lancer :
 
@@ -157,13 +232,15 @@ npm test
 npm run typecheck
 npm run lint
 npm run build
+git diff --check
 ```
 
-Passage de référence de la release actuelle : **575/575 tests**, typecheck,
-lint et build verts, **29 pages/routes** générées et aucun défaut P1 ou P2 lors
-de la relecture finale. PR #33 est fusionnée au SHA
-`6f54cee5cc7c594956515cea2a94204d5da2a5a2`, avec la CI de PR `31372881341`
-verte, puis le déploiement `31373032666` vert.
+Passage local BUDGET-RESULTS : **687/687 tests**, typecheck, lint, build de **29
+pages/routes** et `git diff --check` verts. Les tests dédiés couvrent calculs,
+fenêtres 7/30 jours, résultat absent ou explicitement nul, budget non rapproché,
+inconnues, incompatibilités, fraîcheur/qualité, isolation des requêtes et absence
+de mutation. Le staging est attesté au schéma 32 ; résultats CI, PR, migration
+production et révision Azure seront ajoutés seulement après leur exécution.
 
 **Lot du 10 août — simplifications auth mobile déployées via PR #31** : le contrôle
 navigateur local à 463 px et la recette de production sur `/login` et `/signup`
