@@ -494,6 +494,23 @@ test("BUDGET-RESULTS — un compte actuellement vide conserve son historique san
   assert.equal(accountThirty.previous.results[0].value, 1);
 });
 
+test("BUDGET-RESULTS — un ancien snapshot vide devient périmé au lieu de rester vide", () => {
+  const snapshot = buildBudgetResults(readyInput({
+    asOf: "2026-08-13T12:00:00.000Z",
+    campaigns: [],
+    metrics: [],
+    results: [],
+    syncRuns: [run({ campaign_count: 0, metric_count: 0, result_count: 0 })],
+    plannedActions: [],
+    budgetLinks: [],
+  }));
+
+  assert.equal(snapshot.state.kind, "stale");
+  assert.equal(snapshot.state.reason, "last_complete_snapshot_over_48h");
+  assert.equal(snapshot.account.freshnessHours, 73);
+  assert.deepEqual(snapshot.campaigns, []);
+});
+
 test("BUDGET-RESULTS — états périmé, partiel et erreur conservent la dernière preuve complète", () => {
   const stale = buildBudgetResults(readyInput({
     asOf: "2026-08-13T12:00:00.000Z",
