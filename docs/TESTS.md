@@ -40,7 +40,7 @@ Jeu de données : `docs/tests/prospects-test.csv` (24 prospects, 5 sans email, s
    having count(*) > 1;
    ```
 
-   Si la requête renvoie une ligne, arrêter et arbitrer explicitement les memberships concernés. `0013` échoue volontairement sans modifier les données ; ne pas supprimer automatiquement une appartenance. Après `0015`, exécuter le [smoke authentifié/RLS](tests/SMOKE-AUTH-RLS.md), puis compléter par une recette manuelle du rôle commercial ; le smoke automatisé actuel couvre le rôle lecture. `0016` crée le marqueur de readiness après avoir vérifié les prérequis critiques. Au 14 août 2026, la production a appliqué `0029_meta_metrics` puis `0030_meta_ads_pilot_access` et reste au schéma 30. Le staging partagé avait appliqué sous les mêmes numéros `0029_connector_foundation` puis `0030_connector_conflict_http` ; après inspection, ces seules entrées d'historique ont été réparées comme révoquées sans `DROP`, puis la chaîne canonique Meta `0029/0030` et connecteurs `0031/0032` a été appliquée. Le staging expose désormais les objets attendus et readiness 32. Avant tout `db push`, comparer l'historique et les objets du projet ciblé, vérifier le dry-run et les postconditions, puis seulement relever readiness. La promotion de `0031/0032` en production reste une preuve distante séparée. (« Success. No rows returned » est normal pour une migration de schéma.)
+   Si la requête renvoie une ligne, arrêter et arbitrer explicitement les memberships concernés. `0013` échoue volontairement sans modifier les données ; ne pas supprimer automatiquement une appartenance. Après `0015`, exécuter le [smoke authentifié/RLS](tests/SMOKE-AUTH-RLS.md), puis compléter par une recette manuelle du rôle commercial ; le smoke automatisé actuel couvre le rôle lecture. `0016` crée le marqueur de readiness après avoir vérifié les prérequis critiques. Au 14 août 2026, la production avait appliqué `0029_meta_metrics` puis `0030_meta_ads_pilot_access` et son préflight l'a attestée au schéma 30 ; après CI verte, `0031_connector_foundation` puis `0032_connector_conflict_http` ont été appliquées, les postconditions exposent readiness 32 et le dry-run final est à jour. Le staging partagé avait appliqué sous les mêmes numéros `0029_connector_foundation` puis `0030_connector_conflict_http` ; après inspection, ces seules entrées d'historique ont été réparées comme révoquées sans `DROP`, puis la chaîne canonique Meta `0029/0030` et connecteurs `0031/0032` a été appliquée. Le staging expose les objets attendus et readiness 32. Avant tout `db push`, comparer l'historique et les objets du projet ciblé, vérifier le dry-run et les postconditions, puis seulement relever readiness. La promotion de production et la réconciliation de staging sont deux preuves distantes distinctes ; aucun historique n'a été écrasé. (« Success. No rows returned » est normal pour une migration de schéma.)
 2. **`CONNECTOR_TOKEN_ENCRYPTION_KEY` et `CRON_SECRET`** : ces clés ne se « trouvent » nulle part — **c'est toi qui les fabriques**. Ouvre PowerShell et lance **deux fois** :
 
    ```powershell
@@ -61,18 +61,31 @@ Jeu de données : `docs/tests/prospects-test.csv` (24 prospects, 5 sans email, s
    Pour cette release, `OPENAI_API_KEY` est obligatoire dans l'environnement de déploiement afin d'activer la Story. `OPENAI_IMAGE_MODEL` est facultative, propagée au runtime et vaut `gpt-image-2` par défaut. L'analyse utilise la tâche `recommend_action` → niveau premium, d'où les trois lignes `LLM_MODEL*`. Sans clé de texte compatible, l'analyse retombe sur ses templates, mais la génération d'image ne dispose pas de ce repli.
 4. Redémarrer `npm run dev` après toute modif d'env.
 
-> **État au 14 août 2026 — BUDGET-RESULTS validé localement, pas encore publié** : la
-> PR #46 est fusionnée dans `main` au SHA
-> `a7cd9c2e070c866efc8acd6645451d168549f48d`. La CI `main` `31783054120` et le
-> déploiement protégé `31783151837` sont verts ; la révision
-> `nepteo-prod--0000036`, active, saine et prête, sert 100 % du trafic avec
-> l'image du même SHA. Supabase production est au schéma 30. BUDGET-RESULTS passe
-> 687/687 tests, typecheck, lint et le build de 29 pages/routes en local ; son
-> staging est réconcilié sur la chaîne canonique 0029→0032 et readiness 32.
-> OAuth `ads_read`, le compte, EUR, Europe/Paris et l'état compte vide sont
-> recettés ; aucune donnée Meta non vide n'a encore fermé G1. Aucune CI, PR,
-> migration production, révision Azure ou recette réelle n'est encore attribuée
-> à BUDGET-RESULTS dans ce document.
+> **État au 14 août 2026 — BUDGET-RESULTS déployé et recetté techniquement sur
+> l'état absent, jamais sur données Meta non vides** : la feature PR #48 est
+> fusionnée au merge `0dbfb66d1d03298cf2050adcd90afa3b4cac11f0` après les CI de
+> PR `31797939436` et de `main` `31798063966`, vertes. Le déploiement initial
+> `31798410404` a activé `nepteo-prod--0000037`. La PR corrective #49, head
+> `8188343294e5c4b13f82996141aaa29ddd1a74b8`, est fusionnée au merge
+> `6fcbf95878444edeaf0e2a333e129ab67842a44e` après les CI de PR `31799996913` et
+> de `main` `31800104543`, vertes. Le déploiement `31800195369` sert désormais
+> `nepteo-prod--0000038` avec l'image
+> `nepteoacr27de3b.azurecr.io/nepteo:6fcbf95878444edeaf0e2a333e129ab67842a44e` :
+> révision latest/ready active, `Healthy`/`Provisioned`/`RunningAtMaxScale`, une
+> réplique et 100 % du trafic. Le staging est réconcilié sur la chaîne canonique
+> 0029→0032 et readiness 32 ; la production, contrôlée à 30 en préflight, a
+> appliqué `0031/0032`, expose readiness 32 et possède un dry-run à jour.
+> BUDGET-RESULTS passe 688/688 tests, ses 17 tests ciblés, typecheck, lint et le
+> build de 29 pages/routes. Les sondes domaine public et FQDN Azure répondent 200
+> sur `/api/health` et `/api/ready`; `/login` répond 200 et `/campagnes` sans
+> session répond 307 vers `/login`. Un rôle Lecture dans une organisation dédiée
+> sans connecteur a prouvé l'onglet et l'état « Données absentes »/« Absent »,
+> ses métadonnées indisponibles, l'absence de campagne et l'absence d'action ; la
+> fixture a ensuite été supprimée et vérifiée absente. Aucun état runtime `ready`
+> ni aucun calcul non vide n'est recetté. Aucun appel Meta, mutation,
+> recommandation ou pause n'a été effectué, et aucun secret n'a été ajouté ou
+> exposé. Le prévu runtime reste « Budget prévu non rapproché » et le budget
+> fournisseur indisponible. G1 et G2 restent ouverts.
 
 ### Deux voies de données, jamais mélangées
 
@@ -193,7 +206,9 @@ Les tests de calcul et de présentation doivent couvrir au minimum :
 4. **Contexte et qualité** : pour chaque vue pertinente, vérifier devise, fuseau,
    attribution, fraîcheur, provenance et qualité. Couvrir explicitement les
    états compte vide, données absentes, périmées, partielles, incompatibles,
-   inconnues et en erreur, sans rabattre l'un d'eux sur un tableau de zéros.
+   inconnues et en erreur, sans rabattre l'un d'eux sur un tableau de zéros. La
+   fraîcheur est évaluée avant `empty` ou `missing` : une photographie complète
+   âgée de plus de 48 heures doit rester `stale`, même sans ligne exploitable.
 5. **Frontière financière** : revenu, CAC et ROAS réels restent absents tant
    qu'aucune source aval vérifiée ne les fournit. Une action Meta déclarée ne
    devient ni conversion aval, ni revenu, et aucun calcul dérivé ne doit suggérer
@@ -235,12 +250,51 @@ npm run build
 git diff --check
 ```
 
-Passage local BUDGET-RESULTS : **687/687 tests**, typecheck, lint, build de **29
-pages/routes** et `git diff --check` verts. Les tests dédiés couvrent calculs,
-fenêtres 7/30 jours, résultat absent ou explicitement nul, budget non rapproché,
-inconnues, incompatibilités, fraîcheur/qualité, isolation des requêtes et absence
-de mutation. Le staging est attesté au schéma 32 ; résultats CI, PR, migration
-production et révision Azure seront ajoutés seulement après leur exécution.
+Passage final BUDGET-RESULTS : **688/688 tests**, **17/17 tests ciblés**,
+typecheck, lint, build de **29 pages/routes** et `git diff --check` verts. Les
+tests dédiés couvrent calculs, fenêtres 7/30 jours, résultat absent ou
+explicitement nul, budget non rapproché, inconnues, incompatibilités,
+fraîcheur/qualité — dont la priorité `stale` au-delà de 48 heures avant
+`empty`/`missing` —, isolation des requêtes et absence de mutation. La revue
+statique ne trouve aucun appel Meta, `ads_management`, endpoint d'écriture,
+recommandation, pause, revenu, CAC ou ROAS non vérifié, ni aucun secret ajouté
+ou exposé.
+
+Preuves de publication et de migration :
+
+- feature PR #48, merge `0dbfb66d1d03298cf2050adcd90afa3b4cac11f0`, CI de PR
+  `31797939436` et CI `main` `31798063966` vertes ;
+- staging réconcilié sur `0029_meta_metrics` → `0030_meta_ads_pilot_access` →
+  `0031_connector_foundation` → `0032_connector_conflict_http`, readiness 32 ;
+- production contrôlée au schéma 30 en préflight, puis `0031/0032` appliquées,
+  readiness 32 et dry-run à jour ;
+- déploiement initial `31798410404` vert vers `nepteo-prod--0000037` ;
+- correctif PR #49, head `8188343294e5c4b13f82996141aaa29ddd1a74b8`, merge
+  `6fcbf95878444edeaf0e2a333e129ab67842a44e`, CI de PR `31799996913` et CI
+  `main` `31800104543` vertes ;
+- déploiement correctif `31800195369` vert vers la révision finale
+  `nepteo-prod--0000038`, image
+  `nepteoacr27de3b.azurecr.io/nepteo:6fcbf95878444edeaf0e2a333e129ab67842a44e`,
+  latest/ready active, `Healthy`/`Provisioned`/`RunningAtMaxScale`, une réplique
+  et 100 % du trafic.
+
+Sondes finales : `/api/health` et `/api/ready` répondent 200 sur le domaine
+public et le FQDN Azure, `/login` répond 200 et `/campagnes` sans session répond
+307 vers `/login`.
+
+Mini-recette authentifiée finale, sans connecteur ni appel Meta : un utilisateur
+au rôle Lecture dans une organisation dédiée ouvre l'onglet « Budget et
+résultats ». La région affiche « Données absentes »/« Absent » ; dernière
+collecte, devise, fuseau, attribution, fraîcheur et provenance sont
+« Indisponible », la qualité est « Absent », aucune campagne et aucun bouton ou
+lien ne sont présents, et aucun revenu, CAC ou ROAS n'est affiché. Après logout,
+organisation, membership et utilisateur ont été supprimés et vérifiés absents.
+Cette preuve couvre uniquement l'état sans connecteur/données absentes : aucun
+état runtime `ready`, aucune fixture Meta non vide et aucun calcul réel ne sont
+recettés. En runtime, le prévu reste « Budget prévu non rapproché » faute de
+mapping persistant et le budget fournisseur reste indisponible faute de champ
+source. G1 et G2 restent ouverts ; `META-RECOMMEND` et `META-PAUSE` restent
+fermés.
 
 **Lot du 10 août — simplifications auth mobile déployées via PR #31** : le contrôle
 navigateur local à 463 px et la recette de production sur `/login` et `/signup`

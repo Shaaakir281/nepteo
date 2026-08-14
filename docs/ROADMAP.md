@@ -2,13 +2,17 @@
 
 Une phase = un objectif unique + une porte go/no-go. On ne passe pas la porte, on ne passe pas à la suite.
 
-> **Lecture au 2026-08-14** : la phase 3A et le socle Campagnes/Story sont
-> déployés. `META-METRICS` et le parcours pilote Meta sont servis par
-> `nepteo-prod--0000036` sur le schéma de production 30, mais G1 reste ouvert :
+> **Lecture au 2026-08-14** : la phase 3A, le socle Campagnes/Story,
+> `META-METRICS`, le parcours pilote Meta et `BUDGET-RESULTS` sont déployés. La
+> production sert à 100 % la révision corrective `nepteo-prod--0000038` sur le
+> schéma 32. Le cockpit a été recetté techniquement avec un rôle Lecture dans une
+> organisation dédiée sans connecteur : il affiche honnêtement l'état « Données
+> absentes », sans valeur inventée ni action. Cette preuve ne ferme ni G1 ni G2 :
 > seule la lecture d'un compte Meta vide a été recettée et aucun échantillon non
-> vide campagne/date/dépense/résultat n'a encore été rapproché de Meta. Le
-> développement de `BUDGET-RESULTS` avance pendant cette recette ; son gate G2
-> ne pourra pas être déclaré vert avant cette comparaison non vide. L'ordre
+> vide campagne/date/dépense/résultat n'a encore été rapproché de Meta. En
+> runtime, le budget prévu reste « Budget prévu non rapproché » faute de
+> correspondance persistée, et le budget fournisseur reste indisponible faute de
+> champ source. L'ordre
 > opérationnel est défini dans la
 > [roadmap Campagnes](projets/roadmap-campagnes-supervisees.md) : vérité des
 > métriques, `META-METRICS`, budget/résultats, recommandation Meta et mesure
@@ -64,15 +68,18 @@ jours et qualité ; une recommandation Meta est mesurée avant et après. CAC et
 ROAS ne sont visibles que si une source aval les justifie.
 
 Le détail exécutable est défini dans la [roadmap Campagnes](projets/roadmap-campagnes-supervisees.md).
-CAMP-0, CAMP-1, le socle CAMP-2 et CREATIVE-1 sont acquis. `META-METRICS` et le
-parcours pilote Meta sont déployés en lecture seule ; G1 reste ouvert uniquement
-faute d'une recette sur données Meta non vides. `BUDGET-RESULTS` est le lot local
-en cours et peut être construit sans attendre cette recette, à condition de
-laisser G2 ouvert. Une donnée inconnue reste indisponible, un budget prévu sans
-rapprochement explicite s'affiche « Budget prévu non rapproché », et aucun
-revenu, CAC ou ROAS réel n'est présenté sans source aval vérifiée. La maquette
-commerciale décrit une direction, jamais une capacité attestée. `META-RECOMMEND`,
-`META-PAUSE`, toute mutation Meta et tout lancement payant restent fermés.
+CAMP-0, CAMP-1, le socle CAMP-2 et CREATIVE-1 sont acquis. `META-METRICS`, le
+parcours pilote Meta et `BUDGET-RESULTS` sont déployés en lecture seule dans
+`nepteo-prod--0000038` ; la mini-recette authentifiée du cockpit prouve seulement
+l'état « Données absentes » d'une organisation dédiée sans connecteur. G1 reste
+ouvert faute d'une recette Meta non vide et G2 reste ouvert faute d'une
+comparaison non vide. Une donnée inconnue reste indisponible. Faute de
+rapprochement persistant explicite, le prévu affiche toujours « Budget prévu non
+rapproché » en runtime ; faute de champ fournisseur, son budget reste
+indisponible. Aucun revenu, CAC ou ROAS réel n'est présenté sans source aval
+vérifiée. La maquette commerciale décrit une direction, jamais une capacité
+attestée. `META-RECOMMEND`, `META-PAUSE`, toute mutation Meta et tout lancement
+payant restent fermés.
 
 **Porte** : un compte Meta pilote non vide alimente le cockpit avec une
 photographie complète rapprochée de l'interface Meta ; budget prévu, budget
