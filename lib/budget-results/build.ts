@@ -118,6 +118,8 @@ export function buildBudgetResults(input: BuildBudgetResultsInput): BudgetResult
     }, counts);
   }
   const freshnessHours = Math.max(0, Math.round((freshnessMs / 3_600_000) * 10) / 10);
+  const stale = freshnessMs > BUDGET_RESULTS_STALE_AFTER_MS ||
+    metrics.some((row) => row.quality === "stale");
 
   if (latestRun.id !== latestComplete.id) {
     const state = latestRun.quality === "partial" ? "partial" : "error";
@@ -144,7 +146,13 @@ export function buildBudgetResults(input: BuildBudgetResultsInput): BudgetResult
 
   if (latestComplete.campaignCount === 0) {
     return {
-      state: { kind: "empty", reason: "empty_account", lastCompleteAt: latestComplete.completedAt },
+      state: stale
+        ? {
+            kind: "stale",
+            reason: "last_complete_snapshot_over_48h",
+            lastCompleteAt: latestComplete.completedAt,
+          }
+        : { kind: "empty", reason: "empty_account", lastCompleteAt: latestComplete.completedAt },
       account: {
         provider: "meta_ads",
         ...account,
@@ -161,7 +169,13 @@ export function buildBudgetResults(input: BuildBudgetResultsInput): BudgetResult
   }
   if (metrics.length === 0) {
     return {
-      state: { kind: "missing", reason: "no_metric_rows", lastCompleteAt: latestComplete.completedAt },
+      state: stale
+        ? {
+            kind: "stale",
+            reason: "last_complete_snapshot_over_48h",
+            lastCompleteAt: latestComplete.completedAt,
+          }
+        : { kind: "missing", reason: "no_metric_rows", lastCompleteAt: latestComplete.completedAt },
       account: {
         provider: "meta_ads",
         ...account,
@@ -179,8 +193,6 @@ export function buildBudgetResults(input: BuildBudgetResultsInput): BudgetResult
 
   const currentThirty = { from: shiftDate(today, -29), to: today };
   const currentThirtyCoverage = coverageFor(currentThirty, completeRuns);
-  const stale = freshnessMs > BUDGET_RESULTS_STALE_AFTER_MS ||
-    metrics.some((row) => row.quality === "stale");
   const state: BudgetResultsState = stale
     ? { kind: "stale", reason: "last_complete_snapshot_over_48h", lastCompleteAt: latestComplete.completedAt }
     : currentThirtyCoverage !== "complete"
