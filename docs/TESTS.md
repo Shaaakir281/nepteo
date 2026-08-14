@@ -127,6 +127,23 @@ réconciliation, rollback, journal d'échec idempotent et isolation JWT, puis
 supprime ses métriques et son connecteur exacts. Le journal append-only de la
 fixture demeure.
 
+Le parcours pilote Meta du schéma 30 est couvert sans appel fournisseur : e-mail
+normalisé, lien de profil HTTPS `facebook.com` facultatif, demande unique par
+organisation/utilisateur, RLS limitée au demandeur et RPC réservées au service
+role. La recette vérifie aussi les états `requested`, `ready`, `connected`, la
+reprise OAuth, les messages interdisant mot de passe, jeton, App ID ou secret,
+et l'absence d'automatisation de l'ajout testeur côté Meta. La validation et la
+notification restent des opérations manuelles d'exploitation.
+
+Mini-recette pilote : l'exploitation relève une demande `requested` dans
+`meta_ads_pilot_access_requests`, ajoute manuellement le compte aux rôles de
+l'application Meta, marque la demande `ready` via la RPC service-role
+`mark_meta_ads_pilot_access_ready`, puis prévient le testeur. Celui-ci revient
+sur la fiche Meta Ads et clique « Finaliser la connexion Meta ». Le callback
+OAuth marque `connected` après stockage réussi du seul consentement `ads_read`.
+Une erreur Meta ramène sur cette même fiche avec l'explication pilote. Aucune de
+ces étapes ne doit demander ou transporter un mot de passe ou un secret client.
+
 La recette du 13 août 2026 a prouvé OAuth `ads_read`, liste et sélection du
 compte, EUR, Europe/Paris et une lecture vide de 7 jours. Le gate G1 exige encore
 le smoke atomique/JWT et une autorisation distincte pour comparer manuellement

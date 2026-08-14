@@ -68,9 +68,15 @@ export function ConnectorCard({
       )}
       {!connected && activation === "oauth" && canEdit && (
         status === "available" ? (
-          <a href={`/api/connectors/${tool.provider}/authorize`} className="text-[11.5px] font-semibold text-violet hover:underline">
-            Connecter via OAuth
-          </a>
+          tool.provider === "meta_ads" ? (
+            <Link href={detailsHref} className="text-[11.5px] font-semibold text-violet hover:underline">
+              Connecter
+            </Link>
+          ) : (
+            <a href={`/api/connectors/${tool.provider}/authorize`} className="text-[11.5px] font-semibold text-violet hover:underline">
+              Connecter via OAuth
+            </a>
+          )
         ) : (
           <Link href={detailsHref} className="text-[11.5px] font-semibold text-violet hover:underline">
             {status === "configured" ? "Configurer la source" : "Gérer"}

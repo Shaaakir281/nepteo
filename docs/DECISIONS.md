@@ -10,6 +10,15 @@
 
 ## Actées
 
+Le 14 août 2026, tant que l'application Meta reste en mode développement,
+Nepteo intercale un parcours pilote honnête avant OAuth. Une demande porte
+l'organisation, l'utilisateur, l'e-mail Facebook et un lien de profil
+facultatif ; elle est isolée par RLS et suit `requested → ready → connected`.
+L'ajout du testeur et sa notification restent manuels. Aucun mot de passe,
+jeton, App ID ou secret n'est demandé au client. Cette décision évite de
+prétendre automatiser une capacité Meta indisponible tout en permettant de
+reprendre OAuth après validation.
+
 | Date | Décision | Raison |
 |------|----------|--------|
 | 2026-08-13 | **La configuration OAuth Meta de Nepteo est une configuration plateforme unique, jamais un secret demandé à chaque client.** Les clients passent par le bouton Connecter, consentent seulement à `ads_read`, choisissent leur compte et peuvent révoquer l'accès. Le déploiement doit fournir ensemble `META_OAUTH_APP_ID`, `META_OAUTH_APP_SECRET` par `secretref:` et `META_GRAPH_API_VERSION`; une configuration partielle échoue avant mutation Azure. | La recette administrateur a prouvé le callback public, le compte `Fathi Mts`, EUR, Europe/Paris et une lecture vide sans `ads_management`. Centraliser le secret applicatif dans Azure/GitHub évite toute transmission client et empêche qu'un déploiement ultérieur efface la configuration manuelle. Cette preuve ne ferme pas G1 sans smoke atomique/JWT et échantillon campagne/dépense/résultat non vide. |
