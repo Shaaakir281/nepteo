@@ -1,4 +1,5 @@
 import type { CampaignAnalyticQuestionId } from "@/lib/campaign-insights";
+import type { BudgetResultsSnapshot } from "@/lib/budget-results";
 
 export type CampaignTone = "neutral" | "positive" | "warning" | "negative";
 
@@ -251,4 +252,5 @@ export interface CampaignDecisionCockpitProps {
   prospectSearch: CampaignProspectSearch;
   prospectPresentation: string;
   weeklyInsights: CampaignWeeklyInsights;
+  budgetResults: BudgetResultsSnapshot;
 }

@@ -1,20 +1,23 @@
 # Roadmap — boucle Campagnes mesurable et supervisée
 
-> **Statut au 2026-08-13** — La priorité produit immédiate est de fermer une
+> **Statut au 2026-08-14** — La priorité produit immédiate est de fermer une
 > boucle Campagnes fondée sur des données réelles : **collecter → qualifier →
 > comparer budget et résultats → recommander → faire décider → mesurer
 > l'avant/après**. CAMP-0, CAMP-1, CAMP-2, CONN-0, CONN-1 et META-READ existent
-> déjà. META-METRICS est implémenté dans le checkout local; le projet Supabase
-> lié est au schéma 29 et OAuth `ads_read` a prouvé le compte, EUR, Europe/Paris
-> et une lecture vide de 7 jours. Le code atomique reste non publié, le smoke
-> JWT n'est pas joué et aucun échantillon Meta non vide n'est disponible ;
-> l'alimentation réelle de `ad_metrics` n'est donc pas encore recettée. L'arbitrage budgétaire et la mesure d'une
-> recommandation restent absents.
+> déjà. META-METRICS et le parcours pilote Meta sont déployés dans
+> `nepteo-prod--0000036`; Supabase production est au schéma 30. OAuth `ads_read`
+> a prouvé le compte, EUR, Europe/Paris et une lecture vide de 7 jours. G1 reste
+> ouvert parce qu'aucun échantillon campagne/date/dépense/résultat Meta non vide
+> n'est encore rapproché. BUDGET-RESULTS est construit et validé localement et le
+> staging est réconcilié au schéma 32, sans que cela constitue une recette sur
+> données réelles. L'arbitrage budgétaire et la mesure d'une recommandation
+> restent absents.
 >
 > Cette roadmap remplace l'ancien ordre qui faisait du lancement d'une campagne
-> Meta la ligne d'arrivée immédiate. Le prochain gate est la recette G1 de
-> **META-METRICS**, puis le prochain lot proposé est **BUDGET-RESULTS**. Aucune
-> écriture Ads n'est ouverte par ce recadrage.
+> Meta la ligne d'arrivée immédiate. La construction et le déploiement de
+> **BUDGET-RESULTS** avancent pendant la préparation de la recette G1 ; G2 ne
+> pourra toutefois être déclaré vert qu'après la comparaison Meta non vide.
+> Aucune écriture Ads n'est ouverte par ce recadrage.
 
 ## 1. Ligne d'arrivée immédiate
 
@@ -108,7 +111,7 @@ Chaque série persistée doit aussi porter ou permettre de retrouver :
 |---|---|---|---|
 | **G0 — vérité** | inventaire des métriques Meta et du schéma actuel | matrice ci-dessus traduite en contrat testable ; inconnus distincts de zéro | aucun appel fournisseur |
 | **G1 — lecture réelle** | G0 + compte Meta de recette autorisé | compte → campagnes → toutes les pages quotidiennes → `ad_metrics`, borné et idempotent ; comparaison à Meta | aucune recommandation financière non prouvée |
-| **G2 — analyse honnête** | G1 | cockpit prévu/réalisé, résultats, coût par résultat, tendances 7/30 j et qualité ; CAC/ROAS absents si non justifiés | aucune mutation Ads |
+| **G2 — analyse honnête** | construction parallèle permise ; verdict après G1 sur données non vides | cockpit prévu/réalisé, résultats, coût par résultat, tendances 7/30 j et qualité ; CAC/ROAS absents si non justifiés | aucune mutation Ads |
 | **G3 — recommandation Meta** | G2 + historique suffisant et comparable | recommandation/simulation entre campagnes Meta, hypothèses et refus explicites | aucun arbitrage inter-fournisseur |
 | **G4 — mesure** | G3 + décision humaine journalisée | baseline figée, fenêtre après, métriques comparables et verdict sans causalité exagérée | aucune écriture Ads |
 | **G5 — aptitude à muter** | G1 à G4 verts sur le pilote | revue scopes, claim, idempotence, statut ambigu, kill switch, journal et réconciliation | ne vaut pas autorisation de mutation |
@@ -122,17 +125,16 @@ campagne.
 
 ## 5. Lots exécutables
 
-### Lot 1 — META-METRICS — implémenté localement, G1 encore ouvert
+### Lot 1 — META-METRICS — déployé, G1 encore ouvert
 
-**État au 13 août 2026** : le code local et la migration `0029_meta_metrics.sql`
-ferment la chaîne compte sélectionné → campagnes paginées → insights quotidiens
-paginés → photographie atomique. Le projet lié est attesté à 29 et un appel
-Meta autorisé a prouvé OAuth `ads_read`, compte, devise, fuseau et lecture vide.
-Les contrats locaux sont verts. G1 n'est pas encore acquis : le smoke
-atomique/JWT n'est pas joué, le code META-METRICS n'est pas publié et le compte
-vide ne fournit aucun tuple campagne/date/dépense/résultat. Le prochain geste
-n'est donc ni une pause ni un lancement, mais publication supervisée, smoke et
-rapprochement d'un échantillon non vide sous autorisation séparée.
+**État au 14 août 2026** : le code et `0029_meta_metrics.sql` sont fusionnés et
+déployés dans `nepteo-prod--0000036`, avec le parcours pilote `0030`; Supabase
+production est attesté au schéma 30. La chaîne compte sélectionné → campagnes
+paginées → insights quotidiens paginés → photographie atomique est servie. OAuth
+`ads_read`, compte, devise, fuseau et lecture vide sont prouvés. G1 n'est pas
+acquis : le compte vide ne fournit aucun tuple campagne/date/dépense/résultat à
+rapprocher de Meta. Le prochain geste G1 reste un échantillon non vide autorisé,
+pas une pause ni un lancement.
 
 **Objectif** : transformer la lecture Meta existante en photographie quotidienne
 complète, qualifiée et exploitable par `ad_metrics`, sans écriture fournisseur.
@@ -168,21 +170,25 @@ et documente les écarts connecteurs, mais ne vaut pas preuve Meta.
 **Hors périmètre** : UI finale, recommandation, pause, lancement, Google Ads,
 CRM/revenu, Conversions API et modification d'une campagne.
 
-### Lot 2 — BUDGET-RESULTS
+### Lot 2 — BUDGET-RESULTS — construit localement, staging au schéma 32
 
 **Objectif** : construire le cockpit honnête « Budget et résultats » à partir de
 la photographie réelle.
 
-**Dépendance** : G1 vert, y compris migration staging et échantillon Meta
-rapproché. Tant que ces deux preuves manquent, BUDGET-RESULTS reste le lot
-suivant proposé mais ne doit pas être présenté comme alimenté par des données
-réelles recettées.
+**Dépendance** : la construction, la publication et le déploiement peuvent
+avancer pendant que G1 reste ouvert. Le verdict G2 exige néanmoins une comparaison
+Meta non vide ; avant elle, le lot peut être annoncé « déployé » ou « recetté
+techniquement », jamais « recetté sur données réelles ». Le staging a été
+réconcilié sans écrasement sur la chaîne canonique `0029` à `0032`; la production
+reste au schéma 30 jusqu'à la promotion post-CI.
 
-**Contenu** : prévu/réalisé avec correspondance explicite ; résultats Meta et
-coût par résultat ; tendances 7 et 30 jours ; date de dernière donnée complète ;
-badges de devise, fuseau, attribution, provenance et qualité. Les cartes CAC,
-revenu et ROAS restent absentes ou indisponibles tant que leur preuve aval
-n'existe pas.
+**Contenu** : prévu/réalisé seulement avec correspondance explicite ; résultats
+Meta et coût par résultat ; tendances 7 et 30 jours ; date de dernière donnée
+complète ; badges de devise, fuseau, attribution, provenance et qualité. Le
+schéma 32 ne persiste aucun rapprochement prévu→campagne Meta ni budget
+fournisseur : le runtime affiche donc actuellement « Budget prévu non rapproché »
+et budget fournisseur indisponible. Les cartes CAC, revenu et ROAS restent
+absentes tant que leur preuve aval n'existe pas.
 
 **Gate G2** : pour chaque nombre visible, la recette retrouve la campagne, la
 période, le numérateur, le dénominateur et la source. Une campagne sans mapping,

@@ -83,20 +83,22 @@ docs/           architecture, roadmap, décisions, maquettes HTML
 ## Phase actuelle
 
 **Priorité immédiate : boucle Campagnes réelle et mesurable.** CAMP-0/1/2,
-CONN-0/1 et META-READ sont déployés sans écriture Ads. META-METRICS est
-implémenté localement : lecture `ads_read`, photographie quotidienne atomique
-dans `ad_metrics`, résultats Meta séparés des outcomes aval et migration
-additive `0029`. Le gate G1 reste ouvert jusqu'à application autorisée sur une
-base staging, smoke JWT/réconciliation et rapprochement d'un échantillon Meta
-autorisé. Ensuite seulement vient BUDGET-RESULTS, puis recommandation Meta,
-mesure avant/après et porte de mutation distincte. META-PAUSE, Google Ads,
+CONN-0/1, META-READ, META-METRICS et le parcours pilote Meta sont déployés sans
+écriture Ads. La lecture `ads_read` alimente une photographie quotidienne
+atomique dans `ad_metrics` et garde les résultats Meta séparés des outcomes
+aval. G1 reste ouvert jusqu'au rapprochement d'un échantillon Meta autorisé non
+vide. BUDGET-RESULTS peut avancer pendant cette recette, mais G2 reste ouvert
+jusqu'à la même comparaison réelle. META-RECOMMEND, META-PAUSE, Google Ads,
 Salesforce, LinkedIn et C7 ne sont pas les prochaines implémentations.
 
-Au 2026-08-12, Supabase production reste attesté à
-`app_schema_version = 28` et Azure sert `nepteo-prod--0000030`. Le checkout
-local exige 29 ; les migrations restent manuelles et staging doit toujours
-précéder production. Aucun agent ne doit appliquer `0029`, appeler Meta, créer
-un commit/push/PR ou déployer sans autorisation séparée.
+Au 2026-08-14, Supabase production est attesté à `app_schema_version = 30` et
+Azure sert `nepteo-prod--0000036`. Le staging partagé, auparavant divergent en
+`0029/0030`, a été réconcilié sans écrasement puis porté sur la chaîne canonique
+`0029_meta_metrics` → `0030_meta_ads_pilot_access` →
+`0031_connector_foundation` → `0032_connector_conflict_http`, avec readiness 32.
+Les migrations restent manuelles et staging doit toujours précéder production.
+Le lot BUDGET-RESULTS est explicitement autorisé jusqu'au commit, à la PR, à la
+fusion, à la migration production et au déploiement, sans appel Meta ni secret.
 
 Le mode sûr reste inchangé : propositions et validations humaines ne confèrent
 aucun droit d'envoi ou de mutation fournisseur. Aucun CAC ni ROAS réel sans

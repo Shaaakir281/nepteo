@@ -13,6 +13,7 @@ import {
 import { isoDaysAgo } from "./campaign-formatters";
 import { readProspectSearch } from "./campaign-prospect-search";
 import { completeRead } from "./campaign-read-utils";
+import { readBudgetResultsData } from "./budget-results-query";
 
 type CampaignPageSupabase = Awaited<
   ReturnType<typeof getCurrentAuthContext>
@@ -52,6 +53,7 @@ export async function readCampaignPageSnapshot(
     agentControlResult,
     analysisJournalResult,
     prospectSearch,
+    budgetResultsData,
   ] = await Promise.all([
     supabase
       .from("ad_metrics")
@@ -104,6 +106,7 @@ export async function readCampaignPageSnapshot(
       .order("id", { ascending: false })
       .limit(1),
     readProspectSearch(supabase, organizationId, requestedProspectValue),
+    readBudgetResultsData(supabase, organizationId, today),
   ]);
 
   const actionsComplete = completeRead(actionsResult, ACTION_ROW_LIMIT);
@@ -132,6 +135,8 @@ export async function readCampaignPageSnapshot(
     : null;
 
   return {
+    organizationId,
+    asOf: today.toISOString(),
     window,
     comparison,
     weeklyWindow,
@@ -143,6 +148,7 @@ export async function readCampaignPageSnapshot(
     agentControlResult,
     analysisJournalResult,
     prospectSearch,
+    budgetResultsData,
     metricsComplete,
     actionsComplete,
     linkedJournalComplete,

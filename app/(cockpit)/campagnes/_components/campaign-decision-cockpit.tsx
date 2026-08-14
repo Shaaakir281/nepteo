@@ -4,6 +4,7 @@ import { useId, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CampaignActivityList } from "./campaign-activity-list";
 import { CampaignAttemptHistory } from "./campaign-attempt-history";
+import { CampaignBudgetResults } from "./campaign-budget-results";
 import { CreativeAuditUnavailable } from "./campaign-creative-audit";
 import { CampaignDecisionDetails } from "./campaign-decision-details";
 import { CampaignDecisionHero } from "./campaign-decision-hero";
@@ -18,7 +19,7 @@ import { WeeklyInsightsPanel } from "./campaign-weekly-insights";
 
 export * from "./campaign-decision-types";
 
-type CampaignTab = "decision" | "report" | "history";
+type CampaignTab = "decision" | "budget" | "report" | "history";
 
 export function CampaignDecisionCockpit(props: CampaignDecisionCockpitProps) {
   const [tab, setTab] = useState<CampaignTab>("decision");
@@ -86,6 +87,7 @@ export function CampaignDecisionCockpit(props: CampaignDecisionCockpitProps) {
       <div role="tablist" aria-label="Sections Campagnes" className="mb-5 flex gap-1 border-b border-line-soft">
         {([
           ["decision", "Décision"],
+          ["budget", "Budget et résultats"],
           ["report", "Rapport"],
           ["history", "Historique"],
         ] as const).map(([id, label]) => (
@@ -134,6 +136,12 @@ export function CampaignDecisionCockpit(props: CampaignDecisionCockpitProps) {
         <div role="tabpanel" className="space-y-3">
           <WeeklyInsightsPanel insights={props.weeklyInsights} />
           <CreativeAuditUnavailable />
+        </div>
+      )}
+
+      {tab === "budget" && (
+        <div role="tabpanel">
+          <CampaignBudgetResults snapshot={props.budgetResults} />
         </div>
       )}
 

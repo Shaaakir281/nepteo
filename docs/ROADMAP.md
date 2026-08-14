@@ -2,9 +2,14 @@
 
 Une phase = un objectif unique + une porte go/no-go. On ne passe pas la porte, on ne passe pas à la suite.
 
-> **Lecture au 2026-08-12** : la phase 3A et le socle Campagnes/Story sont
-> déployés, mais la priorité produit immédiate est maintenant la boucle Campagnes
-> mesurable. L'ordre opérationnel est défini dans la
+> **Lecture au 2026-08-14** : la phase 3A et le socle Campagnes/Story sont
+> déployés. `META-METRICS` et le parcours pilote Meta sont servis par
+> `nepteo-prod--0000036` sur le schéma de production 30, mais G1 reste ouvert :
+> seule la lecture d'un compte Meta vide a été recettée et aucun échantillon non
+> vide campagne/date/dépense/résultat n'a encore été rapproché de Meta. Le
+> développement de `BUDGET-RESULTS` avance pendant cette recette ; son gate G2
+> ne pourra pas être déclaré vert avant cette comparaison non vide. L'ordre
+> opérationnel est défini dans la
 > [roadmap Campagnes](projets/roadmap-campagnes-supervisees.md) : vérité des
 > métriques, `META-METRICS`, budget/résultats, recommandation Meta et mesure
 > avant/après. La [roadmap valeur — tests commanditaires](projets/roadmap-valeur-commanditaires.md)
@@ -50,25 +55,32 @@ Livrables : 1 ou 2 types d'action réels (ex. email de relance), idempotence + j
 prévu → lecture fournisseur réelle → résultats qualifiés → recommandation →
 décision humaine → mesure avant/après).
 
-Livrables : le socle créatif existant, puis un contrat explicite pour budget,
-dépense, résultat, coût par résultat, conversions, revenu, attribution, devise,
-fuseau, fraîcheur et provenance ; Meta alimente réellement `ad_metrics` de
-façon bornée et idempotente ; le cockpit affiche prévu/réalisé, résultats,
-tendances 7/30 jours et qualité ; une recommandation Meta est mesurée avant et
-après. CAC et ROAS ne sont visibles que si une source aval les justifie.
+Livrables : le socle créatif existant, puis un contrat explicite pour budget
+prévu, budget fournisseur lorsqu'il existe, dépense réelle, résultat déclaré par
+Meta, coût par résultat, conversions, revenu, attribution, devise, fuseau,
+fraîcheur et provenance ; Meta alimente réellement `ad_metrics` de façon bornée
+et idempotente ; le cockpit affiche prévu/réalisé, résultats, tendances 7/30
+jours et qualité ; une recommandation Meta est mesurée avant et après. CAC et
+ROAS ne sont visibles que si une source aval les justifie.
 
 Le détail exécutable est défini dans la [roadmap Campagnes](projets/roadmap-campagnes-supervisees.md).
-CAMP-0, CAMP-1, le socle CAMP-2 et CREATIVE-1 sont acquis. `META-METRICS` est
-implémenté localement mais attend ses preuves staging/JWT et son échantillon
-Meta autorisé ; après G1, le prochain lot proposé est `BUDGET-RESULTS`. Une
-pause Meta n'est étudiée qu'après la preuve lecture/analyse/mesure, et un
-lancement payant n'est pas dans l'ordre immédiat.
+CAMP-0, CAMP-1, le socle CAMP-2 et CREATIVE-1 sont acquis. `META-METRICS` et le
+parcours pilote Meta sont déployés en lecture seule ; G1 reste ouvert uniquement
+faute d'une recette sur données Meta non vides. `BUDGET-RESULTS` est le lot local
+en cours et peut être construit sans attendre cette recette, à condition de
+laisser G2 ouvert. Une donnée inconnue reste indisponible, un budget prévu sans
+rapprochement explicite s'affiche « Budget prévu non rapproché », et aucun
+revenu, CAC ou ROAS réel n'est présenté sans source aval vérifiée. La maquette
+commerciale décrit une direction, jamais une capacité attestée. `META-RECOMMEND`,
+`META-PAUSE`, toute mutation Meta et tout lancement payant restent fermés.
 
-**Porte** : un compte Meta pilote alimente le cockpit avec une photographie
-complète ; budget prévu, dépense, type et coût du résultat sont traçables ; une
-recommandation prudente a une baseline, une décision et un avant/après
-reconstructibles, sans écriture fournisseur. La mutation Ads possède sa propre
-porte ultérieure.
+**Porte** : un compte Meta pilote non vide alimente le cockpit avec une
+photographie complète rapprochée de l'interface Meta ; budget prévu, budget
+fournisseur lorsqu'il existe, dépense réelle, type et coût du résultat sont
+traçables. Le déploiement du cockpit, sa recette
+technique et sa recette sur données réelles non vides sont trois preuves
+distinctes. La recommandation, la mesure et toute mutation Ads possèdent leurs
+propres portes ultérieures.
 
 ## Phase 5 — Passage à l'échelle
 
